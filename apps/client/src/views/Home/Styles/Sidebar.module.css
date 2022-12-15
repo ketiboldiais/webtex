@@ -1,0 +1,72 @@
+@charset "UTF-8";
+.Sidebar {
+  width: 30%;
+  height: 100%;
+  margin-top: 1rem;
+  border-right: 1px solid #ddd;
+}
+.Sidebar .SidebarHeader {
+  display: flex;
+  justify-content: space-between;
+}
+.Sidebar .SidebarHeader h2 {
+  font-size: 1rem;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+}
+.Sidebar .SidebarHeader .NewNoteButton {
+  border: solid thin hsl(210deg, 16%, 76%);
+  color: hsl(210deg, 16%, 76%);
+  background-color: white;
+  border-radius: 3px;
+  margin: 0 0.25rem;
+}
+.Sidebar .SidebarNotes {
+  height: calc(100vh - 78px);
+  overflow-y: scroll;
+}
+.Sidebar .SidebarNote {
+  cursor: pointer;
+  margin-top: 0.25rem;
+  margin-right: 0.5rem;
+  padding: 0.25rem;
+  box-shadow: 0px 1px 3px hsl(0deg, 0%, 91%), 0 1px 2px hsl(0deg, 0%, 50%);
+}
+.Sidebar .SidebarNote.ActiveNote {
+  background-color: hsl(215deg, 75%, 55%);
+  color: white;
+}
+.Sidebar .SidebarNote .NoteHeader {
+  display: grid;
+  grid-template-columns: 3fr 0.2fr;
+}
+.Sidebar .SidebarNote .NoteHeader .SidebarNoteTitle {
+  font-size: 0.7rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.Sidebar .SidebarNote .NoteHeader button {
+  display: inline-grid;
+  place-content: center;
+  margin: 1px;
+  padding: 0;
+  aspect-ratio: 1;
+  min-inline-size: 0.6rem;
+  border-radius: 50%;
+  background-color: white;
+  background-color: inherit;
+}
+.Sidebar .SidebarNote .NoteHeader button:before {
+  content: "×";
+  color: hsl(4deg, 59%, 65%);
+  font-size: 0.8rem;
+}
+.Sidebar .SidebarNote .SidebarNoteMeta {
+  display: block;
+  font-size: 0.6rem;
+}
+.Sidebar .SidebarNoteButton {
+  color: crimson;
+}/*# sourceMappingURL=Sidebar.module.css.map */

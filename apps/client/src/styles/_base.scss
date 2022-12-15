@@ -1,0 +1,156 @@
+$xxsmall: 0.6rem;
+$xsmall: 0.8rem;
+$small: 1rem;
+$medium: 1.2rem;
+$large: 1.4rem;
+$xlarge: 1.8rem;
+$xxlarge: 2.6rem;
+$huge: 4.2rem;
+
+$grey: 0;
+$neutralGrey1: hsl(0, 0%, 28%);
+$neutralGrey2: hsl(0, 0%, 43%);
+$neutralGrey3: hsl(0, 0%, 58%);
+$neutralGrey4: hsl(0, 0%, 76%);
+$neutralGrey5: hsl(0, 0%, 88%);
+
+$coolGrey1: hsl(209, 15%, 28%);
+$coolGrey2: hsl(207, 12%, 43%);
+$coolGrey3: hsl(208, 12%, 58%);
+$coolGrey4: hsl(210, 16%, 76%);
+$coolGrey5: hsl(208, 21%, 88%);
+
+$warmGrey1: hsl(41, 15%, 28%);
+$warmGrey2: hsl(40, 12%, 43%);
+$warmGrey3: hsl(39, 12%, 58%);
+$warmGrey4: hsl(39, 16%, 76%);
+$warmGrey5: hsl(39, 21%, 88%);
+
+$green: 75;
+$green1: hsl(75, 81%, 15%);
+$green2: hsl(75, 79%, 25%);
+$green3: hsl(75, 78%, 45%);
+$green4: hsl(75, 75%, 55%);
+$green5: hsl(75, 59%, 65%);
+$green6: hsl(75, 58%, 75%);
+$green7: hsl(75, 63%, 85%);
+$green8: hsl(75, 100%, 95%);
+
+$blue: 215;
+$blue1: hsl(215, 81%, 15%);
+$blue2: hsl(215, 79%, 25%);
+$blue3: hsl(215, 78%, 45%);
+$blue4: hsl(215, 75%, 55%);
+$blue5: hsl(215, 59%, 65%);
+$blue6: hsl(215, 58%, 75%);
+$blue7: hsl(215, 63%, 85%);
+$blue8: hsl(215, 100%, 95%);
+
+$gold: 43;
+$gold1: hsl(43, 81%, 15%);
+$gold2: hsl(43, 79%, 25%);
+$gold3: hsl(43, 78%, 45%);
+$gold4: hsl(43, 75%, 55%);
+$gold5: hsl(43, 59%, 65%);
+$gold6: hsl(43, 58%, 75%);
+$gold7: hsl(43, 63%, 85%);
+$gold8: hsl(43, 100%, 95%);
+$gold9: hsl(43, 100%, 99%);
+
+$teal: 181;
+$teal1: hsl(181, 81%, 15%);
+$teal2: hsl(181, 79%, 25%);
+$teal3: hsl(181, 78%, 45%);
+$teal4: hsl(181, 75%, 55%);
+$teal5: hsl(181, 59%, 65%);
+$teal6: hsl(181, 58%, 75%);
+$teal7: hsl(181, 63%, 85%);
+$teal8: hsl(181, 100%, 95%);
+
+$red: 4;
+$red1: hsl(4, 81%, 15%);
+$red2: hsl(4, 79%, 25%);
+$red3: hsl(4, 78%, 45%);
+$red4: hsl(4, 75%, 55%);
+$red5: hsl(4, 59%, 65%);
+$red6: hsl(4, 58%, 75%);
+$red7: hsl(4, 63%, 85%);
+$red8: hsl(4, 100%, 95%);
+
+$pad1: 0.25rem;
+$pad2: 0.5rem;
+$pad3: 0.75rem;
+$pad4: 1rem;
+$pad5: 1.5rem;
+$pad6: 2rem;
+$pad7: 3rem;
+$pad8: 4rem;
+$pad9: 6rem;
+$pad10: 8rem;
+$pad11: 12rem;
+$pad12: 16rem;
+$pad13: 24rem;
+
+$margin1: 0.25rem;
+$margin2: 0.5rem;
+$margin3: 0.75rem;
+$margin4: 1rem;
+$margin5: 1.5rem;
+$margin6: 2rem;
+$margin7: 3rem;
+$margin8: 4rem;
+$margin9: 6rem;
+$margin10: 8rem;
+$margin11: 12rem;
+$margin12: 16rem;
+$margin13: 24rem;
+
+$quarter: 25%;
+$tripart: 75%;
+$half: 50%;
+$full: 100%;
+
+@mixin BorderRadius {
+  border-radius: 5px;
+}
+
+@mixin Shadow1($COLOR) {
+  box-shadow: 0px 1px 3px hsl($COLOR, 0%, 91%), 0 1px 2px hsl($COLOR, 0%, 50%);
+}
+@mixin Shadow2($COLOR) {
+  box-shadow: 0px 3px 6px hsl($COLOR, 0%, 77%), 0 2px 4px hsl($COLOR, 0%, 75%);
+}
+@mixin Shadow3($COLOR) {
+  box-shadow: 0px 10px 20px hsl($COLOR, 16%, 75%),
+    0 3px 6px hsl($COLOR, 16%, 30%);
+}
+@mixin Shadow4($COLOR) {
+  box-shadow: 0px 15px 25px hsl(43, 16%, 72%), 0 5px 10px hsl(43, 16%, 80%);
+}
+@mixin Shadow5($COLOR) {
+  box-shadow: 0px 20px 40px hsl(43, 16%, 70%);
+}
+
+@mixin Border($COLOR) {
+  border: solid thin $COLOR;
+}
+
+@mixin FullWidth {
+  width: 100%;
+}
+
+@mixin CloseButton {
+  display: inline-grid;
+  place-content: center;
+  margin: 1px;
+  padding: 0;
+  aspect-ratio: 1;
+  min-inline-size: $xxsmall;
+  border-radius: 50%;
+  background-color: white;
+  &:before {
+    content: "\D7";
+    color: $red5;
+    font-size: $xsmall;
+  }
+}

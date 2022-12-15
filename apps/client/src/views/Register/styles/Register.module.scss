@@ -1,0 +1,36 @@
+@import "../../../styles/base";
+
+.RegisterContainer {
+  max-width: 500px;
+  margin: 5vh auto;
+  padding: 1em;
+  @include Shadow1($grey);
+  .RegisterHeader {
+    margin: 0;
+    padding: 0;
+    text-align: center;
+  }
+  form {
+    input {
+      color: $coolGrey2;
+    }
+    input,
+    button {
+      margin: 10px 0;
+      padding: $pad2;
+    }
+    button:disabled {
+      color: $coolGrey3;
+    }
+  }
+  .errorMessage {
+    color: $coolGrey4;
+    font-size: $xsmall;
+    padding: 0;
+    margin: 0;
+  }
+  .offScreen {
+    position: absolute;
+    left: -9999px;
+  }
+}

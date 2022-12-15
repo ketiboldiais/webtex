@@ -1,0 +1,8 @@
+.Home {
+  display: flex;
+  height: 90vh;
+}
+.Home .Workspace {
+  height: 100%;
+  width: 100%;
+}/*# sourceMappingURL=Home.module.css.map */

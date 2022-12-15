@@ -1,0 +1,26 @@
+@import "../../../styles/base";
+
+.DocsContainer {
+  display: flex;
+  flex-direction: column;
+  font-family: "CMU Serif";
+  max-width: 600px;
+  margin: 0 auto;
+  h2 {
+    text-align: left;
+    margin: 0;
+    padding: 0;
+    font-size: $medium;
+    margin-top: 5vh;
+  }
+  section {
+    p:first-of-type {
+      margin-top: 0;
+    }
+  }
+  figure {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+}

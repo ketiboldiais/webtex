@@ -1,0 +1,31 @@
+:root {
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+html {
+  font-size: calc(15px + 0.390625vw);
+}
+
+.editor-text-bold {
+  font-weight: bold;
+}
+.editor-text-italic {
+  font-style: italic;
+}
+.editor-text-underline {
+  text-decoration: underline;
+}
+.editor-text-strikethrough {
+  text-decoration: line-through;
+}
+.editor-text-underlineStrikethrough {
+  text-decoration: underline line-through;
+}
+.editor-text-code {
+  background-color: rgb(240, 242, 245);
+  padding: 1px 0.25rem;
+  font-size: 94%;
+}

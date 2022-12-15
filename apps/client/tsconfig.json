@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "useDefineForClassFields": true,
+    "allowJs": false,
+    "esModuleInterop": true,
+    "strict": true,
+    "module": "ESNext",
+    "noEmit": true,
+    "baseUrl": "./",
+    "jsx": "react-jsx"
+  },
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}

@@ -1,0 +1,62 @@
+@import "../../../styles/base";
+
+.Sidebar {
+  width: 30%;
+  height: 100%;
+  margin-top: $margin4;
+  border-right: 1px solid #ddd;
+  .SidebarHeader {
+    display: flex;
+    justify-content: space-between;
+    h2 {
+      font-size: $small;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+    .NewNoteButton {
+      border: solid thin $coolGrey4;
+      color: $coolGrey4;
+      background-color: white;
+      border-radius: 3px;
+      margin: 0 $margin1;
+    }
+  }
+  .SidebarNotes {
+    height: calc(100vh - 78px);
+    overflow-y: scroll;
+  }
+  .SidebarNote {
+    cursor: pointer;
+    margin-top: $margin1;
+    margin-right: $margin2;
+    padding: $pad1;
+    @include Shadow1($grey);
+    &.ActiveNote {
+      background-color: $blue4;
+      color: white;
+    }
+    .NoteHeader {
+      display: grid;
+      grid-template-columns: 3fr 0.2fr;
+      .SidebarNoteTitle {
+        font-size: 0.7rem;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      button {
+        @include CloseButton;
+        background-color: inherit;
+      }
+    }
+    .SidebarNoteMeta {
+      display: block;
+      font-size: $xxsmall;
+    }
+  }
+
+  .SidebarNoteButton {
+    color: crimson;
+  }
+}

@@ -1,0 +1,22 @@
+.Container {
+  padding: 0.5rem;
+}
+.Container ul {
+  list-style: none;
+  margin: 0.5rem 0;
+  padding: 0;
+  display: flex;
+  justify-content: space-evenly;
+}
+.Container ul li {
+  border-bottom: solid 3px hsl(208deg, 12%, 58%);
+  color: hsl(209deg, 15%, 28%);
+  padding: 0;
+  margin: 0;
+}
+.Container ul a {
+  display: block;
+  color: hsl(208deg, 12%, 58%);
+  padding: 0.25rem 0.75rem;
+  cursor: pointer;
+}/*# sourceMappingURL=NavBar.module.css.map */
