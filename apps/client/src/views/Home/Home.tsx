@@ -1,7 +1,8 @@
-import { motion } from "framer-motion";
-
 // hooks
 import { useState } from "react";
+import { useSelector } from "react-redux";
+import { selectUser, selectToken } from "../../model/state/store";
+import { Link } from "react-router-dom";
 
 // styles
 import Styles from "./Styles/Home.module.css";
@@ -19,12 +20,19 @@ const defaultNote = {
 };
 
 function Home() {
+  const user = useSelector(selectUser);
+  const token = useSelector(selectToken);
+
   const [notes, setNotes] = useState<NoteList | []>([]);
+
   const [init, setInit] = useState(defaultcontent);
+
   const [currentNote, setCurrentNote] = useState(0);
+
   const addNote = () => {
     setNotes([defaultNote, ...notes]);
   };
+
   const onSave = (content: string, title: string) => {
     const newNote = {
       title: title,
@@ -42,29 +50,23 @@ function Home() {
       setInit(notes[index].content);
     }
   };
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{
-        opacity: 0,
-      }}
-    >
-      <article className={Styles.Home}>
-        <Sidebar
-          notes={notes}
-          currentNote={currentNote}
-          setCurrentNote={setCurrentNote}
-          addNote={addNote}
-          setActiveNote={setActiveNote}
-          deleteNote={onDeleteNote}
-        />
-        <section className={Styles.Workspace}>
-          <Editor savehandler={onSave} init={init} />
-        </section>
-      </article>
-    </motion.div>
+  const content = (
+    <article className={Styles.Home}>
+      <Sidebar
+        notes={notes}
+        currentNote={currentNote}
+        setCurrentNote={setCurrentNote}
+        addNote={addNote}
+        setActiveNote={setActiveNote}
+        deleteNote={onDeleteNote}
+      />
+      <section className={Styles.Workspace}>
+        <Editor savehandler={onSave} init={init} />
+      </section>
+    </article>
   );
+
+  return content;
 }
 
 export default Home;

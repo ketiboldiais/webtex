@@ -17,6 +17,18 @@ body {
   margin: 0 2vw;
 }
 
+section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 h1,
 h2,
 h3,

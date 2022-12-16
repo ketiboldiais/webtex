@@ -5,7 +5,7 @@ import {
   FetchBaseQueryError,
 } from "@reduxjs/toolkit/query/react";
 import { fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { BASE_URL, REFRESH_ENDPOINT } from "src/config";
+import { BASE_URL, REFRESH_ENDPOINT } from "../../config";
 import { setCredentials, logout } from "./auth.slice";
 import { RootState } from "./store";
 
@@ -100,5 +100,6 @@ const baseQueryWithReauth: BaseQueryType = async (args, api, extraOptions) => {
 
 export const apiSlice = createApi({
   baseQuery: baseQueryWithReauth,
+  tagTypes: ["Note", "User"],
   endpoints: (builder) => ({}),
 });

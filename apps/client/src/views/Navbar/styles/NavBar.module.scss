@@ -7,12 +7,20 @@
     margin: $margin2 0;
     padding: 0;
     display: flex;
-    justify-content: space-evenly;
+    justify-content: space-between;
     li {
       border-bottom: solid 3px $coolGrey3;
       color: $coolGrey1;
       padding: 0;
       margin: 0;
+    }
+    .webtexTitle {
+      border: none;
+      a {
+        color: black;
+        font-size: 1.2rem;
+        font-weight: bold;
+      }
     }
     a {
       display: block;

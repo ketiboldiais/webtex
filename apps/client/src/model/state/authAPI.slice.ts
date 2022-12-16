@@ -1,4 +1,4 @@
-import { AUTH_ENDPOINT } from "src/config";
+import { AUTH_ENDPOINT } from "../../config";
 import { apiSlice } from "./api.slice";
 
 export type CREDENTIALS = {
@@ -18,3 +18,5 @@ export const authAPISlice = apiSlice.injectEndpoints({
     }),
   }),
 });
+
+export const { useLoginMutation } = authAPISlice;

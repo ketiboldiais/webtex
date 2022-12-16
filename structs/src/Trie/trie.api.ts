@@ -5,5 +5,4 @@ export interface TrieNode {
   eow: boolean;
 }
 
-interface TrieAPI {
-}
+

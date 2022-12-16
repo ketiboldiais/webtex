@@ -8,8 +8,8 @@ function Navbar() {
     <>
       <nav className={Styles.Container}>
         <ul>
-          <li>
-            <Link to="/docs">Docs</Link>
+          <li className={Styles.webtexTitle}>
+            <Link to="/docs">Webtex</Link>
           </li>
           <li>
             <Link to="/register">Register</Link>
@@ -18,14 +18,13 @@ function Navbar() {
             <Link to="/login">Login</Link>
           </li>
           <li>
-            <Link to="/">Home</Link>
+            <Link to="/home">Home</Link>
           </li>
           <li role="button">
             <a>Logout</a>
           </li>
         </ul>
       </nav>
-      <Outlet />
     </>
   );
 }

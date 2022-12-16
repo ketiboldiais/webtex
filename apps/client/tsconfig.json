@@ -6,6 +6,7 @@
     "esModuleInterop": true,
     "strict": true,
     "module": "ESNext",
+    "lib": ["ES2015", "DOM"],
     "noEmit": true,
     "baseUrl": "./",
     "jsx": "react-jsx"
