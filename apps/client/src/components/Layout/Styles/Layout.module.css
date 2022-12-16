@@ -1,4 +1,11 @@
-.LayoutContainer h1 {
-  font-size: 1rem;
-  text-align: right;
+.LayoutContainer header {
+  display: flex;
+  width: 100%;
+  padding: 0;
+}
+.LayoutContainer header h1 {
+  padding: 0.5rem 0;
+  margin: 0;
+  display: inline-block;
+  color: hsl(210deg, 16%, 76%);
 }/*# sourceMappingURL=Layout.module.css.map */

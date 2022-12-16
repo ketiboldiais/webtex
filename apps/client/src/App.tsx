@@ -10,6 +10,7 @@ import Docs from "./views/Docs/Docs";
 import { UserHome } from "./views/UserHome/UserHome";
 import { RequireAuth } from "./model/state/RequireAuth";
 import { DashboardLayout } from "./components/DashboardLayout/DashboardLayout";
+import { NotesList } from "./components/NotesList/NotesList";
 
 function App() {
   return (
@@ -23,6 +24,9 @@ function App() {
         <Route element={<RequireAuth />}>
           <Route path="dash" element={<DashboardLayout />}>
             <Route index element={<UserHome />} />
+            <Route path="notes">
+              <Route index element={<NotesList />} />
+            </Route>
           </Route>
         </Route>
       </Route>
