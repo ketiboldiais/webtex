@@ -6,7 +6,6 @@ import "./App.css";
 import { Layout } from "./components/Layout/Layout";
 import Register from "./views/Register/Register";
 import Login from "./views/Login/Login";
-import Home from "./views/Home/Home";
 import Docs from "./views/Docs/Docs";
 import { UserHome } from "./views/UserHome/UserHome";
 import { RequireAuth } from "./model/state/RequireAuth";

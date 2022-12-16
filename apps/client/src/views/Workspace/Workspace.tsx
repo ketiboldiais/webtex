@@ -5,7 +5,7 @@ import { selectUser, selectToken } from "../../model/state/store";
 import { Link } from "react-router-dom";
 
 // styles
-import Styles from "./Styles/Home.module.css";
+import Styles from "./Styles/Workspace.module.css";
 import { Editor } from "../../components/Editor";
 
 // components
@@ -19,7 +19,7 @@ const defaultNote = {
   lastModified: `${Date.now()}`,
 };
 
-function Home() {
+const Workspace = () => {
   const user = useSelector(selectUser);
   const token = useSelector(selectToken);
 
@@ -67,6 +67,6 @@ function Home() {
   );
 
   return content;
-}
+};
 
-export default Home;
+export default Workspace;
