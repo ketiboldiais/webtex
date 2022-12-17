@@ -4,21 +4,13 @@
  * @access Private
  */
 
-import { Request, Response } from "express";
+import { Response } from "express";
 import bcrypt from "bcrypt";
 
 import { db } from "../database/db";
+import { DeauthorizeRequest } from "src/server";
 
-export interface DeauthorizeRequest extends Request {
-  body: {
-    id: string;
-    email: string;
-    password: string;
-    confirmPassword: string;
-  };
-}
-
-export const deauthorize = async (req: Request, res: Response) => {
+export const deauthorize = async (req: DeauthorizeRequest, res: Response) => {
   const { id, email, password, confirmPassword } = req.body;
   if (
     !id ||

@@ -4,21 +4,10 @@
  * @access Private
  */
 
-import { Request, Response } from "express";
-
+import { Response } from "express";
 import bcrypt from "bcrypt";
-
 import { db } from "../database/db";
-
-export interface EmailUpdateRequest extends Request {
-  body: {
-    id: string;
-    currentEmail: string;
-    newEmail: string;
-    password: string;
-    confirmPassword: string;
-  };
-}
+import { EmailUpdateRequest } from "src/server";
 
 export const updateEmail = async (req: EmailUpdateRequest, res: Response) => {
   const { id, currentEmail, newEmail, password, confirmPassword } = req.body;

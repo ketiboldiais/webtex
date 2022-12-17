@@ -4,17 +4,11 @@
  * @access Public
  */
 
-import { UserEntry, db } from "../database/db";
+import { db } from "../database/db";
 
-import { Request, Response } from "express";
+import { Response } from "express";
 import bcrypt from "bcrypt";
-
-export interface RegisterRequest extends Request {
-  body: {
-    email: string;
-    password: string;
-  };
-}
+import { RegisterRequest, UserEntry } from "src/server";
 
 export const register = async (req: RegisterRequest, res: Response) => {
   const { email, password } = req.body;

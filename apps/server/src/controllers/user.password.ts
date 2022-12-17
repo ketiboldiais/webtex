@@ -4,20 +4,10 @@
  * @access Private
  */
 
-import { Request, Response } from "express";
-
+import { Response } from "express";
 import bcrypt from "bcrypt";
-
-import { User, UserEntry, db } from "../database/db";
-
-export interface PasswordUpdateRequest extends Request {
-  body: {
-    id: string;
-    password: string;
-    newPassword: string;
-    confirmNewPassword: string;
-  };
-}
+import { db } from "../database/db";
+import { PasswordUpdateRequest } from "src/server";
 
 export const updatePassword = async (
   req: PasswordUpdateRequest,

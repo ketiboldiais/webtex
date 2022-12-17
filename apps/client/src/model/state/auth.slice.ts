@@ -1,40 +1,15 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createSlice } from "@reduxjs/toolkit";
+import { AUTH_STATE } from "../../client";
 
-export type AuthResponse = {
-  id: string | null;
-  accessToken: string;
-  notes: string[];
-};
-
-export interface AuthState {
-  id: string | null;
-  token: string | null;
-  notes: string[];
-}
-
-const initialState: AuthState = {
-  id: null,
-  token: null,
-  notes: [],
+const initial_auth_state = {
+  user: null,
 };
 
 const authSlice = createSlice({
   name: "auth",
-  initialState,
-  reducers: {
-    setCredentials: (state, action: PayloadAction<AuthResponse>) => {
-      const { id, accessToken, notes } = action.payload;
-      state.id = id;
-      state.token = accessToken;
-      state.notes = notes;
-    },
-    logout: (state) => {
-      state.id = null;
-      state.token = null;
-      state.notes = [];
-    },
-  },
+  initialState: initial_auth_state,
+  reducers: {},
 });
 
-export const { setCredentials, logout } = authSlice.actions;
-export const authReducer = authSlice.reducer;
+export default authSlice.reducer;

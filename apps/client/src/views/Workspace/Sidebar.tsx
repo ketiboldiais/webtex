@@ -1,6 +1,7 @@
 import Styles from "./Styles/Sidebar.module.css";
 import { motion } from "framer-motion";
 import { Dispatch, SetStateAction } from "react";
+import { DocList, NoteList } from "../../client";
 
 interface SidebarProps {
   notes: NoteList;
@@ -34,7 +35,7 @@ const Sidebar = ({
           className={`${Styles.SidebarNote} ${
             currentNote === index ? Styles.ActiveNote : ""
           }`}
-          key={`${note.title}`}
+          key={`${note.id}`}
           onClick={(event) => {
             event.stopPropagation();
             setActiveNote(index);
@@ -46,9 +47,9 @@ const Sidebar = ({
             <button onClick={() => deleteNote(note.title)}></button>
           </section>
           <section>
-            <small className={Styles.SidebarNoteMeta}>
-              {note.lastModified}
-            </small>
+            <small
+              className={Styles.SidebarNoteMeta}
+            >{`${note.modified}`}</small>
           </section>
         </article>
       ))}

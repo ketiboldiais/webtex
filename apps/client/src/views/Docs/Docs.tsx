@@ -1,5 +1,4 @@
 import { Editor } from "../../components/Editor";
-import { motion } from "framer-motion";
 
 // Styles
 import Styles from "./Styles/Docs.module.css";

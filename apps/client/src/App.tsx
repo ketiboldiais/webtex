@@ -7,6 +7,7 @@ import { Layout } from "./components/Layout/Layout";
 import Register from "./views/Register/Register";
 import Login from "./views/Login/Login";
 import Docs from "./views/Docs/Docs";
+import Workspace from "./views/Workspace/Workspace";
 import { UserHome } from "./views/UserHome/UserHome";
 import { RequireAuth } from "./model/state/RequireAuth";
 import { DashboardLayout } from "./components/DashboardLayout/DashboardLayout";
@@ -16,6 +17,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
+        {/* <Route index element={<Workspace />} /> */}
         <Route index element={<Docs />} />
         {/* public routes */}
         <Route path="login" element={<Login />} />

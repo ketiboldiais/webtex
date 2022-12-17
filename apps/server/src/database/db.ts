@@ -3,47 +3,7 @@ dotenv.config();
 
 import { Pool } from "pg";
 import { Kysely, PostgresDialect, Generated } from "kysely";
-
-export interface UsersTable {
-  pk: Generated<number>;
-  id: Generated<string>;
-  email: string;
-  password: string;
-  active: boolean;
-  joined: Date;
-}
-
-export type UserEntry = {
-  email: string;
-  password: string;
-  active: boolean;
-  joined: Date;
-};
-
-export type User = {
-  email: string;
-  password: string;
-};
-
-export type Note = {
-  id: string;
-  created: number;
-  modified: number;
-  filepath: string;
-};
-
-export interface NotesTable {
-  pk: Generated<number>;
-  id: string;
-  created: number;
-  modified: number;
-  filepath: string;
-}
-
-export interface Database {
-  users: UsersTable;
-  notes: NotesTable;
-}
+import { Database } from "src/server";
 
 export const db = new Kysely<Database>({
   dialect: new PostgresDialect({

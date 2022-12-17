@@ -3,7 +3,7 @@
  */
 
 export const NotesList = () => {
-	return (
-		<h1>Notes</h1>
-	)
-}
+  let content = null;
+
+  return <h1>Notes</h1>;
+};

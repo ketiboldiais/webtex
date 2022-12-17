@@ -1,8 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
-import { setCredentials } from "../../model/state/auth.slice";
-import { useLoginMutation } from "../../model/state/authAPI.slice";
+import React, { useState, useEffect } from "react";
 
 // styles
 import Styles from "./styles/Login.module.css";
@@ -13,9 +9,6 @@ const Login = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const [login, { isLoading }] = useLoginMutation();
-  const dispatch = useDispatch();
-
   // reset error when user enters input
   useEffect(() => {
     setError("");
@@ -25,12 +18,8 @@ const Login = () => {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     try {
-      const userData = await login({ email, password }).unwrap();
-      dispatch(setCredentials({ ...userData, email }));
-      setPassword("");
-      setEmail("");
     } catch (error: any) {
-      if (!error?.response) {
+      if (!error?.rkesponse) {
         setError("Our servers are currently down. Try again later.");
       } else if (error?.response?.status === 400) {
         setError("Missing username or password");
