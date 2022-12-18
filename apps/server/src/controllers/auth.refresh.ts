@@ -3,7 +3,7 @@
  */
 import { Response } from "express";
 import jwt from "jsonwebtoken";
-import { RefreshRequest, TokenObj } from "../server";
+import { RefreshRequest, TokenObj } from "@webtex/api";
 import { db } from "../database/db";
 import { accessExpire } from "./config";
 

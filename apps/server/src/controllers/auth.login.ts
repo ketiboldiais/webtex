@@ -7,52 +7,76 @@
 import { Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { LoginRequest, TokenObj } from "../server";
+import { LoginRequest, TokenObj, message } from "@webtex/api";
 import { db } from "../database/db";
 import { accessExpire, refreshExpire } from "./config";
 
 export const login = async (req: LoginRequest, res: Response) => {
   const { email, password } = req.body;
-  if (
-    !email ||
-    !password ||
-    typeof email !== "string" ||
-    typeof password !== "string"
-  ) {
-    return res.status(400).json({ error: "Missing email or password." });
+  try {
+    // ensure data is actually provided
+    if (!email || !password) {
+      return res.status(400).json({ data: message.badCredentials });
+    }
+
+    // verify that input data are string types
+    if (typeof email !== "string" || typeof password !== "string") {
+      return res.status(400).json({ data: message.badCredentials });
+    }
+
+    // check if user exists
+    const foundUser = await db
+      .selectFrom("users")
+      .select(["password", "active", "user"])
+      .where("email", "=", email)
+      .executeTakeFirst();
+
+    // handle case where user doesn't exist
+    if (!foundUser) {
+      return res.status(401).json({ data: message.badCredentials });
+    }
+
+    // handle case where user's account hasn't been verified
+    if (!foundUser.active) {
+      return res.status(401).json({ data: message.badCredentials });
+    }
+
+    // verify password
+    const match = await bcrypt.compare(password, foundUser.password);
+
+    // handle case where password doesn't match
+    if (!match) {
+      return res.status(401).json({ data: message.badCredentials });
+    }
+
+    // object for JWT
+    const token: TokenObj = { user: foundUser.user };
+
+    // generate the access token
+    const accessToken = jwt.sign(
+      token,
+      process.env.ACCESS_TOKEN_SECRET as string,
+      { expiresIn: accessExpire }
+    );
+
+    // generate the refresh token
+    const refreshToken = jwt.sign(
+      token,
+      process.env.REFRESH_TOKEN_SECRET as string,
+      { expiresIn: refreshExpire }
+    );
+
+    // store the refresh token in an httpOnly cookie
+    res.cookie("jwt", refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge: 7 * 24 * 60 * 60 * 100,
+    });
+
+    // return the token
+    return res.status(200).json({ accessToken });
+  } catch (error) {
+    return res.sendStatus(500);
   }
-  const foundUser = await db
-    .selectFrom("users")
-    .select(["password", "active", "user"])
-    .where("email", "=", email)
-    .executeTakeFirst();
-  if (!foundUser) {
-    return res.status(401).json({ message: "Wrong username or password." });
-  }
-  if (!foundUser.active) {
-    return res.status(401).json({ message: "Account not verified." });
-  }
-  const match = await bcrypt.compare(password, foundUser.password);
-  if (!match) {
-    return res.status(401).json({ message: "Wrong username or password." });
-  }
-  const token: TokenObj = { user: foundUser.user };
-  const accessToken = jwt.sign(
-    token,
-    process.env.ACCESS_TOKEN_SECRET as string,
-    { expiresIn: accessExpire }
-  );
-  const refreshToken = jwt.sign(
-    token,
-    process.env.REFRESH_TOKEN_SECRET as string,
-    { expiresIn: refreshExpire }
-  );
-  res.cookie("jwt", refreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    maxAge: 7 * 24 * 60 * 60 * 100,
-  });
-  res.status(200);
-  res.json({ accessToken });
 };

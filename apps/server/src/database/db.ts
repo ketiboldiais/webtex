@@ -2,8 +2,8 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { Pool } from "pg";
-import { Kysely, PostgresDialect, Generated } from "kysely";
-import { Database } from "src/server";
+import { Kysely, PostgresDialect } from "kysely";
+import { Database } from "@webtex/api";
 
 export const db = new Kysely<Database>({
   dialect: new PostgresDialect({
