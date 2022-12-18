@@ -1,16 +1,17 @@
-import { Note } from "../client";
-
 export const BASE_URL = "http://localhost:5174";
-export const REFRESH_ENDPOINT = "/refresh";
-export const AUTH_ENDPOINT = "/auth";
-export const USER_ENDPOINT = "/user";
-export const NOTES_ENDPOINT = "/notes";
+export const REFRESH_URL = "/refresh";
+export const AUTH_URL = "/auth";
+export const USER_URL = "/user";
+export const REGISTER_URL = "/user/register";
+export const NOTES_URL = "/notes";
+export const LOGOUT_URL = "/logout";
 const DEFAULT_NOTE_CONTENT = `{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"","type":"text","version":1}],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1}],"direction":"ltr","format":"","indent":0,"type":"root","version":1}}`;
 
-export const DEFAULT_NOTE: Note = {
+export const DEFAULT_NOTE = {
   id: 0,
-  created: new Date(),
-  modified: new Date(),
+  user: "",
+  created: "",
+  modified: "",
   title: "",
   url: "",
   content: DEFAULT_NOTE_CONTENT,

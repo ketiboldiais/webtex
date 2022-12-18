@@ -11,7 +11,6 @@ import { errorHandler } from "./middleware/errorHandler";
 import { ignoreFavicon } from "./middleware/ignoreFavicon";
 import rootRoute from "./routes/root";
 import userRoutes from "./routes/user.routes";
-import noteRoutes from "./routes/note.routes";
 
 const MODE = process.env["NODE_ENV"];
 const PORT = Number(process.env["PORT"]) || 5174;
@@ -38,7 +37,6 @@ server.use(ignoreFavicon);
 server.use("/", express.static(path.join(__dirname, "public")));
 server.use("/", rootRoute);
 server.use("/user", userRoutes);
-server.use("/notes", noteRoutes);
 server.all("*", (req, res) => {
   res.status(404);
   if (req.accepts("html")) {

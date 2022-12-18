@@ -9,9 +9,13 @@
     "declaration": false,
     "target": "ES2016",
     "outDir": "./dist",
-    "baseUrl": ".",
+    "baseUrl": "./",
     "skipLibCheck": true,
-    "moduleResolution": "Node"
+    "moduleResolution": "Node",
+    "paths": {
+      "@webtex/api": ["../api/src"],
+      "@webtex/api/*": ["../api/src/*"]
+    }
   },
   "include": ["src"],
   "exclude": ["dist", "node_modules"]

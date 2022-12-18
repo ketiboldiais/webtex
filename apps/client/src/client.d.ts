@@ -1,11 +1,3 @@
-export type Note = {
-  id: number;
-  created: Date;
-  modified: Date;
-  title: string;
-  url: string;
-  content: string;
-};
 
 export type USER = {
   user: string;
@@ -17,10 +9,7 @@ export interface AUTH_STATE {
   token: string | null;
 }
 
-export interface NOTE_STATE {
-  currentNote: Note;
-  notes: Note[];
-}
+
 
 export interface APP_STATE {
   user: string;

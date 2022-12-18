@@ -1,4 +1,4 @@
-import { NextFunction, Request } from "express";
+import { NextFunction, Request, Response } from "express";
 import { Generated } from "kysely";
 
 type Middleware = (req: Request, res: Response, nex?: NextFunction) => any;
@@ -25,9 +25,10 @@ export type User = {
 };
 
 export type Note = {
+  id: number;
   user: string; // the user id
-  created: Date;
-  modified: Date;
+  created: string;
+  modified: string;
   title: string;
   url: string;
 };
@@ -36,7 +37,7 @@ export interface NotesTable {
   id: Generated<number>;
   created: number;
   modified: number;
-  user: string; // the url
+  user: string;
   url: string;
   title: string;
 }
@@ -45,6 +46,10 @@ export interface GetNotesRequest extends Request {
   body: {
     user: string;
   };
+}
+
+export interface GetNotesResponse extends Response {
+  data: Note[];
 }
 
 export interface SaveNewNoteRequest extends Request {
@@ -64,7 +69,10 @@ export interface Database {
 }
 
 interface LoginRequest extends Request {
-  body: User;
+  body: {
+    email: string;
+    password: string;
+  };
 }
 
 export interface RegisterRequest extends Request {
@@ -99,4 +107,11 @@ export interface PasswordUpdateRequest extends Request {
   };
 }
 
-export interface LoginResponse extends Response {}
+export interface RefreshRequest extends Request {
+  body: {
+    user: string;
+    email: string;
+  };
+}
+
+type TokenObj = { user: string };

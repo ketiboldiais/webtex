@@ -9,7 +9,12 @@
     "lib": ["ES2015", "DOM"],
     "noEmit": true,
     "baseUrl": "./",
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "types": ["node"],
+    "paths": {
+      "@webtex/api": ["../api/src"],
+      "@webtex/api/*": ["../api/src/*"]
+    }
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
