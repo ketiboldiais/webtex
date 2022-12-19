@@ -19,6 +19,18 @@ export interface NotesTable {
   title: string;
 }
 
+export type ClientNote = {
+  id: string;
+  user: string;
+  created: string;
+  modified: string;
+  title: string;
+};
+
+export interface PostNotesRequest extends Request {
+  body: ClientNote;
+}
+
 export interface GetNotesRequest extends Request {
   body: {
     user: string;
@@ -27,10 +39,6 @@ export interface GetNotesRequest extends Request {
 
 export interface GetNotesResponse extends Response {
   data: Note[];
-}
-
-export interface SaveNewNoteRequest extends Request {
-  body: Note;
 }
 
 export interface DeleteNoteRequest extends Request {

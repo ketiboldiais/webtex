@@ -18,7 +18,7 @@ import bcrypt from "bcrypt";
  *   }
  *   ~~~
  */
-export const DeleteUser = async (req: DeleteUserRequest, res: Response) => {
+export const deleteUser = async (req: DeleteUserRequest, res: Response) => {
   const { user, email, password } = req.body;
   if (!user || !email || !password) {
     return res.status(400).json({ data: message.missingData });
@@ -55,14 +55,12 @@ export const DeleteUser = async (req: DeleteUserRequest, res: Response) => {
       .deleteFrom("users")
       .where("user", "=", user)
       .executeTakeFirst();
-			
-		
 
     // handle case where deletion is unsuccessful
     if (!deletedUser) {
       return res.sendStatus(500);
     }
-    
+
     // TODO: Delete notes
 
     return res.sendStatus(200);

@@ -67,6 +67,7 @@ export const USER = "/user";
  * - `DELETE /notes` Deletes a note.
  * @private `POST /notes`
  * @private `GET /notes`
+ * @private `PATCH /notes`
  * @private `DELETE /notes`
  * @summary
  * - All routes require:

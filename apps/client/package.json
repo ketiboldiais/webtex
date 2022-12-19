@@ -24,7 +24,8 @@
     "react-dom": "^18.2.0",
     "react-redux": "^8.0.5",
     "react-router-dom": "^6.4.5",
-    "yjs": "^13.5.43"
+    "yjs": "^13.5.43",
+    "@webtex/string": "*"
   },
   "devDependencies": {
     "@types/node": "^18.11.14",
