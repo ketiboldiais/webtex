@@ -14,21 +14,16 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [login, { isLoading }] = useSigninMutation();
+  const [login] = useSigninMutation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  
   // If errorMessage is not an empty string, the error CSS class is toggled.
   const errClass = errorMessage ? Styles.ErrorMessage : Styles.Offscreen;
 
   useEffect(() => {
     emailRef.current?.focus();
   }, []);
-
-  // Show the loading element while waiting for user response.
-  // TODO change this to a loading spinner
-  if (isLoading) {
-    return <p>Loading...</p>;
-  }
 
   // form handler
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {

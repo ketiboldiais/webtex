@@ -1,0 +1,13 @@
+@import "../../../styles/base";
+
+.MissingContainer {
+  height: 60vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  p {
+    color: $coolGrey2;
+    font-size: $xxlarge;
+    text-align: center;
+  }
+}
