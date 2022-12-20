@@ -2,33 +2,21 @@ import {
   BaseQueryFn,
   FetchArgs,
   FetchBaseQueryError,
-  createApi,
   fetchBaseQuery,
 } from "@reduxjs/toolkit/query/react";
-
-type TokenObj = {
-  accessToken: string;
-};
-
-type Credentials = {
-  email: string;
-  password: string;
-};
 
 import { Mutex } from "async-mutex";
 import { logout, setCredentials } from "./auth.slice";
 import { RootState } from "./store";
+import { AUTH, BASE } from "@webtex/api";
 const mutex = new Mutex();
-
-const BASE_URL = "http://localhost:5174";
-const REFRESH_ENDPOINT = "/refresh";
 
 /**
  * @description All queries use this base query.
  */
 const baseQuery = fetchBaseQuery({
   // All outbound requests go straight to the server URL.
-  baseUrl: BASE_URL,
+  baseUrl: BASE,
   // All outbound requestions have credentials set.
   credentials: "include",
   // All outbound requests have accessTokens for authenticity.
@@ -52,12 +40,12 @@ export const fetchBase: BaseQueryFn<
   let result = await baseQuery(args, api, extraOptions);
 
   // server sends 403 - forbidden - access token is expired
-  if (result?.error?.status === 401) {
+  if (result.error && result.error.status === 403) {
     if (!mutex.isLocked()) {
       const release = await mutex.acquire();
       try {
         const refreshResult = await baseQuery(
-          { method: "PUT", url: REFRESH_ENDPOINT },
+          { method: "PATCH", url: AUTH },
           api,
           extraOptions
         );
@@ -75,28 +63,12 @@ export const fetchBase: BaseQueryFn<
         // Otherwise, mutex remains locked.
         release();
       }
+    } else {
+      // wait for mutex availability without locking the mutex
+      await mutex.waitForUnlock();
+      // now query
+      result = await baseQuery(args, api, extraOptions);
     }
-  } else {
-    // wait for mutex availability without locking the mutex
-    await mutex.waitForUnlock();
-    // now query
-    result = await baseQuery(args, api, extraOptions);
   }
   return result;
 };
-
-const AUTH_ENDPOINT = "/auth";
-
-export const authAPI = createApi({
-  reducerPath: "authAPI",
-  baseQuery: fetchBase,
-  endpoints: (builder) => ({
-    login: builder.mutation<TokenObj, Credentials>({
-      query: (credentials) => ({
-        url: AUTH_ENDPOINT,
-        method: "POST",
-        body: { ...credentials },
-      }),
-    }),
-  }),
-});

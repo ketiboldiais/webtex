@@ -2,10 +2,7 @@ import { Request } from "express";
 import { User } from "./user";
 
 export interface LoginRequest extends Request {
-  body: {
-    email: string;
-    password: string;
-  };
+  body: User;
 }
 
 export interface RegisterRequest extends Request {
@@ -20,3 +17,4 @@ export interface RefreshRequest extends Request {
 }
 
 export type TokenObj = { user: string };
+export type LoginPayload = { accessToken: string };

@@ -1,9 +1,9 @@
 import express from "express";
 
-import { login } from "src/controllers/auth.login";
-import { logout } from "src/controllers/auth.logout";
-import { refresh } from "src/controllers/auth.refresh";
-import { register } from "src/controllers/auth.register";
+import { login } from "src/controllers/auth.get";
+import { logout } from "src/controllers/auth.delete";
+import { refresh } from "src/controllers/auth.patch";
+import { register } from "src/controllers/auth.post";
 import { rateLimiter } from "src/middleware/rateLimiter";
 
 const authRouter = express.Router();

@@ -1,4 +1,9 @@
-import { DeleteUserRequest, message } from "@webtex/api";
+import {
+  BadCredentialsMessage,
+  DeleteUserRequest,
+  MissingDataMessage,
+  SuccessMessage,
+} from "@webtex/api";
 import { Response } from "express";
 import { db } from "src/database/db";
 import bcrypt from "bcrypt";
@@ -21,14 +26,14 @@ import bcrypt from "bcrypt";
 export const deleteUser = async (req: DeleteUserRequest, res: Response) => {
   const { user, email, password } = req.body;
   if (!user || !email || !password) {
-    return res.status(400).json({ data: message.missingData });
+    return res.status(400).json(MissingDataMessage);
   }
   if (
     typeof user !== "string" ||
     typeof email !== "string" ||
     typeof password !== "string"
   ) {
-    return res.status(400).json({ data: message.badCredentials });
+    return res.status(400).json(BadCredentialsMessage);
   }
   try {
     // find user with user string
@@ -38,16 +43,16 @@ export const deleteUser = async (req: DeleteUserRequest, res: Response) => {
       .where("user", "=", user)
       .executeTakeFirst();
     if (!foundUser) {
-      return res.status(400).json({ data: message.badCredentials });
+      return res.status(400).json(BadCredentialsMessage);
     }
     // verify email
     if (foundUser.email !== email) {
-      return res.status(400).json({ data: message.badCredentials });
+      return res.status(400).json(BadCredentialsMessage);
     }
     // verify password
     const match = await bcrypt.compare(password, foundUser.password);
     if (!match) {
-      return res.status(400).json({ data: message.badCredentials });
+      return res.status(400).json(BadCredentialsMessage);
     }
 
     // delete account
@@ -63,7 +68,7 @@ export const deleteUser = async (req: DeleteUserRequest, res: Response) => {
 
     // TODO: Delete notes
 
-    return res.sendStatus(200);
+    return res.status(200).json(SuccessMessage);
   } catch (error) {
     return res.sendStatus(500);
   }

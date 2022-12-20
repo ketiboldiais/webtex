@@ -1,14 +1,17 @@
 import { PayloadAction, createSlice } from "@reduxjs/toolkit";
+import { LoginPayload } from "@webtex/api";
 
 type AuthState = {
   token: string | null;
 };
 
-type SetCredsAction = PayloadAction<{ accessToken: string }>;
+type SetCredsAction = PayloadAction<LoginPayload>;
 const initialAuthState: AuthState = { token: null };
 
 const authSlice = createSlice({
+  // This slice is called auth
   name: "auth",
+  // Initially the token is null
   initialState: initialAuthState,
   reducers: {
     setCredentials: (state, action: SetCredsAction) => {

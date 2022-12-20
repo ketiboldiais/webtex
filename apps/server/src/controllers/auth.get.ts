@@ -7,7 +7,7 @@
 import { Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { LoginRequest, TokenObj, message } from "@webtex/api";
+import { LoginPayload, LoginRequest, TokenObj, message } from "@webtex/api";
 import { db } from "../database/db";
 import { accessExpire, refreshExpire } from "./config";
 
@@ -16,12 +16,12 @@ export const login = async (req: LoginRequest, res: Response) => {
   try {
     // ensure data is actually provided
     if (!email || !password) {
-      return res.status(400).json({ data: message.badCredentials });
+      return res.status(400).json({ message: message.badCredentials });
     }
 
     // verify that input data are string types
     if (typeof email !== "string" || typeof password !== "string") {
-      return res.status(400).json({ data: message.badCredentials });
+      return res.status(400).json({ message: message.badCredentials });
     }
 
     // check if user exists
@@ -33,12 +33,12 @@ export const login = async (req: LoginRequest, res: Response) => {
 
     // handle case where user doesn't exist
     if (!foundUser) {
-      return res.status(401).json({ data: message.badCredentials });
+      return res.status(401).json({ message: message.badCredentials });
     }
 
     // handle case where user's account hasn't been verified
     if (!foundUser.active) {
-      return res.status(401).json({ data: message.badCredentials });
+      return res.status(401).json({ message: message.badCredentials });
     }
 
     // verify password
@@ -46,7 +46,7 @@ export const login = async (req: LoginRequest, res: Response) => {
 
     // handle case where password doesn't match
     if (!match) {
-      return res.status(401).json({ data: message.badCredentials });
+      return res.status(401).json({ message: message.badCredentials });
     }
 
     // object for JWT
@@ -75,7 +75,8 @@ export const login = async (req: LoginRequest, res: Response) => {
     });
 
     // return the token
-    return res.status(200).json({ accessToken });
+    const loginResponseData: LoginPayload = { accessToken };
+    return res.status(200).json(loginResponseData);
   } catch (error) {
     return res.sendStatus(500);
   }

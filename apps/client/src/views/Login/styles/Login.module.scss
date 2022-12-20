@@ -11,10 +11,30 @@
     text-align: center;
   }
   form {
+    input {
+      color: $coolGrey2;
+      width: $full;
+    }
     input,
     button {
       margin: 10px 0;
       padding: $pad2;
+    }
+    button {
+      background-color: $coolGrey2;
+      color: $coolGrey5;
+    }
+    button:disabled {
+      background-color: white;
+      @include Border($coolGrey5);
+      color: $coolGrey4;
+    }
+  }
+  button {
+    &:disabled {
+      background-color: white;
+      @include Border($coolGrey5);
+      color: $coolGrey4;
     }
   }
 }

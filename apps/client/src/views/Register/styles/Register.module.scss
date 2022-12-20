@@ -13,24 +13,33 @@
   form {
     input {
       color: $coolGrey2;
+      width: $full;
     }
     input,
     button {
       margin: 10px 0;
       padding: $pad2;
     }
+    button {
+      background-color: $coolGrey2;
+      color: $coolGrey5;
+    }
     button:disabled {
-      color: $coolGrey3;
+      background-color: white;
+      @include Border($coolGrey5);
+      color: $coolGrey4;
     }
   }
-  .errorMessage {
-    color: $coolGrey4;
-    font-size: $xsmall;
-    padding: 0;
-    margin: 0;
-  }
-  .offScreen {
-    position: absolute;
-    left: -9999px;
-  }
+}
+
+.Offscreen {
+  position: absolute;
+  left: -9999px;
+}
+
+.Prompt {
+  color: $coolGrey3;
+  font-size: $xsmall;
+  padding: $pad1 $pad3;
+  @include Card;
 }

@@ -1,8 +1,8 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { useDispatch, TypedUseSelectorHook, useSelector } from "react-redux";
 import { authReducer } from "./auth.slice";
-import { authAPI } from "./api.slice";
 import { notesAPI } from "./notes.slice";
+import { authAPI } from "./auth.api";
 
 export const store = configureStore({
   reducer: {
@@ -23,12 +23,12 @@ export type StoreDispatch = typeof store.dispatch;
 /**
  * @description Dispatches an action to the Redux store
  */
-export const useStoreDispatch = () => useDispatch<StoreDispatch>();
+export const useAppDispatch = () => useDispatch<StoreDispatch>();
 
 /**
  * @description Extracts data from the Redux store state
  */
-export const useStoreSelector: TypedUseSelectorHook<RootState> = useSelector;
+export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 
 /**
  * @description Returns the token currently stored in state.

@@ -9,8 +9,26 @@
   padding: 0;
   text-align: center;
 }
+.LoginContainer form input {
+  color: hsl(207deg, 12%, 43%);
+  width: 100%;
+}
 .LoginContainer form input,
 .LoginContainer form button {
   margin: 10px 0;
   padding: 0.5rem;
+}
+.LoginContainer form button {
+  background-color: hsl(207deg, 12%, 43%);
+  color: hsl(208deg, 21%, 88%);
+}
+.LoginContainer form button:disabled {
+  background-color: white;
+  border: solid thin hsl(208deg, 21%, 88%);
+  color: hsl(210deg, 16%, 76%);
+}
+.LoginContainer button:disabled {
+  background-color: white;
+  border: solid thin hsl(208deg, 21%, 88%);
+  color: hsl(210deg, 16%, 76%);
 }/*# sourceMappingURL=Login.module.css.map */

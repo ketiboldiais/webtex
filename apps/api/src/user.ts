@@ -41,9 +41,9 @@ export interface EmailUpdateRequest extends Request {
 
 export interface PasswordUpdateRequest extends Request {
   body: {
-    id: string;
+    user: string;
+    email: string;
     password: string;
     newPassword: string;
-    confirmNewPassword: string;
   };
 }

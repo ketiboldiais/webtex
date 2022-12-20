@@ -11,22 +11,36 @@
 }
 .RegisterContainer form input {
   color: hsl(207deg, 12%, 43%);
+  width: 100%;
 }
 .RegisterContainer form input,
 .RegisterContainer form button {
   margin: 10px 0;
   padding: 0.5rem;
 }
+.RegisterContainer form button {
+  background-color: hsl(207deg, 12%, 43%);
+  color: hsl(208deg, 21%, 88%);
+}
 .RegisterContainer form button:disabled {
-  color: hsl(208deg, 12%, 58%);
-}
-.RegisterContainer .errorMessage {
+  background-color: white;
+  border: solid thin hsl(208deg, 21%, 88%);
   color: hsl(210deg, 16%, 76%);
-  font-size: 0.8rem;
-  padding: 0;
-  margin: 0;
 }
-.RegisterContainer .offScreen {
+
+.Offscreen {
   position: absolute;
   left: -9999px;
+}
+
+.Prompt {
+  color: hsl(208deg, 12%, 58%);
+  font-size: 0.8rem;
+  padding: 0.25rem 0.75rem;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+  transition: 0.3s;
+  border-radius: 5px;
+}
+.Prompt:hover {
+  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
 }/*# sourceMappingURL=Register.module.css.map */

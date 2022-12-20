@@ -1,66 +1,94 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAppDispatch } from "../../model/store";
+import { setCredentials } from "../../model/auth.slice";
+import { useSigninMutation } from "../../model/auth.api";
 
 // styles
 import Styles from "./styles/Login.module.css";
 
 const Login = () => {
+  // sets focus on user input
+  const emailRef = useRef<HTMLInputElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [login, { isLoading }] = useSigninMutation();
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  // If errorMessage is not an empty string, the error CSS class is toggled.
+  const errClass = errorMessage ? Styles.ErrorMessage : Styles.Offscreen;
 
-  // reset error when user enters input
   useEffect(() => {
-    setError("");
-  }, [email, password]);
+    emailRef.current?.focus();
+  }, []);
+
+  // Show the loading element while waiting for user response.
+  // TODO change this to a loading spinner
+  if (isLoading) {
+    return <p>Loading...</p>;
+  }
 
   // form handler
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     try {
+      const { accessToken } = await login({ email, password }).unwrap();
+      dispatch(setCredentials({ accessToken }));
+      setEmail("");
+      setPassword("");
+      navigate("/home");
     } catch (error: any) {
-      if (!error?.rkesponse) {
-        setError("Our servers are currently down. Try again later.");
-      } else if (error?.response?.status === 400) {
-        setError("Missing username or password");
+      if (!error.status) {
+        setErrorMessage("Server currently unavailable.");
+      } else if (error.status === 400) {
+        setErrorMessage("Missing username or password.");
       } else {
-        setError("Login failed.");
+        setErrorMessage("Cannot login at the moment.");
       }
+      errorRef.current?.focus();
     }
   };
 
-  return (
-    <section className={Styles.LoginContainer}>
-      <h1 className={Styles.LoginHeader}>Login</h1>
-      <form onSubmit={handleSubmit}>
-        <label>
-          <input
-            required
-            type="email"
-            placeholder="Email"
-            onChange={(event) => {
-              if (event.isTrusted) {
-                setEmail(event.target.value);
-              }
-            }}
-          />
-        </label>
-        <label>
-          <input
-            required
-            type="text"
-            placeholder="Password"
-            onChange={(event) => {
-              if (event.isTrusted) setPassword(event.target.value);
-            }}
-          />
-        </label>
-        <button>Login</button>
-      </form>
-      {error && <p>{error}</p>}
-      {success && <p>{success}</p>}
-    </section>
+  const content = (
+    <article>
+      <section className={Styles.LoginContainer}>
+        <h1 className={Styles.LoginHeader}>Login</h1>
+        <form onSubmit={handleSubmit}>
+          <label>
+            <input
+              required
+              ref={emailRef}
+              autoComplete="off"
+              type="email"
+              placeholder="Email"
+              onChange={(event) => {
+                if (event.isTrusted) setEmail(event.target.value);
+              }}
+            />
+          </label>
+          <label>
+            <input
+              required
+              autoComplete="off"
+              type="password"
+              placeholder="Password"
+              onChange={(event) => {
+                if (event.isTrusted) setPassword(event.target.value);
+              }}
+            />
+          </label>
+          <button disabled={!email || !password ? true : false}>Login</button>
+        </form>
+      </section>
+      <section>
+        <p className={errClass}>{errorMessage}</p>
+      </section>
+    </article>
   );
+
+  return content;
 };
 
 export default Login;
