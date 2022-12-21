@@ -1,20 +1,35 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "useDefineForClassFields": true,
     "allowJs": false,
     "esModuleInterop": true,
     "strict": true,
     "module": "ESNext",
-    "lib": ["ES2015", "DOM"],
     "noEmit": true,
     "baseUrl": "./",
     "jsx": "react-jsx",
     "types": ["node"],
-    "paths": {
-      "@webtex/api": ["../api/src"],
-      "@webtex/api/*": ["../api/src/*"]
-    }
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": true,
+    "useUnknownInCatchVariables": false,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "target": "ESNext",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]

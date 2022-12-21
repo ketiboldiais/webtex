@@ -1,22 +1,20 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "module": "CommonJS",
-    "useDefineForClassFields": true,
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "declarationMap": false,
-    "declaration": false,
-    "target": "ES2016",
-    "outDir": "./dist",
-    "baseUrl": "./",
+    "baseUrl": ".",
+    "target": "es2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
     "skipLibCheck": true,
-    "moduleResolution": "Node",
-    "paths": {
-      "@webtex/api": ["../api/src"],
-      "@webtex/api/*": ["../api/src/*"]
-    }
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "typeRoots": ["./src/global.d.ts", "./node_modules/@types"]
   },
-  "include": ["src"],
-  "exclude": ["dist", "node_modules"]
+  "include": ["./src"]
 }

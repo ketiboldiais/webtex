@@ -8,7 +8,7 @@ import {
 import { Mutex } from "async-mutex";
 import { logout, setCredentials } from "./auth.slice";
 import { RootState } from "./store";
-import { AUTH, BASE } from "@webtex/api";
+import { AUTH, BASE } from "@webtex/types";
 const mutex = new Mutex();
 
 /**
@@ -70,5 +70,6 @@ export const fetchBase: BaseQueryFn<
       result = await baseQuery(args, api, extraOptions);
     }
   }
+
   return result;
 };

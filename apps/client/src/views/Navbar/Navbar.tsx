@@ -1,23 +1,15 @@
-import { Link } from "react-router-dom";
+import { useAppSelector } from "../../hooks/useAppSelector";
+import { selectToken } from "../../model/store";
 
 // styles
 import Styles from "./styles/NavBar.module.css";
+import { PrivateNav } from "../PrivateNav/PrivateNav";
+import { PublicNav } from "../PublicNav/PublicNav";
 
 function Navbar() {
-  return (
-    <>
-      <nav className={Styles.Container}>
-        <ul>
-          <li>
-            <Link to="/register">Register</Link>
-          </li>
-          <li>
-            <Link to="/login">Login</Link>
-          </li>
-        </ul>
-      </nav>
-    </>
-  );
+  const token = useAppSelector(selectToken);
+  const navItems = token ? <PrivateNav /> : <PublicNav />;
+  return <nav className={Styles.Container}>{navItems}</nav>;
 }
 
 export default Navbar;

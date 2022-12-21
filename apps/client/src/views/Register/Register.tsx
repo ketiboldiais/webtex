@@ -3,7 +3,8 @@ import Styles from "./styles/Register.module.css";
 import { validatePassword } from "../../utils/verifyPassword";
 import { statusCode } from "../../utils/statusCodes";
 import { useRegisterMutation } from "../../model/auth.api";
-import { message } from "@webtex/api";
+import { message } from "@webtex/types";
+import { verifyRegisterSubmission } from "@webtex/lib/dist";
 
 const Register = () => {
   const emailRef = useRef<HTMLInputElement>(null);
@@ -53,6 +54,12 @@ const Register = () => {
     ) {
       setInstruction("Invalid form fields.");
       return;
+    }
+    let submission = { email, password };
+    try {
+      verifyRegisterSubmission.validateSync(submission);
+    } catch (error) {
+      setInstruction("Invalid form fields.");
     }
     try {
       const result = await register({ email, password }).unwrap();

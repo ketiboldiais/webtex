@@ -1,5 +1,5 @@
 import { createApi } from "@reduxjs/toolkit/dist/query/react";
-import { LoginPayload, AUTH, ServerMessage, User } from "@webtex/api";
+import { LoginPayload, AUTH, ServerMessage, User } from "@webtex/types";
 import { fetchBase } from "./api.slice";
 import { logout } from "./auth.slice";
 
@@ -35,7 +35,7 @@ export const authAPI = createApi({
         url: AUTH,
         method: "DELETE",
       }),
-      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
           dispatch(logout());

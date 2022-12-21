@@ -3,16 +3,16 @@ dotenv.config();
 
 import express from "express";
 import cors, { CorsOptions } from "cors";
-import path from "path";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
 import { Logger } from "./middleware/logger";
 import { errorHandler } from "./middleware/errorHandler";
 import { ignoreFavicon } from "./middleware/ignoreFavicon";
-import rootRoute from "./routes/root";
-import { AUTH, ROOT, USER } from "@webtex/api";
+import { AUTH, USER } from "@webtex/types";
 import { authRouter } from "./routes/auth.routes";
 import { userRouter } from "./routes/user.routes";
+import sessions from "express-session";
+import helmet from "helmet";
 
 const MODE = process.env["NODE_ENV"];
 const PORT = Number(process.env["PORT"]) || 5174;
@@ -26,33 +26,32 @@ if (MODE === "development") {
 
 const corsWhiteList = ["http://localhost:5173", "http://127.0.0.1:5173"];
 const corsOptions: CorsOptions = {
-  origin: (origin, callback) => {
-    if (corsWhiteList.indexOf(origin) !== -1 || !origin) {
-      callback(null, true);
-    } else {
-      callback(new Error("CORS prohibited"));
-    }
-  },
+  origin: corsWhiteList,
   optionsSuccessStatus: 200,
   credentials: true,
 };
-
+server.disable("x-powered-by");
+server.use(helmet());
 server.use(cors(corsOptions));
+server.use(
+  sessions({
+    secret: process.env.SESSION_SECRET as string,
+    name: "sid",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: true,
+      httpOnly: true,
+      sameSite: "none",
+    },
+  })
+);
 server.use(express.urlencoded({ extended: false }));
 server.use(express.json());
 server.use(cookieParser());
 server.use(ignoreFavicon);
-server.use(ROOT, express.static(path.join(__dirname, "public")));
-server.use(ROOT, rootRoute);
 server.use(AUTH, authRouter);
 server.use(USER, userRouter);
-server.all("*", (req, res) => {
-  res.status(404);
-  if (req.accepts("html")) {
-    res.sendFile(path.join(__dirname, "public", "404.html"));
-  }
-});
-
 server.use(errorHandler);
 
 server.listen(PORT, "127.0.0.1", () => {
