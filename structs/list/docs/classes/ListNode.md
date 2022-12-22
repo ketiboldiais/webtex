@@ -47,7 +47,7 @@ same generic type.
 
 #### Defined in
 
-[index.ts:36](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L36)
+[index.ts:37](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L37)
 
 ## Properties
 
@@ -60,7 +60,7 @@ instance. Data may be of any type.
 
 #### Defined in
 
-[index.ts:22](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L22)
+[index.ts:23](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L23)
 
 ___
 
@@ -74,7 +74,7 @@ may break the overall list.
 
 #### Defined in
 
-[index.ts:28](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L28)
+[index.ts:29](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L29)
 
 ___
 
@@ -89,4 +89,4 @@ the overall list.
 
 #### Defined in
 
-[index.ts:35](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L35)
+[index.ts:36](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L36)

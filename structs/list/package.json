@@ -21,7 +21,8 @@
   },
   "license": "ISC",
   "dependencies": {
-    "deep-equal": "^2.1.0"
+    "deep-equal": "^2.1.0",
+    "@webtex/math": "workspace:*"
   },
   "devDependencies": {
     "@types/deep-equal": "^1.0.1",

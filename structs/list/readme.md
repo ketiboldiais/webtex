@@ -8,6 +8,7 @@
     - [Table of contents](#table-of-contents)
     - [Constructors](#constructors)
     - [Properties](#properties)
+    - [Accessors](#accessors)
     - [Methods](#methods)
   - [Class: ListNode<T\>](#class-listnodet%5C)
     - [Type parameters](#type-parameters-1)
@@ -51,17 +52,21 @@ Implements the doubly-linked list.
 - [\_length](#_length)
 - [\_tail](#_tail)
 
+#### Accessors
+
+- [length](#length)
+
 #### Methods
 
 - [[iterator]](List.md#[iterator])
-- [addFirst](#addfirst)
-- [addLast](#addlast)
 - [array](#array)
 - [hasDuplicate](#hasduplicate)
 - [head](#head)
 - [isEmpty](#isempty)
 - [iterator](#iterator)
-- [length](#length)
+- [push](#push)
+- [pushFirst](#pushfirst)
+- [pushLast](#pushlast)
 - [tail](#tail)
 
 ### Constructors
@@ -98,7 +103,7 @@ const L = new List<{name: string}>({name: 'Sano'}, {name: 'Jenny'});
 
 ##### Defined in
 
-[index.ts:72](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L72)
+[index.ts:73](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L73)
 
 ### Properties
 
@@ -111,7 +116,7 @@ the first element of the list.)
 
 ##### Defined in
 
-[index.ts:50](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L50)
+[index.ts:51](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L51)
 
 ___
 
@@ -121,7 +126,7 @@ ___
 
 ##### Defined in
 
-[index.ts:56](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L56)
+[index.ts:57](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L57)
 
 ___
 
@@ -134,7 +139,26 @@ the last element of the list).
 
 ##### Defined in
 
-[index.ts:55](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L55)
+[index.ts:56](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L56)
+
+### Accessors
+
+#### length
+
+• `get` **length**(): `number`
+
+Returns the length of the list.
+All `List` instances start at length
+`0`, increment at each newly inserted element,
+and decrement at each removed element.
+
+##### Returns
+
+`number`
+
+##### Defined in
+
+[index.ts:116](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L116)
 
 ### Methods
 
@@ -148,13 +172,144 @@ the last element of the list).
 
 ##### Defined in
 
-[index.ts:229](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L229)
+[index.ts:253](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L253)
 
 ___
 
-#### addFirst
+#### array
 
-▸ **addFirst**(`item`, `unique?`): [`List`](#classeslistmd)<`T`\>
+▸ **array**(): `T`[]
+
+Returns the list as a plain JavaScript array.
+If the list is empty, returns an empty array.
+
+**`Example`**
+
+```typescript
+const A = list(1,2,3,4);
+const B = A.array();
+// B is [1,2,3,4]
+```
+
+##### Returns
+
+`T`[]
+
+##### Defined in
+
+[index.ts:209](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L209)
+
+___
+
+#### hasDuplicate
+
+▸ **hasDuplicate**(`element`): `boolean`
+
+Returns `true` if the list contains
+a duplicate, and `false` otherwise.
+Uses Node's `deepEqual` algorithm to
+check for equality.
+
+##### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `element` | `T` |
+
+##### Returns
+
+`boolean`
+
+##### Defined in
+
+[index.ts:238](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L238)
+
+___
+
+#### head
+
+▸ **head**(): ``null`` \| `T`
+
+Returns the first item of the list. If the list is empty, returns null.
+
+**`Example`**
+
+```typescript
+const A = list(1,2,3,4);
+const B = list.head();
+// B is 1
+```
+
+##### Returns
+
+``null`` \| `T`
+
+##### Defined in
+
+[index.ts:88](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L88)
+
+___
+
+#### isEmpty
+
+▸ **isEmpty**(): `boolean`
+
+Returns `true` if the list
+is empty, `false` otherwise.
+
+##### Returns
+
+`boolean`
+
+##### Defined in
+
+[index.ts:228](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L228)
+
+___
+
+#### iterator
+
+▸ **iterator**(): `IterableIterator`<`T`\>
+
+##### Returns
+
+`IterableIterator`<`T`\>
+
+##### Defined in
+
+[index.ts:216](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L216)
+
+___
+
+#### push
+
+▸ **push**(`item`, `position?`, `unique?`): [`List`](#classeslistmd)<`T`\>
+
+Adds the `item` to the list at the
+given `position`. If no position is provided,
+defaults to the last position.
+
+##### Parameters
+
+| Name | Type | Default value |
+| :------ | :------ | :------ |
+| `item` | `T` | `undefined` |
+| `position` | `number` | `-1` |
+| `unique` | `boolean` | `false` |
+
+##### Returns
+
+[`List`](#classeslistmd)<`T`\>
+
+##### Defined in
+
+[index.ts:125](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L125)
+
+___
+
+#### pushFirst
+
+▸ **pushFirst**(`item`, `unique?`): [`List`](#classeslistmd)<`T`\>
 
 Adds an element to the head of the list.
 
@@ -179,13 +334,13 @@ L.addFirst(0);
 
 ##### Defined in
 
-[index.ts:128](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L128)
+[index.ts:153](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L153)
 
 ___
 
-#### addLast
+#### pushLast
 
-▸ **addLast**(`item`, `unique?`): [`List`](#classeslistmd)<`T`\>
+▸ **pushLast**(`item`, `unique?`): [`List`](#classeslistmd)<`T`\>
 
 Adds an element to the end of the list.
 
@@ -220,132 +375,7 @@ L.add(1);
 
 ##### Defined in
 
-[index.ts:162](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L162)
-
-___
-
-#### array
-
-▸ **array**(): `T`[]
-
-Returns the list as a plain JavaScript array.
-If the list is empty, returns an empty array.
-
-**`Example`**
-
-```typescript
-const A = list(1,2,3,4);
-const B = A.array();
-// B is [1,2,3,4]
-```
-
-##### Returns
-
-`T`[]
-
-##### Defined in
-
-[index.ts:184](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L184)
-
-___
-
-#### hasDuplicate
-
-▸ **hasDuplicate**(`element`): `boolean`
-
-Returns `true` if the list contains
-a duplicate, and `false` otherwise.
-Uses Node's `deepEqual` algorithm to
-check for equality.
-
-##### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `element` | `T` |
-
-##### Returns
-
-`boolean`
-
-##### Defined in
-
-[index.ts:214](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L214)
-
-___
-
-#### head
-
-▸ **head**(): ``null`` \| `T`
-
-Returns the first item of the list. If the list is empty, returns null.
-
-**`Example`**
-
-```typescript
-const A = list(1,2,3,4);
-const B = list.head();
-// B is 1
-```
-
-##### Returns
-
-``null`` \| `T`
-
-##### Defined in
-
-[index.ts:87](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L87)
-
-___
-
-#### isEmpty
-
-▸ **isEmpty**(): `boolean`
-
-Returns `true` if the list
-is empty, `false` otherwise.
-$O$(1) operation.
-
-##### Returns
-
-`boolean`
-
-##### Defined in
-
-[index.ts:204](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L204)
-
-___
-
-#### iterator
-
-▸ **iterator**(): `IterableIterator`<`T`\>
-
-##### Returns
-
-`IterableIterator`<`T`\>
-
-##### Defined in
-
-[index.ts:191](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L191)
-
-___
-
-#### length
-
-▸ **length**(): `number`
-
-Returns the length of the list.
-All `List` instances start at length
-`0`, increment at each newly inserted element,
-and decrement at each removed element.
-
-##### Returns
-
-`number`
-
-##### Defined in
-
-[index.ts:115](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L115)
+[index.ts:187](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L187)
 
 ___
 
@@ -369,7 +399,7 @@ const B = A.tail();
 
 ##### Defined in
 
-[index.ts:102](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L102)
+[index.ts:103](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L103)
 
 [@webtex/list](#readmemd) / [Exports](#modulesmd) / ListNode
 
@@ -420,7 +450,7 @@ same generic type.
 
 ##### Defined in
 
-[index.ts:36](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L36)
+[index.ts:37](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L37)
 
 ### Properties
 
@@ -433,7 +463,7 @@ instance. Data may be of any type.
 
 ##### Defined in
 
-[index.ts:22](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L22)
+[index.ts:23](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L23)
 
 ___
 
@@ -447,7 +477,7 @@ may break the overall list.
 
 ##### Defined in
 
-[index.ts:28](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L28)
+[index.ts:29](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L29)
 
 ___
 
@@ -462,7 +492,7 @@ the overall list.
 
 ##### Defined in
 
-[index.ts:35](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L35)
+[index.ts:36](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L36)
 
 [@webtex/list](#readmemd) / Exports
 
@@ -505,4 +535,4 @@ Plain function wrapper for `new List()`.
 
 #### Defined in
 
-[index.ts:238](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L238)
+[index.ts:262](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L262)

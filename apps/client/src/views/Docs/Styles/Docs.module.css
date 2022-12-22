@@ -1,7 +1,6 @@
 .DocsContainer {
   display: flex;
   flex-direction: column;
-  font-family: "CMU Serif";
   width: 100%;
   margin: 0 auto;
 }

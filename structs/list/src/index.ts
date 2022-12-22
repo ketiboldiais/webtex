@@ -1,4 +1,5 @@
 import deepEqual from "deep-equal";
+import { rem } from "@webtex/math";
 
 /**
  * Doubly-linked list.
@@ -72,50 +73,82 @@ export class List<T> {
   constructor(...data: T[]) {
     this._head = this._tail = null;
     this._length = 0;
-    if (0 < data.length) data.forEach((d) => this.addLast(d));
+    if (0 < data.length) data.forEach((d) => this.pushLast(d));
   }
 
+  // SECTION - list.head -------------------------------------------------------
   /**
    * Returns the first item of the list. If the list is empty, returns null.
    * @example
    * ```typescript
    * const A = list(1,2,3,4);
-   * const B = list.head();
+   * const B = list.head;
    * // B is 1
    * ```
    */
-  head() {
+  get head() {
     if (this._head !== null) {
       return this._head.data;
     }
     return null;
   }
+  // SECTION - list.tail -------------------------------------------------------
   /**
    * Returns the last item of the list. If the list is empty, returns null.
    * @example
    * ```typescript
    * const A = list(1,2,3,4);
-   * const B = A.tail();
+   * const B = A.tail;
    * // B is 4
    * ```
    */
-  tail() {
+  get tail() {
     if (this._tail !== null) {
       return this._tail.data;
     }
     return null;
   }
 
+  // SECTION - list.length -----------------------------------------------------
   /**
    * Returns the length of the list.
    * All `List` instances start at length
    * `0`, increment at each newly inserted element,
    * and decrement at each removed element.
    */
-  length() {
+  get length() {
     return this._length;
   }
+  
+  item(position: number=-1) {
+  }
 
+  // SECTION - list.push() -----------------------------------------------------
+  /**
+   * Adds the `item` to the list at the
+   * given `position`. If no position is provided,
+   * defaults to the last position.
+   */
+  push(item: T, position: number = -1, unique: boolean = false) {
+    const node = new ListNode<T>(item);
+    if (this._head === null || this._tail === null) {
+      this._head = this._tail = node;
+    } else {
+      let temp = this._head;
+      position = rem(position, this.length);
+      if (position === 0) {
+        return this.pushFirst(item, unique);
+      }
+      while (temp !== null && position !== -1) {
+        temp = temp.next as ListNode<T>;
+        position--;
+      }
+    }
+    this._length++;
+    return this;
+  }
+
+  // SECTION - list.pushFirst() ------------------------------------------------
   /**
    * Adds an element to the head of the list.
    * @example
@@ -125,7 +158,7 @@ export class List<T> {
    * // L is now (0,1,2,3,4);
    * ```
    */
-  addFirst(item: T, unique: boolean = false) {
+  pushFirst(item: T, unique: boolean = false) {
     const node = new ListNode<T>(item);
     if (!this._tail || !this._head) {
       this._head = this._tail = node;
@@ -138,6 +171,7 @@ export class List<T> {
     return this;
   }
 
+  // SECTION - list.pushLast() -------------------------------------------------
   /**
    * Adds an element to the end of the list.
    * @param item -
@@ -159,7 +193,7 @@ export class List<T> {
    * // L is (1,2,3,4,1);
    * ```
    */
-  addLast(item: T, unique: boolean = false) {
+  pushLast(item: T, unique: boolean = false) {
     const node = new ListNode<T>(item);
     if (!this._tail) this._head = this._tail = node;
     else {
@@ -171,6 +205,43 @@ export class List<T> {
     return this;
   }
 
+  // TODO - list.pop() ---------------------------------------------------------
+  /**
+   * Removes the at the specified `position`.
+   * If no position is specified, removes
+   * the last item.
+   * @param position - The position of the element
+   * to be removed. Positions start at 0.
+   * @returns The list item removed.
+   */
+  pop(position: number = -1) {
+  }
+
+  // TODO - list.popFirst() ----------------------------------------------------
+  /**
+   * Removes the first item
+   * in the list. If the list
+   * is empty, returns `null`.
+   */
+  popFirst() {}
+
+  // TODO - list.popLast() -----------------------------------------------------
+  /**
+   * Removes the last item
+   * in the list. If the list
+   * is empty, returns `null`.
+   */
+  popLast() {}
+
+  // TODO - list.clear() -------------------------------------------------------
+  /**
+   * Removes all items in the
+   * list.
+   * @returns The empty list.
+   */
+  clear() {}
+
+  // SECTION - list.array() ----------------------------------------------------
   /**
    * Returns the list as a plain JavaScript array.
    * If the list is empty, returns an empty array.
@@ -188,29 +259,23 @@ export class List<T> {
     return [...this];
   }
 
-  *iterator(): IterableIterator<T> {
-    let current = this._head;
-    while (current) {
-      yield current.data;
-      current = current.next;
-    }
-  }
-
+  // SECTION - list.isEmpty() --------------------------------------------------
   /**
    * Returns `true` if the list
    * is empty, `false` otherwise.
    */
   isEmpty() {
-    return this.length() === 0;
+    return this.length === 0;
   }
 
+  // SECTION - list.has() ---------------------------------------------
   /**
    * Returns `true` if the list contains
-   * a duplicate, and `false` otherwise.
+   * the element, and `false` otherwise.
    * Uses Node's `deepEqual` algorithm to
    * check for equality.
    */
-  hasDuplicate(element: T) {
+  has(element: T) {
     if (this.isEmpty() || this._head === null || this._tail === null)
       return false;
     let arr = this.array();
@@ -222,6 +287,14 @@ export class List<T> {
     } else {
       let set = new Set(arr);
       return set.has(element);
+    }
+  }
+
+  *iterator(): IterableIterator<T> {
+    let current = this._head;
+    while (current) {
+      yield current.data;
+      current = current.next;
     }
   }
 

@@ -13,7 +13,9 @@ export function Layout() {
         </h1>
         <Navbar />
       </header>
-      <Outlet />
+      <article className={Styles.mainContent}>
+        <Outlet />
+      </article>
     </main>
   );
 }

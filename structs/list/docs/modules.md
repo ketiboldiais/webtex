@@ -39,4 +39,4 @@ Plain function wrapper for `new List()`.
 
 #### Defined in
 
-[index.ts:238](https://github.com/ketiboldiais/webtex/blob/cf78d78/structs/list/src/index.ts#L238)
+[index.ts:262](https://github.com/ketiboldiais/webtex/blob/e81818c/structs/list/src/index.ts#L262)

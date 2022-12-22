@@ -1,24 +1,38 @@
 {
   "name": "@webtex/math",
   "version": "1.0.0",
-  "description": "",
-  "main": "./dist/index.js",
-  "source": "./src/index.ts",
-  "types": "./dist/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "files": [
     "dist/**"
   ],
   "scripts": {
-    "dev": "tsc && tsx watch src/index.ts",
-    "build": "tsc && esbuild src/index.ts --bundle --platform=node --outfile=dist/index.js",
+    "cleandoc": "rm -rf ./doc && rm ./readme.md",
+    "predoc": "typedoc --plugin typedoc-plugin-markdown --out docs src/index.ts",
+    "condoc": "concat-md --toc --decrease-title-levels --title-key title --dir-name-as-title --hide-anchor-links docs > ./readme.md",
+    "doc": "pnpm cleandoc && pnpm predoc && pnpm condoc",
+    "build": "tsc && esbuild src/index.ts --bundle --platform=node --minify --outfile=dist/index.js",
+    "wipe": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
+    "clean": "rm -rf dist",
+    "dev": "tsup src/index.ts --format cjs --watch --onSuccess \"node dist/index.js\"",
+    "lint": "tsc --noEmit && TIMING=1 eslint \"src/**/*.ts*\"",
     "start": "node dist/index.js",
-    "type-check": "tsc"
+    "test": "vitest --run --reporter verbose"
   },
   "license": "ISC",
+  "dependencies": {
+    "deep-equal": "^2.1.0"
+  },
   "devDependencies": {
-    "typescript": "^4.9.4",
-    "tsx": "^3.12.1",
+    "@types/deep-equal": "^1.0.1",
+    "concat-md": "^0.5.0",
     "esbuild": "^0.16.10",
+    "rimraf": "^3.0.2",
+    "showdown": "^2.1.0",
+    "tsup": "^6.5.0",
+    "typedoc": "^0.23.23",
+    "typedoc-plugin-markdown": "^3.14.0",
+    "typescript": "^4.9.4",
     "vitest": "^0.25.8"
   }
 }

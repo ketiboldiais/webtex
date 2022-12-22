@@ -1,5 +1,7 @@
 @import "../../../styles/base";
 .LayoutContainer {
+  padding: $pad2 $pad4;
+  display: block;
   header {
     display: flex;
     width: 100%;
@@ -10,5 +12,9 @@
       display: inline-block;
       color: $coolGrey4;
     }
+  }
+  .mainContent {
+    max-width: 600px;
+    margin: 0 auto;
   }
 }
