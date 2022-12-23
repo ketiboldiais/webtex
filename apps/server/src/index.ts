@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import express from "express";
+import path from "path";
 
 // configs
 import { sessionConfig, corsConfig, PORT, MODE } from "./configs";
@@ -28,6 +29,7 @@ import Redis from "ioredis";
 import { authRouter } from "./routes/auth.routes";
 import { userRouter } from "./routes/user.routes";
 import { sessionRouter } from "./routes/session.routes";
+import rootRoute from "./routes/root.route";
 
 const server = express();
 if (MODE === "development") {
@@ -56,6 +58,8 @@ server.use(helmet());
 server.use(cors(corsConfig));
 server.use(express.json());
 server.use(cookieParser());
+server.use("/", express.static(path.join(__dirname, "public")));
+
 /**
  * PART Handle to `base/auth` requests.
  **/
@@ -83,8 +87,19 @@ server.use(SESSION, sessionRouter);
 
 // TODO server.use(NOTE, noteRouter);
 
+server.use("/", express.static(path.join(__dirname, "public")));
+server.use("/", rootRoute);
+server.all("*", (req, res) => {
+  res.status(404);
+  if (req.accepts("html")) {
+    res.sendFile(path.join(__dirname, "public", "404.html"));
+  } else {
+    res.sendStatus(400);
+  }
+});
+
 server.use(errorHandler);
-server.listen(PORT, "127.0.0.1", () => {
+server.listen(PORT, () => {
   if (MODE === "development") {
     console.log(`In ${MODE}. Listening on ${PORT}.`);
   }
