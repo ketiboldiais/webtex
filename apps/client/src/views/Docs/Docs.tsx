@@ -8,8 +8,7 @@ function Docs() {
     <article className={Styles.DocsContainer}>
       <section>
         <p>
-          Webtex is a note-taking application and repository geared towards
-          technical subjects.
+          Webtex is a note-taking application geared towards technical subjects.
         </p>
         <Editor />
       </section>
