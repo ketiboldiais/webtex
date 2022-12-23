@@ -25,6 +25,7 @@ export const login = async (req: Request, res: Response) => {
     const { email, password } = payload;
 
     devlog(`Querying database for user.`);
+
     const foundUser = await db
       .selectFrom("users")
       .select(["password", "verified", "user"])
@@ -49,36 +50,34 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ message: message.badCredentials });
     }
 
-    const token: TokenObj = { user: foundUser.user };
+    // const token: TokenObj = { user: foundUser.user };
 
-    devlog(`Creating access token.`);
-    const accessToken = jwt.sign(
-      token,
-      process.env.ACCESS_TOKEN_SECRET as string,
-      { expiresIn: process.env.JWT_ACCESS_EXPIRE }
-    );
+    // devlog(`Creating access token.`);
+    // const accessToken = jwt.sign(
+      // token,
+      // process.env.ACCESS_TOKEN_SECRET as string,
+      // { expiresIn: process.env.JWT_ACCESS_EXPIRE }
+    // );
 
-    devlog(`Creating refresh token.`);
-    const refreshToken = jwt.sign(
-      token,
-      process.env.REFRESH_TOKEN_SECRET as string,
-      { expiresIn: process.env.JWT_REFRESH_EXPIRE }
-    );
+    // devlog(`Creating refresh token.`);
+    // const refreshToken = jwt.sign(
+      // token,
+      // process.env.REFRESH_TOKEN_SECRET as string,
+      // { expiresIn: process.env.JWT_REFRESH_EXPIRE }
+    // );
 
-    devlog(`Storing refresh token in cookie.`);
-    res.cookie("jwt", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 7 * 24 * 60 * 60 * 100,
-    });
+    // devlog(`Storing refresh token in cookie.`);
+    // res.cookie("jwt", refreshToken, {
+      // httpOnly: true,
+      // secure: true,
+      // sameSite: "none",
+      // maxAge: 7 * 24 * 60 * 60 * 100,
+    // });
+
+    // devlog(`Attaching JWT accessToken: ${accessToken}`);
+    // res.json({ accessToken });
     req.session.user = foundUser.user;
-
-    devlog(`Attaching JWT accessToken: ${accessToken}`);
-    res.json({ accessToken });
-
     devlog(`Stored session data: ${req.session}`);
-
     return res.status(200);
   } catch (error) {
     return res.sendStatus(500);

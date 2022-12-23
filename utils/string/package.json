@@ -8,7 +8,7 @@
     "dts": true
   },
   "scripts": {
-    "build": "tsup src/index.ts --format cjs && tsc",
+    "build": "tsup src/index.ts --format cjs --minify",
     "wipe": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
     "clean": "rm -rf ./dist",
     "dev": "tsup src/index.ts --format cjs --watch --onSuccess \"node dist/index.js\"",

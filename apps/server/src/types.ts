@@ -1,3 +1,4 @@
+import { DateObj } from "@webtex/types";
 import { Generated } from "kysely";
 
 export type UserEntry = {

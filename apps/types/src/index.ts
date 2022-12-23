@@ -26,6 +26,7 @@ export enum message {
   verifyLinkSent,
   logoutFailed,
   registrationFailed,
+  tooManyLoginAttempts,
 }
 
 export interface ServerMessage {
@@ -72,7 +73,7 @@ export const ROOT = "/";
 /**
  * @description Base URL for the server.
  */
-export const BASE = "http://localhost:5174";
+export const BASE = "https://api.webtex.cloud";
 
 /**
  * @summary `base/auth` endpoint.

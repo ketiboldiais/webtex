@@ -1,0 +1,11 @@
+{
+	local_certs
+}
+
+webtex.cloud {
+	reverse_proxy 127.0.0.1:5174
+}
+
+api.webtex.cloud {
+	reverse_proxy 127.0.0.1:5173
+}

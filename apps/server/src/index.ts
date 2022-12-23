@@ -4,14 +4,14 @@ dotenv.config();
 import express from "express";
 import path from "path";
 
-// configs
+// PART configs
 import { sessionConfig, corsConfig, PORT, MODE } from "./configs";
 
-// dev tools
+// PART dev tools
 import morgan from "morgan";
 import { Logger } from "./dev";
 
-// client-server shared
+// PART client-server shared
 import { AUTH, SESSION, USER } from "@webtex/types";
 
 // PART middleware imports
@@ -19,7 +19,6 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { errorHandler } from "./middleware/errorHandler";
 import { ignoreFavicon } from "./middleware/ignoreFavicon";
-
 import session from "express-session";
 import helmet from "helmet";
 import connectRedis from "connect-redis";
@@ -37,7 +36,7 @@ if (MODE === "development") {
   server.use(morgan("dev"));
 }
 
-// configure redis client
+// PART Redis configuration
 const RedisStore = connectRedis(session);
 const redis =
   process.env.NODE_ENV !== "production"
@@ -54,10 +53,15 @@ server.disable("x-powered-by");
 server.use(express.urlencoded({ extended: false }));
 
 server.use(ignoreFavicon);
+
 server.use(helmet());
+
 server.use(cors(corsConfig));
+
 server.use(express.json());
+
 server.use(cookieParser());
+
 server.use("/", express.static(path.join(__dirname, "public")));
 
 /**

@@ -1,4 +1,4 @@
-export const BASE_URL = "http://localhost:5174";
+export const BASE_URL = "https://api.webtex.cloud";
 export const REFRESH_URL = "/refresh";
 export const AUTH_URL = "/auth";
 export const USER_URL = "/user";

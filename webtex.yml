@@ -1,0 +1,18 @@
+# /Users/ketiboldiais/.config/tmuxinator/webtex.yml
+name: webtex
+root: ~/My Drive/webtex
+
+on_project_exit: kill -9 $(lsof -ti:5173,5174,6379,2019)
+
+windows:
+  - application:
+      layout: tiled
+      panes:
+        - command-prompt:
+          # empty
+        - redis-server:
+            - redis-server
+        - webtex-app:
+            - sleep 1; js dev
+        - caddy-agent:
+            - sleep 20; caddy run

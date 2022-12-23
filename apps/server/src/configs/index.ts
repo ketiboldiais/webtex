@@ -6,8 +6,16 @@ import { CorsOptions } from "cors";
 
 export const MODE = process.env.NODE_ENV;
 
+export const jwtAccessKey = process.env.ACCESS_TOKEN_SECRET as string;
+export const jwtRefreshKey = process.env.REFRESH_TOKEN_SECRET as string;
+export const jwtAccessExpire = process.env.JWT_ACCESS_EXPIRE;
+export const jwtRefreshExpire = process.env.JWT_REFRESH_EXPIRE;
+export const reqSpeedLimit = Number(process.env.MAX_REQUESTS);
+export const nodeMailUser = process.env.GMAIL_USER;
+export const nodeMailpass = process.env.GMAIL_PW;
+
 // FIXME - Change this port in production
-export const PORT = Number(process.env.PORT) || 5174;
+export const PORT = Number(process.env.PORT) || 5173;
 
 export const sessionConfig: SessionOptions = {
   /**
@@ -79,7 +87,7 @@ export const sessionConfig: SessionOptions = {
  */
 export const corsConfig: CorsOptions = {
   // FIXME - Change these URLs to the client site domain in production
-  origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+  origin: ["https://www.webtex.cloud", "https://webtex.cloud"],
   optionsSuccessStatus: 200,
   credentials: true,
 };

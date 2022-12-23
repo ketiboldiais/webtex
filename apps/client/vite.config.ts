@@ -9,9 +9,14 @@ export default defineConfig({
     include: ['@webtex/lib']
   },
   server: {
+    port: 5174,
+    host: '127.0.0.1',
+    hmr: {
+      clientPort: 443
+    },
     proxy: {
       "/api": {
-        target: "http://localhost:5174",
+        target: "https://api.webtex.cloud",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
       },
