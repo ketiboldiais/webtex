@@ -7,10 +7,13 @@ export const PrivateNav = () => {
         <Link to="notes">Notes</Link>
       </li>
       <li>
-        <Link to="workspace">Workspace</Link>
+        <Link to="home">Workspace</Link>
       </li>
       <li>
         <Link to="settings">Settings</Link>
+      </li>
+      <li>
+        <button>Logout</button>
       </li>
     </ul>
   );

@@ -1,7 +1,7 @@
 import express from "express";
 
-import { login } from "src/controllers/auth.login";
-import { logout } from "src/controllers/auth.logout";
+import { login } from "src/controllers/user.login";
+import { logout } from "src/controllers/session.logout";
 // import { refresh } from "src/controllers/auth.patch";
 import { register } from "src/controllers/auth.register";
 import { rateLimiter } from "src/middleware/rateLimiter";

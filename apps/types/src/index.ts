@@ -1,5 +1,10 @@
 import { Session } from "express-session";
 
+export type DateObj = {
+  utcDate: string;
+  localDate: string;
+};
+
 export type LoginReq = Request & {
   session: Session;
 };
@@ -13,11 +18,13 @@ export type LoginPayload = { accessToken: string };
 
 export enum message {
   success,
+  failure,
   missingData,
   badCredentials,
   unverifiedAccount,
   emailCannotBeUsed,
   verifyLinkSent,
+  logoutFailed,
   registrationFailed,
 }
 
@@ -95,7 +102,7 @@ export const AUTH = "/auth";
 
 /**
  * @summary `base/user` endpoints
- * - `DELETE /user` Deletes user account.
+ * - `POST /user` logs in to account.
  * - `PUT /user` Patches user email.
  * - `PATCH /user` Updates user password.
  * @access private `DELETE /user`
@@ -134,3 +141,10 @@ export const USER = "/user";
  * @private
  */
 export const NOTES = "/notes";
+
+/**
+ * @description base/session endpoint.
+ * - `POST /session` Gets refresh token.
+ * - `DELETE /session` Logs out user.
+ */
+export const SESSION = "/session";

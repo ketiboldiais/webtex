@@ -4,6 +4,7 @@ import { validatePassword } from "../../utils/verifyPassword";
 import { statusCode } from "../../utils/statusCodes";
 import { useRegisterMutation } from "../../model/auth.api";
 import { message } from "@webtex/types";
+import { validateAuthPayload } from "@webtex/lib";
 
 const Register = () => {
   const emailRef = useRef<HTMLInputElement>(null);
@@ -55,7 +56,12 @@ const Register = () => {
       return;
     }
     try {
-      const result = await register({ email, password }).unwrap();
+      const payload = await validateAuthPayload({ email, password });
+      if (payload === message.failure) {
+        setInstruction("Form fields could not be validated.");
+        return;
+      }
+      const result = await register(payload).unwrap();
       if (result.message === message.success) {
         return setInstruction(`Verification link sent to ${email}.`);
       }

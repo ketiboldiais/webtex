@@ -6,6 +6,7 @@ type AuthState = {
 };
 
 type SetCredsAction = PayloadAction<LoginPayload>;
+
 const initialAuthState: AuthState = { token: null };
 
 const authSlice = createSlice({

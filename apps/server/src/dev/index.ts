@@ -2,12 +2,12 @@ import { v4 as uuid } from "uuid";
 import fs from "fs";
 import path from "path";
 import { NextFunction, Request, Response } from "express";
+import { getDate } from "@webtex/string/dist";
 
 const fsPromises = fs.promises;
-
 export const logEvents = async (message: string, logFileName: string) => {
-  const date = `${Date.now()}`;
-  const logItem = `${date}\t${uuid()}\t${message}\n`;
+  const date = getDate().localDate;
+  const logItem = `${uuid().slice(5)}\t${date}\t${message}\n`;
 
   try {
     if (!fs.existsSync(path.join(__dirname, "../..", "logs"))) {
@@ -23,6 +23,12 @@ export const logEvents = async (message: string, logFileName: string) => {
 };
 
 export const Logger = (req: Request, res: Response, next: NextFunction) => {
-  logEvents(`${req.method}\t${req.url}\t${req.headers.origin}`, "reqLog.log");
+  logEvents(`${req.method}\t${req.url}\t${req.headers.origin}`, "webtex.log");
   next();
+};
+
+export const devlog = (message: string) => {
+  if (process.env.NODE_ENV === "development") {
+    logEvents(`${message}`, "webtex.log");
+  }
 };

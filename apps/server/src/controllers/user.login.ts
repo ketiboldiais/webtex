@@ -1,6 +1,6 @@
 /**
  * @description Log in to account
- * @route GET /auth
+ * @route POST /user
  * @access Public
  */
 
@@ -8,92 +8,78 @@ import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { TokenObj } from "../types";
-import { message, MissingDataMessage } from "@webtex/types";
+import { message } from "@webtex/types";
 import { db } from "../database/db";
-import { authInputSchema } from "src/validators/authInputSchema";
+import { validateAuthPayload } from "@webtex/lib";
+import { devlog } from "src/dev";
 
 export const login = async (req: Request, res: Response) => {
-  const { body } = req;
-  try {
-    authInputSchema.validateSync(body, { abortEarly: false });
-  } catch (error) {
-    return res.status(400).json(MissingDataMessage);
+  devlog(`Validating payload.`);
+  const payload = validateAuthPayload(req.body);
+  devlog(`Successfully validated payload.`);
+  if (payload === message.failure) {
+    devlog(`Returning 400. Bad payload.`);
+    return res.status(400).json({ message: message.badCredentials });
   }
   try {
-    const { email, password } = req.body;
-    // ensure data is actually provided
-    if (!email || !password) {
-      return res.status(400).json({ message: message.badCredentials });
-    }
+    const { email, password } = payload;
 
-    // verify that input data are string types
-    if (typeof email !== "string" || typeof password !== "string") {
-      return res.status(400).json({ message: message.badCredentials });
-    }
-
-    // check if user exists
+    devlog(`Querying database for user.`);
     const foundUser = await db
       .selectFrom("users")
       .select(["password", "verified", "user"])
       .where("email", "=", email)
       .executeTakeFirst();
 
-    // handle case where user doesn't exist
     if (!foundUser) {
+      devlog(`Returning 400. No user found.`);
       return res.status(400).json({ message: message.badCredentials });
     }
 
-    // handle case where user's account hasn't been verified
     if (!foundUser.verified) {
+      devlog(`Returning 400. User not verified.`);
       return res.status(400).json({ message: message.badCredentials });
     }
 
-    // verify password
+    devlog(`Verifying password.`);
     const match = await bcrypt.compare(password, foundUser.password);
 
-    // handle case where password doesn't match
     if (!match) {
+      devlog(`Returning 401. No match password.`);
       return res.status(401).json({ message: message.badCredentials });
     }
 
-    // Token object encoded as JWT
     const token: TokenObj = { user: foundUser.user };
-    // Generate new access token
+
+    devlog(`Creating access token.`);
     const accessToken = jwt.sign(
       token,
       process.env.ACCESS_TOKEN_SECRET as string,
       { expiresIn: process.env.JWT_ACCESS_EXPIRE }
     );
 
-    // generate the refresh token
-    // NOTE - This 1 corresponds to JWT_REFRESH_EXPIRE
+    devlog(`Creating refresh token.`);
     const refreshToken = jwt.sign(
       token,
       process.env.REFRESH_TOKEN_SECRET as string,
       { expiresIn: process.env.JWT_REFRESH_EXPIRE }
     );
 
-    // store the refresh token in an httpOnly cookie
+    devlog(`Storing refresh token in cookie.`);
     res.cookie("jwt", refreshToken, {
       httpOnly: true,
       secure: true,
       sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 100,
     });
-
-    // await redisClient.set(
-    // foundUser.user,
-    // JSON.stringify({
-    // refreshToken: refreshToken,
-    // expires: refreshTokenMaxAge,
-    // })
-    // );
-    // return the token
-    // const loginResponseData: LoginPayload = { accessToken };
-    // set session
-    // return res.status(200).json(loginResponseData);
     req.session.user = foundUser.user;
-    return res.sendStatus(200);
+
+    devlog(`Attaching JWT accessToken: ${accessToken}`);
+    res.json({ accessToken });
+
+    devlog(`Stored session data: ${req.session}`);
+
+    return res.status(200);
   } catch (error) {
     return res.sendStatus(500);
   }

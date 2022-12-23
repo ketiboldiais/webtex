@@ -1,33 +1,16 @@
-import * as Yup from "yup";
+import Joi from "joi";
+import { User, message } from "@webtex/types";
 
-export const verifyLoginSubmission = Yup.object({
-  email: Yup.string()
-    .required("Email required")
-    .min(3, "Invalid email")
-    .max(25, "Email too long."),
-  password: Yup.string()
-    .required()
-    .min(10, "Password too short.")
-    .max(60, "Password too long."),
+const authSchema = Joi.object({
+  email: Joi.string().min(3).required(),
+  password: Joi.string().min(10).max(50).required(),
 });
 
-export const verifyRegisterSubmission = Yup.object({
-  email: Yup.string()
-    .required("Email required")
-    .min(3, "Invalid email")
-    .max(25, "Email too long."),
-  password: Yup.string()
-    .required()
-    .min(10, "Password too short.")
-    .max(60, "Password too long."),
-});
-
-export const verifyNoteSave = Yup.object({
-  title: Yup.string()
-    .required("Title required.")
-    .min(5, "Title must be at least 5 characters")
-    .max(50, "Title cannot exceed 50 characters."),
-  created: Yup.date().required("Created date required."),
-  modified: Yup.date().required("Modified date required"),
-  user: Yup.string().required("Save unavailable. User not logged in."),
-});
+export const validateAuthPayload = (AuthPayload: User) => {
+  const { error, value } = authSchema.validate(AuthPayload);
+  if (error) {
+    return message.failure;
+  } else {
+    return value;
+  }
+};

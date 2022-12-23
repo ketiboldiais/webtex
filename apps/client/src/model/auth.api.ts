@@ -1,5 +1,12 @@
 import { createApi } from "@reduxjs/toolkit/dist/query/react";
-import { LoginPayload, AUTH, ServerMessage, User } from "@webtex/types";
+import {
+  LoginPayload,
+  AUTH,
+  ServerMessage,
+  User,
+  SESSION,
+  USER
+} from "@webtex/types";
 import { fetchBase } from "./api.slice";
 import { logout } from "./auth.slice";
 
@@ -15,24 +22,30 @@ export const authAPI = createApi({
         url: AUTH,
         method: "POST",
         body: registrationData,
+        headers: {
+          "Content-Type": "application/json",
+        },
       }),
     }),
     /**
-     * @description Sends `GET base/auth` request to login user
+     * @description Sends `POST base/user` request to login user
      */
     signin: builder.mutation<LoginPayload, User>({
       query: (credentials) => ({
-        url: AUTH,
-        method: "GET",
+        url: USER,
+        method: "POST",
         body: { ...credentials },
+        headers: {
+          "Content-Type": "application/json",
+        },
       }),
     }),
     /**
-     * @description Sends `DELETE base/auth` request to logout user
+     * @description Sends `DELETE base/session` request to logout user
      */
     signout: builder.mutation({
       query: () => ({
-        url: AUTH,
+        url: SESSION,
         method: "DELETE",
       }),
       async onQueryStarted(_, { dispatch, queryFulfilled }) {

@@ -76,7 +76,7 @@ export class List<T> {
     if (0 < data.length) data.forEach((d) => this.pushLast(d));
   }
 
-  // SECTION - list.head -------------------------------------------------------
+  // PART - list.head -------------------------------------------------------
   /**
    * Returns the first item of the list. If the list is empty, returns null.
    * @example
@@ -92,7 +92,7 @@ export class List<T> {
     }
     return null;
   }
-  // SECTION - list.tail -------------------------------------------------------
+  // PART - list.tail -------------------------------------------------------
   /**
    * Returns the last item of the list. If the list is empty, returns null.
    * @example
@@ -109,7 +109,7 @@ export class List<T> {
     return null;
   }
 
-  // SECTION - list.length -----------------------------------------------------
+  // PART - list.length -----------------------------------------------------
   /**
    * Returns the length of the list.
    * All `List` instances start at length
@@ -123,7 +123,7 @@ export class List<T> {
   item(position: number=-1) {
   }
 
-  // SECTION - list.push() -----------------------------------------------------
+  // PART - list.push() -----------------------------------------------------
   /**
    * Adds the `item` to the list at the
    * given `position`. If no position is provided,
@@ -148,7 +148,7 @@ export class List<T> {
     return this;
   }
 
-  // SECTION - list.pushFirst() ------------------------------------------------
+  // PART - list.pushFirst() ------------------------------------------------
   /**
    * Adds an element to the head of the list.
    * @example
@@ -171,7 +171,7 @@ export class List<T> {
     return this;
   }
 
-  // SECTION - list.pushLast() -------------------------------------------------
+  // PART - list.pushLast() -------------------------------------------------
   /**
    * Adds an element to the end of the list.
    * @param item -
@@ -241,7 +241,7 @@ export class List<T> {
    */
   clear() {}
 
-  // SECTION - list.array() ----------------------------------------------------
+  // PART - list.array() ----------------------------------------------------
   /**
    * Returns the list as a plain JavaScript array.
    * If the list is empty, returns an empty array.
@@ -259,7 +259,7 @@ export class List<T> {
     return [...this];
   }
 
-  // SECTION - list.isEmpty() --------------------------------------------------
+  // PART - list.isEmpty() --------------------------------------------------
   /**
    * Returns `true` if the list
    * is empty, `false` otherwise.
@@ -268,7 +268,7 @@ export class List<T> {
     return this.length === 0;
   }
 
-  // SECTION - list.has() ---------------------------------------------
+  // PART - list.has() ---------------------------------------------
   /**
    * Returns `true` if the list contains
    * the element, and `false` otherwise.

@@ -11,6 +11,7 @@ import { Missing } from "./views/Missing/Missing";
 import Workspace from "./views/Workspace/Workspace";
 import { Settings } from "./views/Settings/Settings";
 import { Protected } from "./views/Protected/Protected";
+import { Notes } from "./views/Notes/Notes";
 
 function App() {
   return (
@@ -22,8 +23,8 @@ function App() {
         <Route path="register" element={<Register />} />
         {/* protected routes */}
         <Route element={<Protected />}>
-          <Route path="notes" element={<Settings />} />
-          <Route path="workspace" element={<Workspace />} />
+          <Route path="notes" element={<Notes />} />
+          <Route path="home" element={<Workspace />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         {/* show 404 for everything other than the paths above */}

@@ -67,7 +67,7 @@ const Login = () => {
             <input
               required
               autoComplete="off"
-              type="password"
+              type="text"
               placeholder="Password"
               onChange={(event) => {
                 if (event.isTrusted) setPassword(event.target.value);
