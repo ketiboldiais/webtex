@@ -1,10 +1,7 @@
 export type comparable = number | string;
-type orderRelation = "<" | ">" | "<=" | ">=";
+type orderRelation = "<" | ">";
 const strcmp = (a: string, b: string) => {
   return a.localeCompare(b, undefined, { numeric: true }) < 0 ? false : true;
-};
-const streq = (a: string, b: string) => {
-  return a.localeCompare(b, undefined, { numeric: true }) === 0;
 };
 const comp = (a: comparable, b: comparable, order: orderRelation) => {
   switch (order) {
@@ -14,14 +11,6 @@ const comp = (a: comparable, b: comparable, order: orderRelation) => {
     case ">":
       if (typeof a === "number" && typeof b === "number") return a > b;
       if (typeof a === "string" && typeof b === "string") return strcmp(b, a);
-    case "<=":
-      if (typeof a === "number" && typeof b === "number") return a <= b;
-      if (typeof a === "string" && typeof b === "string")
-        return strcmp(a, b) || streq(a, b);
-    case ">=":
-      if (typeof a === "number" && typeof b === "number") return a >= b;
-      if (typeof a === "string" && typeof b === "string")
-        return strcmp(b, a) || streq(a, b);
     default:
       throw new Error("Invalid compare function.");
   }
