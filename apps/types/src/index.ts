@@ -62,6 +62,11 @@ export const SuccessMessage: ServerMessage = {
 };
 
 /**
+ * @description Root domain
+ */
+export const ROOT_DOMAIN = "https://webtex.cloud";
+
+/**
  * @description Root route
  * - NO CLIENT SIDE ACCESS.
  * - This is the root route.

@@ -7,6 +7,8 @@ import { BadEmailMessage, SuccessMessage } from "@webtex/types";
 import { UserEntry } from "../types";
 import { validateAuthPayload } from "@webtex/lib/dist";
 import { devlog } from "../dev";
+import { sendEmail } from "src/middleware/mailer";
+import {makeID} from "src/middleware/makeID";
 
 /**
  * @description Register for new account
@@ -57,11 +59,31 @@ export const register = async (req: Request, res: Response) => {
       .values(userEntry)
       .returning(["user", "email", "joined", "verified"])
       .executeTakeFirst();
+
     if (!user) {
       devlog(`Failed to insert user into database.`);
       return res.status(500);
     }
     devlog(`Successfully inserted user into database.`);
+
+    const otp = makeID(25);
+    
+    
+
+    // if (!emailLink) {
+    // devlog(`Failed to create verification email link.`);
+    // return res.sendStatus(500);
+    // }
+
+    // const sentSuccessfully = await sendEmail(email, emailLink);
+    // devlog(`Sending verification email.`);
+
+    // if (!sentSuccessfully) {
+    // devlog(`Sending failed.`);
+    // return res.sendStatus(500);
+    // }
+
+    devlog(`Registration all clear.`);
     return res.status(200).json(SuccessMessage);
   } catch (error) {
     return res.sendStatus(500);

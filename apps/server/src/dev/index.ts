@@ -1,14 +1,13 @@
-import { v4 as uuid } from "uuid";
 import fs from "fs";
 import path from "path";
 import { NextFunction, Request, Response } from "express";
 import { getDate } from "@webtex/string/dist";
+import { makeID } from "src/middleware/makeID";
 
 const fsPromises = fs.promises;
 export const logEvents = async (message: string, logFileName: string) => {
   const date = getDate().localDate;
-  const logItem = `${uuid().slice(5)}\t${date}\t${message}\n`;
-
+  const logItem = `${makeID(8)}\t${date}\t${message}\n`;
   try {
     if (!fs.existsSync(path.join(__dirname, "../..", "logs"))) {
       await fsPromises.mkdir(path.join(__dirname, "../..", "logs"));

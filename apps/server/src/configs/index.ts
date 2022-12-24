@@ -91,3 +91,6 @@ export const corsConfig: CorsOptions = {
   optionsSuccessStatus: 200,
   credentials: true,
 };
+
+// FIXME - Set Redis URL in production
+export const RedisConfig = { host: "localhost", port: 6379 };

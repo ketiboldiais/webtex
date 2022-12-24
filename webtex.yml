@@ -15,4 +15,4 @@ windows:
         - webtex-app:
             - sleep 1; js dev
         - caddy-agent:
-            - sleep 20; caddy run
+            - sleep 15; caddy run
