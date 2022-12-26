@@ -1,4 +1,4 @@
-import { DateObj } from "@webtex/types";
+import { DateObj } from "@webtex/shared";
 
 export const getDate = (): DateObj => {
   const date = new Date();

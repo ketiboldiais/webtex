@@ -1,4 +1,4 @@
-import { BASE, SESSION } from "@webtex/types";
+import { BASE, SESSION } from "@webtex/shared";
 import { RootState } from "./store";
 
 export const checkLogin = async (preloadedState: RootState) => {

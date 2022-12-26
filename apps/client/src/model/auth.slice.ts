@@ -1,5 +1,5 @@
 import { PayloadAction, createSlice } from "@reduxjs/toolkit";
-import { LoginPayload } from "@webtex/types";
+import { LoginPayload } from "@webtex/shared";
 
 type AuthState = {
   token: string | null;

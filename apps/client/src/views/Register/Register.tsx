@@ -3,8 +3,8 @@ import Styles from "./styles/Register.module.css";
 import { validatePassword } from "../../utils/verifyPassword";
 import { statusCode } from "../../utils/statusCodes";
 import { useRegisterMutation } from "../../model/auth.api";
-import { message } from "@webtex/types";
 import { validateAuthPayload } from "@webtex/lib";
+import { SERVER_FAIL } from "@webtex/shared";
 
 const Register = () => {
   const emailRef = useRef<HTMLInputElement>(null);
@@ -46,33 +46,20 @@ const Register = () => {
     event.preventDefault();
     const result = validatePassword(password);
     const match = password === password2;
-    if (
-      result !== statusCode.ok ||
-      !match ||
-      typeof email !== "string" ||
-      typeof password !== "string"
-    ) {
+    if (result !== statusCode.ok || !match) {
       setInstruction("Invalid form fields.");
       return;
     }
+    const payload = validateAuthPayload({ email, password });
+    if (payload === SERVER_FAIL) {
+      setInstruction("Form fields could not be validated.");
+      return;
+    }
     try {
-      const payload = await validateAuthPayload({ email, password });
-      if (payload === message.failure) {
-        setInstruction("Form fields could not be validated.");
-        return;
-      }
-      const result = await register(payload).unwrap();
-      if (result.message === message.success) {
-        return setInstruction(`Verification link sent to ${email}.`);
-      }
+      await register(payload).unwrap();
+      return setInstruction(`Verification link sent to ${email}.`);
     } catch (error: any) {
-      if (error.data.message === message.missingData) {
-        return setInstruction("Missing form data.");
-      } else if (error.data.message === message.emailCannotBeUsed) {
-        return setInstruction(`${email} cannot be used.`);
-      } else {
-        return setInstruction(`Server unavailable at the moment.`);
-      }
+      setInstruction(`Server unavailable at the moment.`);
     }
   };
 

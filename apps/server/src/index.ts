@@ -1,77 +1,56 @@
 import dotenv from "dotenv";
 dotenv.config();
+
 import express from "express";
-import path from "path";
-import { sessionConfig, corsConfig, PORT, MODE } from "./configs";
-import morgan from "morgan";
-import { Logger } from "./dev";
-import { AUTH, SESSION, USER } from "@webtex/types";
+import { URL } from "url";
+
+import Env from "./configs/index.js";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import { errorHandler } from "./middleware/errorHandler";
-import { ignoreFavicon } from "./middleware/ignoreFavicon";
+import { errorHandler } from "./middleware/errorHandler.js";
+import { ignoreFavicon } from "./middleware/ignoreFavicon.js";
 import session from "express-session";
 import helmet from "helmet";
 import connectRedis from "connect-redis";
-import { redisCache } from "./database/otpStore";
-import { authRouter } from "./routes/auth.routes";
-import { userRouter } from "./routes/user.routes";
-import { sessionRouter } from "./routes/session.routes";
-import rootRoute from "./routes/root.route";
+import { redisCache } from "./database/otpStore.js";
+import { Router } from "./router/router.js";
 
 const server = express();
-
-if (MODE === "development") {
-  server.use(Logger);
-  server.use(morgan("dev"));
+if (Env.mode === "development") {
 }
-
 server.disable("x-powered-by");
 server.use(express.urlencoded({ extended: false }));
 server.use(ignoreFavicon);
 server.use(helmet());
-server.use(cors(corsConfig));
+server.use(cors(Env.cors));
 server.use(express.json());
 server.use(cookieParser());
-server.use("/", express.static(path.join(__dirname, "public")));
 
-// PART Handle to `base/auth` requests.
-server.use(AUTH, authRouter);
-
-// PART SESSIONS
 const RedisStore = connectRedis(session);
 server.use(
   session({
+    secret: Env.session.secret,
+    resave: Env.session.resave,
+    name: Env.session.name,
+    saveUninitialized: Env.session.saveUninitialized,
+    cookie: Env.session.cookie,
     store: new RedisStore({ client: redisCache.redis as any }),
-    ...sessionConfig,
   })
 );
 
-// PART Handle to `base/user` requests.
-server.use(USER, userRouter);
-
-// PART Handle `base/session` requests.
-server.use(SESSION, sessionRouter);
-
-// TODO server.use(NOTE, noteRouter);
-
-server.use("/", express.static(path.join(__dirname, "public")));
-
-server.use("/", rootRoute);
-
+const pathToMain = new URL("./public/404.html", import.meta.url).pathname;
+server.use(Router);
 server.all("*", (req, res) => {
   res.status(404);
   if (req.accepts("html")) {
-    res.sendFile(path.join(__dirname, "public", "404.html"));
+    res.sendFile(pathToMain);
   } else {
     res.sendStatus(400);
   }
 });
-
 server.use(errorHandler);
-
-server.listen(PORT, () => {
-  if (MODE === "development") {
-    console.log(`In ${MODE}. Listening on ${PORT}.`);
+server.listen(Env.port, () => {
+  if (Env.mode === "development") {
+    console.log(`In ${Env.mode}. Listening on ${Env.port}.`);
   }
 });

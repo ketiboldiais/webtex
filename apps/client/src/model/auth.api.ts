@@ -6,7 +6,7 @@ import {
   User,
   SESSION,
   USER
-} from "@webtex/types";
+} from "@webtex/shared";
 import { fetchBase } from "./api.slice";
 import { logout } from "./auth.slice";
 

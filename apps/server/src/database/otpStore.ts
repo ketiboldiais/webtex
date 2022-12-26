@@ -1,15 +1,15 @@
-import Redis from "ioredis";
-import { RedisConfig } from "src/configs";
+import { default as Redis } from "ioredis";
+import Env from "../configs/index.js";
 
 // PART Redis configuration
 //
 
-const RedisObj = new Redis(RedisConfig);
+const RedisObj = new Redis.default(Env.redis);
 export type KVPair = Record<string, string>;
 const getKey = (obj: KVPair) => Object.keys(obj)[0];
 
 class RedisCache {
-  redis: Redis;
+  redis: Redis.default;
   constructor() {
     this.redis = RedisObj;
   }
@@ -18,25 +18,14 @@ class RedisCache {
    * the Redis cahce. This will return
    * a promise.
    */
-  SaveKeyValue(data: KVPair) {
+  async SaveKeyValue(data: KVPair) {
     let key = getKey(data);
-    let output;
-    this.redis.set(key, data[key], (_, result) => {
-      output = result === "OK";
-    });
-    return output;
   }
   /**
    * Retrieves the value of `key` from
    * the cache.
    */
-  GetKeyValue(key: string) {
-    let output;
-    this.redis.get(key, (error, result) => {
-      output = error ? null : result;
-    });
-    return output;
-  }
+  async GetKeyValue(key: string) {}
   /**
    * Removes the `{key: value}` pair
    * of the given `key` from the cache.
@@ -58,3 +47,5 @@ class RedisCache {
 }
 
 export const redisCache = new RedisCache();
+
+const s = redisCache.SaveKeyValue({ foo: "bar" });

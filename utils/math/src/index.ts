@@ -1,5 +1,3 @@
-import { div } from "./div";
-import { isDigit } from "./isDigit";
-import { rem } from "./rem";
-
-export { div, isDigit, rem };
+export * from "./div/index.js";
+export * from "./isDigit/index.js";
+export * from "./rem/index.js";

@@ -1,27 +1,9 @@
 {
+  "extends": "../../tsconfig.build.json",
   "compilerOptions": {
     "baseUrl": ".",
-    "target": "es2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "outDir": "./dist",
-    "jsx": "preserve",
-    "composite": false,
-    "declaration": true,
-    "declarationMap": true,
-    "inlineSources": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "preserveWatchOutput": true
+    "outDir": "./dist"
   },
   "include": ["./src"],
-  "exclude": ["node_modules", "src/**/*.test.ts"]
+  "exclude": ["./src/*.test.ts"]
 }

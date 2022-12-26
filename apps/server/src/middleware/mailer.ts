@@ -1,15 +1,9 @@
 import nodemailer from "nodemailer";
-import { ROOT_DOMAIN } from "@webtex/types";
-import { jwtAccessKey } from "src/configs";
-import { nodeMailUser, nodeMailpass } from "src/configs";
-import crypto from "crypto";
+import Env from "../configs/index.js";
 
 export const nodeMailer = nodemailer.createTransport({
   service: "gmail",
-  auth: {
-    user: nodeMailUser,
-    pass: nodeMailpass,
-  },
+  auth: Env.mail,
 });
 
 export const mailOTP = async (userEmail: string, otp: string) => {
@@ -42,20 +36,4 @@ export const sendEmail = async (userEmail: string, emailLink: string) => {
   } catch (error: any) {
     return false;
   }
-};
-
-export const createVerifyEmailToken = async (email: string) => {
-  try {
-    // Auth String, JWT signature, email
-    const authString = `${jwtAccessKey}:${email}`;
-    return crypto.createHash("sha256").update(authString).digest("hex");
-  } catch (error: any) {}
-};
-
-export const createVerifyEmailLink = async (email: string) => {
-  try {
-    const emailToken = await createVerifyEmailToken(email);
-    const URIencodedEmail = encodeURIComponent(email);
-    return `${ROOT_DOMAIN}/verify/${URIencodedEmail}/${emailToken}`;
-  } catch (error: any) {}
 };

@@ -8,7 +8,7 @@ import {
 import { Mutex } from "async-mutex";
 import { logout, setCredentials } from "./auth.slice";
 import { RootState } from "./store";
-import { AUTH, BASE } from "@webtex/types";
+import { AUTH, BASE } from "@webtex/shared";
 const mutex = new Mutex();
 
 /**

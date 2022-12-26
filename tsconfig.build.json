@@ -1,21 +1,19 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "target": "ESNext",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
     "declaration": true,
     "declarationMap": true,
-    "esModuleInterop": true,
+    "esModuleInterop": false,
     "module": "ESNext",
     "moduleResolution": "NodeNext",
     "resolveJsonModule": true,
-    "outDir": "./dist",
     "isolatedModules": true,
     "jsx": "preserve"
-  },
-  "include": ["./src"]
+  }
 }

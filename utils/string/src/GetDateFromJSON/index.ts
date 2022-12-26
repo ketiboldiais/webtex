@@ -1,4 +1,4 @@
-import { DateObj } from "@webtex/types";
+import { DateObj } from "@webtex/shared";
 
 export const GetUTCDateFromJSON = (date: DateObj) => {
   return date.utcDate;
