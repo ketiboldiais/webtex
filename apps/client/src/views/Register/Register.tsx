@@ -4,13 +4,12 @@ import { validatePassword } from "../../utils/verifyPassword";
 import { statusCode } from "../../utils/statusCodes";
 import { useRegisterMutation } from "../../model/auth.api";
 import { validateAuthPayload } from "@webtex/lib";
-import { SERVER_FAIL } from "@webtex/shared";
 
 const Register = () => {
-  const emailRef = useRef<HTMLInputElement>(null);
   const promptRef = useRef<HTMLDivElement>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [emailFocus, setEmailFocus] = useState(false);
   const [passwordFocus, setPasswordFocus] = useState(false);
   const [validPassword, setValidPassword] = useState(false);
   const [password2, setPassword2] = useState("");
@@ -18,21 +17,22 @@ const Register = () => {
   const [password2Match, setPassword2Match] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [register] = useRegisterMutation();
-
   const promptClass = instruction ? Styles.Prompt : Styles.Offscreen;
 
   useEffect(() => {
-    emailRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
     const result = validatePassword(password);
-    if (passwordFocus && result === statusCode.passwordTooShort) {
-      setInstruction("Password must be at least 10 characters.");
-    } else if (passwordFocus && result === statusCode.passwordTooLong) {
-      setInstruction("Password must be less than 60 characters.");
+    if (emailFocus && email) {
+      setInstruction(
+        "Enter a valid email no longer than 90 characters. A secret code will be sent to your email to complete registration."
+      );
     } else {
       setInstruction("");
+    }
+    if (passwordFocus && result === statusCode.passwordTooShort) {
+      setInstruction("Password must be at least 10 characters.");
+    }
+    if (passwordFocus && result === statusCode.passwordTooLong) {
+      setInstruction("Password must be less than 60 characters.");
     }
     setValidPassword(result === statusCode.ok);
     const match = password2 === password;
@@ -40,7 +40,7 @@ const Register = () => {
       setInstruction("Passwords must match");
     }
     setPassword2Match(match);
-  }, [password, password2, password2Focus, passwordFocus]);
+  }, [password, password2, email, password2Focus, passwordFocus, emailFocus]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -51,7 +51,7 @@ const Register = () => {
       return;
     }
     const payload = validateAuthPayload({ email, password });
-    if (payload === SERVER_FAIL) {
+    if (payload === null) {
       setInstruction("Form fields could not be validated.");
       return;
     }
@@ -71,10 +71,11 @@ const Register = () => {
           <label>
             <input
               required
-              ref={emailRef}
               type="email"
               autoComplete="off"
               placeholder="Email"
+              onFocus={() => setEmailFocus(true)}
+              onBlur={() => setEmailFocus(false)}
               onChange={(event) => {
                 if (event.isTrusted) {
                   setEmail(event.target.value);

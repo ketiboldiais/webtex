@@ -6,7 +6,7 @@ import {
 } from "@reduxjs/toolkit/query/react";
 
 import { Mutex } from "async-mutex";
-import { logout, setCredentials } from "./auth.slice";
+import { logout, setToken } from "./auth.slice";
 import { RootState } from "./store";
 import { AUTH, BASE } from "@webtex/shared";
 const mutex = new Mutex();
@@ -52,7 +52,7 @@ export const fetchBase: BaseQueryFn<
         if (refreshResult.data) {
           // Dispatch to store the new token.
           const token = refreshResult.data as string;
-          api.dispatch(setCredentials({ accessToken: token }));
+          api.dispatch(setToken({ accessToken: token }));
         } else {
           // this works ok.
           api.dispatch(logout());

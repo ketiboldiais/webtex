@@ -34,7 +34,14 @@
 }
 
 .Prompt {
+  width: 80%;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  margin: 0.25rem auto;
   color: hsl(208deg, 12%, 58%);
+  padding: 0.25rem 0.75rem;
   font-size: 0.8rem;
   padding: 0.25rem 0.75rem;
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);

@@ -56,3 +56,14 @@ type ClientNote = {
   modified: string;
   title: string;
 };
+
+interface EmailToken {
+  user: {
+    email: string;
+    otp: string;
+  };
+}
+
+interface AuthToken {
+  timestamp: number;
+}

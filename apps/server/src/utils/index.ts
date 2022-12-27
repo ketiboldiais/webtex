@@ -7,6 +7,12 @@ import {
   SERVER_FAIL,
 } from "@webtex/shared";
 
+import { nanoid } from "nanoid";
+
+const makeId = (size: number) => {
+  return nanoid(size);
+};
+
 const hash = async (plaintext: string) => {
   try {
     let result = await bcrypt.hash(plaintext, Env.saltRounds);
@@ -31,4 +37,4 @@ const message = (message: Message): MessagePayload => {
   return { message };
 };
 
-export { hash, verifyHash, message };
+export { hash, verifyHash, message, makeId };

@@ -7,7 +7,7 @@
     "build": "tsup src/index.ts",
     "wipe": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
     "clean": "rm -rf ./dist",
-    "dev": "tsup src/index.ts --watch --onSuccess \"node dist/index.js\"",
+    "live": "tsup src/index.ts --watch",
     "lint": "tsc --noEmit && TIMING=1 eslint \"src/**/*.ts*\"",
     "start": "node dist/index.js",
     "test": "vitest"

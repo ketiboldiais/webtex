@@ -16,4 +16,9 @@ export type User = {
   password: string;
 };
 
-export type LoginPayload = { accessToken: string };
+export type OTP = {
+  email: string;
+  otp: string;
+};
+
+export type LoginPayload = { accessToken: string; timestamp: string };

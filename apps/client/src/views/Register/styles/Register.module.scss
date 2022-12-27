@@ -38,7 +38,14 @@
 }
 
 .Prompt {
+  width: 80%;
+	display: flex;
+	justify-content: center;
+	flex-direction: column;
+	align-items: center;
+  margin: $margin1 auto;
   color: $coolGrey3;
+  padding: $pad1 $pad3;
   font-size: $xsmall;
   padding: $pad1 $pad3;
   @include Card;

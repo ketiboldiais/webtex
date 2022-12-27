@@ -5,7 +5,9 @@ import {
   ServerMessage,
   User,
   SESSION,
-  USER
+  USER,
+  OTP,
+  VERIFY,
 } from "@webtex/shared";
 import { fetchBase } from "./api.slice";
 import { logout } from "./auth.slice";
@@ -25,6 +27,16 @@ export const authAPI = createApi({
         headers: {
           "Content-Type": "application/json",
         },
+      }),
+    }),
+    /**
+     * @description Sends `GET base/verify/otp` request to verify user
+     */
+    verify: builder.mutation<ServerMessage, OTP>({
+      query: (otp) => ({
+        url: VERIFY,
+        method: "GET",
+        body: otp,
       }),
     }),
     /**
@@ -59,11 +71,11 @@ export const authAPI = createApi({
       },
     }),
     /**
-     * @description Sends `PATCH base/auth` request to get refresh token
+     * @description Sends `PATCH base/session` request to get refresh token
      */
     refresh: builder.mutation({
       query: () => ({
-        url: AUTH,
+        url: SESSION,
         method: "PATCH",
       }),
     }),
@@ -75,4 +87,5 @@ export const {
   useSigninMutation,
   useSignoutMutation,
   useRefreshMutation,
+  useVerifyMutation,
 } = authAPI;

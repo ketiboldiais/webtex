@@ -21,6 +21,18 @@ const createNewUser = (email: string, hash: string): UserEntry => {
   return { email, password: hash, verified: false, joined: new Date() };
 };
 
+const verifyUserDB = async (email: string) => {
+  try {
+    let result = await db
+      .updateTable("users")
+      .set({ verified: true })
+      .where("email", "=", email)
+      .returning("id")
+      .executeTakeFirst();
+    return result;
+  } catch (error) {}
+};
+
 const getUser = async (email: string) => {
   try {
     let result = await db
@@ -28,10 +40,10 @@ const getUser = async (email: string) => {
       .select(["password", "verified", "user"])
       .where("email", "=", email)
       .executeTakeFirst();
-    if (result) {
-      return result;
+    if (!result) {
+      return null;
     }
-    return CLIENT_FAIL;
+    return result;
   } catch (error) {
     return ASYNC_ERROR;
   }
@@ -65,4 +77,4 @@ const findByEmail = async (email: string) => {
   }
 };
 
-export { db, findByEmail, createNewUser, saveNewUser, getUser };
+export { db, findByEmail, createNewUser, saveNewUser, getUser, verifyUserDB };

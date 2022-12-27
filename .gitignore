@@ -8,3 +8,4 @@ log
 build/**
 dist/**
 dump.rdb
+.vscode/**

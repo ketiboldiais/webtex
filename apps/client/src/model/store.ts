@@ -15,20 +15,16 @@ export const store = configureStore({
 });
 
 export type RootState = ReturnType<typeof store.getState>;
-
 export type StoreDispatch = typeof store.dispatch;
 
-/**
- * @description Dispatches an action to the Redux store
- */
+// Dispatches an action to the Redux store
 export const useAppDispatch = () => useDispatch<StoreDispatch>();
 
-/**
- * @description Extracts data from the Redux store state
- */
+//  Extracts data from the Redux store state
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 
-/**
- * @description Returns the token currently stored in state.
- */
+// Returns the token currently stored in state.
 export const selectToken = (state: RootState) => state.auth.token;
+
+// Returns the session currently stored in IDB
+export const selectSession = (state: RootState) => state.auth.validSession;

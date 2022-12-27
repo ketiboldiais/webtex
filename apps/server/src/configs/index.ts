@@ -4,72 +4,27 @@ dotenv.config();
 import { CorsOptions } from "cors";
 import { CookieOptions } from "express-session";
 
-
 const CORS_ORIGINS = ["https://www.webtex.cloud", "https://webtex.cloud"];
 const CORS_OPTIONS_SUCCESS_STATUS = 200;
 const CORS_INCLUDE_CREDENTIALS = true;
-const PORT=5173;
+const PORT = 5173;
 
 const COOKIES_SECURE_ONLY = true;
 const COOKIES_HTTP_ONLY = true;
-const COOKIES_SAME_SITE = 'none';
+const COOKIES_SAME_SITE = "none";
 const COOKIES_MAX_AGE = 24 * 60 * 1000;
 
-const SESSION_RESAVE=false;
-const SESSION_NAME="sid";
-const SESSION_SAVE_UNINITIALIZED=false;
+const CACHE_EXPIRATION = 300;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+const SESSION_RESAVE = false;
+const SESSION_NAME = "sid";
+const SESSION_SAVE_UNINITIALIZED = false;
 
 // Don't touch this.
 
 const Redis = {
   host: process.env.REDIS_HOST,
-  port: Number(process.env.REDIS_PORT)
+  port: Number(process.env.REDIS_PORT),
 };
 
 Object.preventExtensions(Redis);
@@ -111,6 +66,14 @@ Object.preventExtensions(session);
 Object.seal(session);
 Object.freeze(session);
 
+const email = {
+  key: process.env.ACCESS_TOKEN_SECRET as string,
+  expiration: process.env.JWT_EMAIL_EXPIRE,
+};
+Object.preventExtensions(email);
+Object.seal(email);
+Object.freeze(email);
+
 const access = {
   key: process.env.ACCESS_TOKEN_SECRET as string,
   expiration: process.env.JWT_ACCESS_EXPIRE,
@@ -128,6 +91,7 @@ Object.freeze(refresh);
 const jwt = {
   access: access,
   refresh: refresh,
+  email: email,
 };
 Object.preventExtensions(jwt);
 Object.seal(jwt);
@@ -164,7 +128,8 @@ const Env = {
   reqSpeedLimit: Number(process.env.MAX_REQUESTS),
   database: db,
   saltRounds: Number(process.env.SALT),
-  port:PORT
+  port: PORT,
+  cacheExpiration: CACHE_EXPIRATION,
 };
 
 Object.preventExtensions(Env);

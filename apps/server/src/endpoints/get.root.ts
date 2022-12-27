@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
-import { URL } from "url";
+import { fileURLToPath } from "url";
+import path from "path";
 
-const pathToMain = new URL("./public/index.html", import.meta.url).pathname;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export const defaultHandler = (_: Request, res: Response) => {
-  res.sendFile(pathToMain);
+export const defaultHandler = (req: Request, res: Response) => {
+  return res.sendFile(__dirname + "/public/index.html");
 };

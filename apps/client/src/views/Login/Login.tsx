@@ -17,7 +17,7 @@ const Login = () => {
   const [login] = useSigninMutation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  
+
   // If errorMessage is not an empty string, the error CSS class is toggled.
   const errClass = errorMessage ? Styles.ErrorMessage : Styles.Offscreen;
 
@@ -29,8 +29,11 @@ const Login = () => {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     try {
-      const { accessToken } = await login({ email, password }).unwrap();
-      dispatch(setCredentials({ accessToken }));
+      const { accessToken, timestamp } = await login({
+        email,
+        password,
+      }).unwrap();
+      dispatch(setCredentials({ accessToken, timestamp }));
       setEmail("");
       setPassword("");
       navigate("/home");

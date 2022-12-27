@@ -7,6 +7,21 @@
   "files": [
     "dist/**"
   ],
+  "tsup": {
+    "dts": false,
+    "splitting": true,
+    "clean": true,
+    "format": [
+      "esm"
+    ],
+    "minify": true,
+    "bundle": true,
+    "entryPoints": [
+      "src/index.ts"
+    ],
+    "target": "es2020",
+    "outDir": "dist"
+  },
   "scripts": {
     "wipe": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
     "clean": "rm -rf .turbo && rm -rf dist",
@@ -21,6 +36,7 @@
     "@aws-sdk/client-s3": "^3.231.0",
     "@aws-sdk/s3-request-presigner": "^3.231.0",
     "@types/connect-redis": "^0.0.19",
+    "@webtex/file": "workspace:*",
     "@webtex/lib": "workspace:*",
     "@webtex/list": "workspace:*",
     "@webtex/string": "workspace:*",

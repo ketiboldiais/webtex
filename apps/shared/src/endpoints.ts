@@ -48,6 +48,12 @@ export const USER = "/user";
 export const SESSION = "/session";
 
 /**
+ * @description base/confirm endpoint.
+ * - `GET /confirm/OTP` sends OTP confirmation
+ */
+export const VERIFY = "/confirmation/";
+
+/**
  * @description base/notes endpoint.
  * - `POST /notes` Saves a note.
  * - `GET /notes` Returns all the user's notes.

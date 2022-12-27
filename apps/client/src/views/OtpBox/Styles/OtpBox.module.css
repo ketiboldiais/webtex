@@ -1,0 +1,24 @@
+.OtpBoxContainer {
+  width: 80%;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  margin: 0.25rem auto;
+  color: hsl(208deg, 12%, 58%);
+  font-size: 0.8rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 5px;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+  transition: 0.3s;
+  border-radius: 5px;
+}
+.OtpBoxContainer:hover {
+  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
+}
+.OtpBoxContainer input {
+  border-radius: 5px;
+  margin: 0.5rem;
+  padding: 0.75rem;
+  box-shadow: inset -4px -4px 6px -1px rgb(249, 249, 249), inset 2px 2px 8px -1px rgba(72, 79, 96, 0.205);
+}/*# sourceMappingURL=OtpBox.module.css.map */
