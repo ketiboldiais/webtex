@@ -1,17 +1,23 @@
 import { rem } from '@webtex/math'
+import deepEqual from 'deep-equal';
 
+/** @internal */
 class ListItem<T> {
   val: T;
   nex: ListItem<T> | null;
   pre: ListItem<T> | null;
-  constructor(val: T) {
+	index: number;
+  constructor(val:T,index:number) {
     this.val = val;
     this.nex = null;
     this.pre = null;
+		this.index=index;
   }
 }
 
-export class LIST<T> {
+
+/** @internal */
+class LIST<T> {
   #head: ListItem<T> | null;
   #tail: ListItem<T> | null;
   #length: number;
@@ -21,15 +27,19 @@ export class LIST<T> {
   }
 
 
+
 // LIST.reset ------------------------------------------------------------------
 	/**
-	 * Used to reset the list.
-	 * @private
+	 * Empties the list.
+	 * @internal
 	 */
-	private reset() {
+	clear() {
 		this.#head=null;
 		this.#tail=null;
+		this.#length=0;
 	}
+
+
 
 // LIST.length -----------------------------------------------------------------
 	/**
@@ -44,43 +54,38 @@ export class LIST<T> {
 
 
 
-
-// LIST.left -------------------------------------------------------------------
+// LIST.first ------------------------------------------------------------------
 	/**
 	 * Returns the first element of the list.
 	 * @complexity Θ(1).
 	 * */
 
-  left(): T | null {
+  first(): T | null {
     return this.#head ? this.#head.val : null;
   }
 
 
 
 
-
-// LIST.right ------------------------------------------------------------------
+// LIST.last -------------------------------------------------------------------
 	/**
 	 * Returns the last element of the list.
 	 * @complexity Θ(1).
 	 * */
 
-  right(): T | null {
+  last(): T | null {
     return this.#tail ? this.#tail.val : null;
   }
 	
 
-	
-
-
-// LIST.pushl ------------------------------------------------------------------
+// LIST.prefix --------------------------------------------------------------
 	/**
-	 * Inserts an item at the end of the list.
+	 * Inserts an item at the beginning of the list.
 	 * @complexity Θ(1).
 	 * */
 
-  pushl(item: T) {
-		const node = new ListItem<T>(item);
+  prefix(item: T) {
+		const node = new ListItem<T>(item, this.#length);
 		if (!this.#tail) this.#head = this.#tail = node;
 		else {
 			this.#tail.nex = node;
@@ -94,15 +99,14 @@ export class LIST<T> {
 
 
 
-
-// LIST.pushr ------------------------------------------------------------------
+// LIST.postfix ---------------------------------------------------------------
 	/**
-	 * Inserts an item at beginning of the list.
+	 * Inserts an item at end of the list.
 	 * @complexity Θ(1).
 	 * */
 
-  pushr(item: T) {
-		const node = new ListItem<T>(item);
+  postfix(item: T) {
+		const node = new ListItem<T>(item, this.#length);
 		if (this.#head===null) this.#head = this.#tail = node;
 		else {
 			node.nex       = this.#head;
@@ -114,20 +118,18 @@ export class LIST<T> {
 	}
 
 
-
-
-// LIST.popl -------------------------------------------------------------------
+// LIST.pop ---------------------------------------------------------------
 	/**
 	 * Removes the last item of the list.
 	 * If the list is empty, returns `null`.
 	 * @complexity Θ(1)
 	 */
-	popr() {
+	pop() {
 		// handle empty list.
 		if (this.#tail === null) return null;
 		const saved = this.#tail; 
 		// handle 1 item list.
-		if (this.#tail.pre === null) { this.reset(); }
+		if (this.#tail.pre === null) { this.clear(); }
 		// handle 1+ items list.
 		else {
 			this.#tail.pre.nex = null;
@@ -138,19 +140,21 @@ export class LIST<T> {
 		return saved.val;
 	}
 	
-// LIST.popl -------------------------------------------------------------------
+
+	
+// LIST.lop ----------------------------------------------------------------
 	/**
 	 * Removes the first item of the list.
 	 * If the list is empty, returns `null`.
 	 * @complexity Θ(1).
 	 */
 	
-	popl() {
+	lop() {
 		// handle empty list.
 		if (this.#head===null) return null;
 		const saved = this.#head;
 		// handle 1 item list.
-		if (this.#head.nex===null) { this.reset(); }
+		if (this.#head.nex===null) { this.clear(); }
 		// handle 1+ items list.
 		else {
 			this.#head.nex.pre = null;
@@ -160,6 +164,16 @@ export class LIST<T> {
 		this.#length--;
 		return saved.val;
 	}
+	
+
+// LIST.push ---------------------------------------------------------------
+	
+
+
+// LIST.pop ---------------------------------------------------------------
+	
+	
+	
 // LIST.setFirst ---------------------------------------------------------------
 	/**
 	 * Replaces the first item of the list with the argument.
@@ -168,9 +182,7 @@ export class LIST<T> {
 
   setFirst(item: T) {}
 
-
-
-
+	
 
 // LIST.setLast ----------------------------------------------------------------
 	/**
@@ -182,9 +194,6 @@ export class LIST<T> {
 
 
 
-
-
-
 // LIST.has --------------------------------------------------------------------
 	/**
 	 * Returns `true` if the item is in the list, `false` otherwise.
@@ -193,6 +202,12 @@ export class LIST<T> {
  
   has(item: T) {}
 }
+
+
+
+
+
+
 
 export function List<T>(...items:T[]) {
 	return new LIST<T>(...items);

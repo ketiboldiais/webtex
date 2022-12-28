@@ -1,5 +1,5 @@
 {
-  "name": "@webtex/list",
+  "name": "@webtex/bintree",
   "keywords": [],
   "license": "ISC",
   "type": "module",
@@ -34,3 +34,4 @@
     "deep-equal": "^2.1.0"
   }
 }
+
