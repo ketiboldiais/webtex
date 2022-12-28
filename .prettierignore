@@ -1,1 +1,2 @@
 /apps/server/src/configs/*
+/structs/list/src/index.ts
