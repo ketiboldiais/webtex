@@ -4,7 +4,7 @@ This is the root directory for the Webtex monorepo. All of Webtex's packages are
 ## Outline
 This section outlines the subdirectories and packages used by Webtex.
 
-### Subdirectory: apps
+### Subdirectory: `apps`
 Contains Webtex's major components.
 
 | Package          | Subdirectory | Description                                                                           |
@@ -14,7 +14,7 @@ Contains Webtex's major components.
 | `@webtex/lib`    | `lib`        | Utility functions shared between `@webtex/client` and `@webtex/server`.               |
 | `@webtex/shared` | `shared`     | Type definitions and interfaces shared between `@webtex/client` and `@webtex/server`. |
 
-### Subdirectory: structs
+### Subdirectory: `structs`
 Contains various data structures used by Webtex.
 
 | Package            | Subdirectory | Description                                                                                                               |
@@ -24,7 +24,7 @@ Contains various data structures used by Webtex.
 | `@webtex/list`     | `list`       | Doubly-linked list, used as an auxiliary structure for queueuing certain operations on the frontend.                      |
 | `@webtex/machines` | `machines`   | Various build systems for testing.                                                                                        |
 
-### Subdirectory: utils
+### Subdirectory: `utils`
 Contains utility methods used by packages in `apps` and `structs`.
 
 | Package          | Subdirectory | Description                                                                            |
