@@ -1,8 +1,18 @@
+/* eslint-disable no-unused-vars */
 type Atom = string | number | symbol | boolean | bigint | null | undefined;
-type Primitives = Atom[];
+export type ColumnType = 'string' | 'number' | 'boolean';
+export type ColumnName = 'string';
+export type Primitives = Atom[];
 
-const JaggedArray = <K extends string, T = Primitives[]>(...columns: K[]) => {
-  return columns.reduce((o,k) => Object.assign(o,{[k]:[]}),{}) as Record<K,T>;
-};
+const JaggedArray = <K extends string, T = Primitives[]>(...columns: K[]) =>
+  columns.reduce((o, k) => Object.assign(o, { [k]: [] }), {}) as Record<K, T>;
+  
+export type Row<T> = {
+  [Property in keyof T]: Atom;
+} 
 
-const tbl = JaggedArray("email", "password");
+type Colname = keyof Row;
+
+class Table<T> {
+}
+

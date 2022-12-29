@@ -175,7 +175,7 @@ module.exports = {
       },
     ],
     // 'func-style': [WARN, 'declaration'],
-    'id-length': [WARN, { min: 1, max: 15 }],
+    'id-length': [WARN, { min: 1, max: 25 }],
     indent: [WARN, 2],
     'jsx-quotes': [WARN, 'prefer-double'],
     'linebreak-style': [WARN, 'unix'],
