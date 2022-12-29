@@ -1,0 +1,7 @@
+body {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	margin: 2em;
+	font-family: 'CMU Serif';
+}
