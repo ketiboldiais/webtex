@@ -4,6 +4,7 @@ pnpm-lock.yaml
 cors.json
 temp
 log
+Caddyfile
 .turbo
 build/**
 dist/**

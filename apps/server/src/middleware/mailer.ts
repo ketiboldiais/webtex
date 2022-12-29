@@ -3,7 +3,7 @@ import { BASE, VERIFY } from "@webtex/shared";
 import Env from "../configs/index.js";
 
 export const nodeMailer = nodemailer.createTransport({
-  service: "gmail",
+  service: Env.mail.service,
   auth: Env.mail,
 });
 
