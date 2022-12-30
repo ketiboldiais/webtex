@@ -1,18 +1,12 @@
-/* eslint-disable no-unused-vars */
-type Atom = string | number | symbol | boolean | bigint | null | undefined;
-export type ColumnType = 'string' | 'number' | 'boolean';
-export type ColumnName = 'string';
-export type Primitives = Atom[];
+import "fake-indexeddb/auto";
 
-const JaggedArray = <K extends string, T = Primitives[]>(...columns: K[]) =>
-  columns.reduce((o, k) => Object.assign(o, { [k]: [] }), {}) as Record<K, T>;
-  
-export type Row<T> = {
-  [Property in keyof T]: Atom;
-} 
+// const JaggedArray = <K extends string, T = Primitives[]>(...columns: K[]) =>
+  // columns.reduce((o, k) => Object.assign(o, { [k]: [] }), {}) as Record<K, T>;
+// function objectCreator<K extends string>(...columns: K[]) {
+  // return columns.reduce((o, k) => Object.assign(o, { [k]: T[k] }), {}) as Record<K,T>;
+// }
 
-type Colname = keyof Row;
 
-class Table<T> {
-}
+
+export type ColumnType = 'string' | 'number' | 'boolean' | 'null' | 'integer' | 'pint' | 'nint';
 
