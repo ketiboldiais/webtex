@@ -7,6 +7,6 @@ export const timestamp = (d = new Date()) =>
       [d.getHours(), d.getMinutes(), d.getSeconds()]
         .map((t) => t.toString().padStart(2, '0'))
         .join(':')
-    ).concat("-").concat(performance.now().toPrecision(7).toString());
-
-console.log(timestamp());
+    )
+    .concat('-')
+    .concat(performance.now().toPrecision(7).toString());
