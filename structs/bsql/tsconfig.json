@@ -3,8 +3,12 @@
   "compilerOptions": {
     "baseUrl": "./",
     "rootDir": "./",
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "typeRoots": [
+      "./typings",
+      "./node_modules/@types"
+    ]
   },
-  "include": ["./src"],
+  "include": ["./src", "typings/index.d.ts"],
   "exclude": ["./src/*.test.ts"]
 }
