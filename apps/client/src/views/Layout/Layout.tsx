@@ -1,8 +1,8 @@
 import { Link, Outlet } from "react-router-dom";
-import Navbar from "../../views/Navbar/Navbar";
+import Navbar from "./Navbar/Navbar";
 
 // styles
-import Styles from "./Styles/Layout.module.css";
+import Styles from "../../styles/Layout.module.css";
 
 export function Layout() {
   return (

@@ -1,7 +1,7 @@
 import { Editor } from "../../components/Editor";
 
 // Styles
-import Styles from "./Styles/Docs.module.css";
+import Styles from "../../styles/Docs.module.css"
 
 function Docs() {
   return (

@@ -1,6 +1,6 @@
 // hooks
-import Styles from "./Styles/Workspace.module.css";
-import { Editor } from "../../components/Editor";
+import Styles from "../../../styles/Workspace.module.css";
+import { Editor } from "../../../components/Editor";
 import { DEFAULT_NOTE } from "src/config";
 
 const Workspace = () => {

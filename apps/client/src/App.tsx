@@ -3,31 +3,28 @@ import "./App.css";
 
 // pages
 
-import { Layout } from "./components/Layout/Layout";
-import Register from "./views/Register/Register";
-import Login from "./views/Login/Login";
-import Docs from "./views/Docs/Docs";
-import { Missing } from "./views/Missing/Missing";
-import Workspace from "./views/Workspace/Workspace";
-import { Settings } from "./views/Settings/Settings";
+import { Layout } from "./views/Layout/Layout";
+import Register from "./views/Public/Register";
+import Login from "./views/Public/Login";
+import Docs from "./views/Public/Docs";
+import { Missing } from "./views/Public/Missing";
+import Workspace from "./views/Protected/Workspace/Workspace";
+import { Settings } from "./views/Protected/Settings";
 import { Protected } from "./views/Protected/Protected";
-import { Notes } from "./views/Notes/Notes";
+import { Notes } from "./views/Protected/Notes";
 
 function App() {
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<Docs />} />
-        {/* public routes */}
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
-        {/* protected routes */}
         <Route element={<Protected />}>
           <Route path="notes" element={<Notes />} />
           <Route path="home" element={<Workspace />} />
           <Route path="settings" element={<Settings />} />
         </Route>
-        {/* show 404 for everything other than the paths above */}
         <Route path="*" element={<Missing />} />
       </Route>
     </Routes>

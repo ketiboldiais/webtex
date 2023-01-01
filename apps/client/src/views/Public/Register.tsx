@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useRef } from "react";
-import Styles from "./styles/Register.module.css";
 import { validatePassword } from "../../utils/verifyPassword";
 import { statusCode } from "../../utils/statusCodes";
 import { useRegisterMutation } from "../../model/auth.api";
 import { validateAuthPayload } from "@webtex/lib";
+
+// styles
+import Styles from "../../styles/Register.module.css";
 
 const Register = () => {
   const promptRef = useRef<HTMLDivElement>(null);

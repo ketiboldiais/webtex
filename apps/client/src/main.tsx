@@ -9,16 +9,13 @@ import { store } from './model/store';
 import './index.css';
 
 const container = document.getElementById('root');
-
 const root = createRoot(container!);
 
 root.render(
   <React.StrictMode>
     <Provider store={store}>
       <BrowserRouter>
-        <Routes>
-          <Route path='/*' element={<App />} />
-        </Routes>
+        <App/>
       </BrowserRouter>
     </Provider>
   </React.StrictMode>

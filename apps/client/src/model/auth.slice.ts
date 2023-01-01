@@ -4,13 +4,13 @@ import { set } from "idb-keyval";
 
 type AuthState = {
   token: string | null;
-  validSession: number;
+  isLoggedIn: boolean;
 };
 
 type SetCredsAction = PayloadAction<LoginPayload>;
 type RefreshAction = PayloadAction<{ accessToken: string }>;
 
-const initialAuthState: AuthState = { token: null, validSession: 0 };
+const initialAuthState: AuthState = { token: null, isLoggedIn: false};
 
 const authSlice = createSlice({
   // This slice is called auth
@@ -25,12 +25,11 @@ const authSlice = createSlice({
     setCredentials: (state, action: SetCredsAction) => {
       const { accessToken, timestamp } = action.payload;
       state.token = accessToken;
-      state.validSession = Number(timestamp);
       set("validSession", timestamp);
     },
     logout: (state) => {
       state.token = null;
-      state.validSession = 0;
+      state.isLoggedIn = false;
       set("validSession", 0);
     },
   },

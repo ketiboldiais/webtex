@@ -5,7 +5,7 @@ import { setCredentials } from "../../model/auth.slice";
 import { useSigninMutation } from "../../model/auth.api";
 
 // styles
-import Styles from "./styles/Login.module.css";
+import Styles from "../../styles/Login.module.css";
 
 const Login = () => {
   // sets focus on user input
