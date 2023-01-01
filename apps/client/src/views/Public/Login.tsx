@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "../../model/store";
-import { setCredentials } from "../../model/auth.slice";
+import { setCredentials, setSession } from "../../model/auth.slice";
 import { useSigninMutation } from "../../model/auth.api";
 
 // styles
@@ -34,9 +34,10 @@ const Login = () => {
         password,
       }).unwrap();
       dispatch(setCredentials({ accessToken, timestamp }));
+      dispatch(setSession());
       setEmail("");
       setPassword("");
-      navigate("/home");
+      navigate("/");
     } catch (error: any) {
       if (!error.status) {
         setErrorMessage("Server currently unavailable.");

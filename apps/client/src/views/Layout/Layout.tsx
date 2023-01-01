@@ -9,7 +9,7 @@ export function Layout() {
     <main className={`App ${Styles.LayoutContainer}`}>
       <header>
         <h1>
-          <Link to="/">Webtex</Link>
+          <Link to="docs">Webtex</Link>
         </h1>
         <Navbar />
       </header>

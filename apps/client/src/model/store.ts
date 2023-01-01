@@ -8,7 +8,6 @@ let isLoggedIn = false;
 
 try {
   let x = await get('validSession') as number;
-  console.log(x)
   if (x < Date.now()) {
     isLoggedIn = true;
   }

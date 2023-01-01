@@ -55,7 +55,7 @@ export const authAPI = createApi({
     /**
      * @description Sends `DELETE base/session` request to logout user
      */
-    signout: builder.mutation({
+    signout: builder.mutation<void, void>({
       query: () => ({
         url: SESSION,
         method: "DELETE",
