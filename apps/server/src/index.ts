@@ -14,6 +14,7 @@ import { Router } from "./router/router.js";
 import { logRequest } from "./middleware/logger.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import { cache } from "./database/cache.js";
 
 const RedisStore = connectRedis(session);
 const server = express();
@@ -41,7 +42,7 @@ server
       name: Env.session.name,
       saveUninitialized: Env.session.saveUninitialized,
       cookie: Env.session.cookie,
-      // store: new RedisStore({ client: redisCache.redis as any }),
+      store: new RedisStore({ client: cache.redis as any }),
     })
   )
   .use(Router);

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAppDispatch } from "../../model/store";
-import { setCredentials, setSession } from "../../model/auth.slice";
-import { useSigninMutation } from "../../model/auth.api";
+import { useAppDispatch } from "@model/store";
+import { setCredentials, setSession } from "@model/auth.slice";
+import { useSigninMutation } from "@model/auth.api";
 
 // styles
-import Styles from "../../styles/Login.module.css";
+import Styles from "@styles/Login.module.css";
 
 const Login = () => {
   // sets focus on user input

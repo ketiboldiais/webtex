@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useSignoutMutation } from 'src/model/auth.api';
+import { useSignoutMutation } from '@model/auth.api';
 
 export const PrivateNav = () => {
   const [logout] = useSignoutMutation();

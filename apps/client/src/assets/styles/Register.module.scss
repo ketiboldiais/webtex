@@ -1,11 +1,11 @@
-@import "../../../styles/base";
+@import "./base";
 
-.LoginContainer {
+.RegisterContainer {
   max-width: 500px;
   margin: 5vh auto;
   padding: 1em;
   @include Shadow1($grey);
-  .LoginHeader {
+  .RegisterHeader {
     margin: 0;
     padding: 0;
     text-align: center;
@@ -30,11 +30,23 @@
       color: $coolGrey4;
     }
   }
-  button {
-    &:disabled {
-      background-color: white;
-      @include Border($coolGrey5);
-      color: $coolGrey4;
-    }
-  }
+}
+
+.Offscreen {
+  position: absolute;
+  left: -9999px;
+}
+
+.Prompt {
+  width: 80%;
+	display: flex;
+	justify-content: center;
+	flex-direction: column;
+	align-items: center;
+  margin: $margin1 auto;
+  color: $coolGrey3;
+  padding: $pad1 $pad3;
+  font-size: $xsmall;
+  padding: $pad1 $pad3;
+  @include Card;
 }

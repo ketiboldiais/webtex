@@ -1,4 +1,4 @@
-import Styles from "../../styles/Missing.module.css";
+import Styles from "@styles/Missing.module.css";
 
 export const Missing = () => {
   return (

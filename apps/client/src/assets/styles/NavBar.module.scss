@@ -1,4 +1,4 @@
-@import "../../../styles/base";
+@import "./base";
 
 .Container {
   padding: 0;
@@ -14,11 +14,17 @@
     li {
       margin: 0;
       padding: 0;
+      button {
+        font-size: $xsmall;
+        padding: $pad2;
+        background-color: white;
+        color: $coolGrey3;
+      }
       a {
         display: block;
         color: $coolGrey3;
-        @include Underline($coolGrey2, 3px);
-        padding: $pad3;
+        font-size: $xsmall;
+        padding: $pad2;
         cursor: pointer;
       }
     }

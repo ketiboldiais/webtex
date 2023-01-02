@@ -1,0 +1,20 @@
+.LayoutContainer header {
+  padding-top: 2px;
+  height: 40px;
+  display: flex;
+  width: 100%;
+  border-bottom: solid thin hsl(208deg, 21%, 88%);
+}
+.LayoutContainer header h1 {
+  padding: 0;
+  margin: 0;
+  padding: 0.5rem;
+  padding-left: 1rem;
+  color: hsl(210deg, 16%, 76%);
+  font-size: 0.8rem;
+}
+.LayoutContainer .mainContent {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}/*# sourceMappingURL=Layout.module.css.map */

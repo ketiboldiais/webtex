@@ -7,8 +7,8 @@ import { get } from "idb-keyval";
 let isLoggedIn = false;
 
 try {
-  let x = await get('validSession') as number;
-  if (x < Date.now()) {
+  let time = await get('validSession') as number;
+  if (time !== Date.now()) {
     isLoggedIn = true;
   }
 } catch (_) {}

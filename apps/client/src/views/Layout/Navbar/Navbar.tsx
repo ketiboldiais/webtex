@@ -4,7 +4,7 @@ import { PrivateNav } from "./PrivateNav";
 import { PublicNav } from "./PublicNav";
 
 // styles
-import Styles from "../../../styles/NavBar.module.css";
+import Styles from "@styles/NavBar.module.css";
 
 
 function Navbar() {

@@ -1,21 +1,21 @@
-import Styles from "./Styles/Editor.module.css";
-import { LexicalComposer } from "@lexical/react/LexicalComposer";
-import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
-import { ContentEditable } from "@lexical/react/LexicalContentEditable";
-import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
-import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
-import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
-import Autofocus from "./plugins/Autofocus";
-import Toolbar from "./Toolbar/Toolbar";
-import { $getRoot, EditorState } from "lexical";
-import { useEffect, useRef, useState } from "react";
-import { EquationNode, MathPlugin } from "./plugins/Equation/Equation";
-import { SaveButton } from "./Buttons/EditorButtons";
-import theme from "./EditorTheme";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import Styles from './Styles/Editor.module.css';
+import { LexicalComposer } from '@lexical/react/LexicalComposer';
+import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
+import { ContentEditable } from '@lexical/react/LexicalContentEditable';
+import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
+import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
+import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
+import Autofocus from './plugins/Autofocus';
+import Toolbar from './Toolbar/Toolbar';
+import { $getRoot, EditorState } from 'lexical';
+import { useEffect, useRef, useState } from 'react';
+import { EquationNode, MathPlugin } from './plugins/Equation/Equation';
+import { SaveButton } from './Buttons/EditorButtons';
+import theme from './EditorTheme';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 
 const editorConfig = {
-  namespace: "Editor",
+  namespace: 'Editor',
   theme,
   nodes: [EquationNode],
   onError(error: any) {
@@ -26,6 +26,7 @@ const editorConfig = {
 interface editorProps {
   savehandler?: (content: string, title: string) => void;
   init?: any;
+  privy: boolean;
 }
 
 interface updateProps {
@@ -47,9 +48,9 @@ function Placeholder() {
   return <div className={Styles.EditorPlaceholder}></div>;
 }
 
-export function Editor({ savehandler, init }: editorProps) {
+export function Editor({ savehandler, init, privy }: editorProps) {
   const editorStateRef = useRef<EditorState | null>(null);
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState('');
   const handleSave = (editorContent: string) => {
     if (savehandler && editorStateRef.current && title) {
       savehandler(editorContent, title);
@@ -59,17 +60,19 @@ export function Editor({ savehandler, init }: editorProps) {
     <LexicalComposer initialConfig={{ ...editorConfig }}>
       <div className={Styles.EditorContainer}>
         <input
-          type="text"
+          type='text'
           required
-          placeholder="Title"
+          placeholder='Title'
           className={Styles.TitleInput}
           onChange={(event) => setTitle(event.target.value)}
         />
         <div className={Styles.Toolbar}>
           <Toolbar />
-          <SaveButton
-            onClick={() => handleSave(JSON.stringify(editorStateRef.current))}
-          />
+          {privy && (
+            <SaveButton
+              onClick={() => handleSave(JSON.stringify(editorStateRef.current))}
+            />
+          )}
         </div>
         <MathPlugin />
         <RichTextPlugin

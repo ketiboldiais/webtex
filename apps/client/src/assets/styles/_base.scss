@@ -171,8 +171,17 @@ $full: 100%;
   border-radius: 50%;
   background-color: white;
   &:before {
-    content: "\D7";
+    content: '\D7';
     color: $red5;
     font-size: $xsmall;
   }
+}
+
+@mixin Scrollable {
+  position: fixed;
+  top: 40px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: scroll;
 }

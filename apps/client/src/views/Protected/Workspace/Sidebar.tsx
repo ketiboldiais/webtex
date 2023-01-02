@@ -1,4 +1,4 @@
-import Styles from "./Styles/Sidebar.module.css";
+import Styles from "@styles/Sidebar.module.css";
 import { motion } from "framer-motion";
 import { Dispatch, SetStateAction } from "react";
 import { NoteList } from "../../../client";

@@ -1,9 +1,9 @@
-@import "../../../styles/base";
+@import "./base";
 
 .Home {
   height: 90vh;
   .Workspace {
     height: 100%;
-    width: 100%;
+    margin: 0 auto;
   }
 }
