@@ -6,11 +6,6 @@ import Styles from '@styles/Docs.module.css';
 function Docs() {
   return (
     <article className={Styles.DocsContainer}>
-      <section>
-        <p>
-          Webtex is a note-taking application geared towards technical subjects.
-        </p>
-      </section>
       <Lab />
     </article>
   );

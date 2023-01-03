@@ -4,10 +4,10 @@ const DB_VERSION = 1;
 
 export type Note = {
   title: string;
-  created: Date;
-  modified: Date;
+  created: string;
+  modified: string;
   content: string;
-  wordcount: number;
+  id: string;
 };
 
 export interface NoteDB extends DBSchema {
@@ -16,8 +16,8 @@ export interface NoteDB extends DBSchema {
     value: Note;
     indexes: {
       'by-title': string;
-      'by-created': Date;
-      'by-modified': Date;
+      'by-created': string;
+      'by-modified': string;
       'by-wordcount': number;
     };
   };

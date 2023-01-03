@@ -8,71 +8,44 @@ import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
 import Autofocus from './plugins/Autofocus';
 import Toolbar from './Toolbar/Toolbar';
 import { $getRoot, EditorState } from 'lexical';
-import { useEffect, useRef, useState } from 'react';
-import { EquationNode, MathPlugin } from './plugins/Equation/Equation';
+import { useRef, useState } from 'react';
+import { MathPlugin } from './plugins/Equation/Equation';
 import { SaveButton } from './Buttons/EditorButtons';
-import theme from './EditorTheme';
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-
-const editorConfig = {
-  namespace: 'Editor',
-  theme,
-  nodes: [EquationNode],
-  onError(error: any) {
-    throw error;
-  },
-};
-
-interface editorProps {
-  savehandler?: (content: string, title: string) => void;
-  init?: any;
-  privy: boolean;
-}
-
-interface updateProps {
-  value: string;
-}
-
-function UpdatePlugin({ value }: updateProps) {
-  const [editor] = useLexicalComposerContext();
-  useEffect(() => {
-    if (value) {
-      const initialEditorState = editor.parseEditorState(value);
-      editor.setEditorState(initialEditorState);
-    }
-  }, [value, editor]);
-  return <></>;
-}
+import { UpdatePlugin } from './plugins/UpdatePlugin';
+import { EditorConfig } from './EditorConfig';
+import { templateNote } from '@model/notes.slice';
+import { RawNote } from '@model/notes.slice';
 
 function Placeholder() {
   return <div className={Styles.EditorPlaceholder}></div>;
 }
 
-export function Editor({ savehandler, init, privy }: editorProps) {
+export interface editorProps {
+  init?: RawNote;
+  onSave: (title: string, content: string, wordcount: number) => void;
+}
+
+export function Editor({ init = templateNote, onSave }: editorProps) {
   const editorStateRef = useRef<EditorState | null>(null);
-  const [title, setTitle] = useState('');
-  const handleSave = (editorContent: string) => {
-    if (savehandler && editorStateRef.current && title) {
-      savehandler(editorContent, title);
-    }
-  };
+  const [title, setTitle] = useState(init.title);
+  const [wordcount, setWordcount] = useState(0);
+  const save = (content: string) => onSave(title, content, wordcount);
+
   return (
-    <LexicalComposer initialConfig={{ ...editorConfig }}>
+    <LexicalComposer initialConfig={{ ...EditorConfig }}>
       <div className={Styles.EditorContainer}>
         <input
           type='text'
           required
-          placeholder='Title'
+          placeholder={init.title}
           className={Styles.TitleInput}
           onChange={(event) => setTitle(event.target.value)}
         />
         <div className={Styles.Toolbar}>
           <Toolbar />
-          {privy && (
-            <SaveButton
-              onClick={() => handleSave(JSON.stringify(editorStateRef.current))}
-            />
-          )}
+          <SaveButton
+            onClick={() => save(JSON.stringify(editorStateRef.current))}
+          />
         </div>
         <MathPlugin />
         <RichTextPlugin
@@ -84,12 +57,8 @@ export function Editor({ savehandler, init, privy }: editorProps) {
         <OnChangePlugin
           onChange={(editorState) => {
             editorState.read(() => {
-              let root = $getRoot();
-              if (root.getTextContent().length === 0) {
-                editorStateRef.current = null;
-              } else {
-                editorStateRef.current = editorState;
-              }
+              setWordcount($getRoot().getTextContent().length);
+              editorStateRef.current = editorState;
             });
           }}
           ignoreSelectionChange

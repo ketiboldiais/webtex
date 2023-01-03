@@ -66,4 +66,7 @@
   font-weight: bold;
   padding: 0;
   margin: 0;
+}
+.Notelist .NotelistRows li:hover {
+  cursor: pointer;
 }/*# sourceMappingURL=Notelist.module.css.map */

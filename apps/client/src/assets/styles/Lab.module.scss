@@ -3,4 +3,5 @@
 .LabContainer {
   display: grid;
   grid-template-columns: 1fr 3fr;
+  @include Shadow1(90);
 }

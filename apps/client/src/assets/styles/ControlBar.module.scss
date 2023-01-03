@@ -1,0 +1,12 @@
+@import './base';
+
+.ControlBarContainer {
+  @include Shadow1(90);
+	padding: $pad1 $pad2;
+	button {
+		background-color: white;
+		border: solid thin $coolGrey4;
+		color: $coolGrey2;
+		margin: $margin1 $margin1;
+	}
+}

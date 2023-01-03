@@ -1,15 +1,25 @@
 import { Editor } from '@components/Editor';
-import { DEFAULT_NOTE } from 'src/config';
 import { Notelist } from './Notelist';
+import { selectActiveNote, useAppSelector } from '@model/store';
+import { useState } from 'react';
 
 // styles
 import Styles from '@styles/Lab.module.css';
+import { ControlBar } from './ControlBar';
 
 export const Lab = () => {
+  const activeNote = useAppSelector(selectActiveNote);
+  const saveHandler = (title: string, content: string, wordcount: number) => {
+    console.table([title, content, wordcount]);
+  };
+
   return (
-    <article className={Styles.LabContainer}>
-      <Notelist />
-      <Editor init={DEFAULT_NOTE.content} privy={true} />
-    </article>
+    <>
+      <ControlBar />
+      <article className={Styles.LabContainer}>
+        <Notelist />
+        <Editor init={activeNote} onSave={saveHandler} />
+      </article>
+    </>
   );
 };

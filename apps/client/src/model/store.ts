@@ -48,6 +48,7 @@ export const selectToken = (state: RootState) => state.auth.token;
 export const selectLoginStatus = (state: RootState) => state.auth.isLoggedIn;
 
 // Returns all notes
-export const selectAllNotes = (state: RootState) => state.notes.notelist;
+export const selectAllNotes = (state: RootState) => state.notes.currentNotes;
 
-export const selectCurrentNoteIndex = (state: RootState) => state.notes.currentNote;
+// Returns the current active note
+export const selectActiveNote = (state: RootState) => state.notes.activeNote;
