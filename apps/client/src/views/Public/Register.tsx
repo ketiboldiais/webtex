@@ -1,23 +1,23 @@
-import React, { useEffect, useState, useRef } from "react";
-import { validatePassword } from "@utilities/verifyPassword";
-import { statusCode } from "@utilities/statusCodes";
-import { useRegisterMutation } from "@model/auth.api";
-import { validateAuthPayload } from "@webtex/lib";
+import React, { useEffect, useState, useRef } from 'react';
+import { validatePassword } from '@utilities/verifyPassword';
+import { statusCode } from '@utilities/statusCodes';
+import { useRegisterMutation } from '@model/auth.api';
+import { validateAuthPayload } from '@webtex/lib';
 
 // styles
-import Styles from "@styles/Register.module.css";
+import Styles from '@styles/Register.module.css';
 
 const Register = () => {
   const promptRef = useRef<HTMLDivElement>(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [emailFocus, setEmailFocus] = useState(false);
   const [passwordFocus, setPasswordFocus] = useState(false);
   const [validPassword, setValidPassword] = useState(false);
-  const [password2, setPassword2] = useState("");
+  const [password2, setPassword2] = useState('');
   const [password2Focus, setPassword2Focus] = useState(false);
   const [password2Match, setPassword2Match] = useState(false);
-  const [instruction, setInstruction] = useState("");
+  const [instruction, setInstruction] = useState('');
   const [register] = useRegisterMutation();
   const promptClass = instruction ? Styles.Prompt : Styles.Offscreen;
 
@@ -25,21 +25,21 @@ const Register = () => {
     const result = validatePassword(password);
     if (emailFocus && email) {
       setInstruction(
-        "Enter a valid email no longer than 90 characters. A secret code will be sent to your email to complete registration."
+        'Enter a valid email no longer than 90 characters. A secret code will be sent to your email to complete registration.'
       );
     } else {
-      setInstruction("");
+      setInstruction('');
     }
     if (passwordFocus && result === statusCode.passwordTooShort) {
-      setInstruction("Password must be at least 10 characters.");
+      setInstruction('Password must be at least 10 characters.');
     }
     if (passwordFocus && result === statusCode.passwordTooLong) {
-      setInstruction("Password must be less than 60 characters.");
+      setInstruction('Password must be less than 60 characters.');
     }
     setValidPassword(result === statusCode.ok);
     const match = password2 === password;
     if (password2Focus && !match) {
-      setInstruction("Passwords must match");
+      setInstruction('Passwords must match');
     }
     setPassword2Match(match);
   }, [password, password2, email, password2Focus, passwordFocus, emailFocus]);
@@ -49,12 +49,12 @@ const Register = () => {
     const result = validatePassword(password);
     const match = password === password2;
     if (result !== statusCode.ok || !match) {
-      setInstruction("Invalid form fields.");
+      setInstruction('Invalid form fields.');
       return;
     }
     const payload = validateAuthPayload({ email, password });
     if (payload === null) {
-      setInstruction("Form fields could not be validated.");
+      setInstruction('Form fields could not be validated.');
       return;
     }
     try {
@@ -73,9 +73,9 @@ const Register = () => {
           <label>
             <input
               required
-              type="email"
-              autoComplete="off"
-              placeholder="Email"
+              type='email'
+              autoComplete='off'
+              placeholder='Email'
               onFocus={() => setEmailFocus(true)}
               onBlur={() => setEmailFocus(false)}
               onChange={(event) => {
@@ -88,10 +88,10 @@ const Register = () => {
           <label>
             <input
               required
-              type="text"
-              autoComplete="off"
-              placeholder="Password"
-              aria-invalid={validPassword ? "false" : "true"}
+              type='text'
+              autoComplete='off'
+              placeholder='Password'
+              aria-invalid={validPassword ? 'false' : 'true'}
               onFocus={() => setPasswordFocus(true)}
               onBlur={() => setPasswordFocus(false)}
               onChange={(event) => {
@@ -104,10 +104,10 @@ const Register = () => {
           <label>
             <input
               required
-              type="text"
-              autoComplete="off"
-              placeholder="Confirm Password"
-              aria-invalid={password2Match ? "false" : "true"}
+              type='text'
+              autoComplete='off'
+              placeholder='Confirm Password'
+              aria-invalid={password2Match ? 'false' : 'true'}
               onFocus={() => setPassword2Focus(true)}
               onBlur={() => setPassword2Focus(false)}
               onChange={(event) => {
@@ -122,9 +122,9 @@ const Register = () => {
           </button>
         </form>
       </section>
-      <div ref={promptRef} className={promptClass} aria-live="assertive">
+      <section ref={promptRef} className={promptClass} aria-live='assertive'>
         <p>{instruction}</p>
-      </div>
+      </section>
     </article>
   );
 };

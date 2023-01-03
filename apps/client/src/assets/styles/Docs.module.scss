@@ -3,11 +3,9 @@
 .DocsContainer {
   @include Scrollable;
   section {
-    @include Card;
-    max-width: 600px;
     padding: $pad3;
     display: block;
-    margin: $margin5 auto;
+    margin: $margin5 $margin2;
     p:first-of-type {
       margin-top: 0;
     }

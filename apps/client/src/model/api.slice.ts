@@ -6,7 +6,7 @@ import {
 } from "@reduxjs/toolkit/query/react";
 
 import { Mutex } from "async-mutex";
-import { logout, setToken } from "./auth.slice";
+import { logoff, setToken } from "./auth.slice";
 import { RootState } from "./store";
 import { AUTH, BASE } from "@webtex/shared";
 const mutex = new Mutex();
@@ -55,7 +55,7 @@ export const fetchBase: BaseQueryFn<
           api.dispatch(setToken({ accessToken: token }));
         } else {
           // this works ok.
-          api.dispatch(logout());
+          api.dispatch(logoff());
           window.location.href = "/login";
         }
       } finally {

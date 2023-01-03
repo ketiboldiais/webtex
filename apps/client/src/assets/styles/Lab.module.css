@@ -22,10 +22,7 @@
   font-weight: bold;
   src: url("../fonts/Muli-BoldItalic.ttf");
 }
-.Home {
-  height: 90vh;
-}
-.Home .Workspace {
-  height: 100%;
-  margin: 0 auto;
-}/*# sourceMappingURL=Workspace.module.css.map */
+.LabContainer {
+  display: grid;
+  grid-template-columns: 1fr 3fr;
+}/*# sourceMappingURL=Lab.module.css.map */

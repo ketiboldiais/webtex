@@ -1,0 +1,49 @@
+@import './base';
+
+.Notelist {
+  border-right: solid thin $coolGrey5;
+  margin: 0;
+  padding: 0 $pad1;
+  .UnsavedMark {
+    &:after {
+      content: ' ';
+      width: 6px;
+      height: 6px;
+      margin-left: $margin1;
+      margin-bottom: 1px;
+      display: inline-block;
+      background-color: $coolGrey4;
+      border-radius: 50%;
+    }
+  }
+  .Notelistheader {
+    display: flex;
+    justify-content: space-between;
+    padding: $pad1;
+  }
+  .NotelistRows {
+    margin: 0;
+    padding: 0;
+    li {
+      .NoteTitle {
+        display: flex;
+        justify-content: space-between;
+        button {
+          background-color: white;
+          color: $red3;
+        }
+        h3 {
+          font-size: $xsmall;
+          font-weight: bold;
+          padding: 0;
+          margin: 0;
+        }
+      }
+      font-size: $xsmall;
+      @include Shadow1(50);
+      list-style: none;
+      margin: $margin1 0;
+      padding: $pad1;
+    }
+  }
+}

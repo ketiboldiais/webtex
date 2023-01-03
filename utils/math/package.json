@@ -2,6 +2,7 @@
   "name": "@webtex/math",
   "license": "ISC",
   "type": "module",
+  "skipNodeModulesBundle": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

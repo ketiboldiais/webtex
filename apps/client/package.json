@@ -20,6 +20,7 @@
     "@webtex/string": "workspace:*",
     "async-mutex": "^0.4.0",
     "framer-motion": "^7.8.0",
+    "idb": "^7.1.1",
     "idb-keyval": "^6.2.0",
     "joi": "^17.7.0",
     "katex": "^0.16.4",

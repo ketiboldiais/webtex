@@ -1,214 +1,287 @@
-import { rem } from '@webtex/math'
+import { rem } from '@webtex/math';
 import deepEqual from 'deep-equal';
 
-/** @internal */
-class ListItem<T> {
+export class ListItem<T> {
   val: T;
   nex: ListItem<T> | null;
   pre: ListItem<T> | null;
-	index: number;
-  constructor(val:T,index:number) {
+  constructor(val: T) {
     this.val = val;
     this.nex = null;
     this.pre = null;
-		this.index=index;
   }
 }
-
-
-/** @internal */
-class LIST<T> {
+export class LIST<T> {
   #head: ListItem<T> | null;
   #tail: ListItem<T> | null;
   #length: number;
   constructor(...values: T[]) {
     this.#head = this.#tail = null;
     this.#length = 0;
+    if (values.length > 0) {
+      values.forEach((value) => {
+        this.push(value);
+      });
+    }
   }
 
-
-
-// LIST.reset ------------------------------------------------------------------
-	/**
-	 * Empties the list.
-	 * @internal
-	 */
-	clear() {
-		this.#head=null;
-		this.#tail=null;
-		this.#length=0;
-	}
-
-
-
-// LIST.length -----------------------------------------------------------------
-	/**
-	 * Returns the length of the list.
-	 * @complexity Θ(1).
-	 * */
- 
+  reverse() {
+    let current = this.#head;
+    while (current !== null) {
+      let nx = current.nex;
+      current.nex = current.pre;
+      current.pre = nx;
+      this.#head = current;
+      current = nx;
+    }
+    return this;
+  }
+  clear() {
+    this.#head = null;
+    this.#tail = null;
+    this.#length = 0;
+  }
   length() {
-		return this.#length;
-	}
-
-
-
-
-// LIST.first ------------------------------------------------------------------
-	/**
-	 * Returns the first element of the list.
-	 * @complexity Θ(1).
-	 * */
-
+    return this.#length;
+  }
   first(): T | null {
     return this.#head ? this.#head.val : null;
   }
-
-
-
-
-// LIST.last -------------------------------------------------------------------
-	/**
-	 * Returns the last element of the list.
-	 * @complexity Θ(1).
-	 * */
-
   last(): T | null {
     return this.#tail ? this.#tail.val : null;
   }
-	
-
-// LIST.prefix --------------------------------------------------------------
-	/**
-	 * Inserts an item at the beginning of the list.
-	 * @complexity Θ(1).
-	 * */
-
-  prefix(item: T) {
-		const node = new ListItem<T>(item, this.#length);
-		if (!this.#tail) this.#head = this.#tail = node;
-		else {
-			this.#tail.nex = node;
-			node.pre       = this.#tail;
-			this.#tail     = node;
-		}
-		this.#length += 1;
-		return this;
-	}
-
-
-
-
-// LIST.postfix ---------------------------------------------------------------
-	/**
-	 * Inserts an item at end of the list.
-	 * @complexity Θ(1).
-	 * */
-
-  postfix(item: T) {
-		const node = new ListItem<T>(item, this.#length);
-		if (this.#head===null) this.#head = this.#tail = node;
-		else {
-			node.nex       = this.#head;
-			this.#head.pre = node;
-			this.#head     = node;
-		}
-		this.#length += 1;
-		return this;
-	}
-
-
-// LIST.pop ---------------------------------------------------------------
-	/**
-	 * Removes the last item of the list.
-	 * If the list is empty, returns `null`.
-	 * @complexity Θ(1)
-	 */
-	pop() {
-		// handle empty list.
-		if (this.#tail === null) return null;
-		const saved = this.#tail; 
-		// handle 1 item list.
-		if (this.#tail.pre === null) { this.clear(); }
-		// handle 1+ items list.
-		else {
-			this.#tail.pre.nex = null;
-			this.#tail = this.#tail.pre;
-			saved.nex = saved.pre = null;
-		}
-		this.#length--;
-		return saved.val;
-	}
-	
-
-	
-// LIST.lop ----------------------------------------------------------------
-	/**
-	 * Removes the first item of the list.
-	 * If the list is empty, returns `null`.
-	 * @complexity Θ(1).
-	 */
-	
-	lop() {
-		// handle empty list.
-		if (this.#head===null) return null;
-		const saved = this.#head;
-		// handle 1 item list.
-		if (this.#head.nex===null) { this.clear(); }
-		// handle 1+ items list.
-		else {
-			this.#head.nex.pre = null;
-			this.#head = this.#head.nex;
-			saved.nex = saved.pre = null;
-		}
-		this.#length--;
-		return saved.val;
-	}
-	
-
-// LIST.push ---------------------------------------------------------------
-	
-
-
-// LIST.pop ---------------------------------------------------------------
-	
-	
-	
-// LIST.setFirst ---------------------------------------------------------------
-	/**
-	 * Replaces the first item of the list with the argument.
-	 * @complexity Θ(1).
-	 * */
-
-  setFirst(item: T) {}
-
-	
-
-// LIST.setLast ----------------------------------------------------------------
-	/**
-	 * Replaces the last item of the list with the argument.
-	 * @complexity Θ(1).
-	 * */
-
-  setLast(item: T) {}
-
-
-
-// LIST.has --------------------------------------------------------------------
-	/**
-	 * Returns `true` if the item is in the list, `false` otherwise.
-	 * @complexity Θ(n), O(n²).
-	 * */
- 
-  has(item: T) {}
+  slice(start: number, end: number) {
+    const slicedList = new LIST<T>();
+    let range = end - start;
+    let index = rem(start, this.#length);
+    let currentNode = this.#head;
+    for (let i = 0; i < index && currentNode !== null; i++) {
+      currentNode = currentNode.nex;
+    }
+    while (currentNode && range) {
+      slicedList.push(currentNode.val);
+      currentNode = currentNode.nex ? currentNode.nex : null;
+      range--;
+    }
+    return slicedList;
+  }
+  insert(item: T, index: number) {
+    const newnode = new ListItem<T>(item);
+    if (this.#head === null) {
+      this.#head = newnode;
+      this.#tail = newnode;
+      return this;
+    }
+    index = rem(index, this.#length);
+    if (index === 0) return this.unshift(item);
+    if (index === this.#length - 1) return this.push(item);
+    index = index - 1;
+    let leftNode: ListItem<T> = this.#head;
+    this.traverse(index, (n: ListItem<T>) => (leftNode = n));
+    if (leftNode !== null) {
+      const rightNode = leftNode.nex;
+      leftNode.nex = newnode;
+      newnode.pre = leftNode;
+      newnode.nex = rightNode;
+      rightNode && (rightNode.pre = newnode);
+      this.#length += 1;
+    }
+    return this;
+  }
+  push(item: T) {
+    const node = new ListItem<T>(item);
+    if (this.#head === null || this.#tail === null) {
+      this.#head = this.#tail = node;
+    } else {
+      this.#tail.nex = node;
+      node.pre = this.#tail;
+      this.#tail = node;
+    }
+    this.#length += 1;
+    return this;
+  }
+  at(index: number): T | null {
+    index = rem(index, this.#length);
+    let node = this.#head;
+    for (let i = 0; i < index && node !== null; i++) {
+      node = node.nex;
+    }
+    return node && node.val ? node.val : null;
+  }
+  replaceItem(index: number, item: T) {
+    let out = null;
+    index = rem(index, this.#length);
+    this.traverse(index, (p: ListItem<T>) => {
+      out = p.val;
+      p.val = item;
+    });
+    return out;
+  }
+  indexOf(item: T) {
+    let p = this.#head;
+    let count = -1;
+    while (p !== null) {
+      count++;
+      if (deepEqual(p.val, item)) return count;
+      p = p.nex;
+    }
+    return -1;
+  }
+  has(item: T) {
+    let head: ListItem<T> | null = this.#head;
+    if (this.#head === null) return false;
+    while (head !== null) {
+      if (deepEqual(head.val, item)) return true;
+      head = head.nex;
+    }
+    return false;
+  }
+  delete(index: number) {
+    index = rem(index, this.#length);
+    if (index === 0) return this.shift();
+    if (index === this.#length - 1) return this.pop();
+    let ptr = this.#head;
+    this.traverse(index, (p: ListItem<T>) => (ptr = p));
+    if (ptr && ptr.pre && ptr.nex) {
+      let out = ptr.val;
+      ptr.pre.nex = ptr.nex;
+      ptr.nex.pre = ptr.pre;
+      ptr.nex = null;
+      ptr.pre = null;
+      this.#length -= 1;
+      return out;
+    } else {
+      return this;
+    }
+  }
+  shift() {
+    if (this.#tail === null || this.#head === null) return null;
+    let oldhead = this.#head;
+    if (this.#length === 1) {
+      this.#head = this.#tail = null;
+      return oldhead.val;
+    } else {
+      this.#head = oldhead.nex;
+      if (this.#head !== null) this.#head.pre = null;
+      oldhead.nex = null;
+    }
+    this.#length -= 1;
+    return oldhead.val;
+  }
+  unshift(item: T) {
+    const node = new ListItem<T>(item);
+    if (this.#head === null) {
+      this.#head = this.#tail = node;
+    } else {
+      this.#head.pre = node;
+      node.nex = this.#head;
+      this.#head = node;
+    }
+    this.#length += 1;
+    return this;
+  }
+  pop() {
+    if (this.#tail === null) {
+      return this;
+    } else {
+      let saved = this.#tail;
+      if (this.#length === 1) {
+        this.#head = this.#tail = null;
+        return this;
+      } else {
+        this.#tail = saved.pre;
+        if (this.#tail && this.#tail.nex) this.#tail.nex = null;
+        saved.pre = null;
+        this.#length -= 1;
+        return saved.val;
+      }
+    }
+  }
+  filter(f: (a: T) => boolean) {
+    let newList = new LIST<T>();
+    if (this.#head === null) return newList;
+    let head: ListItem<T> | null = this.#head;
+    while (head !== null) {
+      if (f(head.val)) {
+        newList.push(head.val);
+      }
+      head = head.nex;
+    }
+    return newList;
+  }
+  *iterator(): IterableIterator<T> {
+    let currentItem = this.#head;
+    while (currentItem) {
+      yield currentItem.val;
+      currentItem = currentItem.nex;
+    }
+  }
+  [Symbol.iterator]() {
+    return this.iterator();
+  }
+  array() {
+    return [...this];
+  }
+  forEach(f: (item: T) => any) {
+    let p = this.#head;
+    while (p !== null) {
+      f(p.val);
+      p = p.nex;
+    }
+    return this;
+  }
+  map(f: (item: T, index: number, list: LIST<T>) => any) {
+    let newlist = new LIST<T>();
+    let cursor = this.#head;
+    let count = 0;
+    while (cursor !== null) {
+      cursor.val = f(cursor.val, count, this);
+      newlist.push(cursor.val);
+      count++;
+      cursor = cursor.nex;
+    }
+    return newlist;
+  }
+  reduce(
+    fn: (
+      accumulator: any,
+      currentValue: T,
+      currentIndex: number,
+      list: LIST<T>
+    ) => any,
+    acc: any
+  ) {
+    let count = -1;
+    for (let node of this) {
+      count++;
+      acc = fn(acc, node, count, this);
+    }
+    return acc;
+  }
+  traverse(index: number, f: Function) {
+    if (this.#head === null) return null;
+    let p: ListItem<T> | null = null;
+    if (index <= this.#length >> 1) {
+      p = this.#head;
+      for (; p !== null && 0 < index; index--) {
+        p = p.nex;
+      }
+      return f(p);
+    } else {
+      index = this.#length - 1 - index;
+      p = this.#tail;
+      for (; p !== null && 0 < index; index--) {
+        p = p.pre;
+      }
+      return f(p);
+    }
+  }
 }
 
-
-
-
-
-
-
-export function List<T>(...items:T[]) {
-	return new LIST<T>(...items);
+export function List<T>(...items: T[]) {
+  return new LIST<T>(...items);
 }
+
+const L = List({ val: 8 }, { val: 9 }, { val: 6 }, { val: 4 });
+
+const r = L.reduce((n, item) => (n += item.val), 0);

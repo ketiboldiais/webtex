@@ -15,7 +15,7 @@ export const PrivateNav = () => {
         <Link to='settings'>Settings</Link>
       </li>
       <li>
-        <button onClick={() => logout()}>Logout</button>
+        <button onClick={()=>logout()}>Logout</button>
       </li>
     </ul>
   );

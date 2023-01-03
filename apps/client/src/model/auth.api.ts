@@ -10,7 +10,7 @@ import {
   VERIFY,
 } from "@webtex/shared";
 import { fetchBase } from "./api.slice";
-import { logout } from "./auth.slice";
+import { logoff } from "./auth.slice";
 
 export const authAPI = createApi({
   reducerPath: "authAPI",
@@ -63,7 +63,7 @@ export const authAPI = createApi({
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
-          dispatch(logout());
+          dispatch(logoff());
           dispatch(authAPI.util.resetApiState());
         } catch (error) {
           return;

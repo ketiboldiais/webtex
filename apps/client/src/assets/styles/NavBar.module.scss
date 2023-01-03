@@ -7,7 +7,7 @@
   width: $full;
   ul {
     display: flex;
-    justify-content: space-around;
+    justify-content: flex-end;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -24,7 +24,7 @@
         display: block;
         color: $coolGrey3;
         font-size: $xsmall;
-        padding: $pad2;
+        padding: $pad2 $pad4;
         cursor: pointer;
       }
     }

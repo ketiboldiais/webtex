@@ -1,13 +1,10 @@
-@import "./base";
+@import './base';
 
 .RegisterContainer {
-  max-width: 500px;
-  margin: 5vh auto;
-  padding: 1em;
   @include Shadow1($grey);
+  padding: 0 $pad4;
   .RegisterHeader {
-    margin: 0;
-    padding: 0;
+    margin: $margin2;
     text-align: center;
   }
   form {
@@ -38,15 +35,15 @@
 }
 
 .Prompt {
-  width: 80%;
-	display: flex;
-	justify-content: center;
-	flex-direction: column;
-	align-items: center;
-  margin: $margin1 auto;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  width: 30vw;
   color: $coolGrey3;
   padding: $pad1 $pad3;
   font-size: $xsmall;
   padding: $pad1 $pad3;
+  margin: $margin2 auto;
   @include Card;
 }

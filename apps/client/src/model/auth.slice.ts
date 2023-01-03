@@ -30,7 +30,7 @@ const authSlice = createSlice({
       state.token = accessToken;
       set('validSession', timestamp);
     },
-    logout: (state) => {
+    logoff: (state) => {
       state.token = null;
       state.isLoggedIn = false;
       set('validSession', 0);
@@ -38,6 +38,6 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, logout, setToken, setSession } =
+export const { setCredentials, logoff, setToken, setSession } =
   authSlice.actions;
 export const authReducer = authSlice.reducer;

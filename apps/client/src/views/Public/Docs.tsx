@@ -1,7 +1,7 @@
-import { Editor } from "@components/Editor";
+import { Lab } from '@components/Lab';
 
 // Styles
-import Styles from "@styles/Docs.module.css"
+import Styles from '@styles/Docs.module.css';
 
 function Docs() {
   return (
@@ -10,8 +10,8 @@ function Docs() {
         <p>
           Webtex is a note-taking application geared towards technical subjects.
         </p>
-        <Editor privy={false}/>
       </section>
+      <Lab />
     </article>
   );
 }

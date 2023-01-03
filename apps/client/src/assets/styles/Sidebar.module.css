@@ -1,4 +1,28 @@
 @charset "UTF-8";
+@font-face {
+  font-family: "Muli";
+  font-style: normal;
+  font-weight: normal;
+  src: url("../fonts/Muli-Regular.ttf");
+}
+@font-face {
+  font-family: "Muli";
+  font-style: italic;
+  font-weight: normal;
+  src: url("../fonts/Muli-Italic.ttf");
+}
+@font-face {
+  font-family: "Muli";
+  font-style: normal;
+  font-weight: bold;
+  src: url("../fonts/Muli-Bold.ttf");
+}
+@font-face {
+  font-family: "Muli";
+  font-style: italic;
+  font-weight: bold;
+  src: url("../fonts/Muli-BoldItalic.ttf");
+}
 .Sidebar {
   width: 30%;
   height: 100%;

@@ -1,13 +1,10 @@
 @import "./base";
 
 .LoginContainer {
-  max-width: 500px;
-  margin: 5vh auto;
-  padding: 1em;
   @include Shadow1($grey);
+  padding: 0 $pad4;
   .LoginHeader {
-    margin: 0;
-    padding: 0;
+    margin: $margin2;
     text-align: center;
   }
   form {

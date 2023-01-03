@@ -1,4 +1,4 @@
-@import "./base";
+@import './base';
 .LayoutContainer {
   header {
     padding-top: 2px;
@@ -17,7 +17,14 @@
   }
   .mainContent {
     display: flex;
+    margin: 0;
+    padding: 0;
     flex-direction: column;
     justify-content: center;
+    align-items: center;
+    article {
+      margin: 0 auto;
+      padding: $pad4;
+    }
   }
 }

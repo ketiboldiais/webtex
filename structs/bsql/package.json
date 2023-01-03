@@ -36,6 +36,7 @@
     "vitest": "^0.25.8"
   },
   "dependencies": {
+    "idb": "^7.1.1",
     "nanoid": "^4.0.0"
   }
 }
