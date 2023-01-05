@@ -1,4 +1,4 @@
-export const Notes = () => {
+const Notes = () => {
   return (
     <article>
       <header>
@@ -7,3 +7,5 @@ export const Notes = () => {
     </article>
   );
 };
+
+export default Notes;

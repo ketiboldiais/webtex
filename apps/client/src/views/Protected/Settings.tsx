@@ -1,4 +1,4 @@
-export const Settings = () => {
+const Settings = () => {
   return (
     <article>
       <header>
@@ -7,3 +7,5 @@ export const Settings = () => {
     </article>
   );
 };
+
+export default Settings;

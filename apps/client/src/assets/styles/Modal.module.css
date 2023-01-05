@@ -1,0 +1,71 @@
+@font-face {
+  font-family: "Muli";
+  font-style: normal;
+  font-weight: normal;
+  src: url("../fonts/Muli-Regular.ttf");
+}
+@font-face {
+  font-family: "Muli";
+  font-style: italic;
+  font-weight: normal;
+  src: url("../fonts/Muli-Italic.ttf");
+}
+@font-face {
+  font-family: "Muli";
+  font-style: normal;
+  font-weight: bold;
+  src: url("../fonts/Muli-Bold.ttf");
+}
+@font-face {
+  font-family: "Muli";
+  font-style: italic;
+  font-weight: bold;
+  src: url("../fonts/Muli-BoldItalic.ttf");
+}
+.ModalOverlay {
+  position: fixed;
+  padding: 0.75rem 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1040;
+  width: 100%;
+  height: -webkit-fit-content;
+  height: -moz-fit-content;
+  height: fit-content;
+  margin: 1rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  outline: 0;
+}
+.ModalOverlay .ModalCard {
+  display: flex;
+  justify-content: center;
+}
+.ModalOverlay .ModalCard .Modal {
+  display: grid;
+  width: 30vw;
+  grid-template-columns: 1fr 13fr;
+  background-color: hsl(210deg, 30%, 96%);
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+  transition: 0.3s;
+  border-radius: 5px;
+}
+.ModalOverlay .ModalCard .Modal:hover {
+  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
+}
+.ModalOverlay .ModalCard .Modal .ModalHeader {
+  color: hsl(210deg, 16%, 76%);
+  padding: 0;
+  margin: 0;
+}
+.ModalOverlay .ModalCard .Modal .ModalHeader .closeModalButton {
+  color: hsl(208deg, 12%, 58%);
+  font-size: 1.2rem;
+  margin-top: 0;
+}
+.ModalOverlay .ModalCard .Modal .ModalBody {
+  color: hsl(208deg, 12%, 58%);
+  padding: 0 0.75rem 0 0.5rem;
+  font-size: 0.8rem;
+}/*# sourceMappingURL=Modal.module.css.map */

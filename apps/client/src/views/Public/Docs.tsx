@@ -1,4 +1,4 @@
-import { Lab } from '@components/Lab';
+import { Lab } from '@components/Lab/Lab';
 
 // Styles
 import Styles from '@styles/Docs.module.css';
