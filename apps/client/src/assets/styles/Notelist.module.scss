@@ -43,6 +43,7 @@
         justify-content: space-between;
         button {
           color: $red3;
+          z-index: 20;
         }
         h3 {
           font-size: $xsmall;

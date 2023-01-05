@@ -1,11 +1,13 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { PrepareAction, createSlice } from '@reduxjs/toolkit';
 import { PayloadAction } from '@reduxjs/toolkit';
 import { Note } from './notes.api';
 import { nanoid } from '@reduxjs/toolkit';
 
-const DEFAULT_NOTE_CONTENT = `{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"","type":"text","version":1}],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1}],"direction":"ltr","format":"","indent":0,"type":"root","version":1}}`;
+export const DEFAULT_NOTE_CONTENT = `{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"","type":"text","version":1}],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1}],"direction":"ltr","format":"","indent":0,"type":"root","version":1}}`;
 
-export type RawNote = Note & { unsaved: boolean };
+export type RawNote = Note & {
+  unsaved: boolean;
+};
 
 export function createEmptyNote(): RawNote {
   return {
@@ -19,8 +21,11 @@ export function createEmptyNote(): RawNote {
 }
 
 // action types
-type NoteIndexAction = PayloadAction<number>;
-type SetTitleAction = PayloadAction<string>;
+type IdPayload = PayloadAction<string>;
+type IndexPayload = PayloadAction<number>;
+type NewTitlePayload = PayloadAction<string>;
+export type IndexedNote = { note: RawNote; index: number };
+type SaveNotePayload = PayloadAction<IndexedNote>;
 
 export const templateNote: RawNote = {
   title: '',
@@ -35,40 +40,60 @@ type NoteState = {
   pastNotes: RawNote[];
   currentNotes: RawNote[];
   future: RawNote[];
-  activeNote: RawNote | null;
+  activeNote: number;
 };
 
 const initialState: NoteState = {
   pastNotes: [],
   currentNotes: [],
   future: [],
-  activeNote: null,
+  activeNote: 0,
 };
 
 const notesSlice = createSlice({
   name: 'notes',
   initialState,
   reducers: {
-    setActiveNote: (state, action: NoteIndexAction) => {
-      state.activeNote = state.currentNotes[action.payload];
-    },
-    updateActiveNoteTitle: (state, action: SetTitleAction) => {
-      if (state.activeNote) {
-        state.activeNote.title = action.payload;
-      }
-    },
-    deleteNote: (state, action: NoteIndexAction) => {
-      state.pastNotes.push(state.currentNotes[action.payload]);
-      const res = state.currentNotes.filter((_, i) => i !== action.payload);
-      state.currentNotes = res;
-    },
     addNote: (state) => {
       state.currentNotes.push(createEmptyNote());
+    },
+    deleteNote: (state, action: IndexPayload) => {
+      state.currentNotes.splice(action.payload, 1);
+    },
+    setActiveNote: (state, action: IndexPayload) => {
+      state.activeNote = action.payload;
+    },
+    saveNote: {
+      reducer: (
+        state,
+        action: PayloadAction<{
+          title: string;
+          content: string;
+          modified: string;
+        }>
+      ) => {
+        const { title, content, modified } = action.payload;
+        state.currentNotes[state.activeNote].title = title;
+        state.currentNotes[state.activeNote].content = content;
+        state.currentNotes[state.activeNote].modified = modified;
+        state.currentNotes[state.activeNote].unsaved = false;
+      },
+      prepare: (title: string, content: string) => {
+        return {
+          payload: {
+            title,
+            content,
+            modified: new Date().toISOString(),
+          },
+        };
+      },
+    },
+    updateTitle: (state, action: NewTitlePayload) => {
+      state.currentNotes[state.activeNote].title = action.payload;
     },
   },
 });
 
-export const { addNote, deleteNote, setActiveNote, updateActiveNoteTitle } =
+export const { addNote, deleteNote, setActiveNote, saveNote, updateTitle } =
   notesSlice.actions;
-
 export const notesReducer = notesSlice.reducer;

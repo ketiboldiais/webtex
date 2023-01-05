@@ -1,7 +1,7 @@
 import { configureStore, createSelector } from '@reduxjs/toolkit';
 import { useDispatch, TypedUseSelectorHook, useSelector } from 'react-redux';
 import { authReducer } from './auth.slice';
-import { createEmptyNote, notesReducer } from './notes.slice';
+import { IndexedNote, createEmptyNote, notesReducer } from './notes.slice';
 import { authAPI } from './auth.api';
 import { get } from 'idb-keyval';
 
@@ -50,6 +50,5 @@ export const selectLoginStatus = (state: RootState) => state.auth.isLoggedIn;
 // Returns all notes
 export const selectAllNotes = (state: RootState) => state.notes.currentNotes;
 
-// Returns the current active note
-export const selectActiveNote = (state: RootState) =>
-  state.notes.activeNote ? state.notes.activeNote : createEmptyNote();
+export const getActiveNote = (state: RootState) =>
+  state.notes.currentNotes[state.notes.activeNote] ?? 0;

@@ -8,47 +8,65 @@ import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
 import Autofocus from './plugins/Autofocus';
 import Toolbar from './Toolbar/Toolbar';
 import { $getRoot, EditorState } from 'lexical';
-import { useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { MathPlugin } from './plugins/Equation/Equation';
 import { SaveButton } from './Buttons/EditorButtons';
 import { UpdatePlugin } from './plugins/UpdatePlugin';
 import { EditorConfig } from './EditorConfig';
-import { RawNote } from '@model/notes.slice';
+import {
+  RawNote,
+  createEmptyNote,
+  templateNote,
+  updateTitle,
+} from '@model/notes.slice';
+import { useAppDispatch } from '@model/store';
 
 function Placeholder() {
   return <div className={Styles.EditorPlaceholder}></div>;
 }
 
 export interface editorProps {
-  init: RawNote;
+  init?: RawNote;
+  activeNoteIndex: number;
   onSave: (title: string, content: string, wordcount: number) => void;
 }
 
-export function Editor({ init, onSave }: editorProps) {
-  const editorStateRef = useRef<EditorState | null>(null);
-  const [title, setTitle] = useState(init.title);
+const countWords = (editor: EditorState | null) =>
+  editor === null ? 0 : editor.read(() => $getRoot().getTextContentSize());
 
-  const [wordcount, setWordcount] = useState(0);
-  const save = (content: string) => {
-    onSave(title, content, wordcount);
+const getContent = (editor: EditorState | null) =>
+  editor === null ? '' : JSON.stringify(editor);
+
+export function Editor({ init, onSave, activeNoteIndex = -1 }: editorProps) {
+  const doc = useRef<EditorState | null>(null);
+  const dispatch = useAppDispatch();
+  const [title, setTitle] = useState(init?.title ?? '');
+  useEffect(() => {
+    if (init) {
+      setTitle(init.title);
+    }
+  }, [init]);
+  const save = () => {
+    onSave(title, getContent(doc.current), countWords(doc.current));
   };
-
   return (
     <div className={Styles.EditorContainer}>
       <input
         type='text'
         required
-        value={init.title}
+        placeholder={'untitled'}
+        value={title}
         className={Styles.TitleInput}
-        onChange={(event) => setTitle(event.target.value)}
+        onChange={(event) => {
+          setTitle(event.target.value);
+          init && dispatch(updateTitle(event.target.value));
+        }}
       />
       <LexicalComposer initialConfig={{ ...EditorConfig }}>
         <div>
           <div className={Styles.Toolbar}>
             <Toolbar />
-            <SaveButton
-              onClick={() => save(JSON.stringify(editorStateRef.current))}
-            />
+            <SaveButton onClick={save} />
           </div>
           <MathPlugin />
           <RichTextPlugin
@@ -56,14 +74,9 @@ export function Editor({ init, onSave }: editorProps) {
             placeholder={<Placeholder />}
             ErrorBoundary={LexicalErrorBoundary}
           />
-          <UpdatePlugin value={init} />
+          <UpdatePlugin value={init ?? templateNote} />
           <OnChangePlugin
-            onChange={(editorState) => {
-              editorState.read(() => {
-                setWordcount($getRoot().getTextContent().length);
-                editorStateRef.current = editorState;
-              });
-            }}
+            onChange={(editorState) => (doc.current = editorState)}
             ignoreSelectionChange
           />
           <HistoryPlugin />

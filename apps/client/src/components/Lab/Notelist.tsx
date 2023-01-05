@@ -1,46 +1,21 @@
 import Styles from '@styles/Notelist.module.css';
-import { selectActiveNote, useAppSelector } from '@model/store';
+import { getActiveNote, useAppSelector } from '@model/store';
 import { selectAllNotes } from '@model/store';
-import {
-  RawNote,
-  addNote,
-  deleteNote,
-  setActiveNote,
-} from '@model/notes.slice';
+import { addNote, deleteNote, setActiveNote } from '@model/notes.slice';
 import { useAppDispatch } from '@model/store';
 
 export const Notelist = () => {
   const notes = useAppSelector(selectAllNotes);
-  const activeNote = useAppSelector(selectActiveNote);
-
   const dispatch = useAppDispatch();
-
-  const onNoteClicked = (index: number) => {
-    dispatch(setActiveNote(index));
-  };
-
-  const onNewNoteClick = () => {};
-
-  const onDeleteNoteClick = (index: number) => {
-    dispatch(deleteNote(index));
-  };
-
-  const isActiveNote = (note: RawNote) => note.id === activeNote.id;
-
+  const activeNote = useAppSelector(getActiveNote);
   const renderedNotes = notes.map((note, i) => (
-    <li
-      key={note.id}
-      onClick={() => onNoteClicked(i)}
-      className={isActiveNote(note) ? Styles.activeNote : ''}
-    >
+    <li key={note.id} onClick={() => dispatch(setActiveNote(i))}>
       <div className={Styles.NoteTitle}>
-        <h3 className={note.unsaved ? Styles.UnsavedMark : ''}>
-          {isActiveNote(note) ? activeNote.title : note.title}
-        </h3>
+        <h3 className={note.unsaved ? Styles.UnsavedMark : ''}>{note.title}</h3>
         <button
           onClick={(event) => {
             event.stopPropagation();
-            onDeleteNoteClick(i);
+            dispatch(deleteNote(i));
           }}
         >
           &times;
@@ -55,7 +30,13 @@ export const Notelist = () => {
     <div className={Styles.Notelist}>
       <div className={Styles.Notelistheader}>
         <h2>Notes</h2>
-        <button type='button' onClick={onNewNoteClick}>
+        <button
+          type='button'
+          onClick={() => {
+            dispatch(addNote());
+            dispatch(setActiveNote(notes.length));
+          }}
+        >
           New
         </button>
       </div>
