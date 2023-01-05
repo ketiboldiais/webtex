@@ -34,7 +34,7 @@ const amendOne = <
 };
 
 /**
- * Calls each function passed as an argument.
+ * Calls each callback in the callbacks array.
  */
 const hotline = <F extends Function>(...callbacks: F[]) =>
   callbacks.forEach((f) => f());
