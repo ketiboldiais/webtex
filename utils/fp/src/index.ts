@@ -79,8 +79,7 @@ type Mint = <A, B, C extends Obj>(
  *
  * @example
  * ~~~
- *
- * const x = mint([
+ * const j = mint([
  *   (a,i,s) => {
  *     console.log(`(${a},${i}) s.x:${s.x}`) // (3,1) s.x: 14
  *     let x = a + 5
