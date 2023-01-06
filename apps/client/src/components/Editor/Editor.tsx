@@ -8,27 +8,27 @@ import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
 import Autofocus from './plugins/Autofocus';
 import Toolbar from './Toolbar/Toolbar';
 import { $getRoot, EditorState } from 'lexical';
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MathPlugin } from './plugins/Equation/Equation';
 import { SaveButton } from './Buttons/EditorButtons';
 import { UpdatePlugin } from './plugins/UpdatePlugin';
 import { EditorConfig } from './EditorConfig';
 import {
-  RawNote,
-  createEmptyNote,
+  addNote,
+  saveNote,
   templateNote,
   updateTitle,
 } from '@model/notes.slice';
-import { useAppDispatch } from '@model/store';
+import {
+  getActiveNote,
+  getActiveNoteIndex,
+  selectAllNotes,
+  useAppDispatch,
+  useAppSelector,
+} from '@model/store';
 
 function Placeholder() {
   return <div className={Styles.EditorPlaceholder}></div>;
-}
-
-export interface editorProps {
-  init?: RawNote;
-  activeNoteIndex: number;
-  onSave: (title: string, content: string, wordcount: number) => void;
 }
 
 const countWords = (editor: EditorState | null) =>
@@ -37,36 +37,58 @@ const countWords = (editor: EditorState | null) =>
 const getContent = (editor: EditorState | null) =>
   editor === null ? '' : JSON.stringify(editor);
 
-export function Editor({ init, onSave, activeNoteIndex = -1 }: editorProps) {
+export function Editor() {
   const doc = useRef<EditorState | null>(null);
+  const activeNote = useAppSelector(getActiveNote);
   const dispatch = useAppDispatch();
-  const [title, setTitle] = useState(init?.title ?? '');
+  const [title, setTitle] = useState(activeNote ? activeNote.title : '');
+  const [isEditing, setIsEditing] = useState(false);
+  const notes = useAppSelector(selectAllNotes);
+  const aidx = useAppSelector(getActiveNoteIndex);
   useEffect(() => {
-    if (init) {
-      setTitle(init.title);
-    }
-  }, [init]);
+    if (notes.length !== 0) dispatch(updateTitle(title));
+  }, [title]);
+  useEffect(() => {
+    setTitle(activeNote.title);
+  }, [aidx]);
+  useEffect(() => {
+    if (!isEditing && notes.length !== 0)
+      dispatch(saveNote(title, getContent(doc.current)));
+  }, [isEditing]);
   const save = () => {
-    onSave(title, getContent(doc.current), countWords(doc.current));
+    if (!notes.length) dispatch(addNote());
+    dispatch(saveNote(title, getContent(doc.current)));
+    if (activeNote.title !== '') setTitle(activeNote.title);
   };
+
   return (
     <div className={Styles.EditorContainer}>
       <input
         type='text'
         required
         placeholder={'untitled'}
-        value={title}
+        value={activeNote && notes.length !== 0 ? activeNote.title : title}
         className={Styles.TitleInput}
+        onBlur={() => {
+          if (notes.length !== 0) {
+            dispatch(updateTitle(title));
+          }
+        }}
         onChange={(event) => {
+          setIsEditing(true);
           setTitle(event.target.value);
-          init && dispatch(updateTitle(event.target.value));
         }}
       />
       <LexicalComposer initialConfig={{ ...EditorConfig }}>
-        <div>
+        <div onBlur={() => setIsEditing(false)}>
           <div className={Styles.Toolbar}>
             <Toolbar />
-            <SaveButton onClick={save} />
+            <SaveButton
+              onClick={(ev) => {
+                ev.stopPropagation();
+                save();
+              }}
+            />
           </div>
           <MathPlugin />
           <RichTextPlugin
@@ -74,9 +96,12 @@ export function Editor({ init, onSave, activeNoteIndex = -1 }: editorProps) {
             placeholder={<Placeholder />}
             ErrorBoundary={LexicalErrorBoundary}
           />
-          <UpdatePlugin value={init ?? templateNote} />
+          <UpdatePlugin value={activeNote ? activeNote : templateNote} />
           <OnChangePlugin
-            onChange={(editorState) => (doc.current = editorState)}
+            onChange={(editorState, editor) => {
+              doc.current = editorState;
+              editor.registerTextContentListener(() => setIsEditing(true));
+            }}
             ignoreSelectionChange
           />
           <HistoryPlugin />

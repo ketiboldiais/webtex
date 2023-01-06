@@ -51,4 +51,6 @@ export const selectLoginStatus = (state: RootState) => state.auth.isLoggedIn;
 export const selectAllNotes = (state: RootState) => state.notes.currentNotes;
 
 export const getActiveNote = (state: RootState) =>
-  state.notes.currentNotes[state.notes.activeNote] ?? 0;
+  state.notes.currentNotes[state.notes.activeNote] ?? createEmptyNote();
+
+export const getActiveNoteIndex = (state: RootState) => state.notes.activeNote;

@@ -5,7 +5,7 @@ import Styles from '@styles/Modal.module.css';
 interface ModalProps {
   isOpen: boolean;
   hide: () => void;
-  children: JSX.Element;
+  children: JSX.Element[];
 }
 
 export const Modal = ({ isOpen, hide, children }: ModalProps) =>

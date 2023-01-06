@@ -1,13 +1,11 @@
-import { PrepareAction, createSlice } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
 import { PayloadAction } from '@reduxjs/toolkit';
 import { Note } from './notes.api';
 import { nanoid } from '@reduxjs/toolkit';
 
 export const DEFAULT_NOTE_CONTENT = `{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"","type":"text","version":1}],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1}],"direction":"ltr","format":"","indent":0,"type":"root","version":1}}`;
 
-export type RawNote = Note & {
-  unsaved: boolean;
-};
+export type RawNote = Note;
 
 export function createEmptyNote(): RawNote {
   return {
@@ -15,24 +13,20 @@ export function createEmptyNote(): RawNote {
     content: DEFAULT_NOTE_CONTENT,
     created: new Date().toISOString(),
     modified: new Date().toISOString(),
-    unsaved: true,
     id: nanoid(7),
   };
 }
 
 // action types
-type IdPayload = PayloadAction<string>;
 type IndexPayload = PayloadAction<number>;
-type NewTitlePayload = PayloadAction<string>;
+type StringPayload = PayloadAction<string>;
 export type IndexedNote = { note: RawNote; index: number };
-type SaveNotePayload = PayloadAction<IndexedNote>;
 
 export const templateNote: RawNote = {
   title: '',
   content: DEFAULT_NOTE_CONTENT,
   created: new Date().toDateString(),
   modified: new Date().toDateString(),
-  unsaved: true,
   id: nanoid(7),
 };
 
@@ -41,6 +35,7 @@ type NoteState = {
   currentNotes: RawNote[];
   future: RawNote[];
   activeNote: number;
+  unsavedNotes: string[];
 };
 
 const initialState: NoteState = {
@@ -48,6 +43,7 @@ const initialState: NoteState = {
   currentNotes: [],
   future: [],
   activeNote: 0,
+  unsavedNotes: [],
 };
 
 const notesSlice = createSlice({
@@ -76,7 +72,6 @@ const notesSlice = createSlice({
         state.currentNotes[state.activeNote].title = title;
         state.currentNotes[state.activeNote].content = content;
         state.currentNotes[state.activeNote].modified = modified;
-        state.currentNotes[state.activeNote].unsaved = false;
       },
       prepare: (title: string, content: string) => {
         return {
@@ -88,12 +83,21 @@ const notesSlice = createSlice({
         };
       },
     },
-    updateTitle: (state, action: NewTitlePayload) => {
+    updateContent: (state, action: StringPayload) => {
+      state.unsavedNotes[state.activeNote] = action.payload;
+    },
+    updateTitle: (state, action: StringPayload) => {
       state.currentNotes[state.activeNote].title = action.payload;
     },
   },
 });
 
-export const { addNote, deleteNote, setActiveNote, saveNote, updateTitle } =
-  notesSlice.actions;
+export const {
+  addNote,
+  deleteNote,
+  setActiveNote,
+  saveNote,
+  updateTitle,
+  updateContent,
+} = notesSlice.actions;
 export const notesReducer = notesSlice.reducer;
