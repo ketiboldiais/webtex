@@ -1,7 +1,7 @@
 import { scaleLinear } from '@visx/scale';
 import { Axis } from '@visx/axis';
 import { line } from 'd3-shape';
-import { ReactNode } from 'react';
+import { CSSProperties, ReactNode } from 'react';
 import { range } from '@webtex/fp';
 type JSXs = ReactNode;
 type Quad = [number, number, number, number];
@@ -14,42 +14,52 @@ const perspect = (dimension: number) => (margins: Quad) => (going: 'x' | 'y') =>
 const viewScale = (len: number) => (margins: Pair) =>
   len - margins[0] - margins[1];
 
-const Svg =
+const divStyles =
+  (cw: number) =>
+  (ch: number): CSSProperties => ({
+    display: 'block',
+    position: 'relative',
+    width: `${cw * ch}%`,
+    paddingBottom: `${cw}%`,
+    backgroundColor: 'inherit',
+    overflow: 'hidden',
+  });
+
+const translate = (xy: Pair) => `translate(${xy[0]}, ${xy[1]})`;
+const svgStyles = (): CSSProperties => ({
+  display: 'inline-block',
+  position: 'absolute',
+  margin: '1em',
+  top: 0,
+  left: 0,
+});
+const viewBoxit = (w: number) => (h: number) => (m: Quad) =>
+  `0 0 ${viewScale(w)([m[3], m[1]]) + m[3] + m[1]} ${
+    viewScale(h)([m[0], m[2]]) + m[0] + m[2]
+  }`;
+
+const Group = (m: Quad) => (children: JSXs) =>
+  <g transform={translate([m[3], m[0]])}>{children}</g>;
+
+const Svg = (w: number) => (h: number) => (m: Quad) => (children: JSXs) =>
+  (
+    <svg
+      style={svgStyles()}
+      viewBox={viewBoxit(w)(h)(m)}
+      preserveAspectRatio={`xMinYMin meet`}
+    >
+      {Group(m)(children)}
+    </svg>
+  );
+
+const Fig =
   (w: number) =>
   (h: number) =>
   (cw: number) =>
   (ch: number) =>
   (m: Quad) =>
-  (children: JSXs) => {
-    return (
-      <div
-        style={{
-          display: 'block',
-          position: 'relative',
-          width: `${cw * ch}%`,
-          paddingBottom: `${cw}%`,
-          backgroundColor: 'inherit',
-          overflow: 'hidden',
-        }}
-      >
-        <svg
-          style={{
-            display: 'inline-block',
-            position: 'absolute',
-            margin: '1em',
-            top: 0,
-            left: 0,
-          }}
-          viewBox={`0 0 ${viewScale(w)([m[3], m[1]]) + m[3] + m[1]} ${
-            viewScale(h)([m[0], m[2]]) + m[0] + m[2]
-          }`}
-          preserveAspectRatio={`xMinYMin meet`}
-        >
-          <g transform={`translate(${m[3]},${m[0]})`}>{children}</g>
-        </svg>
-      </div>
-    );
-  };
+  (children: JSXs) =>
+    <div style={divStyles(cw)(ch)}>{Svg(w)(h)(m)(children)}</div>;
 
 type F1 = (x: number) => number;
 type Pair = [number, number];
@@ -132,8 +142,6 @@ const xAxis =
   (ticks: number = 5) =>
     axis('x')(domain)(width)(ticks);
 
-const translate = (xy: Pair) => `translate(${xy[0]}, ${xy[1]})`;
-
 const Clip = (id: string) => (children?: JSXs) =>
   (
     <defs>
@@ -155,7 +163,7 @@ const Plot2d = ({
   const vh = () => perspect(wh[1])(m)('y');
   const scaleX = (x: number) => xScale(D)(vw())(x);
   const scaleY = (y: number) => yScale(R)(vh())(y);
-  return Svg(wh[0])(wh[1])(cw)(ch)(m)(
+  return Fig(wh[0])(wh[1])(cw)(ch)(m)(
     <g style={{ transformOrigin: 'center' }}>
       {Clip('plot')(Rectangle(vw())(vh()))}
       <g transform={translate([0, scaleY(0)])}>{xAxis(vw())(R)(15)}</g>
