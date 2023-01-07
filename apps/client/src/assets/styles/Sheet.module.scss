@@ -1,0 +1,30 @@
+@import './base';
+
+.Sheet {
+  // @include Shadow1(20);
+  display: flex;
+  margin: 0 auto;
+  .Row {
+    display: flex;
+    flex-direction: column;
+    .Col {
+      display: flex;
+    }
+    .cell {
+      input {
+        display: block;
+        word-break: break-all;
+        width: 50px;
+        height: 30px;
+      }
+      width: 50px;
+      height: 30px;
+      border: solid thin $coolGrey4;
+      display: block;
+      margin: 2px;
+      outline: none;
+      border: none;
+      @include Shadow1(20);
+    }
+  }
+}

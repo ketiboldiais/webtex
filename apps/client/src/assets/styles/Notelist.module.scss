@@ -1,9 +1,11 @@
 @import './base';
 
 .Notelist {
-  border-right: solid thin $coolGrey5;
-  margin: 0;
-  padding: 0 $pad1;
+  @include Shadow1(10);
+  margin: $margin1;
+  margin-left: $margin3;
+  padding: $pad1 $pad2;
+  overflow-y: scroll;
   .UnsavedMark {
     &:after {
       content: ' ';
@@ -20,12 +22,12 @@
     display: flex;
     justify-content: space-between;
     padding: $pad1;
-    .newNoteIcon {
-      width: 1em;
-      height: 1em;
-      vertical-align: middle;
-      fill: currentColor;
-      overflow: hidden;
+    button {
+      color: $coolGrey3;
+      border: solid thin $coolGrey4;
+      font-size: 0.75em;
+      padding: 0 3px;
+      border-radius: 5px;
     }
   }
   .NotelistRows {
@@ -33,6 +35,7 @@
     padding: 0;
     display: flex;
     flex-direction: column-reverse;
+
     .activeNote {
       background-color: $blue4;
       color: white;

@@ -22,22 +22,26 @@
   font-weight: bold;
   src: url("../fonts/Muli-BoldItalic.ttf");
 }
-.LabContainer {
-  position: fixed;
-  width: 97vw;
-  margin: 2vh 0;
-  display: grid;
-  grid-template-columns: 1fr 3fr;
-  -moz-column-gap: 8px;
-       column-gap: 8px;
-  height: 90vh;
+.DocPage {
+  width: 100%;
+  max-width: 700px;
+  padding-top: 15vh;
+  margin: auto;
 }
-.LabContainer .Paper {
+.DocPage h3 {
+  padding: 0;
+  margin: 0;
+  text-align: left;
+}
+.DocPage section {
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
   transition: 0.3s;
   border-radius: 5px;
-  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  margin: 0.5rem 1.5rem;
 }
-.LabContainer .Paper:hover {
+.DocPage section:hover {
   box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
-}/*# sourceMappingURL=Lab.module.css.map */
+}/*# sourceMappingURL=DocPage.module.css.map */

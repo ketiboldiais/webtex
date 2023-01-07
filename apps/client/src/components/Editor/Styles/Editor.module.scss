@@ -24,7 +24,7 @@
   .Toolbar {
     display: flex;
     flex-wrap: wrap;
-    @include Shadow1($grey);
+    @include Border($coolGrey5);
     justify-content: flex-start;
     padding: $pad1;
   }
@@ -35,9 +35,9 @@
     text-align: right;
   }
   .EditorInput {
-    @include Shadow1($grey);
     display: inline-block;
-    height: 50vh;
+    overflow-y: overlay;
+    height: 80vh;
     width: 100%;
     resize: none;
     padding: $pad3;

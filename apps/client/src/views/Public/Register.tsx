@@ -66,7 +66,7 @@ const Register = () => {
   };
 
   return (
-    <article>
+    <article className={Styles.RegisterWrapper}>
       <section className={Styles.RegisterContainer}>
         <h1 className={Styles.RegisterHeader}>Register</h1>
         <form onSubmit={handleSubmit}>

@@ -4,10 +4,11 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
+import { NodeEventPlugin } from '@lexical/react/LexicalNodeEventPlugin';
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
 import Autofocus from './plugins/Autofocus';
 import Toolbar from './Toolbar/Toolbar';
-import { $getRoot, EditorState } from 'lexical';
+import { $getRoot, EditorState, RootNode } from 'lexical';
 import { useEffect, useRef, useState } from 'react';
 import { MathPlugin } from './plugins/Equation/Equation';
 import { SaveButton } from './Buttons/EditorButtons';
@@ -52,8 +53,10 @@ export function Editor() {
     setTitle(activeNote.title);
   }, [aidx]);
   useEffect(() => {
-    if (!isEditing && notes.length !== 0)
+    if (!isEditing && notes.length !== 0) {
       dispatch(saveNote(title, getContent(doc.current)));
+      console.log('ran save');
+    }
   }, [isEditing]);
   const save = () => {
     if (!notes.length) dispatch(addNote());
@@ -91,20 +94,23 @@ export function Editor() {
             />
           </div>
           <MathPlugin />
+          <HistoryPlugin />
           <RichTextPlugin
             contentEditable={<ContentEditable className={Styles.EditorInput} />}
             placeholder={<Placeholder />}
             ErrorBoundary={LexicalErrorBoundary}
           />
           <UpdatePlugin value={activeNote ? activeNote : templateNote} />
-          <OnChangePlugin
-            onChange={(editorState, editor) => {
-              doc.current = editorState;
-              editor.registerTextContentListener(() => setIsEditing(true));
-            }}
-            ignoreSelectionChange
+          <NodeEventPlugin
+            nodeType={RootNode}
+            eventType='click'
+            eventListener={(_) => setIsEditing(true)}
           />
-          <HistoryPlugin />
+          <OnChangePlugin
+            onChange={(editorState) => (doc.current = editorState)}
+            ignoreSelectionChange
+            ignoreHistoryMergeTagChange
+          />
           <Autofocus />
         </div>
       </LexicalComposer>

@@ -47,7 +47,7 @@
 .EditorContainer .Toolbar {
   display: flex;
   flex-wrap: wrap;
-  box-shadow: 0px 1px 3px hsl(0deg, 0%, 91%), 0 1px 2px hsl(0deg, 0%, 50%);
+  border: solid thin hsl(208deg, 21%, 88%);
   justify-content: flex-start;
   padding: 0.25rem;
 }
@@ -58,9 +58,9 @@
   text-align: right;
 }
 .EditorContainer .EditorInput {
-  box-shadow: 0px 1px 3px hsl(0deg, 0%, 91%), 0 1px 2px hsl(0deg, 0%, 50%);
   display: inline-block;
-  height: 50vh;
+  overflow-y: overlay;
+  height: 80vh;
   width: 100%;
   resize: none;
   padding: 0.75rem;

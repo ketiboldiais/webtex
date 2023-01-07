@@ -3,6 +3,7 @@ import '@styles/App.module.css';
 
 // pages
 import { Layout } from './views/Layout/Layout';
+import Main from './views/Public/Main';
 import Docs from './views/Public/Docs';
 import { Missing } from './views/Public/Missing';
 import Workspace from './views/Protected/Workspace/Workspace';
@@ -20,7 +21,7 @@ function App() {
   return (
     <Routes>
       <Route path='/' element={<Layout />}>
-        <Route index element={session ? <Workspace /> : <Docs />} />
+        <Route index element={session ? <Docs /> : <Main />} />
         <Route
           path='login'
           element={
@@ -37,6 +38,7 @@ function App() {
             </Suspense>
           }
         />
+        <Route path='main' element={<Main />} />
         <Route path='docs' element={<Docs />} />
         <Route element={<Protected />}>
           <Route index element={<Workspace />} />

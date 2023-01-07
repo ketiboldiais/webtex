@@ -32,10 +32,12 @@ export const Lab = () => {
 
   return (
     <>
-      <ControlBar />
+      {/* <ControlBar /> */}
       <article className={Styles.LabContainer}>
         <Notelist />
-        <Editor />
+        <div className={Styles.Paper}>
+          <Editor />
+        </div>
       </article>
     </>
   );

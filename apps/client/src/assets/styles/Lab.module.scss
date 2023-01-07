@@ -1,7 +1,15 @@
 @import './base';
 
 .LabContainer {
+  position: fixed;
+  width: 97vw;
+  margin: 2vh 0;
   display: grid;
   grid-template-columns: 1fr 3fr;
-  @include Shadow1(90);
+  column-gap: 8px;
+  height: 90vh;
+  .Paper {
+    @include Card;
+    width: 100%;
+  }
 }

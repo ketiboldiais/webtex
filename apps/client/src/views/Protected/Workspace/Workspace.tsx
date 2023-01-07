@@ -8,7 +8,7 @@ const Workspace = () => {
   const content = (
     <article className={Styles.Home}>
       <section className={Styles.Workspace}>
-        <Editor init={DEFAULT_NOTE.content} privy={true} />
+        {/* <Editor init={DEFAULT_NOTE.content} privy={true} /> */}
       </section>
     </article>
   );

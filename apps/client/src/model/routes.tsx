@@ -1,7 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 import { Layout } from 'src/views/Layout/Layout';
-import Docs from 'src/views/Public/Docs';
+import Docs from '@views/Public/Main';
 import Login from 'src/views/Public/Login';
 import { Notes } from 'src/views/Protected/Notes';
 import Register from 'src/views/Public/Register';

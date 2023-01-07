@@ -3,6 +3,8 @@
 .LoginContainer {
   @include Shadow1($grey);
   padding: 0 $pad4;
+  max-width: 600px;
+  margin: auto;
   .LoginHeader {
     margin: $margin2;
     text-align: center;

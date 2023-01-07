@@ -23,9 +23,11 @@
   src: url("../fonts/Muli-BoldItalic.ttf");
 }
 .Notelist {
-  border-right: solid thin hsl(208deg, 21%, 88%);
-  margin: 0;
-  padding: 0 0.25rem;
+  box-shadow: 0px 1px 3px hsl(10deg, 0%, 91%), 0 1px 2px hsl(10deg, 0%, 50%);
+  margin: 0.25rem;
+  margin-left: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  overflow-y: scroll;
 }
 .Notelist .UnsavedMark:after {
   content: " ";
@@ -41,6 +43,13 @@
   display: flex;
   justify-content: space-between;
   padding: 0.25rem;
+}
+.Notelist .Notelistheader button {
+  color: hsl(208deg, 12%, 58%);
+  border: solid thin hsl(210deg, 16%, 76%);
+  font-size: 0.75em;
+  padding: 0 3px;
+  border-radius: 5px;
 }
 .Notelist .NotelistRows {
   margin: 0;
@@ -65,6 +74,7 @@
 }
 .Notelist .NotelistRows li .NoteTitle button {
   color: hsl(4deg, 78%, 45%);
+  z-index: 20;
 }
 .Notelist .NotelistRows li .NoteTitle h3 {
   font-size: 0.8rem;

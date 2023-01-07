@@ -9,8 +9,9 @@ let isLoggedIn = false;
 
 try {
   let time = (await get('validSession')) as number;
-  if (time !== Date.now() && time !== 0) {
-    isLoggedIn = true;
+  console.log(time);
+  if (0 < time && time !== Date.now()) {
+    isLoggedIn = false;
   }
 } catch (_) {}
 

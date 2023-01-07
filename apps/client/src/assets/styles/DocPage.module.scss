@@ -1,0 +1,20 @@
+@import './base';
+
+.DocPage {
+	width: $full;
+	max-width: 700px;
+	padding-top: 15vh;
+	margin: auto;
+	h3 {
+		padding: 0;
+		margin: 0;
+		text-align: left;
+	}
+	section {
+		@include Card;
+		display: flex;
+		flex-direction: column;
+		padding: $pad5;
+		margin: $margin2 $margin5;
+	}
+}
