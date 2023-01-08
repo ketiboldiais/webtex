@@ -22,10 +22,13 @@ export default defineConfig({
   },
   server: {
     port: 5174,
-    host: 'localhost',
+    host: '127.0.0.1',
+    hmr: {
+      clientPort:443,
+    },
     proxy: {
       "/api": {
-        target: "http://localhost:5173",
+        target: "https://api.webtexdev.cloud",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
       },

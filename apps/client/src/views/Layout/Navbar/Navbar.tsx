@@ -1,5 +1,5 @@
-import { useAppSelector } from "../../../hooks/useAppSelector";
-import { selectLoginStatus } from "../../../model/store";
+import { useAppSelector } from "@model/store";
+import { selectLoginStatus } from "@model/store";
 import { PrivateNav } from "./PrivateNav";
 import { PublicNav } from "./PublicNav";
 

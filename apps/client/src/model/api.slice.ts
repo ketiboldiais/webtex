@@ -8,7 +8,7 @@ import {
 import { Mutex } from "async-mutex";
 import { logoff, setToken } from "./auth.slice";
 import { RootState } from "./store";
-import { AUTH, BASE } from "@webtex/shared";
+import { server_origin, auth_api_route } from "@webtex/shared";
 const mutex = new Mutex();
 
 /**
@@ -16,7 +16,7 @@ const mutex = new Mutex();
  */
 const baseQuery = fetchBaseQuery({
   // All outbound requests go straight to the server URL.
-  baseUrl: BASE,
+  baseUrl: server_origin,
   // All outbound requestions have credentials set.
   credentials: "include",
   // All outbound requests have accessTokens for authenticity.
@@ -45,7 +45,7 @@ export const fetchBase: BaseQueryFn<
       const release = await mutex.acquire();
       try {
         const refreshResult = await baseQuery(
-          { method: "PATCH", url: AUTH },
+          { method: "PATCH", url: auth_api_route },
           api,
           extraOptions
         );
@@ -55,8 +55,7 @@ export const fetchBase: BaseQueryFn<
           api.dispatch(setToken({ accessToken: token }));
         } else {
           // this works ok.
-          api.dispatch(logoff());
-          window.location.href = "/login";
+          // api.dispatch(logoff());
         }
       } finally {
         // DO NOT DELETE THIS LINE.

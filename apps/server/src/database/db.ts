@@ -1,13 +1,7 @@
-import pg from "pg";
-import { Kysely, PostgresDialect } from "kysely";
-import Env from "../configs/index.js";
-import {
-  ASYNC_ERROR,
-  CLIENT_FAIL,
-  SERVER_FAIL,
-  SERVER_SUCCESS,
-} from "@webtex/shared";
-import { Database, UserEntry } from "../global.js";
+import pg from 'pg';
+import { Kysely, PostgresDialect } from 'kysely';
+import Env from '../configs/index.js';
+import { Database, UserEntry } from '../global.js';
 
 const { Pool } = pg;
 
@@ -24,54 +18,60 @@ const createNewUser = (email: string, hash: string): UserEntry => {
 const verifyUserDB = async (email: string) => {
   try {
     let result = await db
-      .updateTable("users")
+      .updateTable('users')
       .set({ verified: true })
-      .where("email", "=", email)
-      .returning("id")
+      .where('email', '=', email)
+      .returning('id')
       .executeTakeFirst();
-    return result;
-  } catch (error) {}
+    if (result === undefined) {
+      return null;
+    }
+  } catch (error) {
+    return null;
+  }
 };
 
 const getUser = async (email: string) => {
   try {
     let result = await db
-      .selectFrom("users")
-      .select(["password", "verified", "user"])
-      .where("email", "=", email)
+      .selectFrom('users')
+      .select(['password', 'verified', 'user'])
+      .where('email', '=', email)
       .executeTakeFirst();
-    if (!result) {
-      return null;
+    if (result) {
+      return result;
     }
-    return result;
+    return null;
   } catch (error) {
-    return ASYNC_ERROR;
+    return null;
   }
 };
 
 const saveNewUser = async (user: UserEntry) => {
   try {
     let result = await db
-      .insertInto("users")
+      .insertInto('users')
       .values(user)
-      .returning("id")
+      .returning('id')
       .executeTakeFirst();
-    if (result) {
-      return SERVER_SUCCESS;
+    if (result === undefined) {
+      return null;
     }
-    return SERVER_FAIL;
   } catch (error) {
-    return ASYNC_ERROR;
+    return null;
   }
 };
 
 const findByEmail = async (email: string) => {
   try {
-    return await db
-      .selectFrom("users")
-      .select(["password", "verified", "user"])
-      .where("email", "=", email)
+    let result = await db
+      .selectFrom('users')
+      .select(['password', 'verified', 'user'])
+      .where('email', '=', email)
       .executeTakeFirst();
+    if (result === null) {
+      return null;
+    }
   } catch (er) {
     return null;
   }

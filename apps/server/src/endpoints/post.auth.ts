@@ -1,19 +1,3 @@
-import jwt from "jsonwebtoken";
-import { validateAuthPayload } from "@webtex/lib";
-import {
-  ASYNC_ERROR,
-  CLIENT_FAIL,
-  CLIENT_SUCCESS,
-  SERVER_FAIL,
-} from "@webtex/shared";
-import { Request, Response } from "express";
-import { createNewUser, findByEmail, saveNewUser } from "../database/db.js";
-import { hash, makeId, message } from "../utils/index.js";
-import { cache } from "../database/cache.js";
-import { buildMail, nodeMailer } from "src/middleware/mailer.js";
-import Env from "src/configs/index.js";
-import { EmailToken } from "src/global.js";
-
 /**
  * @file Handler for registering a new account.
  * @route POST /auth
@@ -22,31 +6,44 @@ import { EmailToken } from "src/global.js";
  * at login, since the user still has to verify their
  * email.
  */
+
+import jwt from 'jsonwebtoken';
+import { validateAuthPayload } from '@webtex/lib';
+import { Request, Response } from 'express';
+import { createNewUser, findByEmail, saveNewUser } from '../database/db.js';
+import { hash, makeId } from '../utils/index.js';
+import { cache } from '../database/cache.js';
+import { buildMail, nodeMailer } from 'src/middleware/mailer.js';
+import Env from 'src/configs/index.js';
+import { EmailToken } from 'src/global.js';
+
 export const register = async (req: Request, res: Response) => {
   const { body } = req;
   const data = validateAuthPayload(body);
   if (data === null) {
-    return res.status(400).json(message(CLIENT_FAIL));
+    return res.sendStatus(400);
   }
   const { email, password } = data;
   try {
     const isDuplicate = await findByEmail(email);
     if (isDuplicate) {
-      return res.status(400).json(message(CLIENT_FAIL));
+      return res.sendStatus(400);
     }
     const pwd = await hash(password);
-    if (pwd === SERVER_FAIL || pwd === ASYNC_ERROR) {
-      return res.status(400).json(message(SERVER_FAIL));
+    if (pwd === undefined || pwd === null) {
+      return res.sendStatus(400);
     }
     const newUser = createNewUser(email, pwd);
-    const successfulSave = await saveNewUser(newUser);
-    if (successfulSave === SERVER_FAIL || successfulSave === ASYNC_ERROR) {
-      return res.status(400).json(message(SERVER_FAIL));
+    const savedUser = await saveNewUser(newUser);
+    if (savedUser === null || savedUser === undefined) {
+      return res.sendStatus(400);
+    }
+    if (savedUser === null || savedUser=== undefined) {
+      return res.sendStatus(400);
     }
     const otp = makeId(7);
     await cache.saveTemp(otp, email);
     const otpPayload: EmailToken = { user: { email: email, otp: otp } };
-
     jwt.sign(
       otpPayload,
       Env.jwt.email.key,
@@ -62,8 +59,7 @@ export const register = async (req: Request, res: Response) => {
         }
       }
     );
-
-    return res.status(200).json(message(CLIENT_SUCCESS));
+    return res.status(200);
   } catch (error) {
     return res.sendStatus(500);
   }

@@ -15,6 +15,7 @@ import { logRequest } from "./middleware/logger.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import { cache } from "./database/cache.js";
+import {client_origin} from "@webtex/shared";
 
 const RedisStore = connectRedis(session);
 const server = express();
@@ -31,8 +32,11 @@ server
   .disable("x-powered-by")
   .use(express.urlencoded({ extended: false }))
   .use(ignoreFavicon)
-  .use(helmet())
-  .use(cors(Env.cors))
+  .use(cors({
+    origin: [client_origin, '127.0.0.1'],
+    credentials: true,
+    optionsSuccessStatus: 200
+  }))
   .use(express.json())
   .use(cookieParser())
   .use(

@@ -1,5 +1,5 @@
 import { useLocation, Navigate, Outlet } from 'react-router-dom';
-import { useAppSelector } from '@hooks/useAppSelector';
+import { useAppSelector } from '@model/store';
 import { selectLoginStatus } from '@model/store';
 
 export const Protected = () => {

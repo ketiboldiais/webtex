@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
-import { BASE, VERIFY } from "@webtex/shared";
 import Env from "../configs/index.js";
+import {server_origin} from "@webtex/shared";
 
 export const nodeMailer = nodemailer.createTransport({
   service: Env.mail.service,
@@ -13,7 +13,7 @@ export const buildMail = (userEmail: string, otpToken: string) => {
     to: userEmail,
     subject: "Webtex Verification",
     html: `<h1>Thanks for registering with Webtex!<h1>
-           <p>Click <a href="${BASE}${VERIFY}${otpToken}">here</a> to complete the registeration process.</p>`,
+           <p>Click <a href="${server_origin}/confirmation/${otpToken}">here</a> to complete the registeration process.</p>`,
   };
 };
 

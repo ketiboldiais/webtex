@@ -13,5 +13,5 @@ windows:
             - redis-server
         - webtex-app:
             - sleep 1; js dev
-        - caddy-agent:
+        - caddy:
             - sleep 15; caddy run

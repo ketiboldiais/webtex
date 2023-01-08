@@ -1,54 +1,35 @@
-import { createApi } from "@reduxjs/toolkit/dist/query/react";
-import {
-  LoginPayload,
-  AUTH,
-  ServerMessage,
-  User,
-  SESSION,
-  USER,
-  OTP,
-  VERIFY,
-} from "@webtex/shared";
-import { fetchBase } from "./api.slice";
-import { logoff } from "./auth.slice";
+import { createApi } from '@reduxjs/toolkit/dist/query/react';
+import { fetchBase } from './api.slice';
+import { logoff } from './auth.slice';
+import { auth_api_route, login_api_route, logout_api_route, refresh_api_route } from '@webtex/shared';
 
 export const authAPI = createApi({
-  reducerPath: "authAPI",
+  reducerPath: 'authAPI',
   baseQuery: fetchBase,
   endpoints: (builder) => ({
     /**
      * @description Sends `POST base/auth` request to register user
      */
-    register: builder.mutation<ServerMessage, User>({
+    register: builder.mutation<void, { email: string; password: string }>({
       query: (registrationData) => ({
-        url: AUTH,
-        method: "POST",
+        url: auth_api_route,
+        method: 'POST',
         body: registrationData,
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
-      }),
-    }),
-    /**
-     * @description Sends `GET base/verify/otp` request to verify user
-     */
-    verify: builder.mutation<ServerMessage, OTP>({
-      query: (otp) => ({
-        url: VERIFY,
-        method: "GET",
-        body: otp,
       }),
     }),
     /**
      * @description Sends `POST base/user` request to login user
      */
-    signin: builder.mutation<LoginPayload, User>({
+    signin: builder.mutation<void, { email: string; password: string }>({
       query: (credentials) => ({
-        url: USER,
-        method: "POST",
+        url: login_api_route,
+        method: 'POST',
         body: { ...credentials },
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       }),
     }),
@@ -57,8 +38,8 @@ export const authAPI = createApi({
      */
     signout: builder.mutation<void, void>({
       query: () => ({
-        url: SESSION,
-        method: "DELETE",
+        url: logout_api_route,
+        method: 'POST',
       }),
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
@@ -75,8 +56,8 @@ export const authAPI = createApi({
      */
     refresh: builder.mutation({
       query: () => ({
-        url: SESSION,
-        method: "PATCH",
+        url: refresh_api_route,
+        method: 'POST',
       }),
     }),
   }),
@@ -87,5 +68,4 @@ export const {
   useSigninMutation,
   useSignoutMutation,
   useRefreshMutation,
-  useVerifyMutation,
 } = authAPI;

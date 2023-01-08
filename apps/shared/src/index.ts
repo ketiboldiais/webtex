@@ -1,6 +1,11 @@
 import { Session } from "express-session";
-export * from "./endpoints.js";
-export * from "./messages.js";
+
+export const client_origin = 'https://webtexdev.cloud';
+export const server_origin = 'https://api.webtexdev.cloud';
+export const auth_api_route = '/auth';
+export const login_api_route = '/user';
+export const logout_api_route = '/session';
+export const refresh_api_route = '/refresh';
 
 export type DateObj = {
   utcDate: string;
