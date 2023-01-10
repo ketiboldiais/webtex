@@ -30,9 +30,10 @@
     "vitest": "^0.25.8"
   },
   "dependencies": {
-    "@webtex/math": "workspace:*",
     "@webtex/fp": "workspace:*",
+    "@webtex/math": "workspace:*",
     "deep-equal": "^2.1.0",
-    "fp-ts": "^2.13.1"
+    "fp-ts": "^2.13.1",
+    "ts-xor": "^1.0.8"
   }
 }

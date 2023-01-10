@@ -5,13 +5,19 @@ import {
   useAppSelector,
 } from '@model/store';
 import { selectAllNotes } from '@model/store';
-import { addNote, deleteNote, setActiveNote } from '@model/notes.slice';
+import {
+  addNote,
+  createEmptyNote,
+  deleteNote,
+  setActiveNote,
+} from '@model/notes.slice';
 import { useAppDispatch } from '@model/store';
 
 export const Notelist = () => {
   const notes = useAppSelector(selectAllNotes);
   const dispatch = useAppDispatch();
   const aidx = useAppSelector(getActiveNoteIndex);
+  const activeNote = useAppSelector(getActiveNote);
   const renderedNotes = notes.map((note, i) => (
     <li
       key={note.id}
@@ -23,7 +29,7 @@ export const Notelist = () => {
         <button
           onClick={(event) => {
             event.stopPropagation();
-            dispatch(deleteNote(i));
+            dispatch(deleteNote({ index: i, id: note.id }));
           }}
         >
           &times;
@@ -34,15 +40,15 @@ export const Notelist = () => {
       </div>
     </li>
   ));
-  
+
   return (
     <div className={Styles.Notelist}>
       <div className={Styles.Notelistheader}>
         <h2>Notes</h2>
         <button
           type='button'
-          onClick={() => {
-            dispatch(addNote());
+          onClick={async () => {
+            dispatch(addNote(createEmptyNote()));
             dispatch(setActiveNote(notes.length));
           }}
         >

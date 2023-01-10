@@ -6,6 +6,7 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { NodeEventPlugin } from '@lexical/react/LexicalNodeEventPlugin';
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
+import { useAutosave } from '@hooks/useAutosave';
 import Autofocus from './plugins/Autofocus';
 import Toolbar from './Toolbar/Toolbar';
 import { $getRoot, EditorState, RootNode } from 'lexical';
@@ -16,6 +17,7 @@ import { UpdatePlugin } from './plugins/UpdatePlugin';
 import { EditorConfig } from './EditorConfig';
 import {
   addNote,
+  createEmptyNote,
   saveNote,
   templateNote,
   updateTitle,
@@ -52,18 +54,20 @@ export function Editor() {
   useEffect(() => {
     setTitle(activeNote.title);
   }, [aidx]);
-  useEffect(() => {
-    if (!isEditing && notes.length !== 0) {
-      dispatch(saveNote(title, getContent(doc.current)));
-      console.log('ran save');
-    }
-  }, [isEditing]);
   const save = () => {
-    if (!notes.length) dispatch(addNote());
-    dispatch(saveNote(title, getContent(doc.current)));
-    if (activeNote.title !== '') setTitle(activeNote.title);
+    if (notes.length === 0) {
+      dispatch(addNote(createEmptyNote(title, getContent(doc.current))));
+      // dispatch(saveNote(title, getContent(doc.current)));
+    }
+    if (!isEditing) {
+      dispatch(saveNote(title, getContent(doc.current)));
+      if (activeNote.title !== '') setTitle(activeNote.title);
+    }
   };
-
+  useAutosave({
+    data: { title, content: getContent(doc.current) },
+    onSave: save,
+  });
   return (
     <div className={Styles.EditorContainer}>
       <input

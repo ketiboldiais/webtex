@@ -1,9 +1,9 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { useEffect } from 'react';
-import { RawNote } from '@model/notes.slice';
+import { Note } from '@model/notes.api';
 
 export interface updateProps {
-  value: RawNote;
+  value: Note;
 }
 
 export function UpdatePlugin({ value }: updateProps) {

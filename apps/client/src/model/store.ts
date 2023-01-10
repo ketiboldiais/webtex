@@ -1,17 +1,21 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, createSelector } from '@reduxjs/toolkit';
 import { useDispatch, TypedUseSelectorHook, useSelector } from 'react-redux';
 import { authReducer } from './auth.slice';
-import { createEmptyNote, notesReducer } from './notes.slice';
+import { IndexedNote, createEmptyNote, notesReducer } from './notes.slice';
+import { noteListeners } from './notes.middleware';
 import { authAPI } from './auth.api';
 import { get } from 'idb-keyval';
 
 let isLoggedIn = false;
+
 try {
   let time = (await get('validSession')) as number;
+  console.log(time);
   if (0 < time && time !== Date.now()) {
     isLoggedIn = false;
   }
 } catch (_) {}
+
 export const store = configureStore({
   reducer: {
     [authAPI.reducerPath]: authAPI.reducer,
@@ -21,7 +25,9 @@ export const store = configureStore({
   devTools: process.env.NODE_ENV === 'development',
   // needed for RTK-query to cache results
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({}).concat([authAPI.middleware]),
+    getDefaultMiddleware({})
+      .concat([authAPI.middleware])
+      .prepend(noteListeners),
   preloadedState: {
     auth: {
       token: null,

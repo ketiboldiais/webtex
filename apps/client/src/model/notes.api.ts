@@ -1,8 +1,10 @@
-import { DBSchema, openDB } from 'idb';
-const DB_NAME = 'webtex-note-db';
-const DB_VERSION = 1;
+import Dexie, { Table } from 'dexie';
+
+const dbName = 'webtexNotes';
+const dbVersion = 1;
 
 export type Note = {
+  count?: number;
   title: string;
   created: string;
   modified: string;
@@ -10,31 +12,44 @@ export type Note = {
   id: string;
 };
 
-export interface NoteDB extends DBSchema {
-  notes: {
-    key: string;
-    value: Note;
-    indexes: {
-      'by-title': string;
-      'by-created': string;
-      'by-modified': string;
-      'by-wordcount': number;
-    };
-  };
+export class NoteDB extends Dexie {
+  notes!: Table<Note>;
+  constructor() {
+    super(dbName);
+    this.version(dbVersion).stores({
+      notes: '++count, title, created, modified, content, id',
+    });
+  }
 }
 
-export const SaveNote = async (note: Note) => {
-  const db = await openDB<NoteDB>(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      const noteStore = db.createObjectStore('notes', {
-        keyPath: 'title',
-      });
-      noteStore.createIndex('by-created', 'created');
-      noteStore.createIndex('by-modified', 'modified');
-      noteStore.createIndex('by-title', 'title');
-      noteStore.createIndex('by-wordcount', 'wordcount');
-    },
-  });
-  await db.put('notes', note, note.title);
-  return note;
-};
+export const db = new NoteDB();
+
+export async function dbAddNote(note: Note) {
+  try {
+    await db.notes.add(note);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+export async function dbSaveNote(note: Note) {
+}
+
+export async function dbGetNotes() {
+  try {
+    const notelist = await db.notes.toArray();
+    return notelist;
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function dbDeleteNote(noteId: string) {
+  try {
+    let result = await db.notes.where('id').equals(noteId).delete();
+    return result;
+  } catch (error) {
+    return false;
+  }
+}
