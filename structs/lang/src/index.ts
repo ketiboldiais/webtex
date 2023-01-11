@@ -19,7 +19,8 @@ interface Sys {
   // ['null']: null;
   ['{}']: {};
 }
-export type Result = { type: keyof Sys; value: Sys[keyof Sys] };
+type Result = { type: keyof Sys; value: Sys[keyof Sys] };
+type Thunk = () => Parser;
 type State = {
   targetString: string;
   index: number;
@@ -141,12 +142,6 @@ const nested =
       return out;
     });
 
-const between =
-  (leftParser: Parser, rightParser: Parser) => (contentParser: Parser) =>
-    sequenceOf(leftParser, contentParser, rightParser).map(
-      (_, results) => results[1]
-    );
-
 const char = (str: string, type: keyof Sys = 'string') =>
   new Parser((state: State) => {
     const { targetString, index, erred } = state;
@@ -262,16 +257,16 @@ const many = manyBuilder('many');
 const atLeast1 = manyBuilder('atLeast1');
 
 /** Parse everything between parentheses. */
-const parenthesized = between(char('('), char(')'));
+const parenthesized = nested(char('('), char(')'));
 
 /** Parse everything between braces. */
-const braced = between(char('{'), char('}'));
+const braced = nested(char('{'), char('}'));
 
 /** Parse everything between double quotes. */
-const dquoted = between(char('"'), char('"'));
+const dquoted = nested(char('"'), char('"'));
 
 /** Parse everything between single quotes. */
-const squoted = between(char(`'`), char(`'`));
+const squoted = nested(char(`'`), char(`'`));
 
 /** Parses symbols separated by the specified separator. */
 const sep = (separator: Parser, type?: keyof Sys) => (valueParser: Parser) =>
@@ -305,25 +300,18 @@ const num = digits.map((res, _) => ({
   value: Number(res.value),
 }));
 
-/** Parses a pair. */
 const point = sequenceOf(char('('), num, char(','), num, char(')')).map(
   (_, results) => ({
     type: 'point',
     value: [Number(results[1].value), Number(results[3].value)],
   })
 );
-
-type Thunk = () => Parser;
 const lazy = (thunkp: Thunk) =>
   new Parser((state: State) => {
     const parser = thunkp();
     return parser.morph(state);
   });
-
-/**
- * Parse everything between square brackets.
- */
-const bracketed = between(char('['), char(']'));
+const bracketed = nested(char('['), char(']'));
 const numSep = sep(char(','), 'number[]');
 const strSep = sep(char(','), 'string[]');
 const numvals = lazy(() => choiceOf(num, numtup));
@@ -346,7 +334,6 @@ export {
   num,
   parenthesized,
   bracketed,
-  between,
   nested,
   braced,
   sep,
