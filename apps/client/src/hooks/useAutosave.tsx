@@ -21,7 +21,7 @@ interface autoSaveProps<A, B> {
 export function useAutosave<A, B>({
   data,
   onSave,
-  interval = 20_000,
+  interval = 30_000,
   saveOnUnmount = true,
 }: autoSaveProps<A, B>) {
   const valueOnCleanup = useRef(data);
