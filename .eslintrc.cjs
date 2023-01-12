@@ -121,7 +121,7 @@ module.exports = {
     'no-undefined': OFF,
     'no-unused-vars': ERROR,
     // Disallow hoisting - let & const don't allow hoisting anyhow
-    'no-use-before-define': ERROR,
+    'no-use-before-define': OFF,
 
     // Node.js and CommonJS
     'callback-return': [WARN, ['callback', 'next']],
@@ -147,7 +147,7 @@ module.exports = {
     'no-dupe-class-members': ERROR,
     'no-this-before-super': ERROR,
     'no-var': WARN,
-    'object-shorthand': [WARN, 'never'],
+    'object-shorthand': OFF,
     'prefer-arrow-callback': WARN,
     'prefer-spread': WARN,
     'prefer-template': WARN,
@@ -176,7 +176,7 @@ module.exports = {
     ],
     // 'func-style': [WARN, 'declaration'],
     // 'id-length': [WARN, { min: 1, max: 25 }],
-    indent: [WARN, 2],
+    indent: OFF,
     // 'jsx-quotes': [WARN, 'prefer-double'],
     'linebreak-style': [WARN, 'unix'],
     'lines-around-comment': [WARN, { beforeBlockComment: true }],

@@ -50,9 +50,44 @@ const newExpectError = (state: State, exp: string, got: string) =>
 
 class Parser {
   morph: Combinator;
+
+  /**
+   * Constructs a new parser.
+   * A combinator is a function that takes a state
+   * and returns a state:
+   * 
+   * ```
+   * (state: State) => State
+   * ```
+   * 
+   * A `State` is an object with the shape:
+   * 
+   * ```
+   * type State = {
+   *    targetString: string; 
+   *    index: number; 
+   *    erred: boolean; 
+   *    error: string; 
+   *    result: Result; 
+   *    results: Result[];
+   * }
+   * ```
+   * A `Result` is the output of a Combinator:
+   * ```
+   * export type Result = {
+   *   type: string;
+   *   value: any;
+   * }
+   * ```
+   */
   constructor(transformer: Combinator) {
     this.morph = transformer;
   }
+
+  /**
+   * Runs the current parser.
+   * @param targetString - The string to parse.
+   */
   run(targetString: string) {
     const initState: State = {
       targetString,
@@ -64,6 +99,27 @@ class Parser {
     };
     return this.morph(initState);
   }
+
+  /**
+   * Transforms the output state of a
+   * Parser. The `map` function takes a
+   * `Morphism`.
+   * 
+   * ```
+   * export type Morphism = (
+   *   nextState: State,
+   *   currentState: State
+   * ) => Partial<State>;
+   * ```
+   * Two objects are provided as default arguments
+   * within the callback function: (1) the state
+   * to be received by the next parser, and (2) the
+   * state as of the current parser. Almost always,
+   * `map` applies changes to future states, rather
+   * than the current. Note that all changes to
+   * state are immutable. The return value _must_ be
+   * a `State` or a partial `State`.
+   */
   map(fn: Morphism) {
     return new Parser((state: State) => {
       const nextState = this.morph(state);
@@ -216,6 +272,7 @@ const or = (parser1: Parser, parser2: Parser) =>
     if (!res2.erred) return res2;
     return err(state, 'no match found', 'or', state.index);
   });
+  
 /**
  * Internal helper build for the `many` functions. Not intended to be used directly.
  * @internal
