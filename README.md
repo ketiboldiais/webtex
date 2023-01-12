@@ -19,8 +19,8 @@ Contains various data structures used by Webtex.
 
 | Package            | Subdirectory | Description                                                                                                               |
 | ------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `@webtex/lang`     | `lang`       | Parser combinators for parsing.                                                                                           |
 | `@webtex/bintree`  | `bintree`    | Binary search tree, used as an auxiliary structure for the `IndexedDB` component of the Redux component on the front end. |
-| `@webtex/bsql`     | `bsql`       | In development. Expected to be used as a further abstraction for the `IndexedDB` interface.                               |
 | `@webtex/list`     | `list`       | Doubly-linked list, used as an auxiliary structure for queueuing certain operations on the frontend.                      |
 | `@webtex/machines` | `machines`   | Various build systems for testing.                                                                                        |
 
