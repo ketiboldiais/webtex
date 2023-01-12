@@ -1,27 +1,9 @@
-interface Sys {
-  ['string']: string;
-  ['word']: string;
-  ['number']: number;
-  ['boolean']: boolean;
-  ['point']: [number, number];
-  ['matrix']: number[][];
-  ['number[]']: number[];
-  ['string[]']: string[];
-  ['object']: { [key: string]: Sys[keyof Sys] };
-  ['symbol']: symbol;
-  ['operator']: string;
-  ['unary']: { a: Result; op: Result };
-  ['binary']: { a: Result; b: Result; op: Result };
-  ['ternary']: { a: Result; b: Result; c: Result; op: Result };
-  ['keyword']: string;
-  ['expression']: string;
-  ['operation']: any;
-  // ['null']: null;
-  ['{}']: {};
-}
-type Result = { type: keyof Sys; value: Sys[keyof Sys] };
-type Thunk = () => Parser;
-type State = {
+export type Result = {
+  type: string;
+  value: any;
+};
+export type Thunk = () => Parser;
+export type State = {
   targetString: string;
   index: number;
   erred: boolean;
@@ -29,17 +11,20 @@ type State = {
   result: Result;
   results: Result[];
 };
-type ErrorUpdater = (
+export type ErrorUpdater = (
   state: State,
   message: string,
   parserName?: string,
   index?: number
 ) => State;
-type Combinator = (state: State) => State;
-type ErrorTransformer = (errorMessage: string, index: number) => string;
-type ChainTransformer = (result: Result) => Parser;
-type Morphism = (arg1: Result, arg2: Result[]) => Result;
-type Update = Partial<State>;
+export type Combinator = (state: State) => State;
+export type ErrorTransformer = (errorMessage: string, index: number) => string;
+export type ChainTransformer = (result: Result) => Parser;
+export type Morphism = (
+  nextState: State,
+  currentState: State
+) => Partial<State>;
+export type Update = Partial<State>;
 
 const substr = (str: string, i: number, j?: number) => str.slice(i, j);
 const isBlank = (str: string) => str.length === 0;
@@ -83,9 +68,7 @@ class Parser {
     return new Parser((state: State) => {
       const nextState = this.morph(state);
       if (nextState.erred) return nextState;
-      return update(nextState, {
-        result: fn(nextState.result, nextState.results),
-      });
+      return update(nextState, fn(nextState, state));
     });
   }
   chain(fn: ChainTransformer) {
@@ -142,7 +125,7 @@ const nested =
       return out;
     });
 
-const char = (str: string, type: keyof Sys = 'string') =>
+const char = (str: string, type = 'string') =>
   new Parser((state: State) => {
     const { targetString, index, erred } = state;
     if (erred) return state;
@@ -155,11 +138,6 @@ const char = (str: string, type: keyof Sys = 'string') =>
       });
     return newExpectError(state, str, substr(target, index, index + 1));
   });
-
-const word = (str: string, type?: keyof Sys) =>
-  sequenceOf(...[...str].map((s) => char(s, type)));
-
-const op = (char: string) => word(char, 'operator');
 
 const pRegexer = (regex: RegExp) =>
   new Parser((state: State) => {
@@ -184,15 +162,14 @@ const digits = pRegexer(/^[0-9]+/);
  * Parse according to the rule: “The input must have exactly this sequence.”
  * @param parsers - Comma-separated argument list of parsers.
  */
-const sequenceOf = (...parsers: Parser[]) =>
+const order = (...parsers: Parser[]) =>
   new Parser((state: State) => {
     if (state.erred) return state;
     let results: Result[] = [];
     let nextState = state;
     for (let p of parsers) {
       nextState = p.morph(nextState);
-      if (nextState.error)
-        return err(nextState, '', 'sequenceOf', nextState.index);
+      if (nextState.error) return err(nextState, '', 'order', nextState.index);
       results.push(nextState.result);
     }
     return update(nextState, { results });
@@ -202,7 +179,7 @@ const sequenceOf = (...parsers: Parser[]) =>
  * Parses according to the rule: “The input can have any of these symbols.”
  * @param parsers - Comma-separated argument list of parsers.
  */
-const choiceOf = (...parsers: Parser[]) =>
+const anyOf = (...parsers: Parser[]) =>
   new Parser((state: State) => {
     if (state.erred) return state;
     for (let p of parsers) {
@@ -269,43 +246,49 @@ const dquoted = nested(char('"'), char('"'));
 const squoted = nested(char(`'`), char(`'`));
 
 /** Parses symbols separated by the specified separator. */
-const sep = (separator: Parser, type?: keyof Sys) => (valueParser: Parser) =>
-  new Parser((state: State) => {
-    if (state.erred) return err(state, `Died abirth.`, 'sep', state.index);
-    const results: Result[] = [];
-    let nxState = state;
-    while (true) {
-      const targetState = valueParser.morph(nxState);
-      if (targetState.erred) break;
-      results.push(targetState.result);
-      nxState = targetState;
-      const sepState = separator.morph(nxState);
-      if (sepState.erred) break;
-      nxState = sepState;
-    }
-    return update(nxState, {
-      result: { type: type ? type : nxState.result.type, value: results },
+const sep =
+  (separator: Parser, type = 'seperator') =>
+  (valueParser: Parser) =>
+    new Parser((state: State) => {
+      if (state.erred) return err(state, `Died abirth.`, 'sep', state.index);
+      const results: Result[] = [];
+      let nxState = state;
+      while (true) {
+        const targetState = valueParser.morph(nxState);
+        if (targetState.erred) break;
+        results.push(targetState.result);
+        nxState = targetState;
+        const sepState = separator.morph(nxState);
+        if (sepState.erred) break;
+        nxState = sepState;
+      }
+      return update(nxState, {
+        result: { type: type ? type : nxState.result.type, value: results },
+      });
     });
-  });
 
 /** Parses a string. */
-const litstring = letters.map((res) => ({
-  type: 'string',
-  value: res.value,
+const litstring = letters.map((nx) => ({
+  result: {
+    type: 'string',
+    value: nx.result.value,
+  },
 }));
 
 /** Parses a number. */
-const num = digits.map((res, _) => ({
-  type: 'number',
-  value: Number(res.value),
+const num = digits.map((nx) => ({
+  result: {
+    type: 'number',
+    value: Number(nx.result.value),
+  },
 }));
 
-const point = sequenceOf(char('('), num, char(','), num, char(')')).map(
-  (_, results) => ({
+const point = order(char('('), num, char(','), num, char(')')).map((nx) => ({
+  result: {
     type: 'point',
-    value: [Number(results[1].value), Number(results[3].value)],
-  })
-);
+    value: [Number(nx.results[1].value), Number(nx.results[3].value)],
+  },
+}));
 const lazy = (thunkp: Thunk) =>
   new Parser((state: State) => {
     const parser = thunkp();
@@ -314,15 +297,26 @@ const lazy = (thunkp: Thunk) =>
 const bracketed = nested(char('['), char(']'));
 const numSep = sep(char(','), 'number[]');
 const strSep = sep(char(','), 'string[]');
-const numvals = lazy(() => choiceOf(num, numtup));
-const strvals = lazy(() => choiceOf(litstring, strtup));
+const numvals = lazy(() => anyOf(num, numtup));
+const strvals = lazy(() => anyOf(litstring, strtup));
 const numtup = bracketed(numSep(numvals));
 const strtup = bracketed(strSep(strvals));
 
+const word = (...parsers: Parser[]) =>
+  order(...parsers).map((nx, cur) => ({
+    result: {
+      type: 'word',
+      value: nx.targetString.slice(cur.index, nx.index),
+    },
+    results: [
+      { type: 'word', value: nx.targetString.slice(cur.index, nx.index) },
+    ],
+  }));
+
 export {
   char,
-  sequenceOf,
-  choiceOf,
+  order,
+  anyOf,
   letters,
   numtup,
   strtup,
@@ -341,8 +335,7 @@ export {
   squoted,
   lazy,
   Parser,
-  word,
-  op,
   anyspace,
+  word,
   or,
 };
