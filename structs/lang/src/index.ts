@@ -169,10 +169,28 @@ const order = (...parsers: Parser[]) =>
     let nextState = state;
     for (let p of parsers) {
       nextState = p.morph(nextState);
-      if (nextState.error) return err(nextState, '', 'order', nextState.index);
       results.push(nextState.result);
     }
+    if (nextState.error)
+      return err(nextState, 'order error', 'order', nextState.index);
     return update(nextState, { results });
+  });
+
+const xor = (...parsers: Parser[]) =>
+  new Parser((state: State) => {
+    if (state.erred) return state;
+    let results: Result[] = [];
+    let temp = state;
+    let outState = temp;
+    for (let p of parsers) {
+      temp = p.morph(state);
+      if (temp.erred) continue;
+      results.push(temp.result);
+      outState = temp;
+    }
+    if (results.length === 0)
+      return err(temp, 'no match found', 'xor', temp.index);
+    return update(temp, outState);
   });
 
 /**
@@ -303,13 +321,15 @@ const numtup = bracketed(numSep(numvals));
 const strtup = bracketed(strSep(strvals));
 
 const word = (...parsers: Parser[]) =>
-  order(...parsers).map((nx, cur) => ({
+  order(...parsers).map((nx, cx) => ({
+    // index: nx.targetString.length,
     result: {
+      value: nx.targetString.slice(cx.index, nx.index),
       type: 'word',
-      value: nx.targetString.slice(cur.index, nx.index),
+      // value: nx.targetString,
     },
     results: [
-      { type: 'word', value: nx.targetString.slice(cur.index, nx.index) },
+      { type: 'word', value: nx.targetString.slice(cx.index, nx.index) },
     ],
   }));
 
@@ -338,4 +358,5 @@ export {
   anyspace,
   word,
   or,
+  xor,
 };

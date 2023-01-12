@@ -29,4 +29,4 @@ const operationParser1 = parenthesized(
 
 const input = '(+ (* 18 2) (- 3 2))';
 const result = operationParser1.run(input);
-show(result.result);
+show(result);

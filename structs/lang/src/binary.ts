@@ -1,19 +1,41 @@
-import { digits, char, word, or } from './index.js';
+import { digits, char, word, xor, order, anyOf, many } from './index.js';
 
 const { log: show } = console;
-
+const dot = char('.');
+const slash = char('/');
 const int = digits.map((nx) => ({
   result: { type: 'integer', value: nx.result.value },
   results: [{ type: 'integer', value: nx.result.value }],
 }));
+const float = word(digits, dot, digits).map((nx) => ({
+  result: { ...nx.result, type: 'float' },
+  results: [{ ...nx.result, type: 'float' }],
+}));
+const frac = (n: string, d: string) => ({
+  type: 'fraction',
+  value: `${n}/${d}`,
+});
+const fraction = order(digits, slash, digits).map((nx, cr) => ({
+  result: frac(nx.results[0].value, nx.results[2].value),
+}));
+const real = xor(int, float, fraction);
 
-const float = word(digits, char('.'), digits);
+const add = char('+').map((nx) => ({
+  result: { type: 'operator', value: '+' },
+}));
+const minus = char('-').map((nx) => ({
+  result: { type: 'operator', value: '-' },
+}));
+const div = char('-').map((nx) => ({
+  result: { type: 'operator', value: '/' },
+}));
 
-const real = or(float, int);
+const operator = anyOf(add, minus, div)
 
-const parser = [int, float, real];
+const binop = order(real, operator, real);
 
-const output = parser[2].run('14.5');
+const parsers = [int, float, fraction, real, binop];
+const output = parsers[4].run('28.3-2');
 
 show(output);
 
