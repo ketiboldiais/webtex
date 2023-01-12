@@ -4,8 +4,8 @@ export type Result = {
 };
 export type Thunk = () => Parser;
 export type State = {
-  targetString: string;
-  index: number;
+  src: string;
+  pos: number;
   erred: boolean;
   error: string;
   result: Result;
@@ -41,12 +41,9 @@ const err: ErrorUpdater = (state, msg, parser = '', i) =>
   update(state, {
     erred: true,
     error: `Error [Parser:${parser}] | str[${i}]: "${
-      state.targetString[state.index]
+      state.src[state.pos]
     }" | ${msg}`,
   });
-
-const newExpectError = (state: State, exp: string, got: string) =>
-  err(state, `Expected: ${exp}, got: ${got}`);
 
 class Parser {
   morph: Combinator;
@@ -55,20 +52,20 @@ class Parser {
    * Constructs a new parser.
    * A combinator is a function that takes a state
    * and returns a state:
-   * 
+   *
    * ```
    * (state: State) => State
    * ```
-   * 
+   *
    * A `State` is an object with the shape:
-   * 
+   *
    * ```
    * type State = {
-   *    targetString: string; 
-   *    index: number; 
-   *    erred: boolean; 
-   *    error: string; 
-   *    result: Result; 
+   *    targetString: string;
+   *    index: number;
+   *    erred: boolean;
+   *    error: string;
+   *    result: Result;
    *    results: Result[];
    * }
    * ```
@@ -88,10 +85,10 @@ class Parser {
    * Runs the current parser.
    * @param targetString - The string to parse.
    */
-  run(targetString: string) {
+  run(src: string) {
     const initState: State = {
-      targetString,
-      index: 0,
+      src,
+      pos: 0,
       result: { type: 'string', value: '' },
       results: [],
       erred: false,
@@ -104,7 +101,7 @@ class Parser {
    * Transforms the output state of a
    * Parser. The `map` function takes a
    * `Morphism`.
-   * 
+   *
    * ```
    * export type Morphism = (
    *   nextState: State,
@@ -139,11 +136,11 @@ class Parser {
     return new Parser((state: State) => {
       const nextState = this.morph(state);
       if (!nextState.erred) return nextState;
-      return err(nextState, fn(nextState.error, nextState.index));
+      return err(nextState, fn(nextState.error, nextState.pos));
     });
   }
 }
-const expected = (state: State) => state.targetString[state.index];
+const expected = (state: State) => state.src[state.pos];
 const nested =
   (leftParser: Parser, rightParser: Parser) => (contentParser: Parser) =>
     new Parser((state: State) => {
@@ -154,7 +151,7 @@ const nested =
           tempState,
           `Left delimiter missing: ${expected(state)}`,
           'between',
-          tempState.index
+          tempState.pos
         );
       tempState = contentParser.morph(tempState);
       if (tempState.erred)
@@ -162,7 +159,7 @@ const nested =
           tempState,
           `delimited content error`,
           'between',
-          tempState.index
+          tempState.pos
         );
       let contentState = tempState;
       tempState = rightParser.morph(tempState);
@@ -171,48 +168,47 @@ const nested =
           tempState,
           `Right delimiter missing: ${expected(state)}`,
           'between',
-          tempState.index
+          tempState.pos
         );
 
       const out = update(contentState, {
         results: contentState.results,
-        index: tempState.index,
+        pos: tempState.pos,
       });
       return out;
     });
 
 const char = (str: string, type = 'string') =>
   new Parser((state: State) => {
-    const { targetString, index, erred } = state;
+    const { src, pos, erred } = state;
     if (erred) return state;
-    const target = targetString.slice(index);
-    if (isBlank(target)) return err(state, 'abrupt end', 'char', state.index);
+    const target = src.slice(pos);
+    if (isBlank(target)) return err(state, 'abrupt end', 'char', state.pos);
     if (target.startsWith(str))
       return update(state, {
-        index: index + str.length,
+        pos: pos + str.length,
         result: { type, value: str },
       });
-    return newExpectError(state, str, substr(target, index, index + 1));
+    return err(state, 'err in char', 'char', state.pos);
   });
 
 const pRegexer = (regex: RegExp) =>
   new Parser((state: State) => {
-    const { targetString, index, erred } = state;
+    const { src, pos, erred } = state;
     if (erred) return state;
-    const target = targetString.slice(index);
-    if (isBlank(target))
-      return err(state, 'abrupt end', 'pRegexer', state.index);
+    const target = src.slice(pos);
+    if (isBlank(target)) return err(state, 'abrupt end', 'pRegexer', state.pos);
     const match = target.match(regex);
     if (match)
       return update(state, {
         result: { type: 'string', value: match[0] },
-        index: index + match[0].length,
+        pos: pos + match[0].length,
       });
-    return err(state, `No match.`, 'pRegexer', state.index);
+    return err(state, `No match.`, 'pRegexer', state.pos);
   });
 const anyspace = pRegexer(/\s*/);
 const letters = pRegexer(/^[A-Za-z]+/);
-const digits = pRegexer(/^[0-9]+/);
+const digits = pRegexer(/^\d+/);
 
 /**
  * Parse according to the rule: “The input must have exactly this sequence.”
@@ -220,18 +216,15 @@ const digits = pRegexer(/^[0-9]+/);
  */
 const order = (...parsers: Parser[]) =>
   new Parser((state: State) => {
-    if (state.erred) return state;
-    let results: Result[] = [];
-    let nextState = state;
-    for (let p of parsers) {
-      nextState = p.morph(nextState);
-      results.push(nextState.result);
-    }
-    if (nextState.error)
-      return err(nextState, 'order error', 'order', nextState.index);
-    return update(nextState, { results });
+    const res = parsers.reduce(
+      (state, p) => ({
+        ...p.morph(state),
+        results: [...state.results, p.morph(state).result],
+      }),
+      state
+    );
+    return res.erred ? err(res, 'order error', 'order', res.pos) : res;
   });
-
 const xor = (...parsers: Parser[]) =>
   new Parser((state: State) => {
     if (state.erred) return state;
@@ -244,11 +237,12 @@ const xor = (...parsers: Parser[]) =>
       results.push(temp.result);
       outState = temp;
     }
-    if (results.length === 0)
-      return err(temp, 'no match found', 'xor', temp.index);
-    return update(temp, outState);
+    return results.length === 0
+      ? err(temp, 'no match found', 'xor', temp.pos)
+      : update(temp, outState);
   });
-
+// const jx = xor(char('a'), char('b'), char('c'))
+// console.log(jx.run('abc'))
 /**
  * Parses according to the rule: “The input can have any of these symbols.”
  * @param parsers - Comma-separated argument list of parsers.
@@ -260,19 +254,19 @@ const anyOf = (...parsers: Parser[]) =>
       const nextState = p.morph(state);
       if (!nextState.error) return nextState;
     }
-    return err(state, `No match.`, 'choiceOf', state.index);
+    return err(state, `No match.`, 'choiceOf', state.pos);
   });
 const or = (parser1: Parser, parser2: Parser) =>
   new Parser((state: State) => {
-    const { targetString, index } = state;
+    const { src, pos } = state;
     if (state.erred) return state;
-    const res1 = parser1.run(substr(targetString, index));
+    const res1 = parser1.run(substr(src, pos));
     if (!res1.erred) return res1;
-    const res2 = parser2.run(substr(targetString, index));
+    const res2 = parser2.run(substr(src, pos));
     if (!res2.erred) return res2;
-    return err(state, 'no match found', 'or', state.index);
+    return err(state, 'no match found', 'or', state.pos);
   });
-  
+
 /**
  * Internal helper build for the `many` functions. Not intended to be used directly.
  * @internal
@@ -291,7 +285,7 @@ const manyBuilder = (type: 'many' | 'atLeast1') => (parser: Parser) =>
       } else done = true;
     }
     if (type === 'atLeast1' && results.length === 0) {
-      return err(state, `No match.`, type, state.index);
+      return err(state, `No match.`, type, state.pos);
     }
     return update(nextState, { results });
   });
@@ -308,24 +302,12 @@ const many = manyBuilder('many');
  */
 const atLeast1 = manyBuilder('atLeast1');
 
-/** Parse everything between parentheses. */
-const parenthesized = nested(char('('), char(')'));
-
-/** Parse everything between braces. */
-const braced = nested(char('{'), char('}'));
-
-/** Parse everything between double quotes. */
-const dquoted = nested(char('"'), char('"'));
-
-/** Parse everything between single quotes. */
-const squoted = nested(char(`'`), char(`'`));
-
 /** Parses symbols separated by the specified separator. */
 const sep =
   (separator: Parser, type = 'seperator') =>
   (valueParser: Parser) =>
     new Parser((state: State) => {
-      if (state.erred) return err(state, `Died abirth.`, 'sep', state.index);
+      if (state.erred) return err(state, `Died abirth.`, 'sep', state.pos);
       const results: Result[] = [];
       let nxState = state;
       while (true) {
@@ -369,25 +351,14 @@ const lazy = (thunkp: Thunk) =>
     const parser = thunkp();
     return parser.morph(state);
   });
-const bracketed = nested(char('['), char(']'));
-const numSep = sep(char(','), 'number[]');
-const strSep = sep(char(','), 'string[]');
-const numvals = lazy(() => anyOf(num, numtup));
-const strvals = lazy(() => anyOf(litstring, strtup));
-const numtup = bracketed(numSep(numvals));
-const strtup = bracketed(strSep(strvals));
 
 const word = (...parsers: Parser[]) =>
   order(...parsers).map((nx, cx) => ({
-    // index: nx.targetString.length,
     result: {
-      value: nx.targetString.slice(cx.index, nx.index),
+      value: nx.src.slice(cx.pos, nx.pos),
       type: 'word',
-      // value: nx.targetString,
     },
-    results: [
-      { type: 'word', value: nx.targetString.slice(cx.index, nx.index) },
-    ],
+    results: [{ type: 'word', value: nx.src.slice(cx.pos, nx.pos) }],
   }));
 
 export {
@@ -395,21 +366,14 @@ export {
   order,
   anyOf,
   letters,
-  numtup,
-  strtup,
   point,
   digits,
   many,
   atLeast1,
   litstring,
   num,
-  parenthesized,
-  bracketed,
   nested,
-  braced,
   sep,
-  dquoted,
-  squoted,
   lazy,
   Parser,
   anyspace,
