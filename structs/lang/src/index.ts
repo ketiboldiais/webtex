@@ -26,9 +26,6 @@ export type Morphism = (
 ) => Partial<State>;
 export type Update = Partial<State>;
 
-const substr = (str: string, i: number, j?: number) => str.slice(i, j);
-const isBlank = (str: string) => str.length === 0;
-
 /**
  * Returns a new state object.
  * @param state - The current State.
@@ -183,7 +180,7 @@ const char = (str: string, type = 'string') =>
     const { src, pos, erred } = state;
     if (erred) return state;
     const target = src.slice(pos);
-    if (isBlank(target)) return err(state, 'abrupt end', 'char', state.pos);
+    if (target.length === 0) return err(state, 'abrupt end', 'char', state.pos);
     if (target.startsWith(str))
       return update(state, {
         pos: pos + str.length,
@@ -197,7 +194,8 @@ const pRegexer = (regex: RegExp) =>
     const { src, pos, erred } = state;
     if (erred) return state;
     const target = src.slice(pos);
-    if (isBlank(target)) return err(state, 'abrupt end', 'pRegexer', state.pos);
+    if (target.length === 0)
+      return err(state, 'abrupt end', 'pRegexer', state.pos);
     const match = target.match(regex);
     if (match)
       return update(state, {
@@ -241,8 +239,7 @@ const xor = (...parsers: Parser[]) =>
       ? err(temp, 'no match found', 'xor', temp.pos)
       : update(temp, outState);
   });
-// const jx = xor(char('a'), char('b'), char('c'))
-// console.log(jx.run('abc'))
+
 /**
  * Parses according to the rule: “The input can have any of these symbols.”
  * @param parsers - Comma-separated argument list of parsers.
@@ -260,9 +257,9 @@ const or = (parser1: Parser, parser2: Parser) =>
   new Parser((state: State) => {
     const { src, pos } = state;
     if (state.erred) return state;
-    const res1 = parser1.run(substr(src, pos));
+    const res1 = parser1.run(src.slice(pos));
     if (!res1.erred) return res1;
-    const res2 = parser2.run(substr(src, pos));
+    const res2 = parser2.run(src.slice(pos));
     if (!res2.erred) return res2;
     return err(state, 'no match found', 'or', state.pos);
   });
