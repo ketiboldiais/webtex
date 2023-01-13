@@ -1,39 +1,40 @@
-export type Result = {
-  type: string;
-  value: any;
-};
-export type Thunk = () => Parser;
-export type State = {
-  src: string;
-  pos: number;
-  erred: boolean;
-  error: string;
-  result: Result;
-  results: Result[];
-};
-export type ErrorUpdater = (
-  state: State,
-  message: string,
-  parserName?: string,
-  index?: number
-) => State;
-export type Combinator = (state: State) => State;
-export type ErrorTransformer = (errorMessage: string, index: number) => string;
-export type ChainTransformer = (result: Result) => Parser;
-export type Morphism = (
-  nextState: State,
-  currentState: State
-) => Partial<State>;
-export type Update = Partial<State>;
+/* -------------------------------------------------------------------------- */
+/*                                 AUXILIARIES                                */
+/* -------------------------------------------------------------------------- */
+/** 
+ * The following are auxiliary funtions used by the parsers. They aren’t inteneded
+ * to be used directly, so they may be moved to a separate file in the future.
+ * Currently, they’re being exported for testing.`
+ */
 
 /**
- * Returns a new state object.
- * @param state - The current State.
- * @param change - An object corresponding to the keys to update.
- **/
-const update = (state: State, change: Update) =>
-  Object.assign({}, state, change);
+ * All Parsers work by passing their results to the next parser. This ensures
+ * that the parsers remain independent of one another, and focus only on
+ * what they’re sole purposes. However, we need a way to maintain the overall
+ * state. 
+ * 
+ * The `update` function is the primary function used by all Parsers
+ * to update this overall state. The Parsers pass the `state` they were given
+ * (the first parameter) and the `change` they make (their `result`). This
+ * creates an illusion of mutation, when in reality, everything is immutable.
+ */
+const update = (state: State, change: Update) => ({ ...state, ...change });
 
+/**
+ * The `result` function builds a `Result` object. It’s intended to ensure all
+ * Parsers update their `result` (if they need to) uniformly.
+ */
+const result = <T>(type: string, value: T): Result => ({ type, value });
+
+/**
+ * The `err` function updates the `erred` and `error` fields of `Result`
+ * object. Like the `result` function, it’s intended to ensure uniform
+ * error reporting across Parsers. Note that unlike the `result` function,
+ * the `err` function must be given a `state` object. This is because
+ * the fields updated, `erred` and `error`, are direct properties of the
+ * `State` object, so the entire state _must_ be updated to maintain
+ * immutability.
+ */
 const err: ErrorUpdater = (state, msg, parser = '', i) =>
   update(state, {
     erred: true,
@@ -42,9 +43,30 @@ const err: ErrorUpdater = (state, msg, parser = '', i) =>
     }" | ${msg}`,
   });
 
+/* -------------------------------------------------------------------------- */
+/*                                   Parser                                   */
+/* -------------------------------------------------------------------------- */
+/**
+ * Looking at the implementation details, the `Parser` class isn’t really a 
+ * parser, but it’s much easier to think about how the combinators are all
+ * working together if we pretend that it implements parser. In reality, the `Parser`
+ * is a functor. It takes a combinator, called a `morph`, and returns a new
+ * `Parser`. Using a functor provides several benefits:
+ * 
+ * 1. “Prep” results in between parsings.
+ * 2. Lookahead without having to write (or deal with) the complexities
+ * of “peek“ methods.
+ * 3. Updating state immutably.
+ * 
+ * All of this is possible by using a `Parser` class that acts more like
+ * a traffic director rather than an actual parser. All the parser
+ * class does is ensure that every combinator has access to the same
+ * methods, while (1) not binding every combinator to a single class,
+ * and (2) allowing combinators to output the types they need to output.
+ */
+
 class Parser {
   morph: Combinator;
-
   /**
    * Constructs a new parser.
    * A combinator is a function that takes a state
@@ -86,7 +108,7 @@ class Parser {
     const initState: State = {
       src,
       pos: 0,
-      result: { type: 'string', value: '' },
+      result: result('string', ''),
       results: [],
       erred: false,
       error: '',
@@ -137,59 +159,50 @@ class Parser {
     });
   }
 }
-const expected = (state: State) => state.src[state.pos];
-const nested =
-  (leftParser: Parser, rightParser: Parser) => (contentParser: Parser) =>
-    new Parser((state: State) => {
-      if (state.erred) return state;
-      let tempState = leftParser.morph(state);
-      if (tempState.erred)
-        return err(
-          tempState,
-          `Left delimiter missing: ${expected(state)}`,
-          'between',
-          tempState.pos
-        );
-      tempState = contentParser.morph(tempState);
-      if (tempState.erred)
-        return err(
-          tempState,
-          `delimited content error`,
-          'between',
-          tempState.pos
-        );
-      let contentState = tempState;
-      tempState = rightParser.morph(tempState);
-      if (tempState.erred)
-        return err(
-          tempState,
-          `Right delimiter missing: ${expected(state)}`,
-          'between',
-          tempState.pos
-        );
 
-      const out = update(contentState, {
-        results: contentState.results,
-        pos: tempState.pos,
-      });
-      return out;
+/**
+ * Parses the content between two delimiters.
+ * The function takes two arguments, `leftParser`
+ * (a Parser instance to parse the left delimiting symbol)
+ * and `rightParser` (a Parser instance to parse the
+ * right delimiting symbol).
+ *
+ */
+const nested = (leftP: Parser, rightP: Parser) => (contentParser: Parser) =>
+  new Parser((state: State) => {
+    const croak = (state: State, msg: string) =>
+      err(state, msg, 'nested', state.pos);
+    if (state.erred) return state;
+    let tempState = leftP.morph(state);
+    if (tempState.erred)
+      return croak(tempState, `Left delim missing: ${state.src[state.pos]}`);
+    tempState = contentParser.morph(tempState);
+    if (tempState.erred) return croak(tempState, `Error in delimited content.`);
+    let contentState = tempState;
+    tempState = rightP.morph(tempState);
+    if (tempState.erred)
+      return croak(tempState, `Right delim missing: ${state.src[state.pos]}`);
+    return update(contentState, {
+      results: contentState.results,
+      pos: tempState.pos,
     });
+  });
 
-const char = (str: string, type = 'string') =>
+const char = (s: string, type = 'string') =>
   new Parser((state: State) => {
     const { src, pos, erred } = state;
     if (erred) return state;
     const target = src.slice(pos);
     if (target.length === 0) return err(state, 'abrupt end', 'char', state.pos);
-    if (target.startsWith(str))
+    if (target.startsWith(s))
       return update(state, {
-        pos: pos + str.length,
-        result: { type, value: str },
+        pos: pos + s.length,
+        result: result(type, s),
       });
     return err(state, 'err in char', 'char', state.pos);
   });
 
-const pRegexer = (regex: RegExp) =>
+const pRegex = (regex: RegExp) =>
   new Parser((state: State) => {
     const { src, pos, erred } = state;
     if (erred) return state;
@@ -199,19 +212,13 @@ const pRegexer = (regex: RegExp) =>
     const match = target.match(regex);
     if (match)
       return update(state, {
-        result: { type: 'string', value: match[0] },
+        result: result('string', match[0]),
         pos: pos + match[0].length,
       });
     return err(state, `No match.`, 'pRegexer', state.pos);
   });
-const anyspace = pRegexer(/\s*/);
-const letters = pRegexer(/^[A-Za-z]+/);
-const digits = pRegexer(/^\d+/);
 
-/**
- * Parse according to the rule: “The input must have exactly this sequence.”
- * @param parsers - Comma-separated argument list of parsers.
- */
+/** Parse according to the rule: “The input must have exactly this sequence.” */
 const order = (...parsers: Parser[]) =>
   new Parser((state: State) => {
     const res = parsers.reduce(
@@ -223,6 +230,111 @@ const order = (...parsers: Parser[]) =>
     );
     return res.erred ? err(res, 'order error', 'order', res.pos) : res;
   });
+
+/** Parses according to the rule: “The input can have any of these symbols.” */
+const anyOf = (...parsers: Parser[]) =>
+  new Parser((state: State) => {
+    if (state.erred) return state;
+    for (let p of parsers) {
+      const nextState = p.morph(state);
+      if (!nextState.error) return nextState;
+    }
+    return err(state, `No match.`, 'choiceOf', state.pos);
+  });
+
+/**
+ * Internal helper build for the `many` functions. Not intended to be used directly.
+ * @internal
+ */
+const manyBuilder = (type: 'many' | 'atLeast1') => (parser: Parser) =>
+  new Parser((state: State) => {
+    if (state.erred) return state;
+    let nextState = state;
+    const results = [];
+    let done = false;
+    while (!done && nextState.pos < state.src.length) {
+      let tempState = parser.morph(nextState);
+      if (!tempState.erred) {
+        results.push(tempState.result);
+        nextState = tempState;
+      } else done = true;
+    }
+    if (type === 'atLeast1' && results.length === 0) {
+      return err(state, `No match.`, type, state.pos);
+    }
+    return update(nextState, { results });
+  });
+
+/** Parse according to the rule: “Get all these symbols.” */
+const many = manyBuilder('many');
+
+/** Parse according to the rule: “The input must have at least one of these symbols.” */
+const atLeast1 = manyBuilder('atLeast1');
+
+/** Parses symbols separated by the specified separator. */
+const sep =
+  (separator: Parser, type = 'seperator') =>
+  (valParser: Parser) =>
+    new Parser((state: State) => {
+      if (state.erred) return err(state, `Died abirth.`, 'sep', state.pos);
+      const results: Result[] = [];
+      let nxState = state;
+      while (true && nxState.pos < state.src.length) {
+        const targetState = valParser.morph(nxState);
+        if (targetState.erred) break;
+        results.push(targetState.result);
+        nxState = targetState;
+        const sepState = separator.morph(nxState);
+        if (sepState.erred) break;
+        nxState = sepState;
+      }
+      return update(nxState, {
+        result: result(type ? type : nxState.result.type, results),
+      });
+    });
+
+const lazy = (thunkp: Thunk) =>
+  new Parser((state: State) => {
+    const parser = thunkp();
+    return parser.morph(state);
+  });
+
+const word = (...parsers: Parser[]) =>
+  order(...parsers).map((nx, cx) => ({
+    result: result('word', nx.src.slice(cx.pos, nx.pos)),
+    results: [result('word', nx.src.slice(cx.pos, nx.pos))],
+  }));
+
+export {
+  char,
+  order,
+  anyOf,
+  result,
+  many,
+  atLeast1,
+  pRegex,
+  nested,
+  sep,
+  lazy,
+  Parser,
+  word,
+  update,
+  err,
+};
+
+/* -------------------------------------------------------------------------- */
+/*                                   EXTRAS                                   */
+/* -------------------------------------------------------------------------- */
+/**
+ * The following are parsers built with the core modules above.
+ * These parses may be moved to a separate repository in the future,
+ * since they aren’t strictly necessary for Lango to work.
+ */
+
+/**
+ * Returns the result of exactly one result of the Parsers
+ * provided as arguments.
+ */
 const xor = (...parsers: Parser[]) =>
   new Parser((state: State) => {
     if (state.erred) return state;
@@ -240,21 +352,8 @@ const xor = (...parsers: Parser[]) =>
       : update(temp, outState);
   });
 
-/**
- * Parses according to the rule: “The input can have any of these symbols.”
- * @param parsers - Comma-separated argument list of parsers.
- */
-const anyOf = (...parsers: Parser[]) =>
-  new Parser((state: State) => {
-    if (state.erred) return state;
-    for (let p of parsers) {
-      const nextState = p.morph(state);
-      if (!nextState.error) return nextState;
-    }
-    return err(state, `No match.`, 'choiceOf', state.pos);
-  });
 const or = (parser1: Parser, parser2: Parser) =>
-  new Parser((state: State) => {
+  new Parser((state) => {
     const { src, pos } = state;
     if (state.erred) return state;
     const res1 = parser1.run(src.slice(pos));
@@ -264,117 +363,123 @@ const or = (parser1: Parser, parser2: Parser) =>
     return err(state, 'no match found', 'or', state.pos);
   });
 
-/**
- * Internal helper build for the `many` functions. Not intended to be used directly.
- * @internal
- */
-const manyBuilder = (type: 'many' | 'atLeast1') => (parser: Parser) =>
-  new Parser((state: State) => {
-    if (state.erred) return state;
-    let nextState = state;
-    const results = [];
-    let done = false;
-    while (!done) {
-      let tempState = parser.morph(nextState);
-      if (!tempState.erred) {
-        results.push(tempState.result);
-        nextState = tempState;
-      } else done = true;
-    }
-    if (type === 'atLeast1' && results.length === 0) {
-      return err(state, `No match.`, type, state.pos);
-    }
-    return update(nextState, { results });
-  });
-
-/**
- * Parse according to the rule: “Get all these symbols.”
- * @param parsers - Comma-separated list of parsers.
- */
-const many = manyBuilder('many');
-
-/**
- * Parse according to the rule: “The input must have at least one of these symbols.”
- * @param parsers - Comma-separated list of parsers.
- */
-const atLeast1 = manyBuilder('atLeast1');
-
-/** Parses symbols separated by the specified separator. */
-const sep =
-  (separator: Parser, type = 'seperator') =>
-  (valueParser: Parser) =>
-    new Parser((state: State) => {
-      if (state.erred) return err(state, `Died abirth.`, 'sep', state.pos);
-      const results: Result[] = [];
-      let nxState = state;
-      while (true) {
-        const targetState = valueParser.morph(nxState);
-        if (targetState.erred) break;
-        results.push(targetState.result);
-        nxState = targetState;
-        const sepState = separator.morph(nxState);
-        if (sepState.erred) break;
-        nxState = sepState;
-      }
-      return update(nxState, {
-        result: { type: type ? type : nxState.result.type, value: results },
-      });
-    });
+const anyspace = pRegex(/\s*/);
+const letters = pRegex(/^[A-Za-z]+/);
+const digits = pRegex(/^\d+/);
 
 /** Parses a string. */
 const litstring = letters.map((nx) => ({
-  result: {
-    type: 'string',
-    value: nx.result.value,
-  },
+  result: result('string', nx.result.value),
 }));
 
 /** Parses a number. */
 const num = digits.map((nx) => ({
-  result: {
-    type: 'number',
-    value: Number(nx.result.value),
-  },
+  result: result('number', Number(nx.result.value)),
 }));
 
+/** Parse everything between parentheses. */
+const parenthesized = nested(char('('), char(')'));
+
+/** Parse everything between braces. */
+const braced = nested(char('{'), char('}'));
+
+/** Parse everything between double quotes. */
+const dquoted = nested(char('"'), char('"'));
+
+/** Parse everything between single quotes. */
+
+const squoted = nested(char(`'`), char(`'`));
+
+/** Parse everything between brackets */
+const bracketed = nested(char('['), char(']'));
+
+/** Parse a number array */
+const numSep = sep(char(','), 'number[]');
+
+/** Parse a string array */
+const strSep = sep(char(','), 'string[]');
+
+/** Parse nested arrays */
+const numvals = lazy(() => anyOf(num, numtup));
+const strvals = lazy(() => anyOf(litstring, strtup));
+const numtup = bracketed(numSep(numvals));
+const strtup = bracketed(strSep(strvals));
+const dot = char('.');
+const slash = char('/');
+
+const int = digits.map((nx) => ({
+  result: { type: 'integer', value: nx.result.value },
+  results: [{ type: 'integer', value: nx.result.value }],
+}));
+
+const float = word(digits, dot, digits).map((nx) => ({
+  result: { ...nx.result, type: 'float' },
+  results: [{ ...nx.result, type: 'float' }],
+}));
+
+const frac = (n: string, d: string) => ({
+  type: 'fraction',
+  value: `${n}/${d}`,
+});
+
+const fraction = order(digits, slash, digits).map((nx, cr) => ({
+  result: frac(nx.results[0].value, nx.results[2].value),
+}));
+
+const real = xor(int, float, fraction);
+
+/** Parses a point. */
 const point = order(char('('), num, char(','), num, char(')')).map((nx) => ({
-  result: {
-    type: 'point',
-    value: [Number(nx.results[1].value), Number(nx.results[3].value)],
-  },
+  result: result('point', [
+    Number(nx.results[1].value),
+    Number(nx.results[3].value),
+  ]),
 }));
-const lazy = (thunkp: Thunk) =>
-  new Parser((state: State) => {
-    const parser = thunkp();
-    return parser.morph(state);
-  });
-
-const word = (...parsers: Parser[]) =>
-  order(...parsers).map((nx, cx) => ({
-    result: {
-      value: nx.src.slice(cx.pos, nx.pos),
-      type: 'word',
-    },
-    results: [{ type: 'word', value: nx.src.slice(cx.pos, nx.pos) }],
-  }));
 
 export {
-  char,
-  order,
-  anyOf,
-  letters,
-  point,
-  digits,
-  many,
-  atLeast1,
-  litstring,
-  num,
-  nested,
-  sep,
-  lazy,
-  Parser,
-  anyspace,
-  word,
+  parenthesized,
   or,
-  xor,
+  anyspace,
+  braced,
+  dquoted,
+  squoted,
+  bracketed,
+  numSep,
+  strSep,
+  numvals,
+  strvals,
+  numtup,
+  strtup,
+  dot,
+  slash,
+  int,
+  float,
+  frac,
+  fraction,
+  real,
+  point,
 };
+
+/* -------------------------------------------------------------------------- */
+/*                                  OPERATORS                                 */
+/* -------------------------------------------------------------------------- */
+/**
+ * This section contains operator parsers. By “operator,” we mean mathematical
+ * operators. 
+ */
+
+const add = char('+').map((nx) => ({
+  result: { type: 'operator', value: '+' },
+}));
+
+const minus = char('-').map((nx) => ({
+  result: { type: 'operator', value: '-' },
+}));
+
+const div = char('-').map((nx) => ({
+  result: { type: 'operator', value: '/' },
+}));
+const operator = anyOf(add, minus, div);
+const binop = order(real, operator, real);
+
+export { add, minus, div, operator, binop };
