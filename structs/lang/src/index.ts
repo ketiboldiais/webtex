@@ -1,485 +1,388 @@
-/* -------------------------------------------------------------------------- */
-/*                                 AUXILIARIES                                */
-/* -------------------------------------------------------------------------- */
-/** 
- * The following are auxiliary funtions used by the parsers. They aren’t inteneded
- * to be used directly, so they may be moved to a separate file in the future.
- * Currently, they’re being exported for testing.`
+const { log: show } = console;
+const { trunc } = Math;
+
+/** First, the parser types recognized. */
+type Value =
+  | string
+  | string[]
+  | number
+  | number[]
+  | bigint
+  | bigint[]
+  | boolean
+  | boolean[]
+  | symbol
+  | symbol[]
+  | { [key: string]: any };
+
+/** Parsers always place their results in an `out` property. */
+type Out<t> = { out: t };
+/**
+ * Every parser receives a state and accepts a state.
+ * Parsers and combinators never operate on raw strings.
+ * The only thing they understand is a `State`.
  */
+type State<t> = {
+  /** The original input. This never changes. */
+  readonly input: string;
+  /** The custom name type for the state. */
+  type: string;
+  /** The index, or `cursor` for the Parser to begin reading at. */
+  index: number;
+  /** Whether an error occurred. */
+  err: boolean;
+  /** An error message. */
+  erm: string;
+} & Out<t>;
+
+/** Helper type, used to construct a “Partial pick.” */
+type PartialPick<t, u extends keyof t> = Omit<t, u> & Partial<Pick<t, u>>;
+
+/** The only properties that can be updated. */
+type Mutables<t> = Pick<State<t>, 'erm' | 'err' | 'index' | 'out' | 'type'>;
+
+const codify = (c: string) => c.charCodeAt(0);
+
+type Comp = '<' | '<=';
+type Range = [number, Comp, number, Comp, number];
+
+/** Tests if a given input falls within the range */
+const ranTest = (rng: Range) =>
+  (rng[1] === '<' ? rng[0] < rng[2] : rng[0] <= rng[2]) &&
+  (rng[3] === '<' ? rng[2] < rng[4] : rng[2] <= rng[4]);
+const cmp = (...ranges: Range[]) => {
+  for (const r of ranges) {
+    if (ranTest(r)) return true;
+  }
+  return false;
+};
+
+type AsciiOption =
+  | 'letters'
+  | 'digits'
+  | 'uppercase-letters'
+  | 'lowercase-letters';
+type Branch<a, r> = [a, (arg: a, cases: a[]) => r];
+type Path<a, r> = Branch<a, r>[];
 
 /**
- * All Parsers work by passing their results to the next parser. This ensures
- * that the parsers remain independent of one another, and focus only on
- * what they’re sole purposes. However, we need a way to maintain the overall
- * state. 
- * 
- * The `update` function is the primary function used by all Parsers
- * to update this overall state. The Parsers pass the `state` they were given
- * (the first parameter) and the `change` they make (their `result`). This
- * creates an illusion of mutation, when in reality, everything is immutable.
+ * Pattern matcher. Given a pair `[c,f]`, where `c` is a
+ * value and `f` is a function, executes `c` if the `input`
+ * passed matches `c`. Otherwise, executes the last by default.
  */
-const update = (state: State, change: Update) => ({ ...state, ...change });
+const branch =
+  <a, r>(...cases: Path<a, r>) =>
+  (input: a) => {
+    const arglist = cases.map((d) => d[0]);
+    for (const [pattern, act] of cases) {
+      if (pattern === input) return act(pattern, arglist);
+    }
+    return cases[cases.length][1](cases[cases.length][0], arglist);
+  };
 
 /**
- * The `result` function builds a `Result` object. It’s intended to ensure all
- * Parsers update their `result` (if they need to) uniformly.
+ * Returns a new error object.
+ * @param state - The state before the error was encountered.
+ * @param erm - error message.
  */
-const result = <T>(type: string, value: T): Result => ({ type, value });
+const croak = <T>(state: State<any>, erm: string): State<T> => ({
+  ...state,
+  erm,
+  err: true,
+});
 
 /**
- * The `err` function updates the `erred` and `error` fields of `Result`
- * object. Like the `result` function, it’s intended to ensure uniform
- * error reporting across Parsers. Note that unlike the `result` function,
- * the `err` function must be given a `state` object. This is because
- * the fields updated, `erred` and `error`, are direct properties of the
- * `State` object, so the entire state _must_ be updated to maintain
+ * All result updates must copy the previous state to maintain
  * immutability.
+ * @param state - the state before the update.
+ * @param out - the new result
+ * @param index - the new index
+ * @param type - optionally, a custom type name
  */
-const err: ErrorUpdater = (state, msg, parser = '', i) =>
-  update(state, {
-    erred: true,
-    error: `Error [Parser:${parser}] | str[${i}]: "${
-      state.src[state.pos]
-    }" | ${msg}`,
-  });
+const updateState = <A, B>(
+  state: State<A>,
+  out: B,
+  index: number,
+  type = state.type
+): State<B> => ({
+  ...state,
+  out,
+  index,
+  type,
+});
 
-/* -------------------------------------------------------------------------- */
-/*                                   Parser                                   */
-/* -------------------------------------------------------------------------- */
 /**
- * Looking at the implementation details, the `Parser` class isn’t really a 
- * parser, but it’s much easier to think about how the combinators are all
- * working together if we pretend that it implements parser. In reality, the `Parser`
- * is a functor. It takes a combinator, called a `morph`, and returns a new
- * `Parser`. Using a functor provides several benefits:
- * 
- * 1. “Prep” results in between parsings.
- * 2. Lookahead without having to write (or deal with) the complexities
- * of “peek“ methods.
- * 3. Updating state immutably.
- * 
- * All of this is possible by using a `Parser` class that acts more like
- * a traffic director rather than an actual parser. All the parser
- * class does is ensure that every combinator has access to the same
- * methods, while (1) not binding every combinator to a single class,
- * and (2) allowing combinators to output the types they need to output.
+ * A `Functor` is a function that takes any given
+ * state and returns a new state. This is predominantly
+ * how the parser combinator work.They apply a function
+ * within a generic type, without changing the overall
+ * structure of the generic type.
  */
+type Functor<A> = (state: State<any>) => State<A>;
 
-class Parser {
-  morph: Combinator;
-  /**
-   * Constructs a new parser.
-   * A combinator is a function that takes a state
-   * and returns a state:
-   *
-   * ```
-   * (state: State) => State
-   * ```
-   *
-   * A `State` is an object with the shape:
-   *
-   * ```
-   * type State = {
-   *    targetString: string;
-   *    index: number;
-   *    erred: boolean;
-   *    error: string;
-   *    result: Result;
-   *    results: Result[];
-   * }
-   * ```
-   * A `Result` is the output of a Combinator:
-   * ```
-   * export type Result = {
-   *   type: string;
-   *   value: any;
-   * }
-   * ```
-   */
-  constructor(transformer: Combinator) {
-    this.morph = transformer;
+/**
+ * A `NewOut` is a structure that must have an `out` property defined.
+ * In the `Map` method of the `Parser` class, the callback function,
+ * a `Morpher`, must return an object with _at least_ an `out` property.
+ * The object may—but need not—return an object with the
+ * additional properties of `erm`, `err`, `index`, and `type`.
+ */
+type NewOut<T> = PartialPick<Mutables<T>, 'erm' | 'err' | 'index' | 'type'>;
+type Morpher<T, X> = (arg: State<T>) => NewOut<X>;
+
+class Parser<T> {
+  parse: Functor<T>;
+  constructor(transformer: Functor<T>) {
+    this.parse = transformer;
   }
-
-  /**
-   * Runs the current parser.
-   * @param targetString - The string to parse.
-   */
   run(src: string) {
-    const initState: State = {
-      src,
-      pos: 0,
-      result: result('string', ''),
-      results: [],
-      erred: false,
-      error: '',
-    };
-    return this.morph(initState);
+    return this.parse({
+      type: '',
+      input: src,
+      index: 0,
+      out: null as unknown,
+      err: false,
+      erm: '',
+    });
   }
 
   /**
-   * Transforms the output state of a
-   * Parser. The `map` function takes a
-   * `Morphism`.
-   *
-   * ```
-   * export type Morphism = (
-   *   nextState: State,
-   *   currentState: State
-   * ) => Partial<State>;
-   * ```
-   * Two objects are provided as default arguments
-   * within the callback function: (1) the state
-   * to be received by the next parser, and (2) the
-   * state as of the current parser. Almost always,
-   * `map` applies changes to future states, rather
-   * than the current. Note that all changes to
-   * state are immutable. The return value _must_ be
-   * a `State` or a partial `State`.
+   * The `map` method provides a way to modify state in between parsings.
+   * The properties that state properties that can be modified: `out`, `erm`,
+   * `err`, `index` and `type`.
    */
-  map(fn: Morphism) {
-    return new Parser((state: State) => {
-      const nextState = this.morph(state);
-      if (nextState.erred) return nextState;
-      return update(nextState, fn(nextState, state));
-    });
-  }
-  chain(fn: ChainTransformer) {
-    return new Parser((state: State) => {
-      const nextState = this.morph(state);
-      if (nextState.erred) return nextState;
-      const nextParser = fn(nextState.result);
-      return nextParser.morph(nextState);
-    });
-  }
-  mapError(fn: ErrorTransformer) {
-    return new Parser((state: State) => {
-      const nextState = this.morph(state);
-      if (!nextState.erred) return nextState;
-      return err(nextState, fn(nextState.error, nextState.pos));
+  map<R>(fn: Morpher<T, R>): Parser<R> {
+    const refresh = <A, B, C>(s1: State<A>, s2: State<B>): State<C> =>
+      ({ ...s1, ...s2 } as any);
+    return new Parser<R>((state1): State<R> => {
+      const nx = this.parse(state1);
+      if (nx.err) return nx as any;
+      return refresh(nx, { ...nx, ...fn(nx) });
     });
   }
 }
 
 /**
- * Parses the content between two delimiters.
- * The function takes two arguments, `leftParser`
- * (a Parser instance to parse the left delimiting symbol)
- * and `rightParser` (a Parser instance to parse the
- * right delimiting symbol).
- *
+ * Given a string `s` to match against,
+ * returns a successful result if the input
+ * matches. Otherwise, returns an error.
+ * @example
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * const x = one('x');
+ * console.log(x.run('x'));
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Output:
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * {
+ *   type: 'char',
+ *   input: 'x',
+ *   index: 1,
+ *   out: 'x',
+ *   err: false,
+ *   erm: ''
+ * }
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-const nested = (leftP: Parser, rightP: Parser) => (contentParser: Parser) =>
-  new Parser((state: State) => {
-    const croak = (state: State, msg: string) =>
-      err(state, msg, 'nested', state.pos);
-    if (state.erred) return state;
-    let tempState = leftP.morph(state);
-    if (tempState.erred)
-      return croak(tempState, `Left delim missing: ${state.src[state.pos]}`);
-    tempState = contentParser.morph(tempState);
-    if (tempState.erred) return croak(tempState, `Error in delimited content.`);
-    let contentState = tempState;
-    tempState = rightP.morph(tempState);
-    if (tempState.erred)
-      return croak(tempState, `Right delim missing: ${state.src[state.pos]}`);
-    return update(contentState, {
-      results: contentState.results,
-      pos: tempState.pos,
-    });
-  });
-
-const char = (s: string, type = 'string') =>
-  new Parser((state: State) => {
-    const { src, pos, erred } = state;
-    if (erred) return state;
-    const target = src.slice(pos);
-    if (target.length === 0) return err(state, 'abrupt end', 'char', state.pos);
-    if (target.startsWith(s))
-      return update(state, {
-        pos: pos + s.length,
-        result: result(type, s),
-      });
-    return err(state, 'err in char', 'char', state.pos);
-  });
-
-const pRegex = (regex: RegExp) =>
-  new Parser((state: State) => {
-    const { src, pos, erred } = state;
-    if (erred) return state;
-    const target = src.slice(pos);
+const one = (s: string) =>
+  new Parser<string>((state: State<string>) => {
+    const { input, index, err } = state;
+    if (err) return state;
+    const target = input.slice(index);
     if (target.length === 0)
-      return err(state, 'abrupt end', 'pRegexer', state.pos);
-    const match = target.match(regex);
-    if (match)
-      return update(state, {
-        result: result('string', match[0]),
-        pos: pos + match[0].length,
-      });
-    return err(state, `No match.`, 'pRegexer', state.pos);
+      return croak(state, 'Error in parser::char - abrupt end of input.');
+    if (target.startsWith(s)) return updateState(state, s, index + 1, 'char');
+    return croak(state, `Error in parser::char - expected ${s}, got ${input}`);
   });
 
-/** Parse according to the rule: “The input must have exactly this sequence.” */
-const order = (...parsers: Parser[]) =>
-  new Parser((state: State) => {
-    const res = parsers.reduce(
-      (state, p) => ({
-        ...p.morph(state),
-        results: [...state.results, p.morph(state).result],
-      }),
-      state
+/** Returns `true` if `x` is an ASCII letter (upper of lowercase), false otherwise. */
+const asciiLetterTest = (x: string) =>
+  cmp([65, '<=', codify(x), '<=', 90], [97, '<=', codify(x), '<=', 122]);
+
+/** Returns `true` if `x` is an ASCII digit, false otherwise. */
+const asciiDigitTest = (x: string) => cmp([48, '<=', codify(x), '<=', 57]);
+
+/** Returns `true` if `x` is an ASCII uppercase letter, false otherwise. */
+const asciiUpperTest = (x: string) => cmp([65, '<=', codify(x), '<=', 90]);
+
+/** Returns `true` if `x` is an ASCII lowercase letter, false otherwise. */
+const asciiLowerTest = (x: string) => cmp([97, '<=', codify(x), '<=', 122]);
+
+/** Returns an ASCII tester based on the option passed. */
+const asciiTester = branch(
+  ['letters', () => asciiLetterTest],
+  ['digits', () => asciiDigitTest],
+  ['uppercase-letters', () => asciiUpperTest],
+  ['lowercase-letters', () => asciiLowerTest]
+);
+
+/**
+ * Parses an ASCII character base on the `AsciiOption` passed.
+ * Valid options are:
+ * 1. `letters` - Parse any uppercase or lowercase Latin letter.
+ * 2. `uppercase-letters` - Parse any uppercase Latin letter.
+ * 3. `lowercase-letters` - Parse any lowercase Latin letter.
+ * 4. `digits` - Parse any ASCII digit.
+ * 
+ * @example
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    const digits = ascii('digits');
+    console.log(digits.run('84713'));
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Output:
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    {
+      type: 'ascii-digits',
+      input: '84713',
+      index: 5,
+      out: '84713',
+      err: false,
+      erm: ''
+    }
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * The digits can be converted to numbers with a `map`:
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    const digits = ascii('digits');
+    const naturals = digits.map((d) => ({
+      out: Number(d.out),
+      type: 'natural-number',
+    }));
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+const ascii = (options: AsciiOption) =>
+  new Parser<string>((state) => {
+    if (state.err) return state;
+    const target = state.input.slice();
+    const test = asciiTester(options);
+    let result = '';
+    let i = state.index;
+    while (i < target.length && test(target[i])) {
+      result += target[i];
+      i++;
+    }
+    return result.length !== 0
+      ? updateState(
+          state,
+          result,
+          state.index + result.length,
+          `ascii-${options}`
+        )
+      : croak(state, `Error: parser::ascii - Bad char: ${result[i]}`);
+  });
+
+/** Parses ASCII digits. */
+const digits = ascii('digits');
+
+/** Parses natural numbers. */
+const naturals = digits.map((d) => ({
+  out: Number(d.out),
+  type: 'natural-number',
+}));
+
+/**
+ * Given two Parsers `p1` and `p2`, returns the
+ * first Parser that successfully parses.
+ * @example
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  const XorY = or(one('x'), one('y'));
+  console.log(XorY.run('xyz'));
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Output:
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    {
+      type: 'char',
+      input: 'xyz',
+      index: 1,
+      out: 'x',
+      err: false,
+      erm: ''
+    }
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+const or = <A, B>(p1: Parser<A>, p2: Parser<B>) =>
+  new Parser<A | B>((state) => {
+    const { input, index, err } = state;
+    const r1 = p1.parse(state);
+    if (!r1.err) return updateState<A, A>(state, r1.out, r1.index, r1.type);
+    const r2 = p2.parse(state);
+    if (!r2.err) return updateState<B, B>(state, r2.out, r2.index, r2.type);
+    return croak(state, 'no matches in parser:or');
+  });
+
+/**
+ * Given two parsers `p1` and `p2`, returns a successful
+ * parse _only if_ both `p1` and `p2` succeed. The output
+ * is a pair `[a,b]` where `a` is the successful output of `p1`,
+ * and `b` is the successful output of `p2`.
+ */
+const and = <A, B>(p1: Parser<A>, p2: Parser<B>) =>
+  new Parser<[A, B]>((state): State<[A, B]> => {
+    const r1 = p1.parse(state);
+    if (r1.err)
+      return croak(
+        r1,
+        `Error in parser::and - parser1 failed. Previous: ${r1.erm}`
+      );
+    const r2 = p2.parse(r1);
+    if (r2.err)
+      return croak(
+        r2,
+        `Error in parser::and - parser2 failed. Previous: ${r2.erm}`
+      );
+    return updateState<A & B, [A, B]>(
+      state,
+      [r1.out, r2.out],
+      r2.index,
+      `${r1.type} & ${r2.type}`
     );
-    return res.erred ? err(res, 'order error', 'order', res.pos) : res;
-  });
-
-/** Parses according to the rule: “The input can have any of these symbols.” */
-const anyOf = (...parsers: Parser[]) =>
-  new Parser((state: State) => {
-    if (state.erred) return state;
-    for (let p of parsers) {
-      const nextState = p.morph(state);
-      if (!nextState.error) return nextState;
-    }
-    return err(state, `No match.`, 'choiceOf', state.pos);
   });
 
 /**
- * Internal helper build for the `many` functions. Not intended to be used directly.
- * @internal
- */
-const manyBuilder = (type: 'many' | 'atLeast1') => (parser: Parser) =>
-  new Parser((state: State) => {
-    if (state.erred) return state;
-    let nextState = state;
-    const results = [];
-    let done = false;
-    while (!done && nextState.pos < state.src.length) {
-      let tempState = parser.morph(nextState);
-      if (!tempState.erred) {
-        results.push(tempState.result);
-        nextState = tempState;
-      } else done = true;
+ * Given an array of parsers, returns a successful parsing
+ * _only if_ every parser succeeds. The output is an array
+ * of the successful parsings.
+ * @example
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    const cat = word([one('c'), one('a'), one('t')]);
+    console.log(cat.run('cat'));
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Output:
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    {
+      type: 'word',
+      input: 'cat',
+      index: 3,
+      out: [ 'c', 'a', 't' ],
+      err: false,
+      erm: ''
     }
-    if (type === 'atLeast1' && results.length === 0) {
-      return err(state, `No match.`, type, state.pos);
-    }
-    return update(nextState, { results });
-  });
-
-/** Parse according to the rule: “Get all these symbols.” */
-const many = manyBuilder('many');
-
-/** Parse according to the rule: “The input must have at least one of these symbols.” */
-const atLeast1 = manyBuilder('atLeast1');
-
-/** Parses symbols separated by the specified separator. */
-const sep =
-  (separator: Parser, type = 'seperator') =>
-  (valParser: Parser) =>
-    new Parser((state: State) => {
-      if (state.erred) return err(state, `Died abirth.`, 'sep', state.pos);
-      const results: Result[] = [];
-      let nxState = state;
-      while (true && nxState.pos < state.src.length) {
-        const targetState = valParser.morph(nxState);
-        if (targetState.erred) break;
-        results.push(targetState.result);
-        nxState = targetState;
-        const sepState = separator.morph(nxState);
-        if (sepState.erred) break;
-        nxState = sepState;
-      }
-      return update(nxState, {
-        result: result(type ? type : nxState.result.type, results),
-      });
-    });
-
-const lazy = (thunkp: Thunk) =>
-  new Parser((state: State) => {
-    const parser = thunkp();
-    return parser.morph(state);
-  });
-
-const word = (...parsers: Parser[]) =>
-  order(...parsers).map((nx, cx) => ({
-    result: result('word', nx.src.slice(cx.pos, nx.pos)),
-    results: [result('word', nx.src.slice(cx.pos, nx.pos))],
-  }));
-
-export {
-  char,
-  order,
-  anyOf,
-  result,
-  many,
-  atLeast1,
-  pRegex,
-  nested,
-  sep,
-  lazy,
-  Parser,
-  word,
-  update,
-  err,
-};
-
-/* -------------------------------------------------------------------------- */
-/*                                   EXTRAS                                   */
-/* -------------------------------------------------------------------------- */
-/**
- * The following are parsers built with the core modules above.
- * These parses may be moved to a separate repository in the future,
- * since they aren’t strictly necessary for Lango to work.
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
 
-/**
- * Returns the result of exactly one result of the Parsers
- * provided as arguments.
- */
-const xor = (...parsers: Parser[]) =>
-  new Parser((state: State) => {
-    if (state.erred) return state;
-    let results: Result[] = [];
-    let temp = state;
-    let outState = temp;
-    for (let p of parsers) {
-      temp = p.morph(state);
-      if (temp.erred) continue;
-      results.push(temp.result);
-      outState = temp;
-    }
-    return results.length === 0
-      ? err(temp, 'no match found', 'xor', temp.pos)
-      : update(temp, outState);
-  });
-
-const or = (parser1: Parser, parser2: Parser) =>
+type PList = <Value>(ps: Parser<Value>[]) => Parser<Value[]>;
+const word: PList = (ps) =>
   new Parser((state) => {
-    const { src, pos } = state;
-    if (state.erred) return state;
-    const res1 = parser1.run(src.slice(pos));
-    if (!res1.erred) return res1;
-    const res2 = parser2.run(src.slice(pos));
-    if (!res2.erred) return res2;
-    return err(state, 'no match found', 'or', state.pos);
+    if (state.err) return state;
+    let results = [];
+    let nx = state;
+    for (let i = 0; i < ps.length; i++) {
+      const out = ps[i].parse(nx);
+      if (nx.err) return out as any;
+      else {
+        nx = out;
+        results[i] = nx.out;
+      }
+    }
+    return updateState(nx, results, nx.index, `word`);
   });
 
-const anyspace = pRegex(/\s*/);
-const letters = pRegex(/^[A-Za-z]+/);
-const digits = pRegex(/^\d+/);
+type P3 = <A, B, C>(
+  pL: Parser<A | B | C>,
+  pR: Parser<A | B | C>
+) => (pC: Parser<A | B | C>) => Parser<A | B | C>;
 
-/** Parses a string. */
-const litstring = letters.map((nx) => ({
-  result: result('string', nx.result.value),
-}));
+const amid: P3 = (L, R) => (C) =>
+  word([L, C, R]).map((state) => ({ out: state.out[1] }));
 
-/** Parses a number. */
-const num = digits.map((nx) => ({
-  result: result('number', Number(nx.result.value)),
-}));
-
-/** Parse everything between parentheses. */
-const parenthesized = nested(char('('), char(')'));
-
-/** Parse everything between braces. */
-const braced = nested(char('{'), char('}'));
-
-/** Parse everything between double quotes. */
-const dquoted = nested(char('"'), char('"'));
-
-/** Parse everything between single quotes. */
-
-const squoted = nested(char(`'`), char(`'`));
-
-/** Parse everything between brackets */
-const bracketed = nested(char('['), char(']'));
-
-/** Parse a number array */
-const numSep = sep(char(','), 'number[]');
-
-/** Parse a string array */
-const strSep = sep(char(','), 'string[]');
-
-/** Parse nested arrays */
-const numvals = lazy(() => anyOf(num, numtup));
-const strvals = lazy(() => anyOf(litstring, strtup));
-const numtup = bracketed(numSep(numvals));
-const strtup = bracketed(strSep(strvals));
-const dot = char('.');
-const slash = char('/');
-
-const int = digits.map((nx) => ({
-  result: { type: 'integer', value: nx.result.value },
-  results: [{ type: 'integer', value: nx.result.value }],
-}));
-
-const float = word(digits, dot, digits).map((nx) => ({
-  result: { ...nx.result, type: 'float' },
-  results: [{ ...nx.result, type: 'float' }],
-}));
-
-const frac = (n: string, d: string) => ({
-  type: 'fraction',
-  value: `${n}/${d}`,
-});
-
-const fraction = order(digits, slash, digits).map((nx, cr) => ({
-  result: frac(nx.results[0].value, nx.results[2].value),
-}));
-
-const real = xor(int, float, fraction);
-
-/** Parses a point. */
-const point = order(char('('), num, char(','), num, char(')')).map((nx) => ({
-  result: result('point', [
-    Number(nx.results[1].value),
-    Number(nx.results[3].value),
-  ]),
-}));
-
-export {
-  parenthesized,
-  or,
-  anyspace,
-  braced,
-  dquoted,
-  squoted,
-  bracketed,
-  numSep,
-  strSep,
-  numvals,
-  strvals,
-  numtup,
-  strtup,
-  dot,
-  slash,
-  int,
-  float,
-  frac,
-  fraction,
-  real,
-  point,
-};
-
-/* -------------------------------------------------------------------------- */
-/*                                  OPERATORS                                 */
-/* -------------------------------------------------------------------------- */
-/**
- * This section contains operator parsers. By “operator,” we mean mathematical
- * operators. 
- */
-
-const add = char('+').map((nx) => ({
-  result: { type: 'operator', value: '+' },
-}));
-
-const minus = char('-').map((nx) => ({
-  result: { type: 'operator', value: '-' },
-}));
-
-const div = char('-').map((nx) => ({
-  result: { type: 'operator', value: '/' },
-}));
-const operator = anyOf(add, minus, div);
-const binop = order(real, operator, real);
-
-export { add, minus, div, operator, binop };
+// const parend = amid(one('('), one(')'));
+// const parenDigit = parend(digits);
+// show(parenDigit.run('(14892)'));

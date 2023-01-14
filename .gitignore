@@ -11,3 +11,4 @@ dist/**
 dump.rdb
 .vscode/**
 ./Style.css
+structs/lang/src/lab.js
