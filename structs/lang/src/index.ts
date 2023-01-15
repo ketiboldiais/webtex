@@ -1,3 +1,5 @@
+import { make } from './util.js';
+
 const print = (s: State<any>) => {
   if (s.err) console.log(s.erm);
   else console.log(s);
@@ -87,43 +89,40 @@ const branch =
  * @param state - The state before the error was encountered.
  * @param erm - error message.
  */
-const err = <T>(
-  state: State<any>,
-  currentState: State<any>,
-  parserName: string,
-  erm: string
-): State<T> => ({
-  ...state,
+const error = <A, B>({
+  prev,
+  now,
+  parser,
+  message,
+}: Goof<A, B>): State<B extends Value ? A : any> => ({
+  ...prev,
   erm:
-    `Error at index ${state.index} | `.padEnd(5) +
-    `parser::${parserName}`.padEnd(13) +
+    `Error at index ${prev.index} | `.padEnd(5) +
+    `parser::${parser}`.padEnd(13) +
     `| ` +
-    `${erm}`.padEnd(27) +
-    `| remaining: ${state.input.slice(currentState.index)}` +
+    `${message}`.padEnd(27) +
+    `| remaining: ${prev.input.slice(now.index)}` +
     '\n' +
-    currentState.erm,
+    now.erm,
   err: true,
 });
+type Goof<A, B> = {
+  prev: State<A>;
+  now: State<B>;
+  parser: string;
+  message: string;
+};
 
-/**
- * All result updates must copy the previous state to maintain
- * immutability.
- * @param state - the state before the update.
- * @param out - the new result
- * @param index - the new index
- * @param type - optionally, a custom type name
- */
-const updateState = <A, B>(
-  state: State<A>,
-  out: B,
-  index: number,
-  type = state.type
-): State<B> => ({
-  ...state,
-  out,
-  index,
-  type,
-});
+const problem = <A, B>(prev: State<A>, now: State<B>) =>
+  make.new<Goof<A, B>>().with('prev', prev).with('now', now);
+
+const update = <T, X>(prev: State<T>, result: X) =>
+  make
+    .new<State<X>>()
+    .with('out', result)
+    .with('erm', prev.erm)
+    .with('err', prev.err)
+    .with('input', prev.input);
 
 /**
  * A `Functor` is a function that takes any given
@@ -197,16 +196,29 @@ class Parser<T> {
  * }
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-const one = (s: string) =>
+const one = (expect: string) =>
   new Parser<string>((state: State<string>) => {
     if (state.err) return state;
     const { input, index } = state;
     if (input === '')
-      return err(state, state, 'one', 'unexpected end of input');
+      return error(
+        problem(state, state)
+          .with('parser', 'one')
+          .with('message', 'unexpected end of input')
+          .build()
+      );
     const target = input[index];
-    if (target.startsWith(s))
-      return updateState(state, s, index + s.length, 'char');
-    return err(state, state, 'one', `expected '${s}', got '${input[index]}'`);
+    if (target.startsWith(expect))
+      return update(state, expect)
+        .with('index', index + expect.length)
+        .with('type', 'char')
+        .build();
+    return error(
+      problem(state, state)
+        .with('parser', 'one')
+        .with('message', `Expected ${expect}, got ${input[index]}`)
+        .build()
+    );
   });
 export { one };
 
@@ -276,13 +288,16 @@ const ascii = (options: AsciiOption) =>
       i++;
     }
     return result.length !== 0
-      ? updateState(
-          state,
-          result,
-          state.index + result.length,
-          `ascii-${options}`
-        )
-      : err(state, state, `ascii-${options}`, `bad char: ${result}`);
+      ? update(state, result)
+          .with('index', state.index + result.length)
+          .with('type', `ascii-${options}`)
+          .build()
+      : error(
+          problem(state, state)
+            .with('parser', `ascii-${options}`)
+            .with('message', `bad char: ${result}`)
+            .build()
+        );
   });
 
 /** Parses ASCII digits. */
@@ -317,10 +332,23 @@ const naturals = digits.map((d) => ({
 const or = <A, B>(p1: Parser<A>, p2: Parser<B>) =>
   new Parser<A | B>((state) => {
     const r1 = p1.parse(state);
-    if (!r1.err) return updateState<A, A>(state, r1.out, r1.index, r1.type);
+    if (!r1.err)
+      return update(state, r1.out)
+        .with('index', r1.index)
+        .with('type', r1.type)
+        .build();
     const r2 = p2.parse(state);
-    if (!r2.err) return updateState<B, B>(state, r2.out, r2.index, r2.type);
-    return err(state, r2, 'or', 'no matches found');
+    if (!r2.err)
+      return update(state, r2.out)
+        .with('index', r2.index)
+        .with('type', r2.type)
+        .build();
+    return error(
+      problem(state, r2)
+        .with('parser', 'or')
+        .with('message', 'no matches found')
+        .build()
+    );
   });
 
 /**
@@ -330,17 +358,27 @@ const or = <A, B>(p1: Parser<A>, p2: Parser<B>) =>
  * and `b` is the successful output of `p2`.
  */
 const and = <A, B>(p1: Parser<A>, p2: Parser<B>) =>
-  new Parser<[A, B]>((state): State<[A, B]> => {
+  new Parser<(A | B)[]>((state): State<(A | B)[]> => {
     const r1 = p1.parse(state);
-    if (r1.err) return err(state, r1, 'and', 'first parser failed');
+    if (r1.err)
+      return error(
+        problem(state, r1)
+          .with('parser', 'and')
+          .with('message', 'first parser failed')
+          .build()
+      );
     const r2 = p2.parse(r1);
-    if (r2.err) return err(r1, r2, 'and', 'second parser failed');
-    return updateState<A & B, [A, B]>(
-      state,
-      [r1.out, r2.out],
-      r2.index,
-      `${r1.type} & ${r2.type}`
-    );
+    if (r2.err)
+      return error(
+        problem(state, r2)
+          .with('parser', 'and')
+          .with('message', 'second parser failed')
+          .build()
+      );
+    return update(state, [r1.out, r2.out])
+      .with('index', r2.index)
+      .with('type', `${r1.type} & ${r2.type}`)
+      .build();
   });
 
 /**
@@ -366,18 +404,33 @@ const and = <A, B>(p1: Parser<A>, p2: Parser<B>) =>
  */
 const word: PList = (ps) =>
   new Parser((state) => {
-    if (state.err) return err(state, state, 'word', 'received a bad state.');
+    if (state.err)
+      return error(
+        problem(state, state)
+          .with('parser', 'word')
+          .with('message', 'received a bad state')
+          .build()
+      );
     let results = [];
     let nx = state;
     for (const p of ps) {
       const out = p.parse(nx);
-      if (nx.err) return err(state, out, 'word', 'at least one parser failed');
+      if (nx.err)
+        return error(
+          problem(state, out)
+            .with('parser', 'word')
+            .with('message', 'at least one parser failed')
+            .build()
+        );
       else {
         nx = out;
         if (nx.out !== null && nx.out !== undefined) results.push(nx.out);
       }
     }
-    return updateState(nx, results, nx.index, `word`);
+    return update(state, results)
+      .with('index', nx.index)
+      .with('type', 'word')
+      .build();
   });
 
 type PList = <Value>(ps: Parser<Value>[]) => Parser<Value[]>;
@@ -432,7 +485,12 @@ const either: PList = (ps) =>
       nx = p.parse(state);
       if (!nx.err) return nx;
     }
-    return err(state, nx, 'among', 'no match found');
+    return error(
+      problem(state, nx)
+        .with('parser', 'either')
+        .with('message', 'no match found')
+        .build()
+    );
   });
 
 /**
@@ -470,7 +528,10 @@ const among = <T>(p: Parser<T>) =>
         outs.push(nx.out);
       }
     }
-    return updateState(state, outs, nx.index, `[${typenames.join(', ')}]`);
+    return update(state, outs)
+      .with('index', nx.index)
+      .with('type', `[${typenames.join(', ')}]`)
+      .build();
   });
 
 /**
@@ -478,12 +539,12 @@ const among = <T>(p: Parser<T>) =>
  * otherwise a `null` output. An optional `otherwise` value
  * may be provided instead of outputting `null`.
  * @example
- * ~~~
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     const greet = word([one('h'), one('e'), one('y'), maybe(one('a'))]);
     console.log(greet.run('hey'));
- * ~~~
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Output:
- * ~~~
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     {
       type: 'word',
       input: 'hey',
@@ -492,25 +553,23 @@ const among = <T>(p: Parser<T>) =>
       err: false,
       erm: ''
     }
- * ~~~
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
 const maybe = <T>(p: Parser<T>, otherwise: Value | null = null) =>
   new Parser((state: State<T>): State<T | typeof otherwise> => {
     if (state.err) return state;
-    const prevstate: State<typeof otherwise> = updateState(
-      state,
-      otherwise,
-      state.index,
-      state.type
-    );
+    const prevstate: State<typeof otherwise> = update(state, otherwise)
+      .with('index', state.index)
+      .with('type', state.type)
+      .build();
     if (state.index >= state.input.length) return prevstate;
     const nx = p.parse(state);
     return nx.err ? prevstate : nx;
   });
 
-const splitBy = <T>(n: number | 'n', p: Parser<T>) =>
+const cutBy = <T>(n: number | 'n', p: Parser<T>) =>
   new Parser((state) => {
     return state;
   });
 
-const p = splitBy(2, digits);
+const p = cutBy(2, digits);

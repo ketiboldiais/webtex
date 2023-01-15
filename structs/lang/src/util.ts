@@ -1,4 +1,4 @@
-import type { State } from './index';
+import type { State } from './index.js';
 
 export class make {
   public static new<Target>(): With<Target, {}> {
