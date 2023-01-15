@@ -1,5 +1,7 @@
-const { log: show } = console;
-const { trunc } = Math;
+const print = (s: State<any>) => {
+  if (s.err) console.log(s.erm);
+  else console.log(s);
+};
 
 /** First, the parser types recognized. */
 type Value =
@@ -22,7 +24,7 @@ type Out<t> = { out: t };
  * Parsers and combinators never operate on raw strings.
  * The only thing they understand is a `State`.
  */
-type State<t> = {
+export type State<t> = {
   /** The original input. This never changes. */
   readonly input: string;
   /** The custom name type for the state. */
@@ -85,9 +87,21 @@ const branch =
  * @param state - The state before the error was encountered.
  * @param erm - error message.
  */
-const croak = <T>(state: State<any>, erm: string): State<T> => ({
+const err = <T>(
+  state: State<any>,
+  currentState: State<any>,
+  parserName: string,
+  erm: string
+): State<T> => ({
   ...state,
-  erm,
+  erm:
+    `Error at index ${state.index} | `.padEnd(5) +
+    `parser::${parserName}`.padEnd(13) +
+    `| ` +
+    `${erm}`.padEnd(27) +
+    `| remaining: ${state.input.slice(currentState.index)}` +
+    '\n' +
+    currentState.erm,
   err: true,
 });
 
@@ -152,11 +166,11 @@ class Parser<T> {
    * `err`, `index` and `type`.
    */
   map<R>(fn: Morpher<T, R>): Parser<R> {
-    const refresh = <A, B, C>(s1: State<A>, s2: State<B>): State<C> =>
-      ({ ...s1, ...s2 } as any);
+    const refresh = <A, B>(s1: State<A>, s2: State<B>): State<R> =>
+      ({ ...s1, ...s2 } as unknown as State<R>);
     return new Parser<R>((state1): State<R> => {
       const nx = this.parse(state1);
-      if (nx.err) return nx as any;
+      if (nx.err) return nx as unknown as State<R>;
       return refresh(nx, { ...nx, ...fn(nx) });
     });
   }
@@ -185,14 +199,16 @@ class Parser<T> {
  */
 const one = (s: string) =>
   new Parser<string>((state: State<string>) => {
-    const { input, index, err } = state;
-    if (err) return state;
-    const target = input.slice(index);
-    if (target.length === 0)
-      return croak(state, 'Error in parser::char - abrupt end of input.');
-    if (target.startsWith(s)) return updateState(state, s, index + 1, 'char');
-    return croak(state, `Error in parser::char - expected ${s}, got ${input}`);
+    if (state.err) return state;
+    const { input, index } = state;
+    if (input === '')
+      return err(state, state, 'one', 'unexpected end of input');
+    const target = input[index];
+    if (target.startsWith(s))
+      return updateState(state, s, index + s.length, 'char');
+    return err(state, state, 'one', `expected '${s}', got '${input[index]}'`);
   });
+export { one };
 
 /** Returns `true` if `x` is an ASCII letter (upper of lowercase), false otherwise. */
 const asciiLetterTest = (x: string) =>
@@ -266,7 +282,7 @@ const ascii = (options: AsciiOption) =>
           state.index + result.length,
           `ascii-${options}`
         )
-      : croak(state, `Error: parser::ascii - Bad char: ${result[i]}`);
+      : err(state, state, `ascii-${options}`, `bad char: ${result}`);
   });
 
 /** Parses ASCII digits. */
@@ -300,12 +316,11 @@ const naturals = digits.map((d) => ({
  */
 const or = <A, B>(p1: Parser<A>, p2: Parser<B>) =>
   new Parser<A | B>((state) => {
-    const { input, index, err } = state;
     const r1 = p1.parse(state);
     if (!r1.err) return updateState<A, A>(state, r1.out, r1.index, r1.type);
     const r2 = p2.parse(state);
     if (!r2.err) return updateState<B, B>(state, r2.out, r2.index, r2.type);
-    return croak(state, 'no matches in parser:or');
+    return err(state, r2, 'or', 'no matches found');
   });
 
 /**
@@ -317,17 +332,9 @@ const or = <A, B>(p1: Parser<A>, p2: Parser<B>) =>
 const and = <A, B>(p1: Parser<A>, p2: Parser<B>) =>
   new Parser<[A, B]>((state): State<[A, B]> => {
     const r1 = p1.parse(state);
-    if (r1.err)
-      return croak(
-        r1,
-        `Error in parser::and - parser1 failed. Previous: ${r1.erm}`
-      );
+    if (r1.err) return err(state, r1, 'and', 'first parser failed');
     const r2 = p2.parse(r1);
-    if (r2.err)
-      return croak(
-        r2,
-        `Error in parser::and - parser2 failed. Previous: ${r2.erm}`
-      );
+    if (r2.err) return err(r1, r2, 'and', 'second parser failed');
     return updateState<A & B, [A, B]>(
       state,
       [r1.out, r2.out],
@@ -357,32 +364,153 @@ const and = <A, B>(p1: Parser<A>, p2: Parser<B>) =>
     }
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-
-type PList = <Value>(ps: Parser<Value>[]) => Parser<Value[]>;
 const word: PList = (ps) =>
   new Parser((state) => {
-    if (state.err) return state;
+    if (state.err) return err(state, state, 'word', 'received a bad state.');
     let results = [];
     let nx = state;
-    for (let i = 0; i < ps.length; i++) {
-      const out = ps[i].parse(nx);
-      if (nx.err) return out as any;
+    for (const p of ps) {
+      const out = p.parse(nx);
+      if (nx.err) return err(state, out, 'word', 'at least one parser failed');
       else {
         nx = out;
-        results[i] = nx.out;
+        if (nx.out !== null && nx.out !== undefined) results.push(nx.out);
       }
     }
     return updateState(nx, results, nx.index, `word`);
   });
+
+type PList = <Value>(ps: Parser<Value>[]) => Parser<Value[]>;
+
+/** 
+ * Parses input surrounded by two delimiting symbols.
+ * The parser `L` parses the left delimiting symbol,
+ * the parser `R` parses the right delimiting symbol.
+ * The return is the output of the parser `C`, which
+ * parses the content enclosed. Results may be modified
+ * with `.map`.
+ * 
+ * @example
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    const parend = amid(one('('), one(')'));
+    const parenDigit = parend(digits);
+    console.log(parenDigit.run('(14892)'));
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Output:
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    {
+      type: 'word',
+      input: '(14892)',
+      index: 7,
+      out: '14892',
+      err: false,
+      erm: ''
+    }
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+const amid: P3 = (L, R) => (C) =>
+  word([L, C, R]).map((state) => ({ out: state.out[1] }));
 
 type P3 = <A, B, C>(
   pL: Parser<A | B | C>,
   pR: Parser<A | B | C>
 ) => (pC: Parser<A | B | C>) => Parser<A | B | C>;
 
-const amid: P3 = (L, R) => (C) =>
-  word([L, C, R]).map((state) => ({ out: state.out[1] }));
+/**
+ * Given an array of parsers, returns the first
+ * successful parser.
+ * @example
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * const f = either([one('a'), one('b'), one('c')]);
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+const either: PList = (ps) =>
+  new Parser((state) => {
+    if (state.err) return state;
+    let nx = state;
+    for (const p of ps) {
+      nx = p.parse(state);
+      if (!nx.err) return nx;
+    }
+    return err(state, nx, 'among', 'no match found');
+  });
 
-// const parend = amid(one('('), one(')'));
-// const parenDigit = parend(digits);
-// show(parenDigit.run('(14892)'));
+/**
+ * Given a parser `p`, returns the results
+ * of all the parsers that succeed.
+ * @example
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   const digitsOrLetters = or(ascii('digits'), ascii('letters'));
+   const secretKey = among(digitsOrLetters);
+   console.log(secretKey.run('a847s3'))
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Output:
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    {
+      type: '[ascii-letters, ascii-digits, ascii-letters, ascii-digits]',
+      input: 'a847s3',
+      index: 6,
+      out: [ 'a', '847', 's', '3' ],
+      err: false,
+      erm: ''
+    }
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+const among = <T>(p: Parser<T>) =>
+  new Parser<T[]>((state) => {
+    const outs = [];
+    const typenames = [];
+    let nx = state;
+    while (true && nx.index < state.input.length) {
+      const out = p.parse(nx);
+      if (out.err) break;
+      else {
+        nx = out;
+        typenames.push(nx.type);
+        outs.push(nx.out);
+      }
+    }
+    return updateState(state, outs, nx.index, `[${typenames.join(', ')}]`);
+  });
+
+/**
+ * Returns the result of the parser if successful,
+ * otherwise a `null` output. An optional `otherwise` value
+ * may be provided instead of outputting `null`.
+ * @example
+ * ~~~
+    const greet = word([one('h'), one('e'), one('y'), maybe(one('a'))]);
+    console.log(greet.run('hey'));
+ * ~~~
+ * Output:
+ * ~~~
+    {
+      type: 'word',
+      input: 'hey',
+      index: 3,
+      out: [ 'h', 'e', 'y' ],
+      err: false,
+      erm: ''
+    }
+ * ~~~
+ */
+const maybe = <T>(p: Parser<T>, otherwise: Value | null = null) =>
+  new Parser((state: State<T>): State<T | typeof otherwise> => {
+    if (state.err) return state;
+    const prevstate: State<typeof otherwise> = updateState(
+      state,
+      otherwise,
+      state.index,
+      state.type
+    );
+    if (state.index >= state.input.length) return prevstate;
+    const nx = p.parse(state);
+    return nx.err ? prevstate : nx;
+  });
+
+const splitBy = <T>(n: number | 'n', p: Parser<T>) =>
+  new Parser((state) => {
+    return state;
+  });
+
+const p = splitBy(2, digits);
