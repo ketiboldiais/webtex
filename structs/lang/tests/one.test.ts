@@ -1,5 +1,5 @@
-import { output } from './util';
-import { one } from '.';
+import { output } from '../src/util';
+import { one } from '../src';
 import { it, expect } from 'vitest';
 
 it('should parse one character correctly', () => {

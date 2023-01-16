@@ -1,120 +1,45 @@
-import { make } from './util.js';
+import {
+  make,
+  output,
+  isEmpty,
+  isPosInt,
+  branch,
+  isAlphaNum,
+  isDigit,
+  isLatin,
+  isLowerLatin,
+  isNonAlphaNum,
+  isUpperLatin,
+  print,
+} from './util.js';
 
-const print = (s: State<any>) => {
-  if (s.err) console.log(s.erm);
-  else console.log(s);
-};
-
-/** First, the parser types recognized. */
-type Value =
-  | string
-  | string[]
-  | number
-  | number[]
-  | bigint
-  | bigint[]
-  | boolean
-  | boolean[]
-  | symbol
-  | symbol[]
-  | { [key: string]: any };
-
-/** Parsers always place their results in an `out` property. */
-type Out<t> = { out: t };
-/**
- * Every parser receives a state and accepts a state.
- * Parsers and combinators never operate on raw strings.
- * The only thing they understand is a `State`.
- */
-export type State<t> = {
-  /** The original input. This never changes. */
-  readonly input: string;
-  /** The custom name type for the state. */
-  type: string;
-  /** The index, or `cursor` for the Parser to begin reading at. */
-  index: number;
-  /** Whether an error occurred. */
-  err: boolean;
-  /** An error message. */
-  erm: string;
-} & Out<t>;
-
-/** Helper type, used to construct a “Partial pick.” */
-type PartialPick<t, u extends keyof t> = Omit<t, u> & Partial<Pick<t, u>>;
-
-/** The only properties that can be updated. */
-type Mutables<t> = Pick<State<t>, 'erm' | 'err' | 'index' | 'out' | 'type'>;
-
-const codify = (c: string) => c.charCodeAt(0);
-
-type Comp = '<' | '<=';
-type Range = [number, Comp, number, Comp, number];
-
-/** Tests if a given input falls within the range */
-const ranTest = (rng: Range) =>
-  (rng[1] === '<' ? rng[0] < rng[2] : rng[0] <= rng[2]) &&
-  (rng[3] === '<' ? rng[2] < rng[4] : rng[2] <= rng[4]);
-const cmp = (...ranges: Range[]) => {
-  for (const r of ranges) {
-    if (ranTest(r)) return true;
-  }
-  return false;
-};
-
-type AsciiOption =
-  | 'letters'
-  | 'digits'
-  | 'uppercase-letters'
-  | 'lowercase-letters';
-type Branch<a, r> = [a, (arg: a, cases: a[]) => r];
-type Path<a, r> = Branch<a, r>[];
+const petite = <T>(out: T) => make.new<Mutables<T>>().with('out', out);
 
 /**
- * Pattern matcher. Given a pair `[c,f]`, where `c` is a
- * value and `f` is a function, executes `c` if the `input`
- * passed matches `c`. Otherwise, executes the last by default.
- */
-const branch =
-  <a, r>(...cases: Path<a, r>) =>
-  (input: a) => {
-    const arglist = cases.map((d) => d[0]);
-    for (const [pattern, act] of cases) {
-      if (pattern === input) return act(pattern, arglist);
-    }
-    return cases[cases.length][1](cases[cases.length][0], arglist);
-  };
-
-/**
- * Returns a new error object.
- * @param state - The state before the error was encountered.
- * @param erm - error message.
+ * Updates the error state. Will only accept
+ * the outputs of type `Blunder`.
  */
 const error = <A, B>({
   prev,
   now,
   parser,
   message,
-}: Goof<A, B>): State<B extends Value ? A : any> => ({
+}: Blunder<A, B>): State<B extends Value ? A : any> => ({
   ...prev,
   erm:
     `Error at index ${prev.index} | `.padEnd(5) +
-    `parser::${parser}`.padEnd(13) +
+    `parser::${parser} `.padEnd(15) +
     `| ` +
-    `${message}`.padEnd(27) +
+    `${message} `.padEnd(33) +
     `| remaining: ${prev.input.slice(now.index)}` +
     '\n' +
     now.erm,
   err: true,
 });
-type Goof<A, B> = {
-  prev: State<A>;
-  now: State<B>;
-  parser: string;
-  message: string;
-};
 
+/** Builds a new error payload. */
 const problem = <A, B>(prev: State<A>, now: State<B>) =>
-  make.new<Goof<A, B>>().with('prev', prev).with('now', now);
+  make.new<Blunder<A, B>>().with('prev', prev).with('now', now);
 
 const update = <T, X>(prev: State<T>, result: X) =>
   make
@@ -124,53 +49,116 @@ const update = <T, X>(prev: State<T>, result: X) =>
     .with('err', prev.err)
     .with('input', prev.input);
 
+/* -------------------------------------------------------------------------- */
+/*                                Parser class                                */
+/* -------------------------------------------------------------------------- */
 /**
- * A `Functor` is a function that takes any given
- * state and returns a new state. This is predominantly
- * how the parser combinator work.They apply a function
- * within a generic type, without changing the overall
- * structure of the generic type.
+ * The `Parser` class is a monad. This class should rarely
+ * be used directly, since the combinators available are more than sufficient
+ * to construct new parsers.
  */
-type Functor<A> = (state: State<any>) => State<A>;
-
-/**
- * A `NewOut` is a structure that must have an `out` property defined.
- * In the `Map` method of the `Parser` class, the callback function,
- * a `Morpher`, must return an object with _at least_ an `out` property.
- * The object may—but need not—return an object with the
- * additional properties of `erm`, `err`, `index`, and `type`.
- */
-type NewOut<T> = PartialPick<Mutables<T>, 'erm' | 'err' | 'index' | 'type'>;
-type Morpher<T, X> = (arg: State<T>) => NewOut<X>;
-
 class Parser<T> {
-  parse: Functor<T>;
-  constructor(transformer: Functor<T>) {
-    this.parse = transformer;
+  eat: Applicative<T>;
+  constructor(applicative: Applicative<T>) {
+    this.eat = applicative;
   }
-  run(src: string) {
-    return this.parse({
-      type: '',
-      input: src,
-      index: 0,
-      out: null as unknown,
-      err: false,
-      erm: '',
-    });
+  /**
+   * Executes a parser with the given `input` string.
+   */
+  run(input: string) {
+    return this.eat(
+      output('')
+        .with('input', input)
+        .with('erm', '')
+        .with('err', false)
+        .with('index', 0)
+        .with('type', '')
+        .build()
+    );
   }
-
   /**
    * The `map` method provides a way to modify state in between parsings.
    * The properties that state properties that can be modified: `out`, `erm`,
    * `err`, `index` and `type`.
    */
-  map<R>(fn: Morpher<T, R>): Parser<R> {
+  map<R>(fn: Functor<T, R>): Parser<R> {
     const refresh = <A, B>(s1: State<A>, s2: State<B>): State<R> =>
       ({ ...s1, ...s2 } as unknown as State<R>);
     return new Parser<R>((state1): State<R> => {
-      const nx = this.parse(state1);
+      const nx = this.eat(state1);
       if (nx.err) return nx as unknown as State<R>;
       return refresh(nx, { ...nx, ...fn(nx) });
+    });
+  }
+  /**
+   * The `chain` method provides a way to specify which
+   * parser to use next, based on the output state
+   * of the last parser. The `chain` method takes a
+   * an applicative functor. I.e., a callback function
+   * that returns a new Parser. A partial state object
+   * is accessible within the callback function’s body.
+   * This object has the shape:
+   * ~~~
+      type Mutables<t> = {
+        erm: string;
+        err: boolean;
+        index: number;
+        out: t;
+        type: string;
+      }
+   * ~~~
+   * This partial state is from the last parser run.
+   * The next parser to run may be determined by reading
+   * these properties. This is akin to “looking back.“ 
+   * Based on what happened in the last parse, run
+   * this particular parser.
+   * 
+   * @example
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      const p = word([strung('letters'), one(':')])
+        .map((s) => ({ out: s.out[0] }))
+        .chain((x) => {
+          if (x.out === 'a') return strung('digits');
+          else return strung('alphanumerics');
+        });
+      console.log(p.run('a:2'));
+      console.log(p.run('b:cj2zsa'));
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   * First output:
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      {
+        out: '2',
+        erm: '',
+        err: false,
+        input: 'a:2',
+        index: 3,
+        type: 'string-of-digits'
+      }
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   * Second output:
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      {
+        out: 'cj2zsa',
+        erm: '',
+        err: false,
+        input: 'b:cj2zsa',
+        index: 8,
+        type: 'string-of-alphanumerics'
+      }
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   */
+  chain<X>(f: (x: Mutables<T>) => Parser<X | T>): Parser<X> {
+    const p = this.eat;
+    return new Parser<X>((state) => {
+      const ns = p(state);
+      const x: Mutables<T> = petite(ns.out)
+        .with('erm', ns.erm)
+        .with('err', ns.err)
+        .with('index', ns.index)
+        .with('type', ns.type)
+        .build();
+      if (ns.err) return ns as unknown as State<X>;
+      return f(x).eat(ns) as State<X>;
     });
   }
 }
@@ -200,15 +188,15 @@ const one = (expect: string) =>
   new Parser<string>((state: State<string>) => {
     if (state.err) return state;
     const { input, index } = state;
-    if (input === '')
+    let char = input[index];
+    if (isEmpty(input) || isEmpty(char) || char === undefined)
       return error(
         problem(state, state)
           .with('parser', 'one')
           .with('message', 'unexpected end of input')
           .build()
       );
-    const target = input[index];
-    if (target.startsWith(expect))
+    if (char === expect)
       return update(state, expect)
         .with('index', index + expect.length)
         .with('type', 'char')
@@ -222,44 +210,76 @@ const one = (expect: string) =>
   });
 export { one };
 
-/** Returns `true` if `x` is an ASCII letter (upper of lowercase), false otherwise. */
-const asciiLetterTest = (x: string) =>
-  cmp([65, '<=', codify(x), '<=', 90], [97, '<=', codify(x), '<=', 122]);
-
-/** Returns `true` if `x` is an ASCII digit, false otherwise. */
-const asciiDigitTest = (x: string) => cmp([48, '<=', codify(x), '<=', 57]);
-
-/** Returns `true` if `x` is an ASCII uppercase letter, false otherwise. */
-const asciiUpperTest = (x: string) => cmp([65, '<=', codify(x), '<=', 90]);
-
-/** Returns `true` if `x` is an ASCII lowercase letter, false otherwise. */
-const asciiLowerTest = (x: string) => cmp([97, '<=', codify(x), '<=', 122]);
-
-/** Returns an ASCII tester based on the option passed. */
-const asciiTester = branch(
-  ['letters', () => asciiLetterTest],
-  ['digits', () => asciiDigitTest],
-  ['uppercase-letters', () => asciiUpperTest],
-  ['lowercase-letters', () => asciiLowerTest]
+const charTest = branch<CharSet, Function>(
+  ['digits', () => isDigit],
+  ['letters', () => isLatin],
+  ['upper-letters', () => isUpperLatin],
+  ['lower-letters', () => isLowerLatin],
+  ['alphanumerics', () => isAlphaNum],
+  ['non-alphanumerics', () => isNonAlphaNum]
 );
+/**
+ * Parses exactly one character of a given ASCII character set.
+ * Valid character sets are:
+ *
+ * 1. `letters` - Parse any ASCII uppercase or lowercase Latin letters.
+ * 2. `uppercase-letters` - Parse only ASCII uppercase Latin letters.
+ * 3. `lowercase-letters` - Parse only ASCII lowercase Latin letters.
+ * 4. `digits` - Parse only ASCII digits.
+ * 5. `alphanumerics` - Parse only ASCII digits or letters.
+ * 6. `non-alphanumerics` - Parse only ASCII punctuation marks.
+ *
+ */
+const charOf = (option: CharSet) =>
+  new Parser((state) => {
+    if (state.err) return state;
+    const { input, index } = state;
+    const test = charTest(option);
+    const target = input[index];
+    if (isEmpty(input))
+      return error(
+        problem(state, state)
+          .with('message', 'abrupt end of input')
+          .with('parser', `char-of-${option}`)
+          .build()
+      );
+    return test(target)
+      ? update(state, target)
+          .with('index', state.index + 1)
+          .with('type', `char-of-${option}`)
+          .build()
+      : error(
+          problem(state, state)
+            .with('message', `expected ${option}, got '${target}'`)
+            .with('parser', `char-${option}`)
+            .build()
+        );
+  });
 
 /**
- * Parses an ASCII character base on the `AsciiOption` passed.
+ * Parses an ASCII string of the `AsciiOption` passed.
  * Valid options are:
- * 1. `letters` - Parse any uppercase or lowercase Latin letter.
- * 2. `uppercase-letters` - Parse any uppercase Latin letter.
- * 3. `lowercase-letters` - Parse any lowercase Latin letter.
- * 4. `digits` - Parse any ASCII digit.
+ * 
+ * 1. `letters` - Parse any uppercase or lowercase Latin letters.
+ * 2. `uppercase-letters` - Parse all uppercase Latin letters.
+ * 3. `lowercase-letters` - Parse all lowercase Latin letters.
+ * 4. `digits` - Parse all ASCII digits.
+ * 5. `alphanumeric` - Parse all digits or letters.
+ * 6. `non-alphanumeric` - Parse all punctuation marks.
+ * 
+ * Note that the string parser is an eager parser. It will
+ * continue reading input as long as it encounters a
+ * valid character.
  * 
  * @example
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    const digits = ascii('digits');
+    const digits = strung('digits');
     console.log(digits.run('84713'));
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Output:
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     {
-      type: 'ascii-digits',
+      type: 'string-of-digits',
       input: '84713',
       index: 5,
       out: '84713',
@@ -269,45 +289,45 @@ const asciiTester = branch(
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * The digits can be converted to numbers with a `map`:
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    const digits = ascii('digits');
+    const digits = strung('digits');
     const naturals = digits.map((d) => ({
       out: Number(d.out),
       type: 'natural-number',
     }));
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-const ascii = (options: AsciiOption) =>
+const strung = (option: CharSet) =>
   new Parser<string>((state) => {
-    if (state.err) return state;
-    const target = state.input.slice();
-    const test = asciiTester(options);
+    const { err, input, index } = state;
+    if (err) return state;
+    if (isEmpty(input))
+      return error(
+        problem(state, state)
+          .with('message', 'abrupt end of input')
+          .with('parser', `string-of-${option}`)
+          .build()
+      );
     let result = '';
-    let i = state.index;
-    while (i < target.length && test(target[i])) {
-      result += target[i];
+    let i = index;
+    while (i < input.length) {
+      let tmp = charOf(option).run(input[i]);
+      if (tmp.err) break;
+      else result += input[i];
       i++;
     }
     return result.length !== 0
       ? update(state, result)
-          .with('index', state.index + result.length)
-          .with('type', `ascii-${options}`)
+          .with('index', index + result.length)
+          .with('type', `string-of-${option}`)
           .build()
       : error(
           problem(state, state)
-            .with('parser', `ascii-${options}`)
+            .with('parser', `string-of-${option}`)
             .with('message', `bad char: ${result}`)
             .build()
         );
   });
-
-/** Parses ASCII digits. */
-const digits = ascii('digits');
-
-/** Parses natural numbers. */
-const naturals = digits.map((d) => ({
-  out: Number(d.out),
-  type: 'natural-number',
-}));
+export { strung };
 
 /**
  * Given two Parsers `p1` and `p2`, returns the
@@ -331,13 +351,13 @@ const naturals = digits.map((d) => ({
  */
 const or = <A, B>(p1: Parser<A>, p2: Parser<B>) =>
   new Parser<A | B>((state) => {
-    const r1 = p1.parse(state);
+    const r1 = p1.eat(state);
     if (!r1.err)
       return update(state, r1.out)
         .with('index', r1.index)
         .with('type', r1.type)
         .build();
-    const r2 = p2.parse(state);
+    const r2 = p2.eat(state);
     if (!r2.err)
       return update(state, r2.out)
         .with('index', r2.index)
@@ -359,7 +379,7 @@ const or = <A, B>(p1: Parser<A>, p2: Parser<B>) =>
  */
 const and = <A, B>(p1: Parser<A>, p2: Parser<B>) =>
   new Parser<(A | B)[]>((state): State<(A | B)[]> => {
-    const r1 = p1.parse(state);
+    const r1 = p1.eat(state);
     if (r1.err)
       return error(
         problem(state, r1)
@@ -367,7 +387,7 @@ const and = <A, B>(p1: Parser<A>, p2: Parser<B>) =>
           .with('message', 'first parser failed')
           .build()
       );
-    const r2 = p2.parse(r1);
+    const r2 = p2.eat(r1);
     if (r2.err)
       return error(
         problem(state, r2)
@@ -414,8 +434,8 @@ const word: PList = (ps) =>
     let results = [];
     let nx = state;
     for (const p of ps) {
-      const out = p.parse(nx);
-      if (nx.err)
+      const out = p.eat(nx);
+      if (out.err)
         return error(
           problem(state, out)
             .with('parser', 'word')
@@ -482,7 +502,7 @@ const either: PList = (ps) =>
     if (state.err) return state;
     let nx = state;
     for (const p of ps) {
-      nx = p.parse(state);
+      nx = p.eat(state);
       if (!nx.err) return nx;
     }
     return error(
@@ -498,14 +518,14 @@ const either: PList = (ps) =>
  * of all the parsers that succeed.
  * @example
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   const digitsOrLetters = or(ascii('digits'), ascii('letters'));
+   const digitsOrLetters = or(strung('digits'), strung('letters'));
    const secretKey = among(digitsOrLetters);
    console.log(secretKey.run('a847s3'))
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Output:
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     {
-      type: '[ascii-letters, ascii-digits, ascii-letters, ascii-digits]',
+      type: '[string-of-letters, string-of-digits, string-of-letters, string-of-digits]',
       input: 'a847s3',
       index: 6,
       out: [ 'a', '847', 's', '3' ],
@@ -520,7 +540,7 @@ const among = <T>(p: Parser<T>) =>
     const typenames = [];
     let nx = state;
     while (true && nx.index < state.input.length) {
-      const out = p.parse(nx);
+      const out = p.eat(nx);
       if (out.err) break;
       else {
         nx = out;
@@ -563,13 +583,174 @@ const maybe = <T>(p: Parser<T>, otherwise: Value | null = null) =>
       .with('type', state.type)
       .build();
     if (state.index >= state.input.length) return prevstate;
-    const nx = p.parse(state);
+    const nx = p.eat(state);
     return nx.err ? prevstate : nx;
   });
 
-const cutBy = <T>(n: number | 'n', p: Parser<T>) =>
-  new Parser((state) => {
-    return state;
-  });
+/**
+ * Parses all content separated by `n` separators.
+ * The parser takes two arguments:
+ * 
+ * 1. `n` - The number of separators. Either a positive integer
+ *     or `'n'`. If `n` is passed, then the parser will read however
+ *     many separators it can encounter. If a specific number is passed,
+ *     then the parser will only read the exact number specified. If
+ *     n is 0, negative, NaN, or Infinity,
+ * 2. `separator` - the Parser corresponding to the separators.
+ * 
+ * @example
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    const bracketed = amid(one('['), one(']'));
+    const comma = one(',');
+    const commaSeparated = cutBy(1, comma);
+    const numbers = strung('digits').map((state) => ({ out: Number(state.out) }));
+    const numberPair = bracketed(commaSeparated(numbers)).map(() => ({
+      type: 'number-pair',
+    }));
+    console.log(numberPair.run('[1,2]'));
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Output:
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    {
+      out: [1,2],
+      erm: '',
+      err: false,
+      input: '[1,2]',
+      index: 5,
+      type: 'number-pair'
+    }
+* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+const cutBy =
+  <T, X>(n: number | 'n', separator: Parser<T>) =>
+  (contentParser: Parser<X>) =>
+    new Parser((state) => {
+      if (n !== 'n' && !isPosInt(n))
+        return error(
+          problem(state, state)
+            .with('message', 'invalid separator count passed')
+            .with('parser', 'cutBy')
+            .build()
+        );
+      const results = [];
+      let nx = state;
+      while (nx.index < state.input.length) {
+        const content = contentParser.eat(nx);
+        const seps = separator.eat(content);
+        if (content.err) break;
+        else results.push(content.out);
+        if (seps.err) {
+          nx = content;
+          break;
+        }
+        nx = seps;
+      }
+      if (n !== 'n' && results.length !== n + 1) {
+        return error(
+          problem(state, nx)
+            .with(
+              'message',
+              `required ${n} separators, got ${results.length - 1}`
+            )
+            .with('parser', 'cutBy')
+            .build()
+        );
+      }
+      if (results.length === 0)
+        return error(
+          problem(state, nx)
+            .with('message', 'separators not found')
+            .with('parser', 'cutBy')
+            .build()
+        );
+      return update(state, results)
+        .with('index', nx.index)
+        .with('type', `separated-${state.type}`)
+        .build();
+    });
 
-const p = cutBy(2, digits);
+/** First, the parser types recognized. */
+type Value =
+  | string
+  | string[]
+  | number
+  | number[]
+  | bigint
+  | bigint[]
+  | boolean
+  | boolean[]
+  | symbol
+  | symbol[]
+  | { [key: string]: any };
+
+/** Parsers always place their results in an `out` property. */
+type Out<t> = { out: t };
+/**
+ * Every parser receives a state and accepts a state.
+ * Parsers and combinators never operate on raw strings.
+ * The only thing they understand is a `State`.
+ */
+export type State<t> = {
+  /** The original input. This never changes. */
+  readonly input: string;
+  /** The custom name type for the state. */
+  type: string;
+  /** The index, or `cursor` for the Parser to begin reading at. */
+  index: number;
+  /** Whether an error occurred. */
+  err: boolean;
+  /** An error message. */
+  erm: string;
+} & Out<t>;
+
+/** Helper type, used to construct a “Partial pick.” */
+type PartialPick<t, u extends keyof t> = Omit<t, u> & Partial<Pick<t, u>>;
+
+/** The only properties that can be updated. */
+type Mutables<t> = Pick<State<t>, 'erm' | 'err' | 'index' | 'out' | 'type'>;
+
+/**
+ * A `Blunder` is the object expected
+ * by the error updater, `error`.
+ */
+type Blunder<A, B> = {
+  /** The state received. */
+  prev: State<A>;
+  /** The state processed. If no state was processed, pass the state received. */
+  now: State<B>;
+  /** The name of the parser that processed the state. */
+  parser: string;
+  /** An error message. There must always be an error message to keep tracing accurate. */
+  message: string;
+};
+
+/**
+ * A `Functor` is a function that takes any given
+ * state and returns a new state. This is predominantly
+ * how the parser combinator work.They apply a function
+ * within a generic type, without changing the overall
+ * structure of the generic type.
+ */
+type Applicative<A> = (state: State<any>) => State<A>;
+
+/**
+ * A `NewOut` is a structure that must have an `out` property defined.
+ * In the `Map` method of the `Parser` class, the callback function,
+ * a `Morpher`, must return an object with _at least_ an `out` property.
+ * The object may—but need not—return an object with the
+ * additional properties of `erm`, `err`, `index`, and `type`.
+ */
+type NewOut<T> = PartialPick<
+  Mutables<T>,
+  'erm' | 'err' | 'index' | 'type' | 'out'
+>;
+
+type Functor<T, X> = (arg: State<T>) => NewOut<X>;
+
+type CharSet =
+  | 'letters'
+  | 'digits'
+  | 'upper-letters'
+  | 'lower-letters'
+  | 'alphanumerics'
+  | 'non-alphanumerics';
