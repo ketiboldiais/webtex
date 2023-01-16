@@ -1,4 +1,3 @@
-import { flow, pipe } from 'fp-ts/lib/function.js';
 import type { State } from './index.js';
 
 export const { log: show } = console;
