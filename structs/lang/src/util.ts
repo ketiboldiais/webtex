@@ -39,6 +39,13 @@ export class Builder<Target, Supplied>
 
 export const output = <T>(out: T) => make.new<State<T>>().with('out', out);
 
+export const newState = <a, b>(
+  state: State<a>,
+  out: b,
+  index: number,
+  type: string
+): State<b> => ({ ...state, out, index, type });
+
 export const isString = (x: any) => typeof x === 'string';
 export const isEmpty = (s: string) => s === '';
 

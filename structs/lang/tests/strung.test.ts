@@ -1,5 +1,5 @@
 import { output } from '../src/util';
-import { strung } from '../src';
+import { any } from '../src';
 import { it, expect } from 'vitest';
 
 it('should succeed on string of length 1', () => {
@@ -9,9 +9,9 @@ it('should succeed on string of length 1', () => {
     .with('err', false)
     .with('index', 1)
     .with('input', input)
-    .with('type', 'string::letters')
+    .with('type', 'string::letter')
     .build();
-  const result = strung('letters').run(input);
+  const result = any('letter').run(input);
   expect(result).toEqual(out);
 });
 
@@ -22,15 +22,15 @@ it('should succeed on multiletters', () => {
     .with('err', false)
     .with('index', 7)
     .with('input', input)
-    .with('type', 'string::letters')
+    .with('type', 'string::letter')
     .build();
-  const result = strung('letters').run(input);
+  const result = any('letter').run(input);
   expect(result).toEqual(out);
 });
 
-
 it('should set err is true for empty string', () => {
   const input = 'abcdefg';
-  const result = strung('letters').run('');
+  const result = any('letter').run('');
   expect(result.err).toBe(true)
 });
+

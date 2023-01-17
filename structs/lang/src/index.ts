@@ -9,6 +9,8 @@ import {
   isNonAlphaNum,
   isUpperLatin,
   print,
+  output,
+  newState,
 } from './util.js';
 export { print };
 
@@ -29,45 +31,43 @@ export { print };
 const error = <a, b>(
   /** The state received. */
   prev: State<a>,
-  /** The state processed. If no state was processed, pass the state received. */
-  now: State<b>,
   /** The name of the parser that processed the state. */
   parser: string,
   /** An error message. There must always be an error message to keep tracing accurate. */
   message: string
-): State<b extends Value ? a : any> => ({
+): State<a> => ({
   ...prev,
   erm:
     `Error at index ${prev.index} | `.padEnd(5) +
     `parser::${parser} `.padEnd(15) +
     `| ` +
     `${message} `.padEnd(33) +
-    `| remaining: ${prev.input.slice(now.index)}` +
+    `| remaining: ${prev.input.slice(prev.index)}` +
     '\n' +
-    now.erm,
+    prev.erm,
   err: true,
 });
 
 /** Returns a successful, updated state. */
-const succeed = <t, x>(
-  state: State<t>,
-  newState: Partial<State<any>> & Outbox<x> & Typebox
-): State<x> => ({
+const succeed = <t, x>(state: State<t>, newState: State<x>): State<x> => ({
   ...state,
   ...newState,
 });
 
 /* -------------------------------------------------------------------------- */
-/*                                Parser class                                */
+/*                                Mip class                                */
 /* -------------------------------------------------------------------------- */
 /**
- * The `Parser` class is a monad. This class should rarely
+ * The `Mip` (mini) class is a monad. This class should rarely
  * be used directly, since the combinators available are more than sufficient
  * to construct new parsers.
  */
-export class Parser<t> {
-  eat: Applicative<t>;
-  constructor(applicative: Applicative<t>) {
+
+export type Combinator<t> = (state: State<any>) => State<t>;
+
+export class Mip<t> {
+  eat: Combinator<t>;
+  constructor(applicative: Combinator<t>) {
     this.eat = applicative;
   }
   /**
@@ -100,35 +100,16 @@ export class Parser<t> {
     ) => (Outbox<t2> & Typebox) | Outbox<t2> | Typebox
   ) {
     const eat = this.eat;
-    return new Parser<t2>((state) => {
+    return new Mip<t2>((state) => {
       const newState = eat(state);
       if (newState.err) return newState as unknown as State<t2>;
       return {
-        ...state,
-        ...fn({ out: newState.out, type: newState.type }),
+        ...newState,
+        ...fn({
+          out: newState.out,
+          type: newState.type,
+        }),
       } as State<t2>;
-    });
-  }
-  // map<x>(fn: Functor<t, x>): Parser<x> {
-  // const refresh = <a, b>(s1: State<a>, s2: State<b>): State<x> =>
-  // ({ ...s1, ...s2 } as unknown as State<x>);
-  // return new Parser<x>((state1): State<x> => {
-  // const nx = this.eat(state1);
-  // if (nx.err) return nx as unknown as State<x>;
-  // return refresh(nx, { ...nx, ...fn(nx) });
-  // });
-  // }
-  contramap<x>(fn: ContraFunc<t, x>): Parser<t | x> {
-    const self = this;
-    return new Parser<t>((state) => {
-      const st = { ...state, ...fn(state) };
-      const rs = self.eat(st);
-      if (rs.err) return rs;
-      return succeed(state, {
-        out: rs.out,
-        index: state.index + rs.index,
-        type: rs.type,
-      });
     });
   }
 
@@ -157,7 +138,7 @@ export class Parser<t> {
    * 
    * @example
    * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      const p = word([strung('letters'), one(':')])
+      const p = word([strung('letters'), a(':')])
         .map((s) => ({ out: s.out[0] }))
         .chain((x) => {
           if (x.out === 'a') return strung('digits');
@@ -189,12 +170,12 @@ export class Parser<t> {
       }
    * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
    */
-  chain<x>(f: (x: Mutables<t>) => Parser<x | t>): Parser<x> {
+  chain<x>(f: (x: Pkg<t>) => Mip<x | t>): Mip<x> {
     const p = this.eat;
-    return new Parser<x>((state) => {
+    return new Mip<x>((state) => {
       const ns = p(state);
-      const x: Mutables<t> = {
-        ...ns,
+      const x: State<t> = {
+        ...state,
         out: ns.out,
         erm: ns.erm,
         err: ns.err,
@@ -205,21 +186,79 @@ export class Parser<t> {
       return f(x).eat(ns) as State<x>;
     });
   }
+
+  /**
+   * Given a Parser `p1`, returns the result
+   * of the argument parser `p2` only if `p1` fails,
+   * and only if `p2` succeeds. If `p1` succeeds,
+   * then the result of `p1` is returned.
+   * @example
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    const XorY = an('x').or(a('y'));
+    console.log(XorY.run('xyz'));
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   * Output:
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      {
+        type: 'char',
+        input: 'xyz',
+        index: 1,
+        out: 'x',
+        err: false,
+        erm: ''
+      }
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   */
+  or(p: Mip<string>) {
+    const self = this;
+    return new Mip<string>((state) => {
+      const r1 = self.eat(state);
+      if (!r1.err) return succeed(state, r1);
+      const r2 = p.eat(state);
+      if (!r2.err) return succeed(state, r2);
+      return error(state, `or`, 'no matches');
+    });
+  }
+
+  /**
+   * Given the parser `p1` and its argument `p2`, returns a successful
+   * parse _only if_ both `p1` and `p2` succeed. The output
+   * is a pair `[a,b]` where `a` is the successful output of `p1`,
+   * and `b` is the successful output of `p2`.
+   */
+  and<x>(p: Mip<x>): Mip<[t, x]> {
+    const self = this;
+    return new Mip<[t, x]>((state) => {
+      const r1 = self.eat(state);
+      if (r1.err) return error(state, 'and', 'first parser failed');
+      const r2 = p.eat(r1);
+      if (r2.err) return error(r1, 'and', 'second parser failed.');
+      return {
+        ...state,
+        ...{
+          out: [r1.out, r2.out] as [typeof r1.out, typeof r2.out],
+          index: r2.index,
+          type: `[${r1.type},${r2.type}]`,
+        },
+      };
+    });
+  }
 }
 
 /**
  * Given a string `s` to match against,
  * returns a successful result if the input
  * matches. Otherwise, returns an error.
+ * @alias an
  * @example
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * const x = one('x');
+ * const x = an('x');
  * console.log(x.run('x'));
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Output:
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * {
- *   type: 'char',
+ *   type: 'terminal',
  *   input: 'x',
  *   index: 1,
  *   out: 'x',
@@ -228,58 +267,56 @@ export class Parser<t> {
  * }
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-export function one(out: string) {
-  return new Parser<string>((state: State<string>) => {
-    if (state.err) return state;
-    const { input, index } = state;
+
+export function a(out: string) {
+  return new Mip<string>((state: State<string>) => {
+    const { input, index, err } = state;
+    if (err) return state;
     let char = input[index];
     if (isEmpty(input) || isEmpty(char) || char === undefined)
-      return error(state, state, 'one', 'abrupt end');
-    if (char === out)
-      return succeed(state, { out, index: index + out.length, type: 'char' });
-    return error(state, state, 'one', `expected ${out}, got ${input[index]}`);
+      return error(state, 'terminal', 'abrupt end');
+    if (char === out) return newState(state, out, index + out.length, 'char');
+    return error(state, 'terminal', `expected ${out}, got ${input[index]}`);
   });
 }
+export const an = a;
 
-const charTest = branch<CharSet, Function>(
-  ['digits', () => isDigit],
-  ['letters', () => isLatin],
-  ['upper-letters', () => isUpperLatin],
-  ['lower-letters', () => isLowerLatin],
-  ['alphanumerics', () => isAlphaNum],
-  ['non-alphanumerics', () => isNonAlphaNum]
+const charTest = branch<Char, Function>(
+  ['digit', () => isDigit],
+  ['letter', () => isLatin],
+  ['uppercase-letter', () => isUpperLatin],
+  ['lowercase-letter', () => isLowerLatin],
+  ['alphanumeric', () => isAlphaNum],
+  ['non-alphanumeric', () => isNonAlphaNum]
 );
+type Char =
+  | 'letter'
+  | 'uppercase-letter'
+  | 'lowercase-letter'
+  | 'digit'
+  | 'alphanumeric'
+  | 'non-alphanumeric';
 /**
  * Parses exactly one character of a given ASCII character set.
  * Valid character sets are:
  *
- * 1. `letters` - Parse any ASCII uppercase or lowercase Latin letters.
- * 2. `uppercase-letters` - Parse only ASCII uppercase Latin letters.
- * 3. `lowercase-letters` - Parse only ASCII lowercase Latin letters.
- * 4. `digits` - Parse only ASCII digits.
- * 5. `alphanumerics` - Parse only ASCII digits or letters.
- * 6. `non-alphanumerics` - Parse only ASCII punctuation marks.
+ * 1. `letter` - Parse any ASCII uppercase or lowercase Latin letters.
+ * 2. `uppercase-letter` - Parse only ASCII uppercase Latin letters.
+ * 3. `lowercase-letter` - Parse only ASCII lowercase Latin letters.
+ * 4. `digit` - Parse only ASCII digits.
+ * 5. `alphanumeric` - Parse only ASCII digits or letters.
+ * 6. `non-alphanumeric` - Parse only ASCII punctuation marks.
  */
-export function charOf(option: CharSet) {
-  return new Parser((state) => {
+export function some(option: Char): Mip<string> {
+  return new Mip((state) => {
     if (state.err) return state;
     const { input, index } = state;
     const test = charTest(option);
     const out = input[index];
-    if (isEmpty(input))
-      return error(state, state, `char::${option}`, 'abrupt end');
+    if (isEmpty(input)) return error(state, `some::${option}`, 'abrupt end');
     return test(out)
-      ? succeed(state, {
-          out,
-          index: index + 1,
-          type: `char-of-${option}`,
-        })
-      : error(
-          state,
-          state,
-          `char::${option}`,
-          `expected ${option}, got ${out}`
-        );
+      ? newState(state, out, index + 1, `some::${option}`)
+      : error(state, `some::${option}`, `expected ${option}, got ${out}`);
   });
 }
 
@@ -323,77 +360,23 @@ export function charOf(option: CharSet) {
     }));
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-export function strung(option: CharSet) {
-  return new Parser<string>((state) => {
+export function any(option: Char) {
+  return new Mip<string>((state) => {
     const { err, input, index } = state;
     if (err) return state;
     const type = `string::${option}`;
-    if (isEmpty(input)) return error(state, state, type, 'abrupt-end');
+    if (isEmpty(input)) return error(state, type, 'abrupt-end');
     let out = '';
     let i = index;
     while (i < input.length) {
-      let tmp = charOf(option).run(input[i]);
+      let tmp = some(option).run(input[i]);
       if (tmp.err) break;
       else out += input[i];
       i++;
     }
     return out.length !== 0
-      ? succeed(state, { out, index: index + out.length, type })
-      : error(state, state, type, `unrecognized input:${out}`);
-  });
-}
-
-/**
- * Given two Parsers `p1` and `p2`, returns the
- * first Parser that successfully parses.
- * @example
- * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  const XorY = or(one('x'), one('y'));
-  console.log(XorY.run('xyz'));
- * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * Output:
- * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    {
-      type: 'char',
-      input: 'xyz',
-      index: 1,
-      out: 'x',
-      err: false,
-      erm: ''
-    }
- * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- */
-export function or<A, B>(p1: Parser<A>, p2: Parser<B>) {
-  return new Parser<A | B>((state) => {
-    console.log(state);
-    const r1 = p1.eat(state);
-    console.log(r1);
-    if (!r1.err)
-      return succeed(state, { out: r1.out, index: r1.index, type: r1.type });
-    const r2 = p2.eat(r1);
-    if (!r2.err)
-      return succeed(state, { out: r2.out, index: r2.index, type: r2.type });
-    return error(state, r2, `or::${state.type}`, 'no matches');
-  });
-}
-
-/**
- * Given two parsers `p1` and `p2`, returns a successful
- * parse _only if_ both `p1` and `p2` succeed. The output
- * is a pair `[a,b]` where `a` is the successful output of `p1`,
- * and `b` is the successful output of `p2`.
- */
-export function and<A, B>(p1: Parser<A>, p2: Parser<B>) {
-  return new Parser<(A | B)[]>((state): State<(A | B)[]> => {
-    const r1 = p1.eat(state);
-    if (r1.err) return error(state, r1, 'partial::and', 'first parser failed');
-    const r2 = p2.eat(r1);
-    if (r2.err) return error(state, r2, 'partial::and', 'second parser failed');
-    return succeed(state, {
-      out: [r1.out, r2.out],
-      index: r2.index,
-      type: `${r1.type}&${r2.type}`,
-    });
+      ? succeed(state, { ...state, out, index: index + out.length, type })
+      : error(state, type, `unrecognized input:${out}`);
   });
 }
 
@@ -403,7 +386,7 @@ export function and<A, B>(p1: Parser<A>, p2: Parser<B>) {
  * of the successful parsings.
  * @example
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    const cat = word([one('c'), one('a'), one('t')]);
+    const cat = word(a('c'), an('a'), a('t'));
     console.log(cat.run('cat'));
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Output:
@@ -418,60 +401,78 @@ export function and<A, B>(p1: Parser<A>, p2: Parser<B>) {
     }
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-export function word(p: Parser<any>[]): Parser<any[]>;
-export function word(ps: Parser<any>[]): Parser<any[]> {
-  return new Parser((state) => {
+export function word<T extends any, X extends any>(...ps: Mip<T>[]): Mip<X[]> {
+  return new Mip((state) => {
     if (state.err) return state;
-    let out: any[] = [];
-    let nx = state;
     const L = ps.length;
+    if (L === 0) return error(state, 'word', 'must pass at least one parser');
+    let out: X[] = [];
+    let nx = state;
     for (let i = 0; i < L; i++) {
       const tmp = ps[i].eat(nx);
-      if (tmp.err) tmp;
+      if (tmp.err) return tmp;
       else {
         nx = tmp;
-        if (nx.out !== null && nx.out !== undefined && nx.out !== '')
-          out[i] = nx.out;
+        if (nx.out !== null && nx.out !== undefined && nx.out !== '') {
+          out.push(nx.out);
+        }
       }
     }
-    return succeed(nx, {
-      out,
-      index: nx.index,
-      type: `word::${nx.type}`,
-    });
+    return newState(state, out, nx.index, `word::${nx.type}`);
+  });
+}
+
+/**
+ * Parses a regular expression.
+ */
+export function regex(expr: RegExp): Mip<string> {
+  return new Mip((state) => {
+    if (state.err) return state;
+    if (expr.source[0] !== '^')
+      return error(state, 'regex', `Regexes must start with '^'`);
+    const { input, index } = state;
+    const target = input.slice(index);
+    if (target.length === 0) return error(state, 'regex', 'abrupt end');
+    const match = target.match(expr);
+    if (match)
+      return newState(state, match[0], index + match[0].length, 'regex');
+    return error(state, 'parser', `no match found at ${index}`);
   });
 }
 
 /** 
  * Parses input surrounded by two delimiting symbols.
- * The parser `L` parses the left delimiting symbol,
- * the parser `R` parses the right delimiting symbol.
- * The return is the output of the parser `C`, which
+ * The parser `pL` parses the left delimiting symbol,
+ * the parser `pR` parses the right delimiting symbol.
+ * The return is the output of the parser `pC`, which
  * parses the content enclosed. Results may be modified
  * with `.map`.
  * 
  * @example
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    const parend = amid(one('('), one(')'));
-    const parenDigit = parend(digits);
-    console.log(parenDigit.run('(14892)'));
+    const oneLeftParen = a('('); 
+    const oneRightParen = a(')')
+    const parend = amid(oneLeftParen, oneRightParen)
+    const bread = word(a('b'), an('r'), an('e'), an('a'), a('d'));
+    const parendBread = parend(bread)
+    print(parendBread.run('(bread)'))
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Output:
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     {
-      type: 'word',
-      input: '(14892)',
-      index: 7,
-      out: '14892',
+      out: [ 'b', 'r', 'e', 'a', 'd' ],
+      input: '(bread)',
+      erm: '',
       err: false,
-      erm: ''
+      index: 7,
+      type: 'word::char'
     }
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
 export const amid =
-  <L, C, R>(pL: Parser<L>, pR: Parser<R>) =>
-  (pC: Parser<C>): Parser<C> => {
-    return word([pL, pC, pR]).map<C>((state) => ({
+  <L, C, R>(pL: Mip<L>, pR: Mip<R>) =>
+  (pC: Mip<C>): Mip<C> => {
+    return word(pL as any, pC as any, pR as any).map((state: any) => ({
       out: state.out[1],
     }));
   };
@@ -481,18 +482,18 @@ export const amid =
  * successful parser.
  * @example
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * const f = either([one('a'), one('b'), one('c')]);
+ * const f = either(an('a'), a('b'), a('c'));
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-export function either(ps: Parser<any>[]): Parser<any> {
-  return new Parser<any>((state) => {
+export function choice(...ps: Mip<any>[]): Mip<any> {
+  return new Mip<any>((state) => {
     if (state.err) return state;
     let nx = state;
     for (const p of ps) {
       nx = p.eat(state);
       if (!nx.err) return nx;
     }
-    return error(nx, nx, `either::${nx.type}`, 'no match found');
+    return error(nx, `either::${nx.type}`, 'no match found');
   });
 }
 
@@ -517,8 +518,8 @@ export function either(ps: Parser<any>[]): Parser<any> {
     }
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-export function among<T>(p: Parser<T>) {
-  return new Parser<T[]>((state) => {
+export function many<T>(p: Mip<T>) {
+  return new Mip<T[]>((state) => {
     const out = [];
     const typenames = [];
     let nx = state;
@@ -532,8 +533,8 @@ export function among<T>(p: Parser<T>) {
       }
     }
     return succeed(state, {
+      ...nx,
       out,
-      index: nx.index,
       type: `[${typenames.join(', ')}]`,
     });
   });
@@ -545,7 +546,7 @@ export function among<T>(p: Parser<T>) {
  * may be provided instead of outputting `null`.
  * @example
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    const greet = word([one('h'), one('e'), one('y'), maybe(one('a'))]);
+    const greet = word([an('h'), an('e'), a('y'), maybe(an('a'))]);
     console.log(greet.run('hey'));
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * Output:
@@ -560,13 +561,12 @@ export function among<T>(p: Parser<T>) {
     }
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-export function maybe<T>(p: Parser<T>) {
-  return new Parser((state: State<T>): State<any> => {
+export function maybe<T>(p: Mip<T>) {
+  return new Mip((state: State<T>): State<any> => {
     if (state.err) return state;
     const prevstate = succeed(state, {
-      out: '',
-      index: state.index,
-      type: state.type,
+      ...state,
+      out: '' as any,
     });
     if (state.index >= state.input.length) return prevstate;
     const nx = p.eat(state);
@@ -587,8 +587,8 @@ export function maybe<T>(p: Parser<T>) {
  * 
  * @example
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    const bracketed = amid(one('['), one(']'));
-    const comma = one(',');
+    const bracketed = amid(a('['), a(']'));
+    const comma = a(',');
     const commaSeparated = apart(1, comma);
     const numbers = strung('digits').map((state) => (
       { out: Number(state.out) }
@@ -610,11 +610,11 @@ export function maybe<T>(p: Parser<T>) {
     }
 * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-export function apart<T, X>(n: number | 'n', separator: Parser<T>) {
-  return (contentParser: Parser<X>) =>
-    new Parser((state) => {
+export function apart<T, X>(n: number | 'n', separator: Mip<T>) {
+  return (contentParser: Mip<X>) =>
+    new Mip((state) => {
       if (n !== 'n' && !isPosInt(n))
-        return error(state, state, 'apart', 'invalid separator count');
+        return error(state, 'apart', 'invalid separator count');
       const out = [];
       let nx = state;
       while (nx.index < state.input.length) {
@@ -631,21 +631,28 @@ export function apart<T, X>(n: number | 'n', separator: Parser<T>) {
       if (out.length === 0 || (n !== 'n' && out.length !== n + 1)) {
         return error(
           state,
-          nx,
           'apart',
-          `required ${n} separators, got ${out.length - 1}`
+          `req'd ${n} separators, got ${out.length - 1}`
         );
       }
-      return succeed(state, {
-        out,
-        index: nx.index,
-        type: `parted::${state.type}`,
-      });
+      return newState(state, out, nx.index, state.type);
     });
 }
 
-export function later(parser: () => Parser<any>): Parser<any> {
-  return new Parser((state) => parser().eat(state));
+/**
+ * Ignores the output of the given parser.
+ */
+export function ignore(parser: Mip<string>) {
+  return new Mip((state) => {
+    if (state.err) return state;
+    const nx = parser.eat(state);
+    if (nx.err) return nx;
+    return succeed(state, { ...nx, out: null });
+  });
+}
+
+export function later(parser: () => Mip<any>): Mip<any> {
+  return new Mip((state) => parser().eat(state));
 }
 
 /**
@@ -658,8 +665,8 @@ export function later(parser: () => Parser<any>): Parser<any> {
  * 
  * @example
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    const bracketed = amid(one('['), one(']'));
-    const commas = one(',');
+    const bracketed = amid(a('['), a(']'));
+    const commas = a(',');
     const commaParted = apart('n', commas);
     const numbers = strung('digits').map((state) => (
       { out: Number(state.out) }
@@ -683,11 +690,11 @@ export function later(parser: () => Parser<any>): Parser<any> {
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
 export function nested<T, X = T>(
-  bP: Parser<T>,
-  rP: Array<(p: Parser<any>) => Parser<any>>
-): Parser<X> {
-  const base = later(() => either([bP, recur]));
-  const recur: Parser<X> = rP.reduceRight((acc, cur) => cur(acc), base);
+  bP: Mip<T>,
+  rP: Array<(p: Mip<any>) => Mip<any>>
+): Mip<X> {
+  const base = later(() => choice(bP, recur));
+  const recur: Mip<X> = rP.reduceRight((acc, cur) => cur(acc), base);
   return recur;
 }
 
@@ -715,8 +722,19 @@ export type Value =
 /** Parsers always place their results in an `out` property. */
 export type Outbox<t> = { out: t };
 
-/** Parser always specify a type name after working. */
+/** Parsers always specify a type name after working. */
 export type Typebox = { type: string };
+
+/** The `IndexBox` keeps track of placing. */
+export type Indexbox = { index: number };
+
+/** The `ErrState` maintains whether an error is set. */
+export type Err = { err: boolean };
+
+/** The `Erm` holds the error message. */
+export type Erm = { erm: string };
+
+export type Pkg<t> = Outbox<t> & Typebox;
 
 /**
  * Every parser receives a state and accepts a state.
@@ -724,70 +742,14 @@ export type Typebox = { type: string };
  * The only thing they understand is a `State`.
  */
 export type State<t> = {
-  /** The original input. This never changes. */
   readonly input: string;
-  /** The index, or `cursor` for the Parser to begin reading at. */
-  index: number;
-  /** Whether an error occurred. */
-  err: boolean;
-  /** An error message. */
-  erm: string;
 } & Outbox<t> &
-  Typebox;
-
-/** Helper type, used to construct a “Partial pick.” */
-export type PartialPick<t, u extends keyof t> = Omit<t, u> &
-  Partial<Pick<t, u>>;
-
-/** The only properties that can be updated. */
-export type Mutables<t> = Pick<
-  State<t>,
-  'erm' | 'err' | 'index' | 'out' | 'type'
->;
-
-/**
- * A `Functor` is a function that takes any given
- * state and returns a new state. This is predominantly
- * how the parser combinator work.They apply a function
- * within a generic type, without changing the overall
- * structure of the generic type.
- */
-export type Applicative<t> = (state: State<any>) => State<t>;
-
-/**
- * A `NewOut` is a structure that must have an `out` property defined.
- * In the `Map` method of the `Parser` class, the callback function,
- * a `Morpher`, must return an object with _at least_ an `out` property.
- * The object may—but need not—return an object with the
- * additional properties of `erm`, `err`, `index`, and `type`.
- */
-export type NewOut<t> = PartialPick<
-  Mutables<t>,
-  'erm' | 'err' | 'index' | 'type' | 'out'
->;
-
-/**
- * All functions passed to the `map` method of the `Parser`
- * class must be functors.
- */
-export type Functor<t, x> = (arg: State<t>) => NewOut<x>;
-export type ContraFunc<t, x> = (
-  arg: Pick<State<t>, 'input' | 'index' | 'type' | 'erm' | 'err'>
-) => Partial<State<x>>;
+  Typebox &
+  Indexbox &
+  Erm &
+  Err;
 
 /**
  * This is the type signature any parser that accepts an
  * array of parsers.
  */
-
-/**
- * The recognized character sets for the `charOf` and `strung`
- * parsers.
- */
-export type CharSet =
-  | 'letters'
-  | 'digits'
-  | 'upper-letters'
-  | 'lower-letters'
-  | 'alphanumerics'
-  | 'non-alphanumerics';
