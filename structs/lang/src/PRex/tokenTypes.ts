@@ -1,0 +1,82 @@
+enum ProdTokenType {
+  LEFT_PAREN, // '('
+  RIGHT_PAREN, // ')'
+  LEFT_BRACE, // '{'
+  RIGHT_BRACE, // '}'
+  LEFT_BRACKET, // '['
+  RIGHT_BRACKET, // ']'
+  COMMA, // ','
+  DOT, //  '.'
+  MINUS, //  '-'
+  PLUS, // '+'
+  SEMICOLON, // ';'
+  SLASH, //  '/'
+  BSLASH, // `\\`
+  PERCENT, // '%'
+  CARET, // '^'
+  COLON, //  ':'
+  DOLLAR, // '$'
+  QUERY, // '?'
+  STAR, // '*'
+  AMPERSAND, // '&',
+  TILDE, // '~'
+  APOSTROPHE, //  `'`
+  VBAR, // '|'
+  BANG, // '!'
+  BANG_EQUAL, // '!'
+  EQUAL, // '='
+  EQUAL_EQUAL, // '=='
+  GREATER, // '>'
+  GREATER_EQUAL, // '>='
+  LESS, // '<'
+  POUND, // '#' - comments start with pound
+  LESS_EQUAL, // '<='
+  KEYWORD, // 'KEYWORD'
+  IDENTIFIER, // 'IDENTIFIER'
+  NUMBER, // 'NUMBER'
+  STRING, // 'STRING'
+  EOF, // 'EOF'
+}
+
+enum DevTokenType {
+  LEFT_PAREN = 'LEFT_PAREN',
+  RIGHT_PAREN = 'RIGHT_PAREN',
+  LEFT_BRACE = 'LEFT_BRACE',
+  RIGHT_BRACE = 'RIGHT_BRACE',
+  LEFT_BRACKET = 'LEFT_BRACKET',
+  RIGHT_BRACKET = 'RIGHT_BRACKET',
+  COMMA = 'COMMA',
+  DOT = 'DOT',
+  MINUS = 'OP_MINUS',
+  PLUS = 'OP_ADD',
+  SEMICOLON = 'SEMICOLON',
+  SLASH = 'SLASH',
+  BSLASH = 'BSLASH',
+  PERCENT = 'PERCENT',
+  CARET = 'CARET',
+  COLON = 'COLON',
+  DOLLAR = 'DOLLAR',
+  QUERY = 'QUERY',
+  STAR = 'STAR',
+  AMPERSAND = 'AMP',
+  TILDE = 'TILDE',
+  APOSTROPHE = `APOSTROPHE`,
+  VBAR = 'VBAR',
+  BANG = 'BANG',
+  BANG_EQUAL = 'BANG_EQUAL',
+  EQUAL = 'EQUAL',
+  EQUAL_EQUAL = 'EQUAL_EQUAL',
+  GREATER = 'GREATER_THAN',
+  GREATER_EQUAL = 'GREATER_EQUAL',
+  LESS = 'LESS_THAN',
+  POUND = 'POUND', // comments start with pound
+  LESS_EQUAL = 'LESS_EQUAL',
+  KEYWORD = 'KEYWORD',
+  IDENTIFIER = 'IDENTIFIER',
+  INTEGER = 'INTEGER',
+  REAL = 'REAL',
+  STRING = 'STRING',
+  EOF = 'EOF',
+}
+
+export default DevTokenType;

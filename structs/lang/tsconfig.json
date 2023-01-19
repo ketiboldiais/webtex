@@ -5,6 +5,6 @@
     "outDir": "./dist",
     "strictNullChecks": true
   },
-  "include": ["./src/index.ts", "./src/global.d.ts"],
+  "include": ["src/PCox/index.ts", "./src/global.d.ts"],
   "exclude": ["./tests"]
 }

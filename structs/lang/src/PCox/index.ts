@@ -55,17 +55,17 @@ const succeed = <t, x>(state: State<t>, newState: State<x>): State<x> => ({
 });
 
 /* -------------------------------------------------------------------------- */
-/*                                Mip class                                */
+/*                                PCox class                                */
 /* -------------------------------------------------------------------------- */
 /**
- * The `Mip` (mini) class is a monad. This class should rarely
+ * The `PCox` (mini) class is a monad. This class should rarely
  * be used directly, since the combinators available are more than sufficient
  * to construct new parsers.
  */
 
 export type Combinator<t> = (state: State<any>) => State<t>;
 
-export class Mip<t> {
+export class PCox<t> {
   eat: Combinator<t>;
   constructor(applicative: Combinator<t>) {
     this.eat = applicative;
@@ -100,7 +100,7 @@ export class Mip<t> {
     ) => (Outbox<t2> & Typebox) | Outbox<t2> | Typebox
   ) {
     const eat = this.eat;
-    return new Mip<t2>((state) => {
+    return new PCox<t2>((state) => {
       const newState = eat(state);
       if (newState.err) return newState as unknown as State<t2>;
       return {
@@ -170,9 +170,9 @@ export class Mip<t> {
       }
    * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
    */
-  chain<x>(f: (x: Pkg<t>) => Mip<x | t>): Mip<x> {
+  chain<x>(f: (x: Pkg<t>) => PCox<x | t>): PCox<x> {
     const p = this.eat;
-    return new Mip<x>((state) => {
+    return new PCox<x>((state) => {
       const ns = p(state);
       const x: State<t> = {
         ...state,
@@ -209,9 +209,9 @@ export class Mip<t> {
       }
    * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
    */
-  or(p: Mip<string>) {
+  or(p: PCox<string>) {
     const self = this;
-    return new Mip<string>((state) => {
+    return new PCox<string>((state) => {
       const r1 = self.eat(state);
       if (!r1.err) return succeed(state, r1);
       const r2 = p.eat(state);
@@ -226,9 +226,9 @@ export class Mip<t> {
    * is a pair `[a,b]` where `a` is the successful output of `p1`,
    * and `b` is the successful output of `p2`.
    */
-  and<x>(p: Mip<x>): Mip<[t, x]> {
+  and<x>(p: PCox<x>): PCox<[t, x]> {
     const self = this;
-    return new Mip<[t, x]>((state) => {
+    return new PCox<[t, x]>((state) => {
       const r1 = self.eat(state);
       if (r1.err) return error(state, 'and', 'first parser failed');
       const r2 = p.eat(r1);
@@ -269,7 +269,7 @@ export class Mip<t> {
  */
 
 export function a(out: string) {
-  return new Mip<string>((state: State<string>) => {
+  return new PCox<string>((state: State<string>) => {
     const { input, index, err } = state;
     if (err) return state;
     let char = input[index];
@@ -307,8 +307,8 @@ type Char =
  * 5. `alphanumeric` - Parse only ASCII digits or letters.
  * 6. `non-alphanumeric` - Parse only ASCII punctuation marks.
  */
-export function some(option: Char): Mip<string> {
-  return new Mip((state) => {
+export function some(option: Char): PCox<string> {
+  return new PCox((state) => {
     if (state.err) return state;
     const { input, index } = state;
     const test = charTest(option);
@@ -361,7 +361,7 @@ export function some(option: Char): Mip<string> {
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
 export function any(option: Char) {
-  return new Mip<string>((state) => {
+  return new PCox<string>((state) => {
     const { err, input, index } = state;
     if (err) return state;
     const type = `string::${option}`;
@@ -401,8 +401,10 @@ export function any(option: Char) {
     }
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-export function word<T extends any, X extends any>(...ps: Mip<T>[]): Mip<X[]> {
-  return new Mip((state) => {
+export function word<T extends any, X extends any>(
+  ...ps: PCox<T>[]
+): PCox<X[]> {
+  return new PCox((state) => {
     if (state.err) return state;
     const L = ps.length;
     if (L === 0) return error(state, 'word', 'must pass at least one parser');
@@ -425,8 +427,8 @@ export function word<T extends any, X extends any>(...ps: Mip<T>[]): Mip<X[]> {
 /**
  * Parses a regular expression.
  */
-export function regex(expr: RegExp): Mip<string> {
-  return new Mip((state) => {
+export function regex(expr: RegExp): PCox<string> {
+  return new PCox((state) => {
     if (state.err) return state;
     if (expr.source[0] !== '^')
       return error(state, 'regex', `Regexes must start with '^'`);
@@ -470,8 +472,8 @@ export function regex(expr: RegExp): Mip<string> {
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
 export const amid =
-  <L, C, R>(pL: Mip<L>, pR: Mip<R>) =>
-  (pC: Mip<C>): Mip<C> => {
+  <L, C, R>(pL: PCox<L>, pR: PCox<R>) =>
+  (pC: PCox<C>): PCox<C> => {
     return word(pL as any, pC as any, pR as any).map((state: any) => ({
       out: state.out[1],
     }));
@@ -485,8 +487,8 @@ export const amid =
  * const f = either(an('a'), a('b'), a('c'));
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-export function choice(...ps: Mip<any>[]): Mip<any> {
-  return new Mip<any>((state) => {
+export function choice(...ps: PCox<any>[]): PCox<any> {
+  return new PCox<any>((state) => {
     if (state.err) return state;
     let nx = state;
     for (const p of ps) {
@@ -518,8 +520,8 @@ export function choice(...ps: Mip<any>[]): Mip<any> {
     }
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-export function many<T>(p: Mip<T>) {
-  return new Mip<T[]>((state) => {
+export function many<T>(p: PCox<T>) {
+  return new PCox<T[]>((state) => {
     const out = [];
     const typenames = [];
     let nx = state;
@@ -561,8 +563,8 @@ export function many<T>(p: Mip<T>) {
     }
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-export function maybe<T>(p: Mip<T>) {
-  return new Mip((state: State<T>): State<any> => {
+export function maybe<T>(p: PCox<T>) {
+  return new PCox((state: State<T>): State<any> => {
     if (state.err) return state;
     const prevstate = succeed(state, {
       ...state,
@@ -608,11 +610,11 @@ export function maybe<T>(p: Mip<T>) {
       index: 5,
       type: 'number-pair'
     }
-* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-export function apart<T, X>(n: number | 'n', separator: Mip<T>) {
-  return (contentParser: Mip<X>) =>
-    new Mip((state) => {
+export function apart<T, X>(n: number | 'n', separator: PCox<T>) {
+  return (contentParser: PCox<X>) =>
+    new PCox((state) => {
       if (n !== 'n' && !isPosInt(n))
         return error(state, 'apart', 'invalid separator count');
       const out = [];
@@ -641,9 +643,14 @@ export function apart<T, X>(n: number | 'n', separator: Mip<T>) {
 
 /**
  * Ignores the output of the given parser.
+ * @example
+ *
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * const abc = word(a('j'), an('a'), skip(/^[0-9]+/), an('x'))
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-export function ignore(parser: Mip<string>) {
-  return new Mip((state) => {
+export function ignore(parser: PCox<string>) {
+  return new PCox((state) => {
     if (state.err) return state;
     const nx = parser.eat(state);
     if (nx.err) return nx;
@@ -651,8 +658,56 @@ export function ignore(parser: Mip<string>) {
   });
 }
 
-export function later(parser: () => Mip<any>): Mip<any> {
-  return new Mip((state) => parser().eat(state));
+/**
+ * Ignores the output of the matching
+ * regex.
+ */
+export const skip = (regx: RegExp) =>
+  new PCox((state) => {
+    if (state.err) return state;
+    const nx = regex(regx).eat(state);
+    if (nx.err) return nx;
+    return succeed(state, { ...nx, out: null });
+  });
+
+/**
+ * Skips whitespace, if any.
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * const cat = word(a('c'), skipSpace, an('a'), skipSpace, a('t'));
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+export const skipSpace = skip(/^\s*/);
+
+/**
+ * Returns an error if the parser passed succeeds.
+ * @example
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   const yac = word(a('y'), an('a'), an('c'), not(a('k')));
+   console.log(yac.run('yack'));
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Output:
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    {
+      out: 'k',
+      input: 'yack',
+      erm: 'Error at index 4 | parser::not | prohibited k, got k| remaining: \n',
+      err: true,
+      index: 4,
+      type: 'char'
+    }
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+export function not(parser: PCox<string>) {
+  return new PCox((state) => {
+    if (state.err) return state;
+    const nx = parser.eat(state);
+    if (!nx.err) return error(nx, 'not', `prohibited ${nx.out}, got ${nx.out}`);
+    return succeed(state, { ...state, out: null });
+  });
+}
+
+export function later(parser: () => PCox<any>): PCox<any> {
+  return new PCox((state) => parser().eat(state));
 }
 
 /**
@@ -690,11 +745,11 @@ export function later(parser: () => Mip<any>): Mip<any> {
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
 export function nested<T, X = T>(
-  bP: Mip<T>,
-  rP: Array<(p: Mip<any>) => Mip<any>>
-): Mip<X> {
+  bP: PCox<T>,
+  rP: Array<(p: PCox<any>) => PCox<any>>
+): PCox<X> {
   const base = later(() => choice(bP, recur));
-  const recur: Mip<X> = rP.reduceRight((acc, cur) => cur(acc), base);
+  const recur: PCox<X> = rP.reduceRight((acc, cur) => cur(acc), base);
   return recur;
 }
 
