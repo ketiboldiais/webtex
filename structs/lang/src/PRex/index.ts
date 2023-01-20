@@ -9,7 +9,7 @@ interface Rcfail {
 }
 
 class rcfail {
-  private readonly _fail: Rcfail;
+  _fail: Rcfail;
   constructor() {
     this._fail = {
       line: 0,
@@ -48,40 +48,34 @@ class Token {
 
 class Scanner {
   readonly source: string;
-  readonly tokens: (Token | Rcfail)[];
+  readonly tokens: Token[];
   private line: number;
   private start: number;
   private current: number;
-  private keywords: Set<string>;
+  private keywords: Map<string, TokenType>;
   constructor(source: string) {
     this.source = source;
     this.tokens = [];
     this.line = 1;
     this.start = 0;
     this.current = 0;
-    this.keywords = this.defaultKeywords;
-  }
-  private defaultKeywords = new Set([
-    'and',
-    'class',
-    'else',
-    'false',
-    'for',
-    'fn',
-    'if',
-    'nil',
-    'or',
-    'print',
-    'return',
-    'log',
-    'super',
-    'this',
-    'true',
-    'let',
-    'while',
-  ]);
-  setKeywords(keywords: Set<string>) {
-    this.keywords = keywords;
+    this.keywords = new Map<string, TokenType>([
+      ['false', TokenType.FALSE],
+      ['true', TokenType.TRUE],
+      ['null', TokenType.NULL],
+      ['and', TokenType.AND],
+      ['or', TokenType.OR],
+      ['not', TokenType.NOT],
+      ['xor', TokenType.XOR],
+      ['nor', TokenType.NOR],
+      ['xnor', TokenType.XNOR],
+      ['nand', TokenType.NAND],
+      ['if', TokenType.IF],
+      ['then', TokenType.THEN],
+      ['else', TokenType.ELSE],
+      ['let', TokenType.LET],
+      ['in', TokenType.IN],
+    ]);
   }
   scanTokens() {
     while (!this.isAtEnd()) {
@@ -128,13 +122,13 @@ class Scanner {
         this.addToken(TokenType.MINUS);
         break;
       case '+':
-        this.addToken(TokenType.PLUS);
+        this.addToken(this.match('+') ? TokenType.CONC : TokenType.PLUS);
         break;
       case ';':
         this.addToken(TokenType.SEMICOLON);
         break;
       case ':':
-        this.addToken(TokenType.COLON);
+        this.addToken(this.match('=') ? TokenType.DEFINE : TokenType.COLON);
         break;
       case '*':
         this.addToken(TokenType.STAR);
@@ -143,7 +137,7 @@ class Scanner {
         this.addToken(TokenType.VBAR);
         break;
       case '/':
-        this.addToken(TokenType.SLASH);
+        this.addToken(this.match('/') ? TokenType.QUOT : TokenType.SLASH);
         break;
       case '\\':
         this.addToken(TokenType.BSLASH);
@@ -203,15 +197,16 @@ class Scanner {
         } else if (this.isAlpha(c)) {
           this.identifier();
         } else {
-          this.tokens.push(
-            errorReport.line(this.line).message('Unexpected character').build()
-          );
+          throw new SyntaxError('Unexpected character.');
         }
         break;
     }
   }
   private isAlpha(c: string) {
     return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c === '_';
+  }
+  private isDigit(c: string) {
+    return c >= '0' && c <= '9';
   }
   private isAlphanumeric(c: string) {
     return this.isAlpha(c) || this.isDigit(c);
@@ -220,12 +215,9 @@ class Scanner {
     while (this.isAlphanumeric(this.peek())) this.advance();
     const txt = this.source.substring(this.start, this.current);
     let type = this.keywords.has(txt)
-      ? TokenType.KEYWORD
-      : TokenType.IDENTIFIER;
+      ? this.keywords.get(txt) ?? TokenType.KEYWORD
+      : TokenType.SYMBOL;
     this.addToken(type);
-  }
-  private isDigit(c: string) {
-    return c >= '0' && c <= '9';
   }
   private number() {
     let type = TokenType.INTEGER;
@@ -250,9 +242,7 @@ class Scanner {
       this.advance();
     }
     if (this.isAtEnd()) {
-      this.tokens.push(
-        errorReport.line(this.line).message('Unterminated string').build()
-      );
+      throw new SyntaxError('Unterminated string.');
     }
     this.advance();
     const value = this.source.substring(this.start + 1, this.current - 1);
@@ -280,32 +270,259 @@ class Scanner {
   }
 }
 
-// const test = new Scanner(`let x = 1.2`);
-// console.log(test.scanTokens());
-
-abstract class Expr {
-  left: Expr;
+class Expression {}
+class BinaryExpr extends Expression {
+  left: Expression;
   operator: Token;
-  right: Expr;
-  constructor(left: Expr, operator: Token, right: Expr) {
+  right: Expression;
+  constructor(left: Expression, operator: Token, right: Expression) {
+    super();
     this.left = left;
     this.operator = operator;
     this.right = right;
   }
 }
 
-class Binary extends Expr {
-  readonly left: Expr;
-  readonly operator: Token;
-  readonly right: Expr;
-  constructor(left: Expr, operator: Token, right: Expr) {
-    super(left, operator, right);
-    this.left = left;
+class UnaryExpr extends Expression {
+  operator: Token;
+  right: Expression;
+  constructor(operator: Token, right: Expression) {
+    super();
     this.operator = operator;
     this.right = right;
   }
 }
-
-class RDP {
-	
+type Primitive = boolean | null | number | string;
+class Literal extends Expression {
+  value: Primitive;
+  constructor(value: Primitive) {
+    super();
+    this.value = value;
+  }
 }
+class Integer extends Literal {
+  constructor(value: number) {
+    super(value);
+    this.value = value;
+  }
+}
+class Real extends Literal {
+  constructor(value: number) {
+    super(value);
+    this.value = value;
+  }
+}
+class Bool extends Literal {
+  constructor(value: boolean) {
+    super(value);
+    this.value = value;
+  }
+}
+class Null extends Literal {
+  constructor(value: null) {
+    super(value);
+    this.value = value;
+  }
+}
+class String extends Literal {
+  constructor(value: string) {
+    super(value);
+    this.value = value;
+  }
+}
+
+class Group extends Expression {
+  expr: Expression;
+  constructor(expr: Expression) {
+    super();
+    this.expr = expr;
+  }
+}
+
+class PRex {
+  private tokens: Token[];
+  private src: string;
+  private current: number;
+  constructor() {
+    this.current = 0;
+  }
+
+  /**
+   * Parses the `input` string.
+   */
+  parse(input: string) {
+    this.src = input;
+    this.tokens = new Scanner(this.src).scanTokens();
+    return this.output();
+  }
+  
+  /**
+   * Returns the result of the parse.
+   */
+  private output() {
+    return this.expression();
+  }
+
+  /**
+   * Expands the `equality` grammar rule.
+   * 
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   * expression ⟹ equality
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   */
+  private expression() {
+    return this.equality();
+  }
+  
+  /**
+   * The equality grammar rule.
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   * equality ⟹ comparison ( (`!=`|`==`) comparsion )* ;
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   */
+  private equality() {
+    let expr = this.comparison();
+    while (this.match(TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL)) {
+      let operator: Token = this.previous();
+      let right = this.comparison();
+      expr = new BinaryExpr(expr, operator, right);
+    }
+    return expr;
+  }
+  
+  /**
+   * Applies the comparison grammar rule.
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   * comparison ⟹ term ( (`>`|`>=`|`<`|`<=`) term )* ;
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   */
+  private comparison(): Expression {
+    let expr = this.term();
+    while (
+      this.match(
+        TokenType.GREATER,
+        TokenType.GREATER_EQUAL,
+        TokenType.LESS,
+        TokenType.LESS_EQUAL
+      )
+    ) {
+      let operator = this.previous();
+      let right = this.term();
+      expr = new BinaryExpr(expr, operator, right);
+    }
+
+    return expr;
+  }
+  
+  /**
+   * Applies term grammar rule. Other parsers call this rule
+   * the additive expression rule.
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   * term ⟹ factor ( (`-`|`+`) factor )* ;
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   */
+  private term(): Expression {
+    let expr = this.factor();
+    while (this.match(TokenType.MINUS, TokenType.PLUS)) {
+      let operator = this.previous();
+      let right = this.factor();
+      expr = new BinaryExpr(expr, operator, right);
+    }
+    return expr;
+  }
+  
+  /**
+   * Applies factor grammar rule. Other parsers call this rule
+   * the multiplicative expression rule.
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   * unary ⟹ unary ( (`/`|`//`|`*`) unary )* ;
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   */
+  private factor(): Expression {
+    let expr = this.unary();
+    while (this.match(TokenType.SLASH, TokenType.QUOT, TokenType.STAR)) {
+      let operator = this.previous();
+      let right = this.unary();
+      expr = new BinaryExpr(expr, operator, right);
+    }
+    return expr;
+  }
+  
+  /**
+   * Applies the unary-expression grammar rule.
+   */
+  private unary(): Expression {
+    if (this.match(TokenType.BANG, TokenType.MINUS)) {
+      let operator = this.previous();
+      let right = this.unary();
+      return new UnaryExpr(operator, right);
+    }
+    return this.primary();
+  }
+  
+  /**
+   * Applies the primary-expression grammar rule.
+   */
+  private primary(): Expression {
+    if (this.match(TokenType.FALSE)) return new Bool(false);
+    if (this.match(TokenType.TRUE)) return new Bool(true);
+    if (this.match(TokenType.NULL)) return new Null(null);
+    if (this.match(TokenType.REAL))
+      return new Real(Number(this.previous().literal));
+    if (this.match(TokenType.INTEGER))
+      return new Integer(Number(this.previous().literal));
+    if (this.match(TokenType.STRING))
+      return new String(this.previous().literal);
+    if (this.match(TokenType.LEFT_PAREN)) {
+      let expr = this.expression();
+      this.consume(TokenType.RIGHT_PAREN, 'expected right parenthesis');
+      return new Group(expr);
+    }
+    throw new SyntaxError('Unrecognized grammar.');
+  }
+  
+
+  /* ------------------------------- AUXILIARIES ------------------------------ */
+  /**
+   * All of the methods that follow are auxiliary methods for the parsing methods
+   * above.
+   */
+
+  consume(type: TokenType, message: string) {
+    if (this.check(type)) return this.advance();
+    throw new SyntaxError(message);
+  }
+
+  match(...types: TokenType[]): boolean {
+    for (let i = 0; i < types.length; i++) {
+      if (this.check(types[i])) {
+        this.advance();
+        return true;
+      }
+    }
+    return false;
+  }
+  check(type: TokenType): boolean {
+    if (this.atEnd()) return false;
+    return this.peek().type === type;
+  }
+  advance(): Token {
+    if (!this.atEnd()) this.current++;
+    return this.previous();
+  }
+  atEnd(): boolean {
+    return this.peek().type === TokenType.EOF;
+  }
+  peek(): Token {
+    return this.tokens[this.current];
+  }
+  previous(): Token {
+    return this.tokens[this.current - 1];
+  }
+}
+
+const mathParser = new PRex();
+
+const result = mathParser.parse('1 + (3 * 5)');
+
+display(result);

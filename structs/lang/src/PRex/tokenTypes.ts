@@ -9,12 +9,15 @@ enum ProdTokenType {
   DOT, //  '.'
   MINUS, //  '-'
   PLUS, // '+'
+  CONCAT, // '++'
   SEMICOLON, // ';'
   SLASH, //  '/'
+  QUOT, //  '//'
   BSLASH, // `\\`
   PERCENT, // '%'
   CARET, // '^'
   COLON, //  ':'
+  DEFINE, // ':='
   DOLLAR, // '$'
   QUERY, // '?'
   STAR, // '*'
@@ -32,9 +35,12 @@ enum ProdTokenType {
   POUND, // '#' - comments start with pound
   LESS_EQUAL, // '<='
   KEYWORD, // 'KEYWORD'
-  IDENTIFIER, // 'IDENTIFIER'
+  SYMBOL, // 'SYMBOL'
   NUMBER, // 'NUMBER'
   STRING, // 'STRING'
+  FALSE, // 'FALSE'
+  TRUE, // 'TRUE'
+  NULL, // 'TRUE'
   EOF, // 'EOF'
 }
 
@@ -49,15 +55,18 @@ enum DevTokenType {
   DOT = 'DOT',
   MINUS = 'OP_MINUS',
   PLUS = 'OP_ADD',
+  CONC = 'OP_CONCAT',
+  DEFINE = 'OP_DEFINE', // ':='
+  STAR = 'OP_MUL',
   SEMICOLON = 'SEMICOLON',
-  SLASH = 'SLASH',
+  SLASH = 'OP_DIVIDE',
+  QUOT = 'OP_INTEGER_DIVIDE',
   BSLASH = 'BSLASH',
   PERCENT = 'PERCENT',
   CARET = 'CARET',
   COLON = 'COLON',
   DOLLAR = 'DOLLAR',
   QUERY = 'QUERY',
-  STAR = 'STAR',
   AMPERSAND = 'AMP',
   TILDE = 'TILDE',
   APOSTROPHE = `APOSTROPHE`,
@@ -72,10 +81,25 @@ enum DevTokenType {
   POUND = 'POUND', // comments start with pound
   LESS_EQUAL = 'LESS_EQUAL',
   KEYWORD = 'KEYWORD',
-  IDENTIFIER = 'IDENTIFIER',
+  SYMBOL = 'SYMBOL',
   INTEGER = 'INTEGER',
   REAL = 'REAL',
   STRING = 'STRING',
+  FALSE = 'FALSE',
+  TRUE = 'TRUE',
+  NULL = 'NULL',
+  AND = 'AND',
+  OR = 'OR',
+  NOT = 'NOT',
+  XOR = 'XOR',
+  NOR = 'NOR',
+  NAND = 'NAND',
+  XNOR = 'XNOR',
+  IN = 'IN',
+  IF = 'IF',
+  THEN = 'THEN',
+  ELSE = 'ELSE',
+  LET = 'LET',
   EOF = 'EOF',
 }
 

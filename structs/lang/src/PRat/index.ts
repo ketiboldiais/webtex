@@ -1,28 +1,21 @@
-type Result = Match | Err;
+type Result = Match | Failure;
 type PRat = (text: string, i: number) => Result;
 
 class Output {
-  text: string;
+  readonly text: string;
   start: number;
   end: number;
   err: boolean;
-  constructor(text: string, start: number, end: number) {
+  constructor(text: string, start: number, end: number, err: boolean) {
     this.text = text;
     this.start = start;
     this.end = end;
-    this.err = false;
-  }
-  get error() {
-    return this.err;
+    this.err = err;
   }
 }
 
 class Match extends Output {
-  text: string;
-  start: number;
-  end: number;
   children: Match[];
-  err: boolean;
   result: string;
   constructor(
     text: string,
@@ -30,30 +23,23 @@ class Match extends Output {
     end: number,
     children: Match[] = []
   ) {
-    super(text, start, end);
-    this.text = text;
-    this.start = start;
-    this.end = end;
+    super(text, start, end, false);
     this.children = children;
-    this.err = false;
     this.result = this.text.substring(this.start, this.end);
   }
 }
-class Err extends Output {
-  text: string;
-  start: number;
-  end: number;
-  err: boolean;
+class Failure extends Output {
   result: string;
-  children: Err[];
-  constructor(text: string, parserName: string, index: number) {
-    super(text, index, index);
-    this.text = text;
+  children: Failure[];
+  constructor(
+    text: string,
+    parserName: string,
+    index: number,
+    children: Failure[] = []
+  ) {
+    super(text, index, index, true);
+    this.children = children;
     this.result = `Error | ${parserName}`;
-    this.start = index;
-    this.end = index;
-    this.children = [];
-    this.err = true;
   }
 }
 
@@ -65,6 +51,32 @@ class P {
   parse(src: string, i = 0) {
     return this.fn(src, i);
   }
+
+  /**
+   * Returns a `Match` if both the calling parser and the
+   * argument parser succeed. Returns the `Fail` of the first
+   * parser that fails.
+   * 
+   * @example
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      const x = lit('x');  
+      const y = lit('y');  
+      const z = lit('z');  
+      const xyz = x.and(y).and(z)
+      console.log(xyz.parse('xyz'))
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   * Output:
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      Match {
+        text: 'xyz',
+        start: 0,
+        end: 3,
+        err: false,
+        children: [],
+        result: 'xyz'
+      }
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   */
   and(p: P) {
     return new P((txt, i) => {
       let res = this.fn(txt, i);
@@ -74,13 +86,43 @@ class P {
       return new Match(txt, i, out.end, [...res.children, ...out.children]);
     });
   }
+
+  /**
+   * Returns a `Match` if the calling parser if it succeeds.
+   * If the calling parser fails, the argument parser is attempted.
+   * If the argument parser succeeds, its match is returned.
+   * If the argument parser fails both failures are returned.
+   * 
+   * @example
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      const x = lit('x');  
+      const y = lit('y');  
+      const z = lit('z');  
+      const xyz = x.or(y).or(z)
+      console.log(xyz.parse('xyz'))
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   * Output:
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      Match {
+        text: 'xyz',
+        start: 0,
+        end: 1,
+        err: false,
+        children: [],
+        result: 'x'
+      }
+   * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   */
   or(p: P) {
     return new P((txt, i) => {
       let res = this.fn(txt, i);
-      if (!res.err) return res;
+      if (!res.err) return new Match(txt, i, res.end, [...res.children]);
       let out = p.parse(txt, res.end);
-      if (!out.err) return out;
-      return new Err(txt, 'or-parser', i);
+      if (!out.err) return new Match(txt, i, out.end, [...out.children]);
+      return new Failure(txt, 'or-parser', i, [
+        ...res.children,
+        ...out.children,
+      ]);
     });
   }
   maybe(p: P) {
@@ -94,45 +136,48 @@ class P {
   }
 }
 
-export function lit(pattern: string): P {
-  return new P((text: string, i: number) => {
+const lit = (pattern: string): P =>
+  new P((text: string, i: number) => {
     if (text.startsWith(pattern, i)) {
       return new Match(text, i, i + pattern.length);
     } else {
-      return new Err(text, 'lit', i);
+      return new Failure(text, 'lit', i);
     }
   });
-}
 
-export function chain(...patterns: P[]): P {
-  return new P((text: string, i: number) => {
+const x = lit('x');
+const y = lit('y');
+const z = lit('z');
+const xyz = x.or(y).or(z);
+console.log(xyz.parse('xyz'));
+
+const chain = (...patterns: P[]): P =>
+  new P((text: string, i: number) => {
     let children: Match[] = [];
     let start = i;
     for (let pattern of patterns) {
       let result = pattern.parse(text, i);
-      if (result instanceof Err) return result;
+      if (result instanceof Failure) return result;
       else children.push(result);
       i = result.end;
     }
     return new Match(text, start, i, children);
   });
-}
 
-export function oneof(...patterns: P[]): P {
-  return new P((text: string, i: number) => {
+const oneof = (...patterns: P[]): P =>
+  new P((text: string, i: number) => {
     for (let pattern of patterns) {
       let result = pattern.parse(text, i);
-      if (!(result instanceof Err)) return result;
+      if (!(result instanceof Failure)) return result;
     }
-    return new Err(text, 'oneOf', i);
+    return new Failure(text, 'oneOf', i);
   });
-}
 
-export function many(parser: P) {
-  return new P((text, i) => {
+const many = (parser: P) =>
+  new P((text, i) => {
     let start = i;
     let initRes = parser.parse(text, i);
-    if (initRes instanceof Err) return initRes;
+    if (initRes instanceof Failure) return initRes;
     let out: Match[] = [];
     while (i < text.length) {
       initRes = parser.parse(text, i);
@@ -144,10 +189,10 @@ export function many(parser: P) {
     }
     return new Match(text, start, i, out);
   });
-}
 
-export function wildcard(): P {
-  return new P((text, i) =>
-    i < text.length ? new Match(text, i, i + 1) : new Err(text, 'wildcard', i)
+const wildcard = (): P =>
+  new P((text, i) =>
+    i < text.length
+      ? new Match(text, i, i + 1)
+      : new Failure(text, 'wildcard', i)
   );
-}
