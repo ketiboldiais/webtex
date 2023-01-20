@@ -488,12 +488,13 @@ class PRex {
    * above.
    */
 
-  consume(type: TokenType, message: string) {
-    if (this.check(type)) return this.advance();
-    throw new SyntaxError(message);
-  }
 
-  match(...types: TokenType[]): boolean {
+  /**
+   * Checks if the current token matches any of the given
+   * types provided. If the current token matches, the
+   * token is consumed.
+   */
+  private match(...types: TokenType[]): boolean {
     for (let i = 0; i < types.length; i++) {
       if (this.check(types[i])) {
         this.advance();
@@ -502,21 +503,55 @@ class PRex {
     }
     return false;
   }
-  check(type: TokenType): boolean {
+  
+  /**
+   * Returns `true` if the current token
+   * matches the type provided, `false` otherwise.
+   * Unlike the `match` method, the `check` method
+   * _does not_ consume the matching token.
+   */
+  private check(type: TokenType): boolean {
     if (this.atEnd()) return false;
     return this.peek().type === type;
   }
-  advance(): Token {
+  
+  /**
+   * Consumes the current token and returns it.
+   */
+  private advance(): Token {
     if (!this.atEnd()) this.current++;
     return this.previous();
   }
-  atEnd(): boolean {
+
+  /**
+   * Consumes the current token _without_ returning it.
+   */
+  private consume(type: TokenType, message: string) {
+    if (this.check(type)) return this.advance();
+    throw new SyntaxError(message);
+  }
+
+  /**
+   * Returns `true` if the parser has reached
+   * the end of the tokens array, `false`
+   * otherwise.
+   */
+  private atEnd(): boolean {
     return this.peek().type === TokenType.EOF;
   }
-  peek(): Token {
+
+  /**
+   * Returns the current token _without_
+   * consuming it.
+   */
+  private peek(): Token {
     return this.tokens[this.current];
   }
-  previous(): Token {
+  
+  /**
+   * Returns the last token token read.
+   */
+  private previous(): Token {
     return this.tokens[this.current - 1];
   }
 }
