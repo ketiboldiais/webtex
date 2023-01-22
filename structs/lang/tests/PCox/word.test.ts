@@ -1,5 +1,5 @@
-import { word, a, an } from '../src';
-import { output } from '../src/util';
+import { word, a, an } from '../../src/PCox';
+import { output } from '../../src/PCox/util';
 import { it, expect } from 'vitest';
 
 it('should succeed on non-empty args', () => {
@@ -17,7 +17,5 @@ it('should succeed on non-empty args', () => {
 
 it('should err on no args', () => {
   const result = word().run('abc');
-  expect(result.err).toBe(true)
+  expect(result.err).toBe(true);
 });
-
-

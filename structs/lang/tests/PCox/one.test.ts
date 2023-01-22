@@ -1,5 +1,5 @@
-import { output } from '../src/util';
-import { a,an } from '../src';
+import { output } from '../../src/PCox/util';
+import { an } from '../../src/PCox';
 import { it, expect } from 'vitest';
 
 it('should parse one character correctly', () => {
@@ -14,7 +14,6 @@ it('should parse one character correctly', () => {
   const result = an(input).run(input);
   expect(result).toEqual(out);
 });
-
 
 it('should parse only one among multiple characters', () => {
   const input = 'abc';
@@ -44,11 +43,11 @@ it('should return a non-empty error message for wrong char', () => {
 it('should set err is true for wrong char', () => {
   const input = 'x';
   const result = an(input).run('y');
-  expect(result.err).toBe(true)
+  expect(result.err).toBe(true);
 });
 
 it('should set err is true for empty string', () => {
   const input = 'x';
   const result = an(input).run('');
-  expect(result.err).toBe(true)
+  expect(result.err).toBe(true);
 });

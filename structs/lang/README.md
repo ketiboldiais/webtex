@@ -2,7 +2,7 @@
 This is the parsers module used in Webtex. There are several parsers in this repository.
 
 ## `PRex`
-The `PRex` directory contains a _handwritten recursive descent parser_. This is the parser used for Webtex’s real-time editing.
+The `PRex` directory contains a _recursive descent parser_, _compiler_, and _virtual machine_. Webtex interprets source code with this module.
 
 ## `PCox`
 The `PCox` directory contains _parser combinators_. Webtex uses these combinators primarily for testing. The parser combinators should not be used to handle actual user inputs. Given how fast a user may type and the amount of memory consumed by the parser combinators, the `PCox` parsers are not well-suited for real-time text editing.
