@@ -1,3 +1,4 @@
+import { log } from '../utils/index.js';
 import {
   ParserError,
   Program,
@@ -11,6 +12,8 @@ import {
   BooleanLiteral,
   BinaryExpr,
   UnaryExpr,
+  VarDecl,
+  AssignmentExpr,
 } from './nodes';
 import { TokenType } from './token';
 import { Tokenizer } from './tokenizer';
@@ -54,23 +57,91 @@ class Parser {
     }
     return new Program(body);
   }
+
+  /**
+   * Parses a statement.
+   */
   private parseStmt(): Stmt {
-    return this.parseExpr();
+    switch (this.peek().type) {
+      case TokenType.CONST:
+      case TokenType.LET:
+        return this.parse_var_declaration();
+      default:
+        return this.parse_expression();
+    }
   }
-  private parseExpr(): Expr {
-    return this.addExpr();
+
+  /**
+   * Parses a declaration.
+   */
+  private parse_var_declaration(): Stmt {
+    if (this.match(TokenType.LET)) {
+      return this.parse_var(false);
+    } else if (this.match(TokenType.CONST)) {
+      return this.parse_var(true);
+    } else {
+      return this.parseStmt();
+    }
   }
-  private addExpr(): Expr {
-    let expr = this.mulExpr();
+
+  /**
+   * Parses a variable declaration.
+   */
+  parse_var(isConst: boolean): Stmt {
+    let name = this.eat(TokenType.SYMBOL, 'Expected a variable name.');
+    if (name instanceof ParserError) return name;
+    let init: Expr = new NullLiteral();
+    if (this.match(TokenType.EQUAL)) {
+      init = this.parse_expression();
+      if (isConst && !init)
+        this.croak(
+          'Constant declarations must be initialized inline.',
+          'parsing variable'
+        );
+    }
+    return new VarDecl(name.value, init, isConst);
+  }
+
+  /**
+   * Parses an expression.
+   */
+  private parse_expression(): Expr {
+    const value = this.parse_assignment_expression();
+    this.eat(TokenType.SEMICOLON, 'All statements must end with a semicolon.');
+    return value;
+  }
+
+  private parse_assignment_expression(): Expr {
+    let expr = this.parse_additive_expression();
+    if (this.match(TokenType.EQUAL)) {
+      let value = this.parse_assignment_expression();
+      if (expr instanceof SymbolExpr) {
+        let name = expr.symbol;
+        return new AssignmentExpr(name, value);
+      }
+      this.croak('Invalid assignment target.', 'parsing assignment expression');
+    }
+    return expr;
+  }
+
+  /**
+   * Parses an additive expression.
+   */
+  private parse_additive_expression(): Expr {
+    let expr = this.parse_multiplicative_expression();
     while (this.match(TokenType.PLUS, TokenType.MINUS)) {
       let operator = this.prev();
-      let right = this.mulExpr();
+      let right = this.parse_multiplicative_expression();
       expr = this.makeBinex(expr, operator.type, right);
     }
     return expr;
   }
-  private mulExpr(): Expr {
-    let expr = this.parsePrimaryExpr();
+
+  /**
+   * Parses a multiplicative expression.
+   */
+  private parse_multiplicative_expression(): Expr {
+    let expr = this.parse_primary_expression();
     while (
       this.match(
         TokenType.MUL,
@@ -81,13 +152,13 @@ class Parser {
       )
     ) {
       let operator = this.prev();
-      let right = this.parsePrimaryExpr();
+      let right = this.parse_primary_expression();
       expr = this.makeBinex(expr, operator.type, right);
     }
     return expr;
   }
 
-  private parsePrimaryExpr(): Expr {
+  private parse_primary_expression(): Expr {
     const tk = this.advance();
     switch (tk.type) {
       case TokenType.SYMBOL:
@@ -103,12 +174,15 @@ class Parser {
       case TokenType.NULL:
         return this.makeNull();
       case TokenType.LPAREN: {
-        let expr = this.parseExpr();
+        let expr = this.parse_expression();
         this.eat(TokenType.RPAREN, 'Expected right paren.');
         return expr;
       }
       default:
-        return this.croak(`Unexpected token.`);
+        return this.croak(
+          `Unexpected token: [${tk.value}]`,
+          'parsing primary expression'
+        );
     }
   }
   private match(...tokentypes: TokenType[]): boolean {
@@ -122,7 +196,7 @@ class Parser {
   }
   private eat(type: TokenType, message: string) {
     if (this.check(type)) return this.advance();
-    else this.croak(message);
+    else return this.croak(message, 'eating token');
   }
   private check(type: TokenType): boolean {
     if (!this.hasTokens()) return false;
@@ -141,9 +215,9 @@ class Parser {
   private hasTokens(): boolean {
     return this.peek().type !== TokenType.EOF;
   }
-  private croak(message: string): ParserError {
+  private croak(message: string, method: string): ParserError {
     const error = new ParserError(
-      `Parser Error | Line[${this.peek().line}] | ${message}`,
+      `ParserError while ${method} | Line[${this.peek().line}] | ${message}`,
       this.peek().line
     );
     this.error = error;
@@ -176,3 +250,11 @@ class Parser {
 }
 
 export const parser = new Parser();
+
+// const input = `
+
+// let x = 2 * pi;
+// x = 4;
+// `;
+
+// log(parser.parse(input));

@@ -20,6 +20,31 @@ export class Program extends Stmt {
   }
 }
 
+export class VarDecl extends Stmt {
+  node: NodeType.VAR;
+  symbol: string;
+  value: Expr;
+  constant: boolean;
+  constructor(symbol: string, value: Expr, constant: boolean = false) {
+    super(NodeType.VAR);
+    this.symbol = symbol;
+    this.value = value;
+    this.constant = constant;
+  }
+}
+
+export class AssignmentExpr extends Stmt {
+  node: NodeType.ASSIGNMENT_EXPRESSION;
+  symbol: string;
+  value: any;
+  constructor(symbol: string, value: any) {
+    super(NodeType.ASSIGNMENT_EXPRESSION, value);
+    this.node = NodeType.ASSIGNMENT_EXPRESSION;
+    this.symbol = symbol;
+    this.value = value;
+  }
+}
+
 export class Expr extends Stmt {
   value: any;
   node: NodeType;

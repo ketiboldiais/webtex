@@ -45,6 +45,7 @@ export enum TokenType {
   SYMBOL = 'symbol',
   KEYWORD = 'keyword',
   LET = 'let',
+  CONST = 'const',
   IF = 'if',
   ELSE = 'else',
 
@@ -74,6 +75,7 @@ export enum TokenType {
 export const keywords = new Map<string, TokenType>([
   ['if', TokenType.IF],
   ['let', TokenType.LET],
+  ['const', TokenType.CONST],
   ['else', TokenType.ELSE],
   ['and', TokenType.AND],
   ['or', TokenType.OR],
