@@ -10,6 +10,7 @@
  * `DevTokenType`. This should be changed to `ProdTokenType`
  * during production.
  */
+
 import type TokenType from './tokenTypes';
 // prettier-ignore
 import {
@@ -65,7 +66,7 @@ class Err {
   message: string;
   line: number;
   constructor(message: string, line: number) {
-    this.message = `Line[${line}] | Error | ${message}`;
+    this.message = `Tokenizer Error | Line[${line}] | ${message}`;
     this.line = line;
   }
 }
@@ -313,14 +314,51 @@ class Scanner {
  * the `PRex` parser. They aren’t useful on their own.
  */
 
-class Node {
-  evalBinex(expr: Binex) {}
-  evalUnex(expr: Unex) {}
-  evalLit(expr: Lit) {}
-  evalGroup(expr: Group) {}
+class Handler {
+  evalBinex(expr: Binex) {
+    let left = this.eval(expr.left);
+    let right = this.eval(expr.right);
+    switch (expr.operator.type) {
+      case PLUS:
+        return Number(expr.left) + Number(expr.right);
+      case MINUS:
+        return Number(expr.left) - Number(expr.right);
+      case SLASH:
+        return Number(expr.left) / Number(expr.right);
+      case STAR:
+        return Number(expr.left) * Number(expr.right);
+      case QUOT:
+        return Math.floor(Number(expr.left) / Number(expr.right));
+      case MOD:
+        return Number(expr.left) % Number(expr.right);
+      case REM:
+        return Number(expr.left) % Number(expr.right);
+    }
+    return null;
+  }
+  evalUnex(expr: Unex) {
+    let right = this.eval(expr.operand);
+    switch (expr.operator.type) {
+      case MINUS:
+        return -expr.operand;
+      case BANG:
+        return !expr.operand;
+    }
+  }
+  evalLit(expr: Lit) {
+    return expr.value;
+  }
+  evalGroup(expr: Group) {
+    return this.eval(expr.expr);
+  }
+  evalParserError(expr: ParserError) {}
+  eval(expr: Expression) {
+    expr.accept(this);
+  }
 }
+
 interface Expression {
-  eval(node: Node): void;
+  accept(handler: Handler): any;
 }
 
 class Group implements Expression {
@@ -328,8 +366,8 @@ class Group implements Expression {
   constructor(expr: Expression) {
     this.expr = expr;
   }
-  eval(node: Node) {
-    node.evalGroup(this);
+  accept(handler: Handler) {
+    handler.evalGroup(this);
   }
 }
 class Binex implements Expression {
@@ -341,8 +379,8 @@ class Binex implements Expression {
     this.operator = operator;
     this.right = right;
   }
-  eval(node: Node) {
-    node.evalBinex(this);
+  accept(handler: Handler) {
+    handler.evalBinex(this);
   }
 }
 
@@ -353,8 +391,8 @@ class Unex implements Expression {
     this.operator = operator;
     this.operand = operand;
   }
-  eval(node: Node) {
-    node.evalUnex(this);
+  accept(handler: Handler) {
+    handler.evalUnex(this);
   }
 }
 
@@ -371,8 +409,8 @@ class Lit implements Expression {
   constructor(value: Primitive) {
     this.value = value;
   }
-  eval(node: Node) {
-    node.evalLit(this);
+  accept(handler: Handler) {
+    handler.evalLit(this);
   }
 }
 class Integer extends Lit {
@@ -406,6 +444,17 @@ class String extends Lit {
   }
 }
 
+class ParserError implements Expression {
+  message: string;
+  line: number;
+  constructor(message: string, line: number) {
+    this.message = `Parser Error | line ${line} | ${message}`;
+    this.line = line;
+  }
+  accept(handler: Handler) {
+    handler.evalParserError(this);
+  }
+}
 /* -------------------------------------------------------------------------- */
 /*                                    PRex                                    */
 /* -------------------------------------------------------------------------- */
@@ -419,6 +468,7 @@ class PRex {
   private current: number;
   private scanner: Scanner;
   didErr: boolean;
+  error: ParserError;
   constructor() {
     this.current = 0;
     this.scanner = new Scanner();
@@ -431,6 +481,7 @@ class PRex {
   parse(input: string) {
     this.src = input;
     let scannerOutput = this.scanner.scanTokens(input);
+
     if (this.scanner.didErr) {
       return scannerOutput as Err[];
     } else {
@@ -485,6 +536,7 @@ class PRex {
       let operator = this.previous();
       let right = this.term();
       expr = new Binex(expr, operator, right);
+      if (this.didErr) return this.error;
     }
     return expr;
   }
@@ -548,10 +600,10 @@ class PRex {
     if (this.match(STRING)) return new String(this.previous().literal);
     if (this.match(LEFT_PAREN)) {
       let expr = this.expression();
-      this.consume(RIGHT_PAREN, 'expected right parenthesis');
+      this.eat(RIGHT_PAREN, 'expected closing right parenthesis');
       return new Group(expr);
     }
-    throw new SyntaxError('Unrecognized grammar.');
+    return this.setError('Unrecognized grammar.');
   }
 
   /* ------------------------------- AUXILIARIES ------------------------------ */
@@ -598,9 +650,17 @@ class PRex {
   /**
    * Consumes the current token _without_ returning it.
    */
-  private consume(type: TokenType, message: string) {
+  private eat(type: TokenType, message: string) {
     if (this.check(type)) return this.advance();
-    throw new SyntaxError(message);
+    else {
+      this.setError(message);
+    }
+  }
+
+  private setError(message: string) {
+    this.didErr = true;
+    this.error = new ParserError(message, this.tokens[this.current].line);
+    return this.error;
   }
 
   /**
