@@ -1,13 +1,19 @@
+import { log } from '../utils/index.js';
 import {
   Program,
-  BinaryExpr,
-  Stmt,
+  BinaryExpressionNode,
+  StatementNode,
   ParserError,
-  SymbolExpr,
-  VarDecl,
-} from './nodes';
-import { TokenType } from './token';
+  SymbolNode,
+  VariableDeclarationNode,
+  AssignmentExpressionNode,
+} from './parser';
+import { TokenType } from './tokenizer';
 import { ValueType, NodeType } from './typings';
+
+/* -------------------------------------------------------------------------- */
+/*                            RUNTIME VALUE OBJECTS                           */
+/* -------------------------------------------------------------------------- */
 
 class RuntimeVal {
   type: ValueType;
@@ -58,13 +64,17 @@ class Bool extends RuntimeVal {
   }
 }
 
-class RuntimeErr extends RuntimeVal {
+class RuntimeError extends RuntimeVal {
   constructor(message: string) {
     super('Runtime-error', message);
     this.type = 'Runtime-error';
     this.value = message;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/*                              NATIVE VARIABLES                              */
+/* -------------------------------------------------------------------------- */
 
 const lib: [string, RuntimeVal][] = [
   ['pi', new Real(Math.PI)],
@@ -82,6 +92,10 @@ const lib: [string, RuntimeVal][] = [
   ['phi', new Real(1.6180339887498948482)],
 ];
 
+/* -------------------------------------------------------------------------- */
+/*                             ENVIRONMENT OBJECT                             */
+/* -------------------------------------------------------------------------- */
+
 class Environment {
   private parent?: Environment;
   private vars: Map<string, RuntimeVal>;
@@ -93,17 +107,20 @@ class Environment {
     this.constants = new Set();
     this.error = false;
   }
+  has(varname: string) {
+    return this.vars.has(varname);
+  }
 
   lookup(varname: string): RuntimeVal {
     const env = this.resolve(varname);
-    if (env instanceof RuntimeErr) return env;
+    if (env instanceof RuntimeError) return env;
     return env.vars.get(varname) as RuntimeVal;
   }
 
   declare(varname: string, value: RuntimeVal, isConstant: boolean): RuntimeVal {
     if (this.vars.has(varname)) {
       this.error = true;
-      return new RuntimeErr(
+      return new RuntimeError(
         `You already declared Variable “${varname}”. Did you mean to reassign?`
       );
     }
@@ -117,14 +134,14 @@ class Environment {
   assign(varname: string, value: RuntimeVal): RuntimeVal {
     const env = this.resolve(varname);
 
-    if (env instanceof RuntimeErr) {
+    if (env instanceof RuntimeError) {
       this.error = true;
       return env;
     }
 
     if (env.constants.has(varname)) {
       this.error = true;
-      return new RuntimeErr(
+      return new RuntimeError(
         `Variable ${varname} is a constant, and you 
          can’t change a constant. If you want a mutable
          variable, consider using let.`
@@ -135,19 +152,27 @@ class Environment {
     return value;
   }
 
-  resolve(varname: string): Environment | RuntimeErr {
+  resolve(varname: string): Environment | RuntimeError {
     if (this.vars.has(varname)) return this;
     if (this.parent === undefined || this.error) {
-      return new RuntimeErr(`Couldn’t find the variable “${varname}”.`);
+      return new RuntimeError(`Couldn’t find the variable “${varname}”.`);
     }
     return this.parent.resolve(varname);
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/*                                 INTERPRETER                                */
+/* -------------------------------------------------------------------------- */
+
 class Interpreter {
   environment: Environment;
+  nil: Nil;
+  error: null | RuntimeError;
   constructor() {
     this.environment = new Environment();
+    this.nil = new Nil();
+    this.error = null;
   }
   interpret(result: Program | ParserError) {
     if (result instanceof ParserError) {
@@ -155,8 +180,11 @@ class Interpreter {
     }
     return this.evaluate(result);
   }
-  private evaluate(astNode: Stmt): RuntimeVal {
+  private evaluate(astNode: StatementNode): RuntimeVal {
+    if (this.error) return this.error;
     switch (astNode.node) {
+      case NodeType.PROGRAM:
+        return this.evaluate_program(astNode as Program);
       case NodeType.INTEGER:
         return new Int(astNode.value);
       case NodeType.REAL:
@@ -166,51 +194,91 @@ class Interpreter {
       case NodeType.BOOL:
         return new Bool(astNode.value);
       case NodeType.SYMBOL:
-        return this.evalIdentifier(astNode as SymbolExpr);
-      case NodeType.PROGRAM:
-        return this.evalProg(astNode as Program);
+        return this.evaluate_variable(astNode as SymbolNode);
       case NodeType.BINARY_EXPRESSION:
-        return this.evalBinary(astNode as BinaryExpr);
+        return this.evaluate_binary_expression(astNode as BinaryExpressionNode);
       case NodeType.VAR:
-        return this.evalVarDeclr(astNode as VarDecl);
+        return this.evaluate_variable_declaration(
+          astNode as VariableDeclarationNode
+        );
+      case NodeType.ASSIGNMENT_EXPRESSION:
+        return this.evaluate_assignment(astNode as AssignmentExpressionNode);
       default:
-        return new RuntimeErr('Unrecognized node.');
+        return new RuntimeError('Unrecognized node.');
     }
   }
-
-  private evalVarDeclr(node: VarDecl): RuntimeVal {
+  
+  private evaluate_variable_declaration(
+    node: VariableDeclarationNode
+  ): RuntimeVal {
     const val = node.value ? this.evaluate(node.value) : this.nil;
     return this.environment.declare(node.symbol, val, node.constant);
   }
 
-  private evalIdentifier(node: SymbolExpr): RuntimeVal {
+  private evaluate_assignment(node: AssignmentExpressionNode): RuntimeVal {
+    if (!this.environment.has(node.symbol)) {
+      this.error = new RuntimeError(
+        `Variable “${node.symbol}” hasn’t been declared.`
+      );
+    }
+    const assignee = this.environment.assign(
+      node.symbol,
+      this.evaluate(node.value)
+    );
+    return assignee;
+  }
+
+  private evaluate_variable(node: SymbolNode): RuntimeVal {
     const val = this.environment.lookup(node.symbol);
     return val;
   }
 
-  private evalBinary(node: BinaryExpr): RuntimeVal {
-    const lhs = this.evaluate(node.left);
-    const rhs = this.evaluate(node.right);
-    const op = node.operator;
-    if (this.hasNumArgs(lhs.type, rhs.type)) {
-      return this.evalNumBin(lhs as Num, op, rhs as Num);
-    }
-    if (this.hasBoolArgs(lhs.type, rhs.type)) {
-    }
-    if (this.hasStrArgs(lhs.type, rhs.type)) {
-    }
-    return new RuntimeErr('Unrecognized binary operation');
-  }
-
-  private evalProg(node: Program): RuntimeVal {
+  private evaluate_program(node: Program): RuntimeVal {
     let lastEvaluated: RuntimeVal = this.nil;
     for (let i = 0; i < node.body.length; i++) {
       lastEvaluated = this.evaluate(node.body[i]);
+      if (this.error) return this.error;
     }
     return lastEvaluated;
   }
 
-  private evalNumBin(t1: Num, op: TokenType, t2: Num): RuntimeVal {
+  private evaluate_binary_expression(node: BinaryExpressionNode): RuntimeVal {
+    const lhs = this.evaluate(node.left);
+    const rhs = this.evaluate(node.right);
+    const op = node.operator;
+    if (this.has_numeric_operands(lhs.type, rhs.type)) {
+      return this.evalNumeric(lhs as Num, op, rhs as Num);
+    }
+    if (this.has_boolean_operands(lhs.type, rhs.type)) {
+      return this.evalBool(lhs as Bool, op, rhs as Bool);
+    }
+    if (this.has_string_operands(lhs.type, rhs.type)) {
+    }
+    const err = new RuntimeError('Unrecognized binary operation');
+    this.error = err;
+    return err;
+  }
+
+  private evalBool(t1: Bool, op: TokenType, t2: Bool): RuntimeVal {
+    switch (op) {
+      case TokenType.AND:
+        return new Bool(t1.value && t2.value);
+      case TokenType.OR:
+        return new Bool(t1.value || t2.value);
+      case TokenType.NAND:
+        return new Bool(!(t1.value && t2.value));
+      case TokenType.NOR:
+        return new Bool(!t1.value && !t2.value);
+      case TokenType.XOR:
+        return new Bool(t1.value !== t2.value);
+      case TokenType.XNOR:
+        return new Bool(t1.value === t2.value);
+      default:
+        return new RuntimeError('Unrecognized boolean operation.');
+    }
+  }
+
+  private evalNumeric(t1: Num, op: TokenType, t2: Num): RuntimeVal {
     let f =
       t1.type === 'real' || t2.type === 'real'
         ? (v: number) => new Real(v)
@@ -222,37 +290,47 @@ class Interpreter {
         return f(t1.value + t2.value);
       case TokenType.MUL:
         return f(t1.value * t2.value);
+      case TokenType.CARET:
+        return f(t1.value ** t2.value);
       case TokenType.DIV:
         return new Real(t1.value / t2.value);
       case TokenType.QUOT:
         return new Int(t1.value / t2.value);
+      case TokenType.BANG_EQUAL:
+        return new Bool(t1.value !== t2.value);
+      case TokenType.EQUAL_EQUAL:
+        return new Bool(t1.value === t2.value);
+      case TokenType.LT:
+        return new Bool(t1.value < t2.value);
+      case TokenType.GT:
+        return new Bool(t1.value > t2.value);
+      case TokenType.LTE:
+        return new Bool(t1.value < t2.value || t1.value === t2.value);
+      case TokenType.GTE:
+        return new Bool(t1.value > t2.value || t1.value === t2.value);
       default:
-        return new RuntimeErr('Unrecognized numeric operation.');
+        return new RuntimeError('Unrecognized numeric operation.');
     }
   }
 
-  get nil(): Nil {
-    return { type: 'null', value: null };
-  }
-
-  private hasIntArgs(t1: ValueType, t2: ValueType) {
+  private has_integer_operands(t1: ValueType, t2: ValueType) {
     return (
       (t1 === 'integer' && t2 === 'integer') ||
       (t1 === 'integer' && t2 === 'real')
     );
   }
-  private hasRealArgs(t1: ValueType, t2: ValueType) {
+  private has_real_operands(t1: ValueType, t2: ValueType) {
     return (
       (t1 === 'real' && t2 === 'real') || (t1 === 'real' && t2 === 'integer')
     );
   }
-  private hasNumArgs(t1: ValueType, t2: ValueType) {
-    return this.hasIntArgs(t1, t2) || this.hasRealArgs(t1, t2);
+  private has_numeric_operands(t1: ValueType, t2: ValueType) {
+    return this.has_integer_operands(t1, t2) || this.has_real_operands(t1, t2);
   }
-  private hasStrArgs(t1: ValueType, t2: ValueType) {
+  private has_string_operands(t1: ValueType, t2: ValueType) {
     return t1 === 'string' && t2 === 'string';
   }
-  private hasBoolArgs(t1: ValueType, t2: ValueType) {
+  private has_boolean_operands(t1: ValueType, t2: ValueType) {
     return t1 === 'bool' && t2 === 'bool';
   }
 }
