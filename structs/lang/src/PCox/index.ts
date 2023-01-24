@@ -9,7 +9,6 @@ import {
   isNonAlphaNum,
   isUpperLatin,
   print,
-  output,
   newState,
 } from './util.js';
 export { print };
