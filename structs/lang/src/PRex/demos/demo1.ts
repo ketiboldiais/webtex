@@ -2,11 +2,12 @@ import { display } from '../../utils/index.js';
 import { PRex, parser } from '../index.js';
 
 const input = `
-
-let x = 2 * pi;
-x = 4;
+let a = 2 / 4;
+let b = 4 + 5;
+let c = a * b;
 `;
 
-// const result = PRex(input);
+const result = PRex(input);
+display(result);
 // const ast = parser.parse(input)
 // display(ast);
