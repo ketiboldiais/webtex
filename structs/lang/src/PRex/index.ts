@@ -3,9 +3,7 @@ import { parser } from './parser.js';
 
 export * from './interpreter.js';
 export * from './math.js';
-export * from './nodes.js';
 export * from './parser.js';
-export * from './token.js';
 export * from './tokenizer.js';
 export * from './typings.js';
 
