@@ -1,4 +1,4 @@
-import { TokenType } from './token';
+import { TokenType } from './tokenizer';
 
 export interface Token {
   value: any;
@@ -8,7 +8,17 @@ export interface Token {
 
 export enum NodeType {
   PROGRAM = 'program',
+  BLOCK = 'block',
   VAR = 'variable-declaration',
+  EMPTY_STATEMENT = 'empty-statement',
+  CONDITIONAL = 'conditional-statement',
+  ALGEBRA = 'algebra',
+
+  // collections
+  STRUCT = 'struct',
+  PROPERTY = 'property',
+  ARRAY = 'array',
+  SET = 'set',
 
   // expressions
   INTEGER = 'integer',
