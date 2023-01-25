@@ -10,3 +10,6 @@ The `PCox` directory contains _parser combinators_. These parsers are used by th
 ## `PRat`
 The `PRat` directory contains _packrat parsers_. These parsers handle some ambiguous algebraic expressions (those whose grammars aren’t necessarily context-free) that the `PCox` parsers cannot handle.
 
+## `PCan`
+The `PCan` directory contains various helper functions and modules for parsing and manipulating algebraic expressions and numerics.
+

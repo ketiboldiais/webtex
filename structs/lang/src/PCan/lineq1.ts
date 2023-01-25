@@ -1,6 +1,6 @@
-import { log } from '../../utils/index.js';
-import { any, a, skipSpace, word, choice } from '../../PCox/index.js';
-import { ParserError } from '../parser.js';
+import { log } from '../utils/index.js';
+import { any, a, skipSpace, word, choice } from '../PCox/index.js';
+import { ParserError } from '../PRex/parser.js';
 /* -------------------------------------------------------------------------- */
 /*                         ALGEBRAIC EXPRESSION PARSER                        */
 /* -------------------------------------------------------------------------- */
