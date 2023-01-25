@@ -1,6 +1,6 @@
 import { log } from '../utils/index.js';
-import { Tokenizer, TokenType } from './tokenizer';
-import { Token, NodeType } from './typings';
+import { Tokenizer, TokenType } from './tokenizer.js';
+import { Token, NodeType } from './typings.js';
 
 /* -------------------------------------------------------------------------- */
 /*                                  AST NODES                                 */

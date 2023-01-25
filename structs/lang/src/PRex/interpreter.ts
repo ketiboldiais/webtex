@@ -7,9 +7,9 @@ import {
   SymbolNode,
   VariableDeclarationNode,
   AssignmentExpressionNode,
-} from './parser';
-import { TokenType } from './tokenizer';
-import { ValueType, NodeType } from './typings';
+} from './parser.js';
+import { TokenType } from './tokenizer.js';
+import { ValueType, NodeType } from './typings.js';
 
 /* -------------------------------------------------------------------------- */
 /*                            RUNTIME VALUE OBJECTS                           */
