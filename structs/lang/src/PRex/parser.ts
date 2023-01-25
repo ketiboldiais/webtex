@@ -1,14 +1,6 @@
 import { log } from '../utils/index.js';
 import { Tokenizer, TokenType } from './tokenizer';
 import { Token, NodeType } from './typings';
-import { any } from '../PCox/index.js';
-
-/* -------------------------------------------------------------------------- */
-/*                         ALGEBRAIC EXPRESSION PARSER                        */
-/* -------------------------------------------------------------------------- */
-/**
- * This is the algebraic expression parser.
- */
 
 /* -------------------------------------------------------------------------- */
 /*                                  AST NODES                                 */
@@ -594,4 +586,4 @@ let x = 5;
 }
 
 `;
-log(parser.parse(input));
+// log(parser.parse(input));

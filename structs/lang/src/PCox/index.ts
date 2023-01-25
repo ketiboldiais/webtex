@@ -82,6 +82,12 @@ export class PCox<t> {
       type: '',
     });
   }
+
+  parse(input: string) {
+    const out = this.run(input);
+    return { result: out.out, type: out.type };
+  }
+
   /**
    * The `map` method transforms a Parser's output.
    * Changes can be made to the following output
