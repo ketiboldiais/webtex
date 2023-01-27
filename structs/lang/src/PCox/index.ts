@@ -406,9 +406,7 @@ export function any(option: Char) {
     }
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
-export function word<T extends any, X extends any>(
-  ...ps: PCox<T>[]
-): PCox<X[]> {
+export function word<X extends any>(...ps: PCox<any>[]): PCox<X[]> {
   return new PCox((state) => {
     if (state.err) return state;
     const L = ps.length;

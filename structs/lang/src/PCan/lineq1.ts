@@ -1,119 +1,9 @@
-import { log } from '../utils/index.js';
-import { any, a, skipSpace, word, choice } from '../pcox/index.js';
-import { GCD } from './mutil.js';
-import { ParserError } from '../prex/parser.js';
-/* -------------------------------------------------------------------------- */
-/*                         ALGEBRAIC EXPRESSION PARSER                        */
-/* -------------------------------------------------------------------------- */
-/**
- * This is the algebraic expression parser.
- */
-type StringTup4 = [string, string, string, string];
-const digits = any('digit');
-const letter = any('letter');
-const plus = a('+');
-const minus = a('-');
-const div = a('/');
-const op = choice(plus, minus);
-const natural = digits.map((d) => ({
-  out: Number(d.out),
-  type: 'natural-number',
-}));
+import { word, skipSpace } from '../pcox/index.js';
+import { StringTup4, letter, op } from './cas.js';
+import { number } from './helpers.js';
+import { rational } from './frac.js';
 
-const rational = word(natural, skipSpace, div, skipSpace, natural).map((d) => ({
-  out: {
-    n: d.out[0] as number,
-    d: d.out[2] as number,
-  },
-  type: 'rational-number',
-}));
-
-class Frac {
-  private n: number;
-  private d: number;
-  constructor(x: string | number, ε: number = 0.0001) {
-    if (typeof x === 'string') {
-      const p = rational.parse(x);
-      this.n = p.result.n;
-      this.d = p.result.d;
-      return this;
-    }
-    return this.fromDec(x, ε);
-  }
-  private fromDec(x: number, ε: number) {
-    if (x === 0) {
-      this.n = 0;
-      this.d = 1;
-      return this;
-    }
-    const a = Math.abs(x);
-    let n = 0;
-    let d = 1;
-    let r: number;
-    while (true) {
-      r = n / d;
-      if (Math.abs((r - a) / a) < ε) break;
-      if (r < a) n++;
-      else d++;
-    }
-    this.n = x < 0 ? -n : n;
-    this.d = d;
-    return this;
-  }
-  scale(by: number) {
-    this.n = this.n * by;
-    this.d = this.d * by;
-    return this;
-  }
-  strung() {
-    return `${this.n}/${this.d}`;
-  }
-
-  private normalize(n: Frac | string | number) {
-    if (n instanceof Frac) return n;
-    else return new Frac(n);
-  }
-
-  mul(n: Frac | string | number) {
-    const arg = this.normalize(n);
-    const num = this.n * arg.n;
-    const den = this.d * arg.d;
-    return new Frac(num / den);
-  }
-  ['*'](n: Frac | string | number) {
-    return this.mul(n);
-  }
-
-  div(n: Frac | string | number) {
-    const arg = this.normalize(n);
-    const num = this.n * arg.d;
-    const den = this.d * arg.n;
-    return new Frac(num / den);
-  }
-  ['/'](n: Frac | string | number) {
-    return this.div(n);
-  }
-
-  add(n: Frac | string | number) {
-    const arg = this.normalize(n);
-    const gcd = GCD(this.d, arg.d);
-    const [n1, d1] = [this.n * gcd, this.d * gcd];
-    const [n2, d2] = [arg.n * gcd, arg.d * gcd];
-    return new Frac((n1 + n2) / (gcd));
-  }
-  sub(n: Frac | string | number) {}
-}
-
-const fraction = (x: string | number) => {
-  return new Frac(x);
-};
-
-const x = fraction(1 / 4);
-const y = fraction(1 / 4);
-const z = x.add(y);
-log(z)
-
-type ExprType = '1-variable-linear-expr';
+type ExprType = '1-variable-linear-equation';
 
 class LinearEquation1 {
   type: ExprType;
@@ -129,7 +19,7 @@ class LinearEquation1 {
     variable: string,
     op: string
   ) {
-    this.type = '1-variable-linear-expr';
+    this.type = '1-variable-linear-equation';
     this.equation = terms.join('');
     this.terms = terms;
     this.coefficients = coefficients;
@@ -140,12 +30,20 @@ class LinearEquation1 {
   private updateEq() {
     this.equation = this.terms.join('');
   }
-  solve() {
+  solve(format: 'real' | 'fraction' | 'string' = 'real') {
     const rhs =
       this.operator === '-'
         ? this.value + this.coefficients[1]
         : this.value - this.coefficients[1];
-    return rhs / this.coefficients[0];
+    const result = rhs / this.coefficients[0];
+    switch (format) {
+      case 'fraction':
+        return rational(result);
+      case 'string':
+        return rational(result).string;
+      default:
+        return result;
+    }
   }
   equals(value: number) {
     this.value = value;
@@ -169,13 +67,13 @@ class LinearEquation1 {
 }
 
 const lineq = word(
-  digits,
+  number,
   skipSpace,
   letter,
   skipSpace,
   op,
   skipSpace,
-  digits
+  number
 ).map((d) => ({
   type: '1-variable-linear-equation',
   out: {
@@ -186,7 +84,29 @@ const lineq = word(
   },
 }));
 
-const linearEq1 = (src: string) => {
+/**
+ * Creates a new linear-equation of
+ * 1-variable.
+ * 
+ * @example
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    const equation1 = linear1('3/2x + 5').equals(20);
+    console.log(equation1);
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * Output:
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  LinearEquation1 {
+    type: '1-variable-linear-equation',
+    equation: '1.5x+5',
+    terms: [ 1.5, 'x', '+', 5 ],
+    coefficients: [ 1.5, 5 ],
+    variable: 'x',
+    operator: '+',
+    value: 20
+   }
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+const linear1 = (src: string) => {
   const res = lineq.parse(src);
   return new LinearEquation1(
     res.result.eq,
@@ -195,6 +115,7 @@ const linearEq1 = (src: string) => {
     res.result.op
   );
 };
-const eqn = linearEq1('5x + 120').equals(20);
-const sol = eqn.solve();
-log(sol);
+
+const equation1 = linear1('3/2x + 5').equals(20);
+const solution1 = equation1.solve('real');
+console.log(solution1);
