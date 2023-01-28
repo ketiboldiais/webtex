@@ -1,1 +1,1 @@
-export * from './pcn/pex.js';
+export * from './pcn/index.js';

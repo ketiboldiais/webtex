@@ -9,9 +9,6 @@ import {
   maybe,
   glyph,
   repeat,
-  wildcard,
-  skip,
-  not,
   rgx,
 } from '../pkt/index.js';
 import { log } from '../utils/index.js';
@@ -33,26 +30,22 @@ type EqOp = Extract<RelOp, '=' | '=='>;
 type IneqOp = Exclude<RelOp, '=' | '=='>;
 type LogicOp = 'and' | 'or' | 'not' | 'xor' | 'xnor' | 'nand' | 'nor';
 type BinaryLogicOp = Exclude<LogicOp, 'not'>;
-type BinaryOp = '+' | '-' | '*' | '/' | '^' | '++' | RelOp | BinaryLogicOp;
-type UnaryPostfixOp = '!' | Extract<LogicOp, 'not'>;
-type UnaryPrefixOp = Extract<LogicOp, 'not'>;
+type BinaryMathOp = '+' | '-' | '*' | '/' | '%' | '^';
+type UnaryMathOp = '!';
+type UnaryLogicOp = 'not';
+type BinaryStringOp = '++';
+type BinaryOp = BinaryStringOp | BinaryMathOp | RelOp | BinaryLogicOp;
+type UnaryOp = UnaryMathOp | UnaryLogicOp;
 type AssignOp = ':=';
-type Operator = BinaryOp | UnaryPostfixOp | AssignOp;
+type Operator = BinaryOp | UnaryOp | AssignOp;
 type NodeType =
   | 'ERROR'
   | 'program'
-  | 'expression-list'
   | 'assignment-expression'
   | 'binary-expression'
+  | 'math-binary-expression'
   | 'logical-binary-expression'
   | 'logical-unary-expression'
-  | 'logical-and-expression'
-  | 'logical-or-expression'
-  | 'logical-not-expression'
-  | 'logical-xor-expression'
-  | 'logical-xnor-expression'
-  | 'logical-nand-expression'
-  | 'logical-nor-expression'
   | 'equation'
   | 'block'
   | 'inequation'
@@ -84,6 +77,9 @@ class Node {
   }
   get latex() {
     return `${this.value}`;
+  }
+  get kind() {
+    return this.type;
   }
 }
 
@@ -149,9 +145,10 @@ const divide = glyph(lit('/')).type<BinaryOp>('/');
 const add = glyph(lit('+')).type<BinaryOp>('+');
 const multiply = glyph(lit('*')).type<BinaryOp>('*');
 const power = glyph(lit('^')).type<BinaryOp>('^');
-const fact = glyph(lit('!')).type<UnaryPostfixOp>('!');
+const quot = glyph(lit('%')).type<BinaryOp>('%');
+const fact = glyph(lit('!')).type<UnaryMathOp>('!');
 const concat = glyph(lit('++')).type<BinaryOp>('++');
-const binop = oneof(concat, minus, divide, add, multiply, power, fact);
+const binop = oneof(concat, minus, divide, add, multiply, power, fact, quot);
 
 // assignment operator
 const assignOp = glyph(lit(':=')).type<AssignOp>(':=');
@@ -215,7 +212,7 @@ const str = rgx(/^"[^"]*"/).type<'string'>('string');
 
 // implicit multiplication
 const imul = chain(number, identifier);
-// log(imul.run('1/2x'));
+
 class Prog extends Node {
   value: Node[];
   type: NodeType;
@@ -319,6 +316,28 @@ class BinaryExpr extends Node {
   get latex() {
     return `{ {${this.value.left.latex}} {${this.value.op}} {${this.value.right.latex}} }`;
   }
+  get op() {
+    return this.value.op;
+  }
+  get left() {
+    return this.value.left;
+  }
+  get right() {
+    return this.value.right;
+  }
+}
+
+class MathBinop extends BinaryExpr {
+  type: NodeType;
+  value: { left: Node; op: BinaryMathOp; right: Node };
+  constructor(left: Node, op: BinaryMathOp, right: Node) {
+    super(left, op, right);
+    this.type = 'math-binary-expression';
+    this.value = { left, op, right };
+  }
+  get latex() {
+    return `{ {${this.value.left.latex}} {${this.op}} {${this.value.right.latex}} }`;
+  }
 }
 
 class AndExpr extends BinaryExpr {
@@ -326,7 +345,7 @@ class AndExpr extends BinaryExpr {
   value: { left: Node; op: BinaryLogicOp; right: Node };
   constructor(left: Node, op: BinaryLogicOp, right: Node) {
     super(left, op, right);
-    this.type = 'logical-and-expression';
+    this.type = 'logical-binary-expression';
     this.value = { left, op, right };
   }
   get latex() {
@@ -339,7 +358,7 @@ class OrExpr extends BinaryExpr {
   value: { left: Node; op: BinaryLogicOp; right: Node };
   constructor(left: Node, op: BinaryLogicOp, right: Node) {
     super(left, op, right);
-    this.type = 'logical-or-expression';
+    this.type = 'logical-binary-expression';
     this.value = { left, op, right };
   }
   get latex() {
@@ -352,7 +371,7 @@ class XorExpr extends BinaryExpr {
   value: { left: Node; op: BinaryLogicOp; right: Node };
   constructor(left: Node, op: BinaryLogicOp, right: Node) {
     super(left, op, right);
-    this.type = 'logical-xor-expression';
+    this.type = 'logical-binary-expression';
     this.value = { left, op, right };
   }
   get latex() {
@@ -365,7 +384,7 @@ class XnorExpr extends BinaryExpr {
   value: { left: Node; op: BinaryLogicOp; right: Node };
   constructor(left: Node, op: BinaryLogicOp, right: Node) {
     super(left, op, right);
-    this.type = 'logical-xor-expression';
+    this.type = 'logical-binary-expression';
     this.value = { left, op, right };
   }
   get latex() {
@@ -378,7 +397,7 @@ class NandExpr extends BinaryExpr {
   value: { left: Node; op: BinaryLogicOp; right: Node };
   constructor(left: Node, op: BinaryLogicOp, right: Node) {
     super(left, op, right);
-    this.type = 'logical-xor-expression';
+    this.type = 'logical-binary-expression';
     this.value = { left, op, right };
   }
   get latex() {
@@ -391,7 +410,7 @@ class NorExpr extends BinaryExpr {
   value: { left: Node; op: BinaryLogicOp; right: Node };
   constructor(left: Node, op: BinaryLogicOp, right: Node) {
     super(left, op, right);
-    this.type = 'logical-nor-expression';
+    this.type = 'logical-binary-expression';
     this.value = { left, op, right };
   }
   get latex() {
@@ -425,23 +444,10 @@ class Inequation extends BinaryExpr {
   }
 }
 
-class UnaryPostfixExpr extends Node {
-  type: NodeType;
-  value: { arg: Node; op: UnaryPostfixOp };
-  constructor(arg: Node, op: UnaryPostfixOp) {
-    super({ arg, op }, 'unary-postfix-expression');
-    this.type = 'unary-postfix-expression';
-    this.value = { arg, op };
-  }
-  get latex() {
-    return `{ {${this.value.arg}} {${this.value.op}} }`;
-  }
-}
-
 class NotExpr extends Node {
   type: NodeType;
-  value: { arg: Node; op: UnaryPrefixOp };
-  constructor(arg: Node, op: UnaryPrefixOp) {
+  value: { arg: Node; op: UnaryLogicOp };
+  constructor(arg: Node, op: UnaryLogicOp) {
     super({ arg, op }, 'logical-unary-expression');
     this.type = 'logical-unary-expression';
     this.value = { arg, op };
@@ -451,10 +457,10 @@ class NotExpr extends Node {
   }
 }
 
-class FactorialExpression extends UnaryPostfixExpr {
+class FactorialExpression extends Node {
   type: NodeType;
-  value: { arg: Node; op: UnaryPostfixOp };
-  constructor(arg: Node, op: UnaryPostfixOp) {
+  value: { arg: Node; op: UnaryMathOp };
+  constructor(arg: Node, op: UnaryMathOp) {
     super(arg, op);
     this.type = 'factorial-expression';
     this.value = { arg, op };
@@ -478,6 +484,8 @@ class Bool extends Node {
 }
 
 class Inf extends Numeric {
+  value: number;
+  type: 'inf';
   constructor() {
     super(Infinity, 'inf');
     this.value = Infinity;
@@ -583,16 +591,17 @@ class ArrVal extends Node {
 /*                              EXPRESSION PARSER                             */
 /* -------------------------------------------------------------------------- */
 
-class Algebra {
-  lastStart: number;
-  lastEnd: number;
-  start: number;
-  end: number;
-  length: number;
-  src: string;
-  error: null | Fail;
-  nil: Nil;
-  out: any[];
+class Prex {
+  private lastStart: number;
+  private lastEnd: number;
+  private start: number;
+  private end: number;
+  private length: number;
+  private src: string;
+  private error: null | Fail;
+  private nil: Nil;
+  private out: any[];
+  prog: Prog | Fail | null;
   constructor() {
     this.lastStart = 0;
     this.lastEnd = 0;
@@ -602,16 +611,18 @@ class Algebra {
     this.error = null;
     this.src = '';
     this.nil = new Nil();
+    this.prog = null;
   }
   parse(src: string) {
     this.src = src.trimStart().trimEnd();
     this.length = this.src.length;
     this.end = this.src.length;
     this.out = [];
-    return this.parseProg();
+    this.prog = this.parseProg();
+    return this;
   }
 
-  private parseProg() {
+  private parseProg(): Prog | Fail {
     let body: Node[] = [];
     while (this.hasChars) {
       body.push(this.parseStmt());
@@ -710,7 +721,7 @@ class Algebra {
     return new Block(statements);
   }
 
-  parseDecl() {
+  private parseDecl() {
     if (this.match(['var', keyword_var])) {
       return this.parseVar();
     }
@@ -767,7 +778,7 @@ class Algebra {
     let expr: Node = this.pAND();
     let res = this.match(['not', pnot]);
     while (res !== null) {
-      let op = this.tryParse(this.previous, pnot) as UnaryPrefixOp;
+      let op = this.tryParse(this.previous, pnot) as UnaryLogicOp;
       let out = this.pAND();
       expr = new NotExpr(out, op);
       res = this.match(['not', pnot]);
@@ -887,9 +898,9 @@ class Algebra {
     let expr: Node = this.parseFactor();
     let res = this.match(['++', concat], ['+', add], ['-', minus]);
     while (res !== null) {
-      let op = this.tryParse(this.previous, binop) as BinaryOp;
+      let op = this.tryParse(this.previous, binop) as BinaryMathOp;
       let right = this.parseFactor();
-      expr = new BinaryExpr(expr, op, right);
+      expr = new MathBinop(expr, op, right);
       res = this.match(['++', concat], ['+', add], ['-', minus]);
     }
     return expr;
@@ -927,15 +938,15 @@ class Algebra {
           break;
       }
       const right = new Id(x.children[1].result);
-      return new BinaryExpr(left, '*', right);
+      return new MathBinop(left, '*', right);
     }
     let expr: Node = this.parsePower();
-    let res = this.match(['*', multiply], ['/', divide]);
+    let res = this.match(['*', multiply], ['/', divide], ['%', quot]);
     while (res !== null) {
-      let op = this.tryParse(this.previous, binop) as BinaryOp;
+      let op = this.tryParse(this.previous, binop) as BinaryMathOp;
       let right = this.parsePower();
-      expr = new BinaryExpr(expr, op, right);
-      res = this.match(['*', multiply], ['/', divide]);
+      expr = new MathBinop(expr, op, right);
+      res = this.match(['*', multiply], ['/', divide], ['%', quot]);
     }
     return expr;
   }
@@ -944,19 +955,19 @@ class Algebra {
     let expr: Node = this.parseFactorial();
     let res = this.match(['^', power]);
     while (res !== null) {
-      let op = this.tryParse(this.previous, binop) as BinaryOp;
+      let op = this.tryParse(this.previous, binop) as BinaryMathOp;
       let right = this.parseFactorial();
-      expr = new BinaryExpr(expr, op, right);
+      expr = new MathBinop(expr, op, right);
       res = this.match(['^', power]);
     }
     return expr;
   }
 
-  private parseFactorial(): UnaryPostfixExpr | Node {
+  private parseFactorial(): FactorialExpression | Node {
     let expr: Node = this.parseLiteral();
     let res = this.match(['!', fact]);
     while (res !== null) {
-      let op = this.tryParse(this.previous, binop) as UnaryPostfixOp;
+      let op = this.tryParse(this.previous, binop) as UnaryMathOp;
       expr = new FactorialExpression(expr, op);
       res = this.match(['!', fact]);
     }
@@ -979,7 +990,7 @@ class Algebra {
     this.advance(res.end);
     switch (res.type) {
       case 'string':
-        return new StringVal(res.result);
+        return new StringVal(res.result.slice(1, -1));
       case 'identifier':
         return new Id(res.result);
       case 'true':
@@ -1063,21 +1074,79 @@ class Algebra {
     this.out.push(res);
     return res;
   }
-
   private get peek() {
     const res = this.src.slice(this.start, this.end);
     this.out.push(res);
     return res;
   }
+  private evalMathBinop(node: BinaryExpr) {
+    let left = this.evaluate(node.left);
+    if (left instanceof Rational || left instanceof Scientific)
+      left = left.norm;
+    let right = this.evaluate(node.right);
+    if (right instanceof Rational || right instanceof Scientific)
+      right = right.norm;
+    switch (node.op) {
+      case '*':
+        return left * right;
+      case '+':
+        return left + right;
+      case '-':
+        return left - right;
+      case '/':
+        return left / right;
+      case '^':
+        return left ** right;
+      case '%':
+        return Math.floor(left / right);
+    }
+  }
+  private evaluate(node: Node) {
+    switch (node.kind) {
+      case 'math-binary-expression':
+        return this.evalMathBinop(node as BinaryExpr);
+      case 'inf':
+        return Infinity;
+      case 'rational':
+        return new Rational(node.value);
+      case 'string':
+        return node.value as string;
+      case 'boolean':
+      case 'natural':
+      case 'integer':
+      case 'real':
+        return node.value;
+      case 'scientific':
+        return new Scientific(node.value);
+      case 'null':
+        return null;
+      default:
+        return new Fail('Unrecognized node type.');
+    }
+  }
+
+  print() {
+    display(this.prog);
+    return this;
+  }
+
+  interpret() {
+    if (this.prog === null || this.prog instanceof Fail) return this.error;
+    let result: any = null;
+    for (let i = 0; i < this.prog.value.length; i++) {
+      result = this.evaluate(this.prog.value[i]);
+    }
+    return result;
+  }
 }
 
-const algebra = new Algebra();
+const prex = new Prex();
 const input = `
 
-var eq1 := (15x + 9) - 1 = 10;
+5 % 2;
 
 `;
-const res = algebra.parse(input);
-// log(algebra)
-// log(algebra.out);
-display(res);
+const parsing = prex.parse(input);
+// parsing.print();
+const result = parsing.interpret();
+log(result);

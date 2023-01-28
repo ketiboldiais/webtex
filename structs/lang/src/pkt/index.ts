@@ -231,6 +231,7 @@ export const lit = (pattern: string): P<'literal'> =>
     }
   });
 
+// todo - These parser collections should be rewritten as generator functions.
 export const numeral = [
   lit('0'),
   lit('1'),
