@@ -323,6 +323,15 @@ export const chain = <T>(...parsers: P<T>[]): P<T> =>
     return new Match(txt, type, start, i, children).setResult(str);
   });
 
+export const rgx = (regex: RegExp) =>
+  new P((txt, i, type) => {
+    const res = regex.exec(txt);
+    if (res) return new Match(txt, type, i, i + res[0].length, []);
+    return new Failure(txt, type, i, i, []);
+  });
+
+
+
 export const not = <T>(parser: P<T>) =>
   new P((txt, i, type = 'not') => {
     const res = parser.parse(txt, i);
@@ -363,12 +372,11 @@ export const union = <T>(parser: P<T>) =>
     return new Match(text, type, start, i, out);
   });
 
-export const wildcard = <T>(): P<T> =>
-  new P((text, i, type = 'wildcard') =>
-    i < text.length
-      ? new Match(text, type, i, i + 1)
-      : new Failure(text, type, i, i + 1)
-  );
+export const wildcard = new P<string>((text, i, type = 'wildcard') =>
+  i < text.length
+    ? new Match(text, type, i, i + 1, [])
+    : new Match(text, type, i, i, [])
+);
 
 export const repeat = <T>(parser: P<T>) =>
   new P<T>((txt, i, type) => {
@@ -411,7 +419,7 @@ export const strung = (
     case 'digits':
       return many(...numeral).type('digits');
     default:
-      return many<any>(wildcard());
+      return many<any>(wildcard);
   }
 };
 export const ws = many(lit(' '), lit('\t'), lit('\r'), lit('\n'));

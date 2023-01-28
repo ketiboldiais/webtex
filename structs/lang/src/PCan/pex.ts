@@ -9,6 +9,10 @@ import {
   maybe,
   glyph,
   repeat,
+  wildcard,
+  skip,
+  not,
+  rgx,
 } from '../prat/index.js';
 import { log } from '../utils/index.js';
 import { display } from '../utils/index.js';
@@ -29,7 +33,7 @@ type EqOp = Extract<RelOp, '=' | '=='>;
 type IneqOp = Exclude<RelOp, '=' | '=='>;
 type LogicOp = 'and' | 'or' | 'not' | 'xor' | 'xnor' | 'nand' | 'nor';
 type BinaryLogicOp = Exclude<LogicOp, 'not'>;
-type BinaryOp = '+' | '-' | '*' | '/' | '^' | RelOp | BinaryLogicOp;
+type BinaryOp = '+' | '-' | '*' | '/' | '^' | '++' | RelOp | BinaryLogicOp;
 type UnaryPostfixOp = '!' | Extract<LogicOp, 'not'>;
 type UnaryPrefixOp = Extract<LogicOp, 'not'>;
 type AssignOp = ':=';
@@ -56,8 +60,10 @@ type NodeType =
   | 'factorial-expression'
   | 'operator'
   | 'identifier'
+  | 'array'
   | 'null'
   | 'boolean'
+  | 'string'
   | 'function-definition'
   | NumberType
   | Punct
@@ -144,21 +150,21 @@ const add = glyph(lit('+')).type<BinaryOp>('+');
 const multiply = glyph(lit('*')).type<BinaryOp>('*');
 const power = glyph(lit('^')).type<BinaryOp>('^');
 const fact = glyph(lit('!')).type<UnaryPostfixOp>('!');
-const binop = oneof(minus, divide, add, multiply, power, fact);
+const concat = glyph(lit('++')).type<BinaryOp>('++');
+const binop = oneof(concat, minus, divide, add, multiply, power, fact);
 
 // assignment operator
 const assignOp = glyph(lit(':=')).type<AssignOp>(':=');
 
 // boolean operators
 const and = glyph(lit('and')).type<LogicOp>('and');
-const not = glyph(lit('not')).type<LogicOp>('not');
+const pnot = glyph(lit('not')).type<LogicOp>('not');
 const or = glyph(lit('or')).type<LogicOp>('or');
 const xor = glyph(lit('xor')).type<LogicOp>('xor');
 const xnor = glyph(lit('xnor')).type<LogicOp>('xnor');
 const nor = glyph(lit('nor')).type<LogicOp>('nor');
 const nand = glyph(lit('nand')).type<LogicOp>('nand');
 
-// comparison operators
 // equality operators
 const EQ = glyph(lit('=')).type<RelOp>('=');
 const DEQ = glyph(lit('==')).type<RelOp>('==');
@@ -205,7 +211,11 @@ const scientific = chain(real, letter.E, real).type<NumberType>('scientific');
 
 // number parser
 const number = oneof(scientific, rational, real, int);
+const str = rgx(/^"[^"]*"/).type<'string'>('string');
 
+// implicit multiplication
+const imul = chain(number, identifier);
+// log(imul.run('1/2x'));
 class Prog extends Node {
   value: Node[];
   type: NodeType;
@@ -543,6 +553,32 @@ class Scientific extends Numeric {
   }
 }
 
+class StringVal extends Node {
+  value: string;
+  type: NodeType;
+  constructor(value: string) {
+    super(value, 'string');
+    this.value = value;
+    this.type = 'string';
+  }
+  get latex() {
+    return `${this.value}`;
+  }
+}
+
+class ArrVal extends Node {
+  value: Node[];
+  type: NodeType;
+  constructor(value: Node[]) {
+    super(value, 'array');
+    this.value = value;
+    this.type = 'array';
+  }
+  get latex() {
+    return `${this.value}`;
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /*                              EXPRESSION PARSER                             */
 /* -------------------------------------------------------------------------- */
@@ -556,6 +592,7 @@ class Algebra {
   src: string;
   error: null | Fail;
   nil: Nil;
+  out: any[];
   constructor() {
     this.lastStart = 0;
     this.lastEnd = 0;
@@ -570,6 +607,7 @@ class Algebra {
     this.src = src.trimStart().trimEnd();
     this.length = this.src.length;
     this.end = this.src.length;
+    this.out = [];
     return this.parseProg();
   }
 
@@ -652,6 +690,16 @@ class Algebra {
     return null;
   }
 
+  private parseArray(): Node {
+    const arr: Node[] = [];
+    do {
+      const res = this.parseExpr();
+      arr.push(res);
+    } while (this.match([',', comma]) && this.hasChars);
+    this.eat(']', rbracket, 'Expected “]” to close array');
+    return new ArrVal(arr);
+  }
+
   private parseBlock(n: number): Node {
     this.advance(n);
     const statements: Node[] = [];
@@ -717,12 +765,12 @@ class Algebra {
 
   private pNOT() {
     let expr: Node = this.pAND();
-    let res = this.match(['not', not]);
+    let res = this.match(['not', pnot]);
     while (res !== null) {
-      let op = this.tryParse(this.previous, not) as UnaryPrefixOp;
+      let op = this.tryParse(this.previous, pnot) as UnaryPrefixOp;
       let out = this.pAND();
       expr = new NotExpr(out, op);
-      res = this.match(['not', not]);
+      res = this.match(['not', pnot]);
     }
     return expr;
   }
@@ -837,17 +885,50 @@ class Algebra {
 
   private parseTerm(): BinaryExpr | Node {
     let expr: Node = this.parseFactor();
-    let res = this.match(['+', add], ['-', minus]);
+    let res = this.match(['++', concat], ['+', add], ['-', minus]);
     while (res !== null) {
       let op = this.tryParse(this.previous, binop) as BinaryOp;
       let right = this.parseFactor();
       expr = new BinaryExpr(expr, op, right);
-      res = this.match(['+', add], ['-', minus]);
+      res = this.match(['++', concat], ['+', add], ['-', minus]);
     }
     return expr;
   }
 
   private parseFactor(): BinaryExpr | Node {
+    const x = imul.run(this.peek);
+    if (!x.err) {
+      this.advance(x.end);
+      let left: any = x.children[0].result;
+      switch (x.children[0].type as NumberType) {
+        case 'integer':
+          left = new Integer(Number(left));
+          break;
+        case 'real':
+          left = new Real(Number(left));
+          break;
+        case 'natural':
+          left = new Natural(Number(left));
+          break;
+        case 'scientific':
+          left = new Scientific([
+            Number(x.children[0].children[0].result),
+            Number(x.children[0].children[2].result),
+          ]);
+          break;
+        case 'rational':
+          left = new Rational([
+            Number(x.children[0].children[0].result),
+            Number(x.children[0].children[1].result),
+          ]);
+          break;
+        default:
+          left = new Real(Number(left));
+          break;
+      }
+      const right = new Id(x.children[1].result);
+      return new BinaryExpr(left, '*', right);
+    }
     let expr: Node = this.parsePower();
     let res = this.match(['*', multiply], ['/', divide]);
     while (res !== null) {
@@ -893,10 +974,12 @@ class Algebra {
   }
 
   private parsePrimary() {
-    const res = oneof(number, pBool, identifier).run(this.peek);
+    const res = oneof(number, pBool, identifier, str, lbracket).run(this.peek);
     this.savePrev(res.end);
     this.advance(res.end);
     switch (res.type) {
+      case 'string':
+        return new StringVal(res.result);
       case 'identifier':
         return new Id(res.result);
       case 'true':
@@ -919,34 +1002,14 @@ class Algebra {
         return new Integer(Number(res.result));
       case 'natural':
         return new Natural(Number(res.result));
+      case '[':
+        return this.parseArray();
       default: {
         this.error = new Fail('Error parsing number. Returning infinity.');
         return new Inf();
       }
     }
   }
-
-  // private parseBool() {
-  // const res = pBool.run(this.peek);
-  // this.savePrev(res.end);
-  // this.advance(res.end);
-  // switch (res.type) {
-  // case 'true':
-  // return new Bool(true);
-  // case 'false':
-  // return new Bool(false);
-  // default:
-  // return this.parseNumber();
-  // }
-  // }
-
-  // private parseNumber(): Numeric {
-  // const res = number.run(this.peek);
-  // this.savePrev(res.end);
-  // this.advance(res.end);
-  // switch (res.type) {
-  // }
-  // }
 
   private tryParse<T>(src: string, parser: P<T>): T {
     return parser.run(src).type as unknown as T;
@@ -996,23 +1059,25 @@ class Algebra {
   }
 
   private get previous() {
-    return this.src.slice(this.lastStart, this.lastEnd);
+    const res = this.src.slice(this.lastStart, this.lastEnd);
+    this.out.push(res);
+    return res;
   }
 
   private get peek() {
-    return this.src.slice(this.start, this.end);
+    const res = this.src.slice(this.start, this.end);
+    this.out.push(res);
+    return res;
   }
 }
 
 const algebra = new Algebra();
 const input = `
-let f(x,y) := {
-	var j := 10;
-	var k := 12;
-	x * y * j * k;
-}
+
+var eq1 := (15x + 9) - 1 = 10;
+
 `;
 const res = algebra.parse(input);
 // log(algebra)
-// log(res.latex);
+// log(algebra.out);
 display(res);
