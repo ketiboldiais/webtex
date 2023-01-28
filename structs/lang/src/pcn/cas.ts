@@ -8,8 +8,8 @@ import {
   maybe,
   skipSpace,
   an,
-} from '../pcox/index.js';
-import { Failure, chain, lit, union } from '../prat/index.js';
+} from '../pcx/index.js';
+import { Failure, chain, lit, union } from '../pkt/index.js';
 
 export type StringTup4 = [string, string, string, string];
 

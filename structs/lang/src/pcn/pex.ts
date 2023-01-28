@@ -13,7 +13,7 @@ import {
   skip,
   not,
   rgx,
-} from '../prat/index.js';
+} from '../pkt/index.js';
 import { log } from '../utils/index.js';
 import { display } from '../utils/index.js';
 
