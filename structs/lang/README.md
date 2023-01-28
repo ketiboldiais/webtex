@@ -1,15 +1,12 @@
 # @webtex/lang
 This is the parsers module used in Webtex. There are several parsers in this repository.
 
-## `prex`
-The `prex` directory contains a _recursive descent parser_ and _interpreter_. Webtex interprets source code with this module.
+## `prx`
+The `prx` directory contains a _recursive descent parser_ and _interpreter_. Both these modules are the editor’s primary drivers.
 
-## `pcox`
-The `pcox` directory contains _parser combinators_. These parsers are used by the primary parser, `prex`, to parse algebraic expressions. Algebraic expressions are parsed by the smaller `pcox` parsers to maintain separation of concern. Because algebraic expressions are considered data, they are handled by separate parsers.
+## `pcx`
+The `pcx` directory contains _parser combinators_. These parsers are used by the primary parser, `prx`, to parse algebraic expressions. Algebraic expressions are parsed by the smaller `pcx` (and `pkt`) parsers to maintain separation of concerns. Because algebraic expressions are largely treated as data, they are handled by separate parsers.
 
-## `prat`
-The `prat` directory contains _packrat parsers_. These parsers handle some ambiguous algebraic expressions (those whose grammars aren’t necessarily context-free) that the `pcox` parsers cannot handle.
-
-## `pcan`
-The `pcan` directory contains various helper functions and modules for parsing and manipulating algebraic expressions and numerics.
+## `pkt`
+The `pkt` directory contains _packrat parsers_. These parsers handle some ambiguous algebraic expressions (those whose grammars aren’t necessarily context-free) that the `pcx` parsers cannot handle. The `pkt` parsers perform the brunt of the parsing.
 
