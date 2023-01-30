@@ -1,4 +1,4 @@
-import { Node } from './Node.js';
+import { Node } from './index.js';
 import { NodeType } from '../types.js';
 
 export class ArrVal extends Node {

@@ -19,14 +19,17 @@ export type BinaryOp = BinaryStringOp | BinaryMathOp | RelOp | BinaryLogicOp;
 export type UnaryOp = UnaryMathOp | UnaryLogicOp;
 export type AssignOp = ':=';
 export type Operator = BinaryOp | UnaryOp | AssignOp;
-export type ErrorType = 'SyntaxError' | 'RuntimeError' | 'LexerError';
+export type ErrorType = 'SyntaxError' | 'RuntimeError' | 'LexerError' | 'EnvError';
 export type NodeType =
   | ErrorType
   | 'program'
   | 'assignment-expression'
+  | 'algebraic-expression'
+  | 'call-expression'
   | 'var-declaration-expression'
   | 'const-declaration-expression'
   | 'binary-expression'
+  | 'native-fn'
   | 'math-binary-expression'
   | 'string-binary-expression'
   | 'logical-binary-expression'
@@ -48,6 +51,10 @@ export type NodeType =
   | Delimiter
   | Keyword
   | Operator;
-export type Keyword = 'let' | 'const' | 'var' | 'return';
-export type Punct = ';' | ',';
+export type Keyword = 'let' | 'const' | 'var' | 'return' | 'set' | 'alg' | 'struct';
+export type Punct = ';' | ',' | ':'; 
 export type WhiteSpace = 'space' | 'newline' | 'tab' | 'enter';
+
+export interface ConstructorOf<T> {
+  new(): T;
+}

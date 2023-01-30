@@ -1,6 +1,5 @@
-import { Node } from './Node.js';
-import { NodeType, BinaryStringOp } from '../types';
-import { BinaryExpr } from './BinaryExpr.js';
+import { Node, BinaryExpr } from './index.js';
+import { NodeType, BinaryStringOp } from '../types.js';
 
 export class StringBinop<A extends Node, B extends Node> extends BinaryExpr<
   A,

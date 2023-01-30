@@ -1,4 +1,4 @@
-import { NodeType } from '../types';
+import { ConstructorOf, NodeType } from '../types.js';
 
 export class Node {
   type: NodeType;
@@ -6,6 +6,12 @@ export class Node {
   constructor(value: any, type: NodeType) {
     this.value = value;
     this.type = type;
+  }
+  read() {
+    return this.value;
+  }
+  get builder(): ConstructorOf<this> {
+    return this.constructor as any;
   }
   get latex() {
     return `${this.value}`;

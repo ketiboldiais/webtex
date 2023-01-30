@@ -1,17 +1,20 @@
-import { oneof, P } from '../pkt/index.js';
-import { modulo } from '../prx/math.js';
+import { Data, oneof, P } from '../pkt/index.js';
+import deepEqual from 'deep-equal';
 import { display } from '../utils/index.js';
+import { modulo } from '../prx/math.js';
+
 // prettier-ignore
 import {
-  lbrace, rem, keyword_const, keyword_var, keyword_let, keyword_return, identifier, lparen, rparen, assignOp, comma, semicolon, rbracket, rbrace, whitespace, pnot, and, or, nand, nor, xor, xnor, EQ, DEQ, eqop, LTE, GTE, NEQ, LT, GT, ineqop, add, minus, binop, imul, multiply, divide, quot, mod, power, fact, concat, revcat, number, pBool, str, lbracket, } from './parsers.js';
+  lbrace, rem, keyword_const, keyword_var, keyword_let, keyword_return, identifier, lparen, rparen, assignOp, comma, semicolon, rbracket, rbrace, whitespace, pnot, and, or, nand, nor, xor, xnor, EQ, DEQ, eqop, LTE, GTE, NEQ, LT, GT, ineqop, add, minus, binop, imul, multiply, divide, quot, mod, power, fact, concat, revcat, number, pBool, str, lbracket, keyword_set, keyword_alg, dist, keyword_struct, colon, } from './parsers.js';
 // prettier-ignore
 import {
   NodeType, ErrorType, NumberType, BinaryMathOp, BinaryStringOp, BinaryLogicOp, EqOp, IneqOp, UnaryLogicOp, UnaryMathOp,
 } from './types.js';
 // prettier-ignore
 import {
-  AndExpr, Node, ArrVal, Bind, Block, Bool, Constant, Equation, FactorialExpression, Fun, Glitch, Id, Inequation, Integer, MathBinop, NandExpr, Natural, Nil, NorExpr, NotExpr, Numeric, OrExpr, Prog, Rational, Real, Scientific, StringBinop, StringVal, Variable, XnorExpr, XorExpr,
+  Node, ArrVal, Bind, Block, Bool, Constant, Equation, FactorialExpression, Fun, Glitch, Id, Inequation, Integer, MathBinop, Natural, Nil, Numeric, Prog, Rational, Real, Scientific, StringBinop, StringVal, Variable, Binding, AlgebraicExpression, BinaryExpr, BinLogExpr, UniLogExpr, StructNode, SetVal, CallExpr
 } from './nodes/index.js';
+import { Environment } from './environment.js';
 
 class Prex {
   private lastStart: number;
@@ -23,8 +26,32 @@ class Prex {
   private compileError: null | Glitch;
   private runtimeError: null | Glitch;
   private nil: Nil;
+  #transpileFunctions: boolean;
+  private env: Environment;
+  private transpiled: Map<string, Function>;
   prog: Prog | Glitch | null;
-  constructor() {
+  /**
+   * @param transpileFunctions
+   * The `transpileFunctions` option will construct
+   * a single-line mathematical expression into a
+   * JavaScript function using the `new Function`
+   * constructor. Transpiled functions are not
+   * stored in the parser environment and cannot be read
+   * by non-transpiled functions.
+   * @warn Because of its performance and
+   * potential security concerns, the option defaults
+   * to false. The option is provided because
+   * this parser is primarily used by Webtex as a
+   * helper, whose results (1) only exist at runtime,
+   * (2) only exist on the user’s machine, and (3) aren’t
+   * persisted. Outside of these cases, this option
+   * should not be used.
+   * @warn This option should only be permitted for
+   * parsing results that remain only with the user.
+   * @warn This option will cause performance issues.
+   */
+
+  constructor(transpileFunctions = false) {
     this.lastStart = 0;
     this.lastEnd = 0;
     this.start = 0;
@@ -35,6 +62,9 @@ class Prex {
     this.src = '';
     this.nil = new Nil();
     this.prog = null;
+    this.transpiled = new Map();
+    this.env = new Environment();
+    this.#transpileFunctions = transpileFunctions;
   }
 
   parse(src: string) {
@@ -45,6 +75,12 @@ class Prex {
     return this;
   }
 
+  /**
+   * Parses a program. A program
+   * is defined as an array of
+   * statements, to be interpreted
+   * in sequence.
+   */
   private pProg(): Prog | Glitch {
     let body: Node[] = [];
     while (this.hasChars) {
@@ -59,12 +95,24 @@ class Prex {
       lbrace,
       keyword_const,
       keyword_var,
+      keyword_set,
       keyword_let,
+      keyword_alg,
+      keyword_struct,
       keyword_return
     ).run(this.peek);
     switch (res.type) {
       case 'let':
         return this.pFunction();
+      case 'alg':
+        this.advance(res.end);
+        return this.pAlgebra();
+      case 'set':
+        this.advance(res.end);
+        return this.pSet();
+      case 'struct':
+        this.advance(res.end);
+        return this.pStruct();
       case 'var':
       case 'const':
         return this.pDeclare();
@@ -79,13 +127,52 @@ class Prex {
     }
   }
 
-  // § - pFunction
+  private transpileFunction(
+    name: Data<'identifier'>,
+    body: Node | Node[],
+    params: Id[]
+  ) {
+    let ret = ['return'];
+    const read = (node: Node | Node[]) => {
+      if (Array.isArray(node) && node[0] instanceof Node) {
+        for (let i = 0; i < node.length; i++) {
+          read(node[i]);
+        }
+      }
+      if (node instanceof Numeric) ret.push(`${node.norm}`);
+      if (node instanceof BinaryExpr) {
+        ret.push('(');
+        read(node.left);
+        ret.push(node.op);
+        read(node.right);
+        ret.push(')');
+      }
+      if (node instanceof Id) {
+        ret.push(node.value);
+      }
+      return node;
+    };
+    const _args = params.map((d) => d.value);
+    read(body);
+    _args.push(ret.join(' '));
+    this.transpiled.set(name.result, new Function(..._args));
+  }
+
+  /**
+   * Parses a function. Functions are declared with the keyword
+   * `let`.
+   * @example
+   * ~~~
+   * let f(x) := 2^x;
+   * ~~~
+   */
   private pFunction(): Node {
     this.eat('let', keyword_let, 'Expected keyword “let”.');
     const name = identifier.run(this.peek);
     if (name.err) {
-      return this.croak('Invalid function name.');
+      this.croak('Invalid function name.');
     }
+    this.env.recordFunctionName(name.result);
     this.advance(name.end);
     this.eat('(', lparen, 'Expected a “(” to open the parameter list.');
     const params = this.pParam();
@@ -98,7 +185,57 @@ class Prex {
       return new Fun(new Id(name.result), params, body);
     }
     body = this.pExprStmt();
+    if (this.#transpileFunctions) {
+      this.transpileFunction(name, body, params);
+    }
     return new Fun(new Id(name.result), params, body);
+  }
+
+  private pAlgebra(): Node {
+    const name = this.pName();
+    if (this.compileError) return name;
+    let algx = new AlgebraicExpression(name, []);
+
+    this.eat('{', lbrace, 'Expected “{” to open the set.');
+
+    do {
+      const res = this.pExprStmt();
+      algx.push(res);
+    } while (this.match([',', comma]) && this.hasChars);
+
+    this.eat('}', rbrace, 'Expected “}” to close the algebraic expression.');
+
+    if (this.check(';', semicolon)) this.match([';', semicolon]);
+
+    let dupe: Node | null = null;
+
+    // recursively add parameters
+    const fn = (node: Node) => {
+      if (dupe) return dupe;
+      if (node instanceof Id) {
+        if (node.value === name.value) dupe = node;
+        algx.addParam(node);
+      }
+      if (node instanceof BinaryExpr) {
+        fn(node.left);
+        fn(node.right);
+      }
+
+      return node.value;
+    };
+
+    for (let i = 0; i < algx.value.body.length; i++) {
+      fn(algx.value.body[i]);
+      if (dupe) {
+        this.croak(
+          `Expression variables must be different from the expression’s identifier. Found “${
+            (dupe as Id).value
+          }”, and the expression is named “${(dupe as Id).value}”.`
+        );
+        return this.compileError as unknown as Node;
+      }
+    }
+    return algx;
   }
 
   // § - pParam
@@ -114,6 +251,25 @@ class Prex {
     return params;
   }
 
+  /**
+   * Parses a call expression.
+   * @example
+   * ~~~
+   * let f(x) := x^2;
+   * const n := f(5); // 25
+   * ~~~
+   */
+  private pCall(name: string): Node {
+    this.eat('(', lparen, 'expected “(” to open the argument list.');
+    const args: Node[] = [];
+    do {
+      const res = this.pExpr();
+      args.push(res);
+    } while (this.match([',', comma]) && this.hasChars);
+    this.eat(')', rparen, `expected “)” to close the argument list.`);
+    return new CallExpr({ args, caller: new Id(name) });
+  }
+
   // § - pReturn
   private pReturn(): null | ReturnType<typeof this.pExprStmt> {
     const out = this.match(['return', keyword_return]);
@@ -124,7 +280,57 @@ class Prex {
     return null;
   }
 
-  // § - pArray
+  /**
+   * Parses a `struct`.
+   * @example
+   * ~~~~~
+   * struct apple {
+   *   x: 5,
+   *   y: 10
+   * }
+   * ~~~~~
+   */
+  private pStruct(): Node {
+    const structVal = new Map<string, Node>();
+    const name = this.pName();
+    if (this.compileError) return name as Node;
+    this.eat('{', lbrace, 'Expected “{” to open the set.');
+    do {
+      const prop = this.pName();
+      this.eat(':', colon, `Expected “:” to begin assignment.`);
+      const val = this.pExpr();
+      structVal.set(prop.value, val);
+    } while (this.match([',', comma]) && this.hasChars);
+    this.eat('}', rbrace, 'Expected “}” to close the set.');
+    this.match([';', semicolon]);
+    const struct = new StructNode(name, structVal);
+    return struct;
+  }
+
+  private pSet(): Node {
+    const arr: Node[] = [];
+    const name = this.pName();
+    if (this.compileError) return name;
+    this.eat('{', lbrace, 'Expected “{” to open the set.');
+    do {
+      const res = this.pExpr();
+      arr.push(res);
+    } while (this.match([',', comma]) && this.hasChars);
+    this.eat('}', rbrace, 'Expected “}” to close the set.');
+    this.match([';', semicolon]);
+    const set = new SetVal(name, arr);
+    return set;
+  }
+
+  private pName(): Id {
+    const res = this.match(['identifier', identifier]);
+    if (res === null) {
+      this.croak(`Couldn’t parse identifier at ${this.peek}`);
+      return this.compileError as Node;
+    }
+    return new Id(res.res.result);
+  }
+
   private pArray(): Node {
     const arr: Node[] = [];
     do {
@@ -143,11 +349,11 @@ class Prex {
       statements.push(this.pDeclare());
     }
     this.eat('}', rbrace, 'expect “}” after block.');
-    return new Block(statements);
+    return new Block(statements) as Node;
   }
 
   // § - pDeclare
-  private pDeclare() {
+  private pDeclare(): Node {
     if (this.match(['var', keyword_var])) {
       return this.pVar();
     }
@@ -171,19 +377,21 @@ class Prex {
   private pId(isConstant: boolean): Node {
     let name = identifier.run(this.peek);
     if (name.err) {
-      return this.croak('Invalid identifier.');
+      this.croak('Invalid identifier.');
+      return this.compileError as Node;
     }
     this.advance(name.end);
-    let init = this.nil;
+    let init = this.nil as Node;
     if (this.match([':=', assignOp])) {
       init = this.pExprStmt();
       return isConstant
         ? init instanceof Glitch
-          ? this.croak('Constants must be initialized inline.')
-          : new Constant([new Id(name.result), init])
-        : new Variable([new Id(name.result), init]);
+          ? (this.croak('Constants must be initialized inline.') as Node)
+          : (new Constant([new Id(name.result), init]) as Node)
+        : (new Variable([new Id(name.result), init]) as Node);
     }
-    return this.croak(`Expected assignment operator “:=”.`);
+    this.croak(`Expected assignment operator “:=”.`);
+    return this.compileError as Node;
   }
 
   // § - pExprStmt
@@ -194,7 +402,7 @@ class Prex {
   }
 
   // § - pExpr
-  private pExpr() {
+  private pExpr(): Node {
     const res = whitespace.run(this.peek);
     if (!res.err) {
       this.savePrev(res.end);
@@ -204,7 +412,7 @@ class Prex {
   }
 
   // § pBind
-  private pBind() {
+  private pBind(): Node {
     let expr: Node = this.pNOT();
     let res = this.match([':=', assignOp]);
     while (res !== null) {
@@ -212,109 +420,54 @@ class Prex {
       if (expr instanceof Id) {
         return new Bind([expr, value]);
       }
-      return this.croak('Invalid assignment target.');
+      this.croak('Invalid assignment target.');
+      return this.compileError as Node;
     }
     return expr;
   }
 
   // § - pNOT
-  private pNOT() {
-    let expr: Node = this.pAND();
+  private pNOT(): Node {
+    let expr: Node = this.pBinaryLogicExpr();
     let res = this.match(['not', pnot]);
     while (res !== null) {
       let op = this.tryParse(this.previous, pnot) as UnaryLogicOp;
-      let out = this.pAND();
-      expr = new NotExpr(out, op);
+      let out = this.pBinaryLogicExpr();
+      expr = new UniLogExpr(out, op) as Node;
       res = this.match(['not', pnot]);
     }
     return expr;
   }
 
-  // § - pAND
-  private pAND() {
-    let expr: Node = this.pOR();
-    let res = this.match(['and', and]);
+  private pBinaryLogicExpr(): Node {
+    let expr = this.pEquation();
+    let res = this.match(
+      ['and', and],
+      ['or', or],
+      ['nand', nand],
+      ['nor', nor],
+      ['xor', xor],
+      ['xnor', xnor]
+    );
     while (res !== null) {
-      let op = this.tryParse(this.previous, and) as BinaryLogicOp;
-      let right = this.pOR();
-      expr = new AndExpr(expr, op, right);
-      res = this.match(['and', and]);
-    }
-    return expr;
-  }
-
-  // § - pOR
-  private pOR() {
-    let expr: Node = this.pNAND();
-    let res = this.match(['or', or]);
-    while (res !== null) {
-      let op = this.tryParse(this.previous, or) as BinaryLogicOp;
-      let right = this.pNAND();
-      expr = new OrExpr(expr, op, right);
-      res = this.match(['or', or]);
-    }
-    return expr;
-  }
-
-  // § - pNAND
-  private pNAND() {
-    let expr: Node = this.pNOR();
-    let res = this.match(['nand', nand]);
-    while (res !== null) {
-      let op = this.tryParse(this.previous, nand) as BinaryLogicOp;
-      let right = this.pNOR();
-      expr = new NandExpr(expr, op, right);
-      res = this.match(['nand', nand]);
-    }
-    return expr;
-  }
-
-  // § - pNOR
-  private pNOR() {
-    let expr: Node = this.pXOR();
-    let res = this.match(['nor', nor]);
-    while (res !== null) {
-      let op = this.tryParse(this.previous, nor) as BinaryLogicOp;
-      let right = this.pXOR();
-      expr = new NorExpr(expr, op, right);
-      res = this.match(['nor', nor]);
-    }
-    return expr;
-  }
-
-  // § - pXOR
-  private pXOR() {
-    let expr = this.pXNOR();
-    let res = this.match(['xor', xor]);
-    while (res !== null) {
-      let op = this.tryParse(this.previous, xor) as BinaryLogicOp;
-      let right = this.pXNOR();
-      expr = new XorExpr(expr, op, right);
-      res = this.match(['xor', xor]);
-    }
-    return expr;
-  }
-
-  // § - pXNOR
-  private pXNOR<A extends Node, B extends Node, C extends Node>(): C {
-    let expr = this.pEquation<A, B>();
-    let res = this.match(['xnor', xnor]);
-    while (res !== null) {
-      let op = this.tryParse(this.previous, xnor) as BinaryLogicOp;
+      let op = this.tryParse(this.previous, res.parser) as BinaryLogicOp;
       let right = this.pEquation();
-      expr = new XnorExpr(expr, op, right);
-      res = this.match(['xnor', xnor]);
+      expr = new BinLogExpr(expr, op, right);
+      res = this.match(
+        ['and', and],
+        ['or', or],
+        ['nand', nand],
+        ['nor', nor],
+        ['xor', xor],
+        ['xnor', xnor]
+      );
     }
-    return expr as unknown as C;
+    return expr;
   }
 
   // § - pEquation
-  private pEquation<
-    A extends Node,
-    B extends Node,
-    C extends Node = Node
-  >(): C {
-    let expr = this.pInequation<A, B>();
+  private pEquation(): Node {
+    let expr = this.pInequation();
     let res = this.match(['=', EQ], ['==', DEQ]);
     while (res !== null) {
       let op = this.tryParse(this.previous, eqop) as EqOp;
@@ -322,16 +475,12 @@ class Prex {
       expr = new Equation(expr, op, right);
       res = this.match(['=', EQ], ['==', DEQ]);
     }
-    return expr as unknown as C;
+    return expr;
   }
 
   // § - pInequation
-  private pInequation<
-    A extends Node,
-    B extends Node,
-    C extends Node = Node
-  >(): C {
-    let expr = this.pTerm<A, B, C>();
+  private pInequation(): Node {
+    let expr = this.pTerm();
     let res = this.match(
       ['<=', LTE],
       ['>=', GTE],
@@ -342,7 +491,7 @@ class Prex {
     while (res !== null) {
       let op = this.tryParse(this.previous, ineqop) as IneqOp;
       let right = this.pTerm();
-      expr = new Inequation(expr, op, right) as unknown as C;
+      expr = new Inequation(expr, op, right);
       res = this.match(
         ['<=', LTE],
         ['>=', GTE],
@@ -351,29 +500,75 @@ class Prex {
         ['>', GT]
       );
     }
-    return expr as unknown as C;
+    return expr;
   }
 
   // § - pTerm
-  private pTerm<A extends Node, B extends Node, C extends Node>(): C {
+  private pTerm(): Node {
     let expr = this.pFactor();
     let res = this.match(['+', add], ['-', minus]);
     while (res !== null) {
       let op = this.tryParse(this.previous, binop) as BinaryMathOp;
       let right = this.pFactor();
-      expr = new MathBinop<A, B>(expr as A, op, right as B);
+      expr = new MathBinop(expr, op, right);
       res = this.match(['+', add], ['-', minus]);
     }
-    return expr as unknown as C;
+    return expr;
+  }
+
+  private pNumOrId(x: Data<any>, testId: string = ''): Node {
+    let left: string = x.result;
+    let result: Node;
+    switch (x.type as NumberType | 'identifier') {
+      case 'integer':
+        result = new Integer(Number(left));
+        break;
+      case 'real':
+        result = new Real(Number(left));
+        break;
+      case 'natural':
+        result = new Natural(Number(left));
+        break;
+      case 'scientific':
+        result = new Scientific([
+          Number(x.children[0].children[0].result),
+          Number(x.children[0].children[2].result),
+        ]);
+        break;
+      case 'rational':
+        result = new Rational([
+          Number(x.children[0].children[0].result),
+          Number(x.children[0].children[1].result),
+        ]);
+        break;
+      case 'identifier':
+        result = testId ? new Id(left) : (this.croak(testId) as Node);
+        break;
+      default:
+        result = this.croak(`Cannot parse implicit multiplication.`) as Node;
+        break;
+    }
+    return result;
   }
 
   // § - pFactor
-  private pFactor<A extends Node, B extends Node, C extends Node>(): C {
+  private pFactor(): Node {
+    const d = dist.run(this.peek);
+    let left: any;
+    if (!d.err) {
+      this.advance(d.end);
+      if (this.env.hasFunction(d.result)) {
+        return this.pCall(d.result);
+      }
+      left = this.pNumOrId(d, `Cannot parse distributive multiplication.`);
+      const right = this.pLit();
+      return new MathBinop(left, '*', right);
+    }
     const x = imul.run(this.peek);
     if (!x.err) {
       this.advance(x.end);
-      let left: any = x.children[0].result;
-      switch (x.children[0].type as NumberType) {
+      left = x.result;
+      switch (x.type as NumberType) {
         case 'integer':
           left = new Integer(Number(left));
           break;
@@ -400,7 +595,8 @@ class Prex {
           break;
       }
       const right = new Id(x.children[1].result);
-      return new MathBinop<A, Id>(left, '*', right) as unknown as C;
+      const res = new MathBinop(left, '*', right);
+      return res;
     }
     let expr: Node = this.pPower();
     let res = this.match(
@@ -422,75 +618,62 @@ class Prex {
         ['mod', mod]
       );
     }
-    return expr as unknown as C;
+    return expr;
   }
 
-  // § - pPower
-  private pPower<A extends Node, B extends Node, C extends Node>():
-    | MathBinop<A, B>
-    | C {
+  private pPower(): Node {
     let expr = this.pFactorial();
     let res = this.match(['^', power]);
     while (res !== null) {
       let op = this.tryParse(this.previous, binop) as BinaryMathOp;
       let right = this.pFactorial();
-      expr = new MathBinop<typeof expr, typeof right>(expr, op, right);
+      expr = new MathBinop(expr, op, right);
       res = this.match(['^', power]);
     }
-    return expr as unknown as C;
+    return expr;
   }
 
   // § - pPower
-  private pFactorial<
-    A extends Node,
-    B extends Node,
-    C extends Node = Glitch | A | StringBinop<A, B>
-  >(): FactorialExpression<A> | C {
-    let expr: Glitch | A | StringBinop<A, B> | Node = this.pStringOp<A, B>();
+  private pFactorial(): Node {
+    let expr = this.pStringOp();
     let res = this.match(['!', fact]);
     while (res !== null) {
       let op = this.tryParse(this.previous, binop) as UnaryMathOp;
       expr = new FactorialExpression(expr, op);
       res = this.match(['!', fact]);
     }
-    return expr as unknown as C;
+    return expr;
   }
 
   // § - pStringOp
-  private pStringOp<
-    A extends Node,
-    B extends Node,
-    C extends Node = A | Glitch | StringBinop<A, B>
-  >(): C {
-    let expr: A | Glitch | Node = this.pLit<A>();
+  private pStringOp(): Node {
+    let expr = this.pLit();
     let res = this.match(['++', concat], ['--', revcat]);
     while (res !== null) {
       let op = this.tryParse(this.previous, binop) as BinaryStringOp;
-      let right = this.pLit<B>();
-      expr = new StringBinop<A, ReturnType<typeof this.pLit<B>>>(
-        expr as A,
-        op,
-        right
-      ) as unknown as C;
+      let right = this.pLit();
+      expr = new StringBinop(expr, op, right);
       res = this.match(['++', concat], ['--', revcat]);
     }
-    return expr as unknown as C;
+    return expr;
   }
 
   // § - pLit
-  private pLit<T extends Node>(): T | Glitch {
+  private pLit(): Node {
     if (this.match(['(', lparen])) {
       let expr = this.pExpr();
       this.eat(')', rparen, 'expected right paren');
-      if (this.compileError) return this.compileError;
-      return expr as unknown as T;
+      if (this.compileError) return this.compileError as Node;
+      return expr;
     }
-    return this.pPrimary<T>();
+    return this.pPrimary();
   }
 
   // § - pPrimary
   private pPrimary<T extends Node>(): T {
-    const res = oneof(number, pBool, identifier, str, lbracket).run(this.peek);
+    const res = oneof(number, pBool, identifier, str, lbracket, lbrace).run(
+      this.peek
+    );
     this.savePrev(res.end);
     this.advance(res.end);
     switch (res.type) {
@@ -518,10 +701,13 @@ class Prex {
         return new Integer(Number(res.result)) as unknown as T;
       case 'natural':
         return new Natural(Number(res.result)) as unknown as T;
+      case '{':
+        return this.pSet() as unknown as T;
       case '[':
-        return this.pArray() as T;
+        return this.pArray() as unknown as T;
       default: {
-        return this.croak('Unrecognized lexeme.', 'LexerError') as T;
+        this.croak('Unrecognized lexeme.', 'LexerError');
+        return this.nil as T;
       }
     }
   }
@@ -549,7 +735,7 @@ class Prex {
       if (res !== null) {
         this.savePrev(res.end);
         this.advance(res.end);
-        return res;
+        return { res, parser: conds[i][1] };
       }
     }
     return null;
@@ -615,19 +801,21 @@ class Prex {
   // § - evalStringBinop
   private evalStringBinop<A extends Node, B extends Node>(
     node: StringBinop<A, B>
-  ): StringVal | Glitch {
+  ): Node {
     let left: StringVal = this.evaluate(node.left);
     let right: StringVal = this.evaluate(node.right);
     if (typeof left.value !== 'string' || typeof right.value !== 'string') {
-      return this.panic(`String operators are only valid on string operands.`);
+      return this.panic(
+        `String operators are only valid on string operands.`
+      ) as Node;
     }
     switch (node.op) {
       case '++':
-        return new StringVal(left.value.concat(right.value));
+        return new StringVal(left.value.concat(right.value)) as Node;
       case '--':
-        return new StringVal(right.value.concat(left.value));
+        return new StringVal(right.value.concat(left.value)) as Node;
       default:
-        return this.panic('Unrecognized string operator.');
+        return this.panic('Unrecognized string operator.') as Node;
     }
   }
 
@@ -637,31 +825,83 @@ class Prex {
    */
   private evalMathBinop<A extends Node, B extends Node>(
     node: MathBinop<A, B>
-  ): Numeric | Glitch {
-    let a = this.evaluate<A, B, Numeric>(node.left).norm;
-    let b = this.evaluate<A, B, Numeric>(node.right).norm;
+  ): Node {
+    let L = this.evaluate<A, B, Numeric>(node.left);
+    let R = this.evaluate<A, B, Numeric>(node.right);
+    let builder = L instanceof Integer && R instanceof Integer ? Integer : Real;
+    let a = L.norm;
+    let b = R.norm;
     if (typeof a !== 'number' || typeof b !== 'number') {
-      return this.panic('non-operand numbers in evaluating math.');
+      return this.panic('non-operand numbers in evaluating math.') as Node;
     }
     switch (node.op) {
       case '*':
-        return new Real(a * b);
+        return new builder(a * b);
       case '+':
-        return new Real(a + b);
+        return new builder(a + b);
       case '-':
-        return new Real(a - b);
+        return new builder(a - b);
       case '/':
-        return new Real(a / b);
+        return new builder(a / b);
       case '^':
-        return new Real(a ** b);
+        return new builder(a ** b);
       case '%':
-        return new Real(Math.floor(a / b));
+        return new builder(Math.floor(a / b));
       case 'mod':
         return new Integer(modulo(a, b));
       case 'rem':
         return new Integer(a % b);
       default:
-        return this.panic('Unrecognized binary math operator.');
+        return this.panic('Unrecognized binary math operator.') as Node;
+    }
+  }
+
+  private evalId(node: Id) {
+    const x = this.env.read(node.value);
+    if (x instanceof Glitch) {
+      this.runtimeError = x;
+    }
+    return x;
+  }
+  private evalBind<T extends Node>(node: Bind<T>): T {
+    if (!this.env.has(node.name)) {
+      this.panic(`Variable ${node.name} hasn’t been declared.`);
+    }
+    const val = this.evaluate(node.getVal());
+    return this.env.assign(node.name, val) as unknown as T;
+  }
+
+  private evalDeclare<T extends Node>(node: Binding<T>): T {
+    const val = this.evaluate(node.getVal());
+    return this.env.declare(node.name, val, node.isConst) as unknown as T;
+  }
+
+  private evalAlgebra(node: AlgebraicExpression) {
+    return node.read();
+  }
+
+  private evalInequation<A extends Node, B extends Node, C extends Node>(
+    node: Inequation<A, B>
+  ): C {
+    const a = this.evaluate(node.left);
+    const b = this.evaluate(node.right);
+    if (a instanceof Numeric && b instanceof Numeric) {
+      let L = a.norm;
+      let R = b.norm;
+      switch (node.op as IneqOp) {
+        case '!=':
+          return new Bool(L !== R) as unknown as C;
+        case '<':
+          return new Bool(L < R) as unknown as C;
+        case '>':
+          return new Bool(L > R) as unknown as C;
+        case '<=':
+          return new Bool(L <= R) as unknown as C;
+        case '>=':
+          return new Bool(L >= R) as unknown as C;
+      }
+    } else {
+      return deepEqual(a, b) as unknown as C;
     }
   }
 
@@ -670,31 +910,58 @@ class Prex {
     node: Node
   ): C {
     switch (node.kind) {
+      case 'algebraic-expression':
+        return this.evalAlgebra(node as AlgebraicExpression) as unknown as C;
+      case 'identifier':
+        return this.evalId(node);
+      case 'var-declaration-expression':
+      case 'const-declaration-expression':
+        return this.evalDeclare(node as Binding<C>);
+      case 'assignment-expression':
+        return this.evalBind(node as Bind<C>);
+      case 'inequation':
+        return this.evalInequation(node as Inequation<A, B>) as unknown as C;
       case 'string-binary-expression':
         return this.evalStringBinop(node as StringBinop<A, B>) as unknown as C;
       case 'math-binary-expression':
         return this.evalMathBinop(node as MathBinop<A, B>) as unknown as C;
       case 'inf':
+        return node as unknown as C;
       case 'rational':
+        return node as unknown as C;
       case 'string':
+        return node as unknown as C;
       case 'boolean':
+        return node as unknown as C;
       case 'natural':
+        return node as unknown as C;
       case 'integer':
+        return node as unknown as C;
       case 'real':
+        return node as unknown as C;
       case 'scientific':
+        return node as unknown as C;
       case 'null':
         return node as unknown as C;
       default:
-        return this.croak(
-          `Unrecognized node type: ${node.kind}`
-        ) as unknown as C;
+        this.croak(`Unrecognized node type: ${node.kind}`);
+        return this.compileError as C;
     }
   }
 
   // § - print
   print() {
-    display(this.prog);
+    console.log(display(this.prog));
     return this;
+  }
+  json() {
+    JSON.stringify(this.prog);
+  }
+  jsonLog() {
+    console.log(this.json());
+  }
+  log() {
+    console.log(this.prog);
   }
 
   // § - interpret
@@ -710,11 +977,4 @@ class Prex {
   }
 }
 
-const prex = new Prex();
-const input = `
-12 + 5;
-`;
-const parsing = prex.parse(input);
-// parsing.print();
-const result = parsing.interpret();
-console.log(result);
+export const prex = new Prex();

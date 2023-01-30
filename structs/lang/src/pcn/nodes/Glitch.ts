@@ -1,5 +1,5 @@
-import { ErrorType } from '../types';
-import { Node } from './Node';
+import { ErrorType } from '../types.js';
+import { Node } from './index.js';
 
 export class Glitch extends Node {
   value: string;
@@ -7,7 +7,7 @@ export class Glitch extends Node {
   constructor(message: string, type: ErrorType) {
     super(message, type);
     this.type = type;
-    this.value = `${this.type} | ${message}`;
+    this.value = `Error: ${message}`;
   }
   get latex() {
     return `\\text{${this.value}}`;

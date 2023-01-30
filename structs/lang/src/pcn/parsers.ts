@@ -12,6 +12,7 @@ import {
   rgx,
   not,
 } from '../pkt/index.js';
+import { log } from '../utils/index.js';
 import {
   WhiteSpace,
   Keyword,
@@ -38,6 +39,9 @@ export const keyword_let = glyph(lit('let')).type<Keyword>('let');
 export const keyword_const = glyph(lit('const')).type<Keyword>('const');
 export const keyword_var = glyph(lit('var')).type<Keyword>('var');
 export const keyword_return = glyph(lit('return')).type<Keyword>('return');
+export const keyword_set = glyph(lit('set')).type<Keyword>('set');
+export const keyword_alg = glyph(lit('alg')).type<Keyword>('alg');
+export const keyword_struct = glyph(lit('struct')).type<Keyword>('struct');
 
 // § - delimiter parsers
 export const lparen = glyph(lit('(')).type<Delimiter>('(');
@@ -66,6 +70,7 @@ export const underscore = lit('_');
 export const fslash = lit('/');
 export const semicolon = glyph(lit(';')).type<Punct>(';');
 export const comma = glyph(lit(',')).type<Punct>(',');
+export const colon = glyph(lit(':')).type<Punct>(':');
 
 // § - math operator parsers
 export const minus = glyph(lit('-')).type<BinaryMathOp>('-');
@@ -190,4 +195,12 @@ export const number = oneof(scientific, rational, real, int);
 export const str = rgx(/^"[^"]*"/).type<'string'>('string');
 
 // § implicit multiplication parser
-export const imul = chain(number, not(whitespace), identifier);
+export const imul = chain(number, not(whitespace), identifier).map((d) => ({
+  type: d.children[0].type,
+  result: d.children[0].result,
+}));
+export const dist = chain(number.or(identifier as any), lparen).map((d) => ({
+  result: d.children[0].result,
+  type: d.children[0].type,
+  end: d.children[0].end,
+}));

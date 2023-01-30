@@ -1,5 +1,5 @@
-import { Node } from './Node';
-import { NodeType } from '../types';
+import { Node } from './index.js';
+import { NodeType } from '../types.js';
 
 export class Block extends Node {
   value: Node[];

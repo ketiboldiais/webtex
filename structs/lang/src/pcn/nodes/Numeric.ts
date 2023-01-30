@@ -1,5 +1,5 @@
-import { Node } from './Node.js';
-import { NumberType } from '../types';
+import { Node } from './index.js';
+import { NumberType } from '../types.js';
 
 export class Numeric extends Node {
   value: number | [number, number];
@@ -62,7 +62,7 @@ export class Integer extends Numeric {
   type: NumberType;
   constructor(value: number) {
     super(value, 'integer');
-    this.value = value;
+    this.value = value | 0;
     this.type = 'integer';
   }
   get latex() {

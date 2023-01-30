@@ -1,4 +1,4 @@
-import { Node } from './Node';
+import { Node } from './index.js';
 
 export class Nil extends Node {
   constructor() {

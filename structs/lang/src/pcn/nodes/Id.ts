@@ -1,4 +1,4 @@
-import { Node } from "./Node.js";
+import { Node } from "./index.js";
 
 export class Id extends Node {
   value: string;

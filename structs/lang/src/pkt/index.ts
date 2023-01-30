@@ -1,4 +1,4 @@
-import { log } from '../utils/index.js';
+import { log } from '../utils/index.ts';
 
 type Result = Match | Failure;
 type PRat = (text: string, i: number, type: string) => Result;
@@ -9,7 +9,7 @@ class Output {
   end: number;
   err: boolean;
   type: string;
-  result: string;
+  result: string = "";
   constructor(
     text: string,
     type: string,
@@ -88,9 +88,9 @@ type MutableArg = {
   start: number;
   end: number;
   err: boolean;
-  children: string[];
+  children: { result: string; type: string; start: number; end: number }[];
 };
-type MutableReturn = Omit<Mutable, 'children'>;
+type MutableReturn = Omit<Mutable, 'children' | 'err'>;
 
 export class P<T> {
   private fn: PRat;
@@ -102,16 +102,22 @@ export class P<T> {
   map(fn: (res: MutableArg) => Partial<MutableReturn>) {
     return new P((txt, i, typename) => {
       const res = this.fn(txt, i, typename);
+      if (res.children.length === 0)
+        return new Failure(txt, typename, i, i, []);
       const mod = fn({
         ...res,
-        children: res.children.map((d) => d.result),
+        children: res.children.map((d) => ({
+          result: d.result,
+          type: d.type,
+          start: d.start,
+          end: d.end,
+        })),
       });
       const type = mod.type ? mod.type : res.type;
       const result = mod.result ? mod.result : res.result;
       const start = mod.start ? mod.start : res.start;
       const end = mod.end ? mod.end : res.end;
-      const err = mod.err !== res.err ? mod.err : res.err;
-      if (err) {
+      if (res.err) {
         return new Failure(txt, type, start, end, res.children).setResult(
           result
         );
@@ -330,8 +336,6 @@ export const rgx = (regex: RegExp) =>
     if (res) return new Match(txt, type, i, i + res[0].length, []);
     return new Failure(txt, type, i, i, []);
   });
-
-
 
 export const not = <T>(parser: P<T>) =>
   new P((txt, i, type = 'not') => {

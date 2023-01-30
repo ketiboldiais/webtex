@@ -1,6 +1,5 @@
-import { Node } from './Node.js';
-import { BinaryExpr } from './BinaryExpr.js';
-import { NodeType, EqOp, IneqOp, UnaryMathOp } from '../types';
+import { Node, BinaryExpr } from './index.js';
+import { NodeType, EqOp, IneqOp, UnaryMathOp } from '../types.js';
 
 export class Equation<A extends Node, B extends Node> extends BinaryExpr<A, B> {
   type: NodeType;

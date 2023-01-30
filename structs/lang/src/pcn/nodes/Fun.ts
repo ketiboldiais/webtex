@@ -1,7 +1,5 @@
-import { Node } from './Node.js';
-import { NodeType } from '../types';
-import { Block } from './Block.js';
-import { Id } from './Id.js';
+import { Node, Block, Id } from './index.js';
+import { NodeType } from '../types.js';
 
 export class Fun extends Node {
   value: { name: Id; params: Id[]; body: Block | Node };

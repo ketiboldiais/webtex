@@ -1,5 +1,5 @@
-import { NodeType } from '../types';
-import { Node } from './Node';
+import { NodeType } from '../types.js';
+import { Node } from './index.js';
 
 export class Prog extends Node {
   value: Node[];
