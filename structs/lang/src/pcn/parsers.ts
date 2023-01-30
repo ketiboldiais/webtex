@@ -204,3 +204,4 @@ export const dist = chain(number.or(identifier as any), lparen).map((d) => ({
   type: d.children[0].type,
   end: d.children[0].end,
 }));
+// console.log(dist.run(`2(x)`))

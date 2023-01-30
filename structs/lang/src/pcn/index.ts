@@ -12,24 +12,24 @@ import {
 } from './types.js';
 // prettier-ignore
 import {
-  Node, ArrVal, Bind, Block, Bool, Constant, Equation, FactorialExpression, Fun, Glitch, Id, Inequation, Integer, MathBinop, Natural, Nil, Numeric, Prog, Rational, Real, Scientific, StringBinop, StringVal, Variable, Binding, AlgebraicExpression, BinaryExpr, BinLogExpr, UniLogExpr, StructNode, SetVal, CallExpr
+  Node, Bind, Rot, Id, Inequation, Integer, MathBinop, Nil, Numeric, Prog, Real, StringBinop, StringVal, Binding, AlgebraicExpression, StructNode, SetVal, node, Inf
 } from './nodes/index.js';
 import { Environment } from './environment.js';
 
 class Prex {
+  #transpileFunctions: boolean;
   private lastStart: number;
   private lastEnd: number;
   private start: number;
   private end: number;
   private length: number;
   private src: string;
-  private compileError: null | Glitch;
-  private runtimeError: null | Glitch;
+  private compileError: null | Rot;
+  private runtimeError: null | Rot;
   private nil: Nil;
-  #transpileFunctions: boolean;
   private env: Environment;
   private transpiled: Map<string, Function>;
-  prog: Prog | Glitch | null;
+  prog: Prog | Rot | null;
   /**
    * @param transpileFunctions
    * The `transpileFunctions` option will construct
@@ -66,11 +66,18 @@ class Prex {
     this.env = new Environment();
     this.#transpileFunctions = transpileFunctions;
   }
-
-  parse(src: string) {
+  private init(src: string) {
     this.src = src.trimStart().trimEnd();
     this.length = this.src.length;
-    this.end = this.src.length;
+    if (this.src[this.length - 1] !== ';') {
+      this.src += ';';
+      this.length++;
+    }
+    this.end = this.length;
+  }
+
+  parse(src: string) {
+    this.init(src);
     this.prog = this.pProg();
     return this;
   }
@@ -81,13 +88,13 @@ class Prex {
    * statements, to be interpreted
    * in sequence.
    */
-  private pProg(): Prog | Glitch {
+  private pProg(): Prog | Rot {
     let body: Node[] = [];
     while (this.hasChars) {
       body.push(this.pStmt());
       if (this.compileError) return this.compileError;
     }
-    return new Prog(body);
+    return node.prog(body);
   }
 
   private pStmt(): Node {
@@ -133,24 +140,24 @@ class Prex {
     params: Id[]
   ) {
     let ret = ['return'];
-    const read = (node: Node | Node[]) => {
-      if (Array.isArray(node) && node[0] instanceof Node) {
-        for (let i = 0; i < node.length; i++) {
-          read(node[i]);
+    const read = (N: Node | Node[]) => {
+      if (node.is.nodeArray(N)) {
+        for (let i = 0; i < N.length; i++) {
+          read(N[i]);
         }
       }
-      if (node instanceof Numeric) ret.push(`${node.norm}`);
-      if (node instanceof BinaryExpr) {
+      if (node.is.numeric(N)) ret.push(`${N.norm}`);
+      if (node.is.binary.expression(N)) {
         ret.push('(');
-        read(node.left);
-        ret.push(node.op);
-        read(node.right);
+        read(N.left);
+        ret.push(N.op);
+        read(N.right);
         ret.push(')');
       }
-      if (node instanceof Id) {
-        ret.push(node.value);
+      if (node.is.id(N)) {
+        ret.push(N.value);
       }
-      return node;
+      return N;
     };
     const _args = params.map((d) => d.value);
     read(body);
@@ -182,46 +189,63 @@ class Prex {
     let body: Node;
     if (res.type === '{') {
       body = this.pBlock(res.end);
-      return new Fun(new Id(name.result), params, body);
+      return node.fn(name.result, params, body);
     }
     body = this.pExprStmt();
     if (this.#transpileFunctions) {
       this.transpileFunction(name, body, params);
     }
-    return new Fun(new Id(name.result), params, body);
+    return node.fn(name.result, params, body);
+  }
+
+  public algebra(src: string): AlgebraicExpression {
+    this.init(src);
+    let algx = node.algebra(node.id(''), []);
+    const res = this.pExprStmt();
+    do {
+      algx.push(res);
+    } while (this.match([',', comma]) && this.hasChars);
+    this.match([';', semicolon]);
+    const fn = (N: Node) => {
+      if (node.is.id(N)) algx.addParam(N);
+      if (node.is.binary.expression(N)) {
+        fn(N.left);
+        fn(N.right);
+      }
+      return N.value;
+    };
+    for (let i = 0; i < algx.value.body.length; i++) {
+      fn(algx.value.body[i]);
+    }
+    return algx;
   }
 
   private pAlgebra(): Node {
     const name = this.pName();
     if (this.compileError) return name;
-    let algx = new AlgebraicExpression(name, []);
-
+    let algx = node.algebra(name, []);
     this.eat('{', lbrace, 'Expected “{” to open the set.');
-
     do {
       const res = this.pExprStmt();
       algx.push(res);
     } while (this.match([',', comma]) && this.hasChars);
-
     this.eat('}', rbrace, 'Expected “}” to close the algebraic expression.');
-
     if (this.check(';', semicolon)) this.match([';', semicolon]);
-
     let dupe: Node | null = null;
 
     // recursively add parameters
-    const fn = (node: Node) => {
+    const fn = (N: Node) => {
       if (dupe) return dupe;
-      if (node instanceof Id) {
-        if (node.value === name.value) dupe = node;
-        algx.addParam(node);
+      if (node.is.id(N)) {
+        if (N.value === name.value) dupe = N;
+        algx.addParam(N);
       }
-      if (node instanceof BinaryExpr) {
-        fn(node.left);
-        fn(node.right);
+      if (node.is.binary.expression(N)) {
+        fn(N.left);
+        fn(N.right);
       }
 
-      return node.value;
+      return N.value;
     };
 
     for (let i = 0; i < algx.value.body.length; i++) {
@@ -267,7 +291,7 @@ class Prex {
       args.push(res);
     } while (this.match([',', comma]) && this.hasChars);
     this.eat(')', rparen, `expected “)” to close the argument list.`);
-    return new CallExpr({ args, caller: new Id(name) });
+    return node.call(args, name);
   }
 
   // § - pReturn
@@ -328,31 +352,29 @@ class Prex {
       this.croak(`Couldn’t parse identifier at ${this.peek}`);
       return this.compileError as Node;
     }
-    return new Id(res.res.result);
+    return node.id(res.res.result);
   }
 
   private pArray(): Node {
-    const arr: Node[] = [];
+    const xs: Node[] = [];
     do {
       const res = this.pExpr();
-      arr.push(res);
+      xs.push(res);
     } while (this.match([',', comma]) && this.hasChars);
     this.eat(']', rbracket, 'Expected “]” to close array');
-    return new ArrVal(arr);
+    return node.array(xs);
   }
 
-  // § - pBlock
   private pBlock(n: number): Node {
     this.advance(n);
-    const statements: Node[] = [];
+    const ns: Node[] = [];
     while (this.check('}', rbrace) === null && this.hasChars) {
-      statements.push(this.pDeclare());
+      ns.push(this.pDeclare());
     }
     this.eat('}', rbrace, 'expect “}” after block.');
-    return new Block(statements) as Node;
+    return node.block(ns);
   }
 
-  // § - pDeclare
   private pDeclare(): Node {
     if (this.match(['var', keyword_var])) {
       return this.pVar();
@@ -363,17 +385,14 @@ class Prex {
     return this.pStmt();
   }
 
-  // § - pConst
   private pConst(): Node {
     return this.pId(true);
   }
 
-  // § - pVar
   private pVar(): Node {
     return this.pId(false);
   }
 
-  // § - pId
   private pId(isConstant: boolean): Node {
     let name = identifier.run(this.peek);
     if (name.err) {
@@ -385,23 +404,21 @@ class Prex {
     if (this.match([':=', assignOp])) {
       init = this.pExprStmt();
       return isConstant
-        ? init instanceof Glitch
+        ? node.is.rotten(init)
           ? (this.croak('Constants must be initialized inline.') as Node)
-          : (new Constant([new Id(name.result), init]) as Node)
-        : (new Variable([new Id(name.result), init]) as Node);
+          : (node.constant(name.result, init) as Node)
+        : (node.variable(name.result, init) as Node);
     }
     this.croak(`Expected assignment operator “:=”.`);
     return this.compileError as Node;
   }
 
-  // § - pExprStmt
   private pExprStmt(): Node {
     let expr = this.pExpr();
     this.eat(';', semicolon, 'Expected a “;” after the expression.');
     return expr;
   }
 
-  // § - pExpr
   private pExpr(): Node {
     const res = whitespace.run(this.peek);
     if (!res.err) {
@@ -411,29 +428,26 @@ class Prex {
     return this.pBind();
   }
 
-  // § pBind
   private pBind(): Node {
     let expr: Node = this.pNOT();
     let res = this.match([':=', assignOp]);
     while (res !== null) {
       let value = this.pNOT();
       if (expr instanceof Id) {
-        return new Bind([expr, value]);
+        return node.assign(expr, value);
       }
       this.croak('Invalid assignment target.');
-      return this.compileError as Node;
     }
     return expr;
   }
 
-  // § - pNOT
   private pNOT(): Node {
     let expr: Node = this.pBinaryLogicExpr();
     let res = this.match(['not', pnot]);
     while (res !== null) {
       let op = this.tryParse(this.previous, pnot) as UnaryLogicOp;
       let out = this.pBinaryLogicExpr();
-      expr = new UniLogExpr(out, op) as Node;
+      expr = node.unary.logic.expression(out, op);
       res = this.match(['not', pnot]);
     }
     return expr;
@@ -452,7 +466,7 @@ class Prex {
     while (res !== null) {
       let op = this.tryParse(this.previous, res.parser) as BinaryLogicOp;
       let right = this.pEquation();
-      expr = new BinLogExpr(expr, op, right);
+      expr = node.binary.logic.expression(expr, op, right);
       res = this.match(
         ['and', and],
         ['or', or],
@@ -465,20 +479,18 @@ class Prex {
     return expr;
   }
 
-  // § - pEquation
   private pEquation(): Node {
     let expr = this.pInequation();
     let res = this.match(['=', EQ], ['==', DEQ]);
     while (res !== null) {
       let op = this.tryParse(this.previous, eqop) as EqOp;
       let right = this.pInequation();
-      expr = new Equation(expr, op, right);
+      expr = node.equation(expr, op, right);
       res = this.match(['=', EQ], ['==', DEQ]);
     }
     return expr;
   }
 
-  // § - pInequation
   private pInequation(): Node {
     let expr = this.pTerm();
     let res = this.match(
@@ -491,7 +503,7 @@ class Prex {
     while (res !== null) {
       let op = this.tryParse(this.previous, ineqop) as IneqOp;
       let right = this.pTerm();
-      expr = new Inequation(expr, op, right);
+      expr = node.inequation(expr, op, right);
       res = this.match(
         ['<=', LTE],
         ['>=', GTE],
@@ -503,14 +515,13 @@ class Prex {
     return expr;
   }
 
-  // § - pTerm
   private pTerm(): Node {
     let expr = this.pFactor();
     let res = this.match(['+', add], ['-', minus]);
     while (res !== null) {
       let op = this.tryParse(this.previous, binop) as BinaryMathOp;
       let right = this.pFactor();
-      expr = new MathBinop(expr, op, right);
+      expr = node.binary.math.expression(expr, op, right);
       res = this.match(['+', add], ['-', minus]);
     }
     return expr;
@@ -521,31 +532,32 @@ class Prex {
     let result: Node;
     switch (x.type as NumberType | 'identifier') {
       case 'integer':
-        result = new Integer(Number(left));
+        result = node.int(Number(left));
         break;
       case 'real':
-        result = new Real(Number(left));
+        result = node.real(Number(left));
         break;
       case 'natural':
-        result = new Natural(Number(left));
+        result = node.natural(Number(left));
         break;
       case 'scientific':
-        result = new Scientific([
+        result = node.scint(
           Number(x.children[0].children[0].result),
-          Number(x.children[0].children[2].result),
-        ]);
+          Number(x.children[0].children[2].result)
+        );
         break;
       case 'rational':
-        result = new Rational([
+        result = node.rational(
           Number(x.children[0].children[0].result),
-          Number(x.children[0].children[1].result),
-        ]);
+          Number(x.children[0].children[1].result)
+        );
         break;
       case 'identifier':
         result = testId ? new Id(left) : (this.croak(testId) as Node);
         break;
       default:
-        result = this.croak(`Cannot parse implicit multiplication.`) as Node;
+        this.croak(`Cannot parse implicit multiplication.`) as Node;
+        result = node.nil;
         break;
     }
     return result;
@@ -562,7 +574,7 @@ class Prex {
       }
       left = this.pNumOrId(d, `Cannot parse distributive multiplication.`);
       const right = this.pLit();
-      return new MathBinop(left, '*', right);
+      return node.binary.math.expression(left, '*', right);
     }
     const x = imul.run(this.peek);
     if (!x.err) {
@@ -570,32 +582,32 @@ class Prex {
       left = x.result;
       switch (x.type as NumberType) {
         case 'integer':
-          left = new Integer(Number(left));
+          left = node.int(Number(left));
           break;
         case 'real':
-          left = new Real(Number(left));
+          left = node.real(Number(left));
           break;
         case 'natural':
-          left = new Natural(Number(left));
+          left = node.natural(Number(left));
           break;
         case 'scientific':
-          left = new Scientific([
+          left = node.scint(
             Number(x.children[0].children[0].result),
-            Number(x.children[0].children[2].result),
-          ]);
+            Number(x.children[0].children[2].result)
+          );
           break;
         case 'rational':
-          left = new Rational([
+          left = node.rational(
             Number(x.children[0].children[0].result),
-            Number(x.children[0].children[1].result),
-          ]);
+            Number(x.children[0].children[1].result)
+          );
           break;
         default:
-          left = new Real(Number(left));
+          left = node.real(Number(left));
           break;
       }
-      const right = new Id(x.children[1].result);
-      const res = new MathBinop(left, '*', right);
+      const right = node.id(x.children[1].result);
+      const res = node.binary.math.expression(left, '*', right);
       return res;
     }
     let expr: Node = this.pPower();
@@ -609,7 +621,7 @@ class Prex {
     while (res !== null) {
       let op = this.tryParse(this.previous, binop) as BinaryMathOp;
       let right = this.pPower();
-      expr = new MathBinop(expr, op, right);
+      expr = node.binary.math.expression(expr, op, right);
       res = this.match(
         ['*', multiply],
         ['/', divide],
@@ -627,19 +639,18 @@ class Prex {
     while (res !== null) {
       let op = this.tryParse(this.previous, binop) as BinaryMathOp;
       let right = this.pFactorial();
-      expr = new MathBinop(expr, op, right);
+      expr = node.binary.math.expression(expr, op, right);
       res = this.match(['^', power]);
     }
     return expr;
   }
 
-  // § - pPower
   private pFactorial(): Node {
     let expr = this.pStringOp();
     let res = this.match(['!', fact]);
     while (res !== null) {
       let op = this.tryParse(this.previous, binop) as UnaryMathOp;
-      expr = new FactorialExpression(expr, op);
+      expr = node.unary.math.expression.factorial(expr, op);
       res = this.match(['!', fact]);
     }
     return expr;
@@ -652,7 +663,7 @@ class Prex {
     while (res !== null) {
       let op = this.tryParse(this.previous, binop) as BinaryStringOp;
       let right = this.pLit();
-      expr = new StringBinop(expr, op, right);
+      expr = node.binary.string.expression(expr, op, right);
       res = this.match(['++', concat], ['--', revcat]);
     }
     return expr;
@@ -663,6 +674,10 @@ class Prex {
     if (this.match(['(', lparen])) {
       let expr = this.pExpr();
       this.eat(')', rparen, 'expected right paren');
+      if (this.check('(', lparen) && node.is.math.expression(expr)) {
+        const right = this.pExpr();
+        return node.binary.math.expression(expr, '*', right);
+      }
       if (this.compileError) return this.compileError as Node;
       return expr;
     }
@@ -678,29 +693,29 @@ class Prex {
     this.advance(res.end);
     switch (res.type) {
       case 'string':
-        return new StringVal(res.result.slice(1, -1)) as unknown as T;
+        return node.string(res.result.slice(1, -1)) as unknown as T;
       case 'identifier':
-        return new Id(res.result) as unknown as T;
+        return node.id(res.result) as unknown as T;
       case 'true':
-        return new Bool(true) as unknown as T;
+        return node.bool(true) as unknown as T;
       case 'false':
-        return new Bool(false) as unknown as T;
+        return node.bool(false) as unknown as T;
       case 'scientific':
-        return new Scientific([
+        return node.scint(
           Number(res.children[0].result),
-          Number(res.children[2].result),
-        ]) as unknown as T;
+          Number(res.children[2].result)
+        ) as unknown as T;
       case 'rational':
-        return new Rational([
+        return node.rational(
           Number(res.children[0].result),
-          Number(res.children[2].result),
-        ]) as unknown as T;
+          Number(res.children[2].result)
+        ) as unknown as T;
       case 'real':
-        return new Real(Number(res.result)) as unknown as T;
+        return node.real(Number(res.result)) as unknown as T;
       case 'integer':
-        return new Integer(Number(res.result)) as unknown as T;
+        return node.int(Number(res.result)) as unknown as T;
       case 'natural':
-        return new Natural(Number(res.result)) as unknown as T;
+        return node.natural(Number(res.result)) as unknown as T;
       case '{':
         return this.pSet() as unknown as T;
       case '[':
@@ -784,7 +799,7 @@ class Prex {
    * This will stop evaluation.
    */
   private croak(message: string, type: ErrorType = 'SyntaxError') {
-    this.compileError = new Glitch(message, type);
+    this.compileError = new Rot(message, type);
     return this.compileError;
   }
 
@@ -794,28 +809,29 @@ class Prex {
    * This will stop evaluation.
    */
   private panic(message: string, type: ErrorType = 'RuntimeError') {
-    this.runtimeError = new Glitch(message, type);
+    this.runtimeError = new Rot(message, type);
     return this.runtimeError;
   }
 
   // § - evalStringBinop
   private evalStringBinop<A extends Node, B extends Node>(
-    node: StringBinop<A, B>
+    N: StringBinop<A, B>
   ): Node {
-    let left: StringVal = this.evaluate(node.left);
-    let right: StringVal = this.evaluate(node.right);
+    let left: StringVal = this.evaluate(N.left);
+    let right: StringVal = this.evaluate(N.right);
     if (typeof left.value !== 'string' || typeof right.value !== 'string') {
       return this.panic(
         `String operators are only valid on string operands.`
       ) as Node;
     }
-    switch (node.op) {
+    switch (N.op) {
       case '++':
-        return new StringVal(left.value.concat(right.value)) as Node;
+        return node.string(left.value.concat(right.value)) as Node;
       case '--':
-        return new StringVal(right.value.concat(left.value)) as Node;
+        return node.string(right.value.concat(left.value)) as Node;
       default:
-        return this.panic('Unrecognized string operator.') as Node;
+        this.panic('Unrecognized string operator.') as Node;
+        return node.string('');
     }
   }
 
@@ -824,41 +840,40 @@ class Prex {
    * Evaluates a math binary expression.
    */
   private evalMathBinop<A extends Node, B extends Node>(
-    node: MathBinop<A, B>
+    argNode: MathBinop<A, B>
   ): Node {
-    let L = this.evaluate<A, B, Numeric>(node.left);
-    let R = this.evaluate<A, B, Numeric>(node.right);
-    let builder = L instanceof Integer && R instanceof Integer ? Integer : Real;
-    let a = L.norm;
-    let b = R.norm;
-    if (typeof a !== 'number' || typeof b !== 'number') {
-      return this.panic('non-operand numbers in evaluating math.') as Node;
+    let L = this.evaluate<A, B, Numeric>(argNode.left);
+    let R = this.evaluate<A, B, Numeric>(argNode.right);
+    if (node.is.numeric(L) && node.is.numeric(R)) {
+      switch (argNode.op) {
+        case '*':
+          return L.multiply(R);
+        case '+':
+          return L.add(R);
+        case '-':
+          return L.subtract(R);
+        case '/':
+          return L.divide(R);
+        case '^':
+          return L.power(R);
+        case '%':
+          return L.quot(R);
+        case 'mod':
+          return L.mod(R);
+        case 'rem':
+          return L.rem(R);
+        default:
+          this.panic('Unrecognized binary math operator.');
+          return new Inf();
+      }
     }
-    switch (node.op) {
-      case '*':
-        return new builder(a * b);
-      case '+':
-        return new builder(a + b);
-      case '-':
-        return new builder(a - b);
-      case '/':
-        return new builder(a / b);
-      case '^':
-        return new builder(a ** b);
-      case '%':
-        return new builder(Math.floor(a / b));
-      case 'mod':
-        return new Integer(modulo(a, b));
-      case 'rem':
-        return new Integer(a % b);
-      default:
-        return this.panic('Unrecognized binary math operator.') as Node;
-    }
+    this.panic(`Math operators only valid on numerics.`);
+    return this.runtimeError as Node;
   }
 
   private evalId(node: Id) {
     const x = this.env.read(node.value);
-    if (x instanceof Glitch) {
+    if (x instanceof Rot) {
       this.runtimeError = x;
     }
     return x;
@@ -881,24 +896,26 @@ class Prex {
   }
 
   private evalInequation<A extends Node, B extends Node, C extends Node>(
-    node: Inequation<A, B>
+    N: Inequation<A, B>
   ): C {
-    const a = this.evaluate(node.left);
-    const b = this.evaluate(node.right);
+    const a = this.evaluate(N.left);
+    const b = this.evaluate(N.right);
     if (a instanceof Numeric && b instanceof Numeric) {
       let L = a.norm;
       let R = b.norm;
-      switch (node.op as IneqOp) {
+      switch (N.op as IneqOp) {
         case '!=':
-          return new Bool(L !== R) as unknown as C;
+          return node.bool(L !== R) as unknown as C;
         case '<':
-          return new Bool(L < R) as unknown as C;
+          return node.bool(L < R) as unknown as C;
         case '>':
-          return new Bool(L > R) as unknown as C;
+          return node.bool(L > R) as unknown as C;
         case '<=':
-          return new Bool(L <= R) as unknown as C;
+          return node.bool(L <= R) as unknown as C;
         case '>=':
-          return new Bool(L >= R) as unknown as C;
+          return node.bool(L >= R) as unknown as C;
+        default:
+          return node.bool(false) as unknown as C;
       }
     } else {
       return deepEqual(a, b) as unknown as C;
@@ -951,7 +968,7 @@ class Prex {
 
   // § - print
   print() {
-    console.log(display(this.prog));
+    display(this.prog);
     return this;
   }
   json() {
@@ -965,8 +982,8 @@ class Prex {
   }
 
   // § - interpret
-  interpret(): Glitch | null | Node {
-    if (this.prog === null || this.prog instanceof Glitch)
+  interpret(): Rot | null | Node {
+    if (this.prog === null || this.prog instanceof Rot)
       return this.compileError;
     let result: any = null;
     for (let i = 0; i < this.prog.value.length; i++) {
@@ -978,3 +995,18 @@ class Prex {
 }
 
 export const prex = new Prex();
+
+// const input = `
+// 2(x^2 + 1)
+// `;
+// const parsing = prex.parse(input);
+// parsing.print();
+// const expr = prex.algebra(`2(x^2 + 1)`);
+// display(expr);
+// expr.print()
+
+// parsing.log();
+// console.log(parsing);
+// console.log(parsing.prog);
+// const result = parsing.interpret();
+// display(result);

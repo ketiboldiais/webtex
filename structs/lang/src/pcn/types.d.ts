@@ -4,6 +4,7 @@ export type NumberType =
   | 'integer'
   | 'scientific'
   | 'rational'
+  | 'big-number'
   | 'real'
   | 'inf';
 export type RelOp = '<' | '>' | '<=' | '>=' | '=' | '==' | '!=';

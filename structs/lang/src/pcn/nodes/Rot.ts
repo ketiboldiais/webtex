@@ -1,7 +1,7 @@
 import { ErrorType } from '../types.js';
 import { Node } from './index.js';
 
-export class Glitch extends Node {
+export class Rot extends Node {
   value: string;
   type: ErrorType;
   constructor(message: string, type: ErrorType) {

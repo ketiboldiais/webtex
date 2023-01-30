@@ -1,4 +1,4 @@
-import { log } from '../utils/index.ts';
+import { log } from '../utils/index.js';
 
 type Result = Match | Failure;
 type PRat = (text: string, i: number, type: string) => Result;
@@ -205,7 +205,7 @@ export class P<T> {
     return new P<T>((txt, i) => {
       let res = this.fn(txt, i, this._type);
       if (!res.err) {
-        return new Match(txt, this._type, i, i + res.result.length, []);
+        return new Match(txt, res.type, i, i + res.result.length, []);
       }
       let out = p.parse(txt, i);
       if (!out.err) {
