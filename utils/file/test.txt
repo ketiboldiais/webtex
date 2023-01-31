@@ -1,1 +1,50 @@
 testing
+
+    const lhs = N.digits.join('');
+    const rhs = this.value.join('');
+    const createZeros = (n: number): number[] => new Array(n).fill(0);
+    const last = (array: any[]) => array[array.length - 1];
+    const addCarry = (carry: number, digits: number[]) => {
+      if (carry === 0) return;
+      let value = last(digits) + carry;
+      if (value > 10) {
+        digits[digits.length - 1] = 0;
+        digits.unshift(value % 10);
+      } else {
+        digits[digits.length - 1] = value;
+      }
+    };
+    const answer: any[] = [];
+    const entries: number[][] = [];
+    let carry = 0;
+    for (let lcur = 0; lcur < lhs.length; lcur++) {
+      const leftDigit = lhs[lhs.length - 1 - lcur];
+      const multiplications = createZeros(lcur);
+      for (let rcur = 0; rcur < rhs.length; rcur++) {
+        const rightDigit = rhs[rhs.length - 1 - rcur];
+        const times = Number(leftDigit) * Number(rightDigit) + carry;
+        const ones = times % 10;
+        carry = Math.floor(times / 10);
+        multiplications.unshift(ones);
+      }
+      if (carry !== 0) {
+        multiplications.unshift(carry);
+        carry = 0;
+      }
+      entries.push(multiplications);
+    }
+    addCarry(carry, last(entries));
+    const maxLength = entries
+      .map((entry) => entry.length)
+      .reduce((acc, entry) => Math.max(acc, entry), 0);
+    entries.forEach((entry) => entry.reverse());
+    carry = 0;
+    for (let idx = 0; idx < maxLength; ++idx) {
+      const sum = entries
+        .map((entry) => entry[idx] || 0)
+        .reduce((acc, value) => acc + value, carry);
+      const ones = sum % 10;
+      carry = Math.floor(sum / 10);
+      answer.unshift(ones);
+    }
+    addCarry(carry, answer);

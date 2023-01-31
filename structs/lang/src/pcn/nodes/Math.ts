@@ -1,8 +1,42 @@
 import { Node, BinaryExpr, Id } from './index.js';
 import { NodeType, BinaryMathOp, NumberType } from '../types.js';
 import { modulo } from '../../prx/math.js';
+import {
+  a,
+  an,
+  any,
+  choice,
+  many,
+  maybe,
+  not,
+  some,
+  word,
+} from '../../pcx/index.js';
+import { log } from '../../utils/index.js';
 
 type NumBuilder = keyof typeof num;
+
+const aMinusSign = a('-');
+const aPoint = a('.');
+const zero = a('0');
+const anE = an('E');
+const aNaturalNumber = word(not(zero), any('digit')).or(zero);
+// console.log(aNaturalNumber.run('0'))
+const anInteger = word(maybe(aMinusSign), aNaturalNumber).map((d) => ({
+  out: d.out.flat().join(''),
+}));
+// console.log(anInteger.run('-1285'))
+const aDecimal = word(anInteger, aPoint, aNaturalNumber).map((d) => ({
+  out: d.out.flat().join(''),
+}));
+// console.log(aDecimal.run('0.2839'))
+const aScientificNumber = word(aDecimal.or(anInteger), anE, anInteger).map(
+  (d) => ({
+    out: d.out.flat().join(''),
+  })
+);
+const aNumber = choice(aNaturalNumber, anInteger, aDecimal, aScientificNumber);
+log(aNumber.run('-12E8'));
 
 export class AlgebraicExpression extends Node {
   value: { name: Id; body: Node[]; params: Id[] };
@@ -131,41 +165,81 @@ export class Numeric extends Node {
         return 'inf';
     }
   }
-  digits(): number[] {
-    if (this.type === 'big-number') {
+  get digits(): number[] {
+    if (this.type === 'bigN') {
       return this.value as number[];
     }
     return [...this.norm.toString()].map((d) => Number(d));
   }
   add(n: Numeric): Numeric {
+    if (n.type === 'bigN') {
+      const a = new BigN(this.digits);
+      const b = new BigN(n.digits);
+      return a.add(b);
+    }
     const builder = num[this.cast(this.type, n.type)];
     return builder(this.norm + n.norm);
   }
   subtract(n: Numeric): Numeric {
+    if (n.type === 'bigN') {
+      const a = new BigN(this.digits);
+      const b = new BigN(n.digits);
+      return a.subtract(b);
+    }
     const builder = num[this.cast(this.type, n.type)];
     return builder(this.norm - n.norm);
   }
   multiply(n: Numeric): Numeric {
+    if (n.type === 'bigN') {
+      const a = new BigN(this.digits);
+      const b = new BigN(n.digits);
+      return a.multiply(b);
+    }
     const builder = num[this.cast(this.type, n.type)];
     return builder(this.norm * n.norm);
   }
   divide(n: Numeric): Numeric {
+    if (n.type === 'bigN') {
+      const a = new BigN(this.digits);
+      const b = new BigN(n.digits);
+      return a.quot(b);
+    }
     const builder = num[this.cast(this.type, n.type)];
     return builder(this.norm / n.norm);
   }
   power(n: Numeric): Numeric {
+    if (n.type === 'bigN') {
+      const a = new BigN(this.digits);
+      const b = new BigN(n.digits);
+      return a.power(b);
+    }
     const builder = num[this.cast(this.type, n.type)];
     return builder(this.norm ** n.norm);
   }
   quot(n: Numeric): Numeric {
+    if (n.type === 'bigN') {
+      const a = new BigN(this.digits);
+      const b = new BigN(n.digits);
+      return a.quot(b);
+    }
     const builder = num[this.cast(this.type, n.type)];
     return builder(Math.floor(Math.floor(this.norm) / Math.floor(this.norm)));
   }
   rem(n: Numeric): Numeric {
+    if (n.type === 'bigN') {
+      const a = new BigN(this.digits);
+      const b = new BigN(n.digits);
+      return a.rem(b);
+    }
     const builder = num[this.cast(this.type, n.type)];
     return builder(this.norm % n.norm);
   }
   mod(n: Numeric): Numeric {
+    if (n.type === 'bigN') {
+      const a = new BigN(this.digits);
+      const b = new BigN(n.digits);
+      return a.mod(b);
+    }
     const builder = num[this.cast(this.type, n.type)];
     return builder(modulo(this.norm, n.norm));
   }
@@ -249,64 +323,151 @@ export class Scientific extends Numeric {
   }
 }
 
-export class LongInt extends Numeric {
+export class BigN extends Numeric {
   value: number[];
   type: NumberType;
-  constructor(value: number[]) {
-    super(value, 'big-number');
+  private isFloat: boolean;
+  constructor(value: number[] | string, isFloat: boolean = false) {
+    if (typeof value === 'string') {
+      throw new Error('bad');
+    }
+    super(value, 'bigN');
     this.value = value;
-    this.type = 'big-number';
+    this.type = 'bigN';
+    this.isFloat = isFloat;
+  }
+  get digits(): number[] {
+    return this.value;
+  }
+  power(n: Numeric): Numeric {
+    const a = BigInt(n.digits.join(''));
+    const b = BigInt(this.value.join(''));
+    const c = a ** b;
+    const res = [...c.toString()].map((d) => Number(d));
+    return new BigN(res);
+  }
+  quot(n: Numeric): Numeric {
+    const a = BigInt(n.digits.join(''));
+    const b = BigInt(this.value.join(''));
+    const c = a / b;
+    const res = [...c.toString()].map((d) => Number(d));
+    return new BigN(res);
+  }
+  mod(n: Numeric): Numeric {
+    const a = BigInt(n.digits.join(''));
+    const b = BigInt(this.value.join(''));
+    const c = (a % b) + (b % b);
+    const res = [...c.toString()].map((d) => Number(d));
+    return new BigN(res);
+  }
+
+  rem(n: Numeric): Numeric {
+    const a = BigInt(n.digits.join(''));
+    const b = BigInt(this.value.join(''));
+    const c = b % a;
+    const res = [...c.toString()].map((d) => Number(d));
+    return new BigN(res);
   }
   /**
-   * Adds the numeric operand 𝑛 to the BigNum.
+   * Adds the numeric operand 𝑛 to the LongInt.
    * Adding any numeric to a LongInt will result
    * in a LongInt.
+   *
+   * Time complexity: 𝒪(𝑛)
    */
   add(n: Numeric): Numeric {
-    let arg = n.digits(); // get the operand’s digits.
-
-    // if the operand has more or less digits than the BigNum, we pad.
-    if (arg.length < this.value.length) {
-      arg = [...arg.join('').padStart(this.value.length, '0')].map((d) =>
-        Number(d)
-      );
-    }
-    
-    let carry = 0;
-
-    let result = [...arg];
-    for (let i = this.value.length - 1; i >= 0; i--) {
-      result[i] = modulo(this.value[i] + arg[i] + carry, 10);
-      if (arg[i] + this.value[i] + carry >= 10) carry = 1;
-      else carry = 0;
-    }
-    if (carry) result.unshift(carry);
-    return new LongInt(result);
+    const [a, b] = this.pad(this.value, n.digits);
+    const r = BigInt(a.join(''));
+    const s = BigInt(b.join(''));
+    const result = [...(r + s).toString()].map((d) => Number(d));
+    return new BigN(result);
   }
+
+  /**
+   * Subtracts the numeric operand 𝑛 from the LongInt.
+   * Subtracting any numeric to a LongInt will result
+   * in a LongInt.
+   *
+   * Time complexity: 𝒪(𝑛)
+   */
   subtract(n: Numeric): Numeric {
-    let arg = n.digits();
-    if (arg.length < this.value.length) {
-      arg = [...arg.join('').padStart(this.value.length, '0')].map((d) =>
-        Number(d)
-      );
-    }
+    const [a, b] = this.pad(this.value, n.digits);
     let carry = 0;
-    let result = [...arg];
+    let result = [...b];
     for (let i = this.value.length - 1; i >= 0; i--) {
-      result[i] = modulo(this.value[i] - arg[i] + carry, 10);
-      if (arg[i] - this.value[i] + carry >= 10) carry = -1;
+      result[i] = modulo(this.value[i] - b[i] + carry, 10);
+      if (b[i] - a[i] + carry >= 10) carry = -1;
       else carry = 0;
     }
-    return new LongInt(result);
+    return new BigN(result);
+  }
+
+  private pad(d1: number[], d2: number[]) {
+    const [a, size, b] =
+      d1.length > d2.length ? [d2, d1.length, d1] : [d1, d2.length, d2];
+    const [u, v] = [
+      [...a.join('').padStart(size, '0')].map((d) => Number(d)),
+      b,
+    ];
+    if (d1.length >= d2.length) {
+      return [v, u];
+    }
+    return [u, v];
+  }
+
+  /**
+   * Multiplies the numeric operand.
+   */
+  multiply(N: Numeric): Numeric {
+    const [r, s] = this.pad(N.digits, this.value);
+    const n1 = r.join('');
+    const n2 = s.join('');
+    function multiply(x: string, y: string): bigint {
+      if (BigInt(x) < 10n && BigInt(y) < 10n) {
+        return BigInt(x) * BigInt(y);
+      }
+      const xHalf = Math.floor(x.length / 2);
+      const yHalf = Math.floor(y.length / 2);
+      const a = String(x).substring(0, xHalf);
+      const b = String(x).substring(xHalf);
+      const c = String(y).substring(0, yHalf);
+      const d = String(y).substring(yHalf);
+      return merge(a, b, c, d);
+    }
+    function merge(a: string, b: string, c: string, d: string): bigint {
+      const n = BigInt(a.length + b.length);
+      const half = n / 2n;
+      const ac = multiply(a, c);
+      const bd = multiply(b, d);
+      const ad = multiply(a, d);
+      const bc = multiply(b, c);
+      return 10n ** n * ac + 10n ** half * (ad + bc) + bd;
+    }
+    const p = multiply(n1, n2);
+    let answer = [...p.toString()].map((d) => Number(d));
+    return new BigN(answer);
   }
 }
 
 const num = {
-  integer: (a: number) => new Integer(a),
-  inf: (n: number) => new Inf(),
-  natural: (n: number) => new Natural(n),
-  bignum: (...digits: number[]) => new LongInt(digits),
-  rational: (x: number) => {
+  integer: (a: number | string) => new Integer(Number(a)),
+  inf: (n: number | string) => new Inf(),
+  natural: (n: number | string) => new Natural(Number(n)),
+  bigN: (digits: number | string) => {
+    if (typeof digits === 'string') {
+      const ds = word<string[]>(maybe(a('-')), any('digit')).run(digits);
+      if (ds.err) {
+        const A = new Array(digits.length).fill(0);
+        return new BigN(A);
+      } else {
+        const B = [...ds.out[0]].map((d) => Number(d));
+        return new BigN(B);
+      }
+    }
+    return new BigN([digits]);
+  },
+  rational: (x: number | string) => {
+    if (typeof x === 'string') x = Number(x);
     let n = 0;
     let d = 0;
     if (x === 0) {
@@ -326,7 +487,7 @@ const num = {
     d = d;
     return new Rational([n, d]);
   },
-  real: (r: number) => new Real(r),
+  real: (r: number | string) => new Real(Number(r)),
   scientific: (x: number) => {
     const s = x.toString().length;
     const res = x.toExponential(s < 20 ? s : 10).split(/e\+?/);
@@ -334,6 +495,6 @@ const num = {
   },
 };
 
-const j = num.bignum(9, 9, 9);
-const k = num.integer(1);
-console.log(j.subtract(k));
+const x = num.integer(`581`);
+const y = num.bigN(`28`);
+console.log(x.power(y));

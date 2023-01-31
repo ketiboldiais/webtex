@@ -10,3 +10,8 @@ The `pcx` directory contains _parser combinators_. These parsers are used by the
 ## `pkt`
 The `pkt` directory contains _packrat parsers_. These parsers handle some ambiguous algebraic expressions (those whose grammars aren’t necessarily context-free) that the `pcx` parsers cannot handle. The `pkt` parsers perform the brunt of the parsing.
 
+## Kip
+The Webtex editor processes a small scripting language called `Kip` to render algebraic expressions and perform basic computations. Because `Kip` works only within the editor, it is not intended for large, complex computations.
+
+
+

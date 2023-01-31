@@ -11,6 +11,7 @@ import {
   print,
   newState,
 } from './util.js';
+import { log } from '../utils/index.js';
 export { print };
 
 /* -------------------------------------------------------------------------- */
@@ -37,12 +38,11 @@ const error = <a, b>(
 ): State<a> => ({
   ...prev,
   erm:
-    `Error at index ${prev.index} | `.padEnd(5) +
-    `parser::${parser} `.padEnd(15) +
+    `Error[${prev.index}] | ` +
+    `parser::${parser} `.padEnd(10) +
     `| ` +
-    `${message} `.padEnd(33) +
+    `${message} `.padEnd(10) +
     `| remaining: ${prev.input.slice(prev.index)}` +
-    '\n' +
     prev.erm,
   err: true,
 });

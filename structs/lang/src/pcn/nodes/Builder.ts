@@ -36,7 +36,7 @@ import {
   Constant,
   Variable,
   Inf,
-  LongInt,
+  BigN,
 } from './index.js';
 
 export const node = {
@@ -50,7 +50,7 @@ export const node = {
   natural: (n: number) => new Natural(n),
   scint: (a: number, b: number) => new Scientific([a, b]),
   rational: (a: number, b: number) => new Rational([a, b]),
-  bignum: (...digits: number[]) => new LongInt(digits),
+  bigN: (...digits: number[]) => new BigN(digits),
   id: (name: string) => new Id(name),
   fn: (name: string, params: Id[], body: Node) =>
     new Fun(new Id(name), params, body),
