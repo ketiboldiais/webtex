@@ -1,7 +1,4 @@
 import { Data, oneof, P } from '../pkt/index.js';
-import deepEqual from 'deep-equal';
-import { display } from '../utils/index.js';
-import { modulo } from '../prx/math.js';
 
 // prettier-ignore
 import {
@@ -12,8 +9,7 @@ import {
 } from './types.js';
 // prettier-ignore
 import {
-  Node, Bind, Rot, Id, Inequation, Integer, MathBinop, Nil, Numeric, Prog, Real, StringBinop, StringVal, Binding, AlgebraicExpression, StructNode, SetVal, node, Inf
-} from './nodes/index.js';
+  Node, Rot, Id, Nil, Prog, AlgebraicExpression, StructNode, SetVal, node} from './nodes/index.js';
 import { Environment } from './environment.js';
 
 class Prex {
@@ -134,36 +130,36 @@ class Prex {
     }
   }
 
-  private transpileFunction(
-    name: Data<'identifier'>,
-    body: Node | Node[],
-    params: Id[]
-  ) {
-    let ret = ['return'];
-    const read = (N: Node | Node[]) => {
-      if (node.is.nodeArray(N)) {
-        for (let i = 0; i < N.length; i++) {
-          read(N[i]);
-        }
-      }
-      if (node.is.numeric(N)) ret.push(`${N.norm}`);
-      if (node.is.binary.expression(N)) {
-        ret.push('(');
-        read(N.left);
-        ret.push(N.op);
-        read(N.right);
-        ret.push(')');
-      }
-      if (node.is.id(N)) {
-        ret.push(N.value);
-      }
-      return N;
-    };
-    const _args = params.map((d) => d.value);
-    read(body);
-    _args.push(ret.join(' '));
-    this.transpiled.set(name.result, new Function(..._args));
-  }
+  // private transpileFunction(
+  // name: Data<'identifier'>,
+  // body: Node | Node[],
+  // params: Id[]
+  // ) {
+  // let ret = ['return'];
+  // const read = (N: Node | Node[]) => {
+  // if (node.is.nodeArray(N)) {
+  // for (let i = 0; i < N.length; i++) {
+  // read(N[i]);
+  // }
+  // }
+  // if (node.is.numeric(N)) ret.push(`${N.norm}`);
+  // if (node.is.binary.expression(N)) {
+  // ret.push('(');
+  // read(N.left);
+  // ret.push(N.op);
+  // read(N.right);
+  // ret.push(')');
+  // }
+  // if (node.is.id(N)) {
+  // ret.push(N.value);
+  // }
+  // return N;
+  // };
+  // const _args = params.map((d) => d.value);
+  // read(body);
+  // _args.push(ret.join(' '));
+  // this.transpiled.set(name.result, new Function(..._args));
+  // }
 
   /**
    * Parses a function. Functions are declared with the keyword
@@ -192,9 +188,9 @@ class Prex {
       return node.fn(name.result, params, body);
     }
     body = this.pExprStmt();
-    if (this.#transpileFunctions) {
-      this.transpileFunction(name, body, params);
-    }
+    // if (this.#transpileFunctions) {
+    // this.transpileFunction(name, body, params);
+    // }
     return node.fn(name.result, params, body);
   }
 
@@ -532,25 +528,19 @@ class Prex {
     let result: Node;
     switch (x.type as NumberType | 'identifier') {
       case 'integer':
-        result = node.int(Number(left));
+        result = node.num(left, 'integer');
         break;
       case 'real':
-        result = node.real(Number(left));
+        result = node.num(left, 'real');
         break;
       case 'natural':
-        result = node.natural(Number(left));
+        result = node.num(left, 'natural');
         break;
       case 'scientific':
-        result = node.scint(
-          Number(x.children[0].children[0].result),
-          Number(x.children[0].children[2].result)
-        );
+        result = node.num(left, 'scientific');
         break;
       case 'rational':
-        result = node.rational(
-          Number(x.children[0].children[0].result),
-          Number(x.children[0].children[1].result)
-        );
+        result = node.num(left, 'rational');
         break;
       case 'identifier':
         result = testId ? new Id(left) : (this.croak(testId) as Node);
@@ -582,28 +572,22 @@ class Prex {
       left = x.result;
       switch (x.type as NumberType) {
         case 'integer':
-          left = node.int(Number(left));
+          left = node.num(left, 'integer');
           break;
         case 'real':
-          left = node.real(Number(left));
+          left = node.num(left, 'real');
           break;
         case 'natural':
-          left = node.natural(Number(left));
+          left = node.num(left, 'natural');
           break;
         case 'scientific':
-          left = node.scint(
-            Number(x.children[0].children[0].result),
-            Number(x.children[0].children[2].result)
-          );
+          left = node.num(left, 'scientific');
           break;
         case 'rational':
-          left = node.rational(
-            Number(x.children[0].children[0].result),
-            Number(x.children[0].children[1].result)
-          );
+          left = node.num(left, 'rational');
           break;
         default:
-          left = node.real(Number(left));
+          left = node.num(left, 'real');
           break;
       }
       const right = node.id(x.children[1].result);
@@ -692,6 +676,14 @@ class Prex {
     this.savePrev(res.end);
     this.advance(res.end);
     switch (res.type) {
+      case 'bigN':
+      case 'scientific':
+      case 'rational':
+      case 'real':
+      case 'integer':
+      case 'natural':
+      case 'inf':
+        return node.num(res.result, res.type) as unknown as T;
       case 'string':
         return node.string(res.result.slice(1, -1)) as unknown as T;
       case 'identifier':
@@ -700,22 +692,6 @@ class Prex {
         return node.bool(true) as unknown as T;
       case 'false':
         return node.bool(false) as unknown as T;
-      case 'scientific':
-        return node.scint(
-          Number(res.children[0].result),
-          Number(res.children[2].result)
-        ) as unknown as T;
-      case 'rational':
-        return node.rational(
-          Number(res.children[0].result),
-          Number(res.children[2].result)
-        ) as unknown as T;
-      case 'real':
-        return node.real(Number(res.result)) as unknown as T;
-      case 'integer':
-        return node.int(Number(res.result)) as unknown as T;
-      case 'natural':
-        return node.natural(Number(res.result)) as unknown as T;
       case '{':
         return this.pSet() as unknown as T;
       case '[':
@@ -811,186 +787,6 @@ class Prex {
   private panic(message: string, type: ErrorType = 'RuntimeError') {
     this.runtimeError = new Rot(message, type);
     return this.runtimeError;
-  }
-
-  // § - evalStringBinop
-  private evalStringBinop<A extends Node, B extends Node>(
-    N: StringBinop<A, B>
-  ): Node {
-    let left: StringVal = this.evaluate(N.left);
-    let right: StringVal = this.evaluate(N.right);
-    if (typeof left.value !== 'string' || typeof right.value !== 'string') {
-      return this.panic(
-        `String operators are only valid on string operands.`
-      ) as Node;
-    }
-    switch (N.op) {
-      case '++':
-        return node.string(left.value.concat(right.value)) as Node;
-      case '--':
-        return node.string(right.value.concat(left.value)) as Node;
-      default:
-        this.panic('Unrecognized string operator.') as Node;
-        return node.string('');
-    }
-  }
-
-  // § - evalMathBinop
-  /**
-   * Evaluates a math binary expression.
-   */
-  private evalMathBinop<A extends Node, B extends Node>(
-    argNode: MathBinop<A, B>
-  ): Node {
-    let L = this.evaluate<A, B, Numeric>(argNode.left);
-    let R = this.evaluate<A, B, Numeric>(argNode.right);
-    if (node.is.numeric(L) && node.is.numeric(R)) {
-      switch (argNode.op) {
-        case '*':
-          return L.multiply(R);
-        case '+':
-          return L.add(R);
-        case '-':
-          return L.subtract(R);
-        case '/':
-          return L.divide(R);
-        case '^':
-          return L.power(R);
-        case '%':
-          return L.quot(R);
-        case 'mod':
-          return L.mod(R);
-        case 'rem':
-          return L.rem(R);
-        default:
-          this.panic('Unrecognized binary math operator.');
-          return new Inf();
-      }
-    }
-    this.panic(`Math operators only valid on numerics.`);
-    return this.runtimeError as Node;
-  }
-
-  private evalId(node: Id) {
-    const x = this.env.read(node.value);
-    if (x instanceof Rot) {
-      this.runtimeError = x;
-    }
-    return x;
-  }
-  private evalBind<T extends Node>(node: Bind<T>): T {
-    if (!this.env.has(node.name)) {
-      this.panic(`Variable ${node.name} hasn’t been declared.`);
-    }
-    const val = this.evaluate(node.getVal());
-    return this.env.assign(node.name, val) as unknown as T;
-  }
-
-  private evalDeclare<T extends Node>(node: Binding<T>): T {
-    const val = this.evaluate(node.getVal());
-    return this.env.declare(node.name, val, node.isConst) as unknown as T;
-  }
-
-  private evalAlgebra(node: AlgebraicExpression) {
-    return node.read();
-  }
-
-  private evalInequation<A extends Node, B extends Node, C extends Node>(
-    N: Inequation<A, B>
-  ): C {
-    const a = this.evaluate(N.left);
-    const b = this.evaluate(N.right);
-    if (a instanceof Numeric && b instanceof Numeric) {
-      let L = a.norm;
-      let R = b.norm;
-      switch (N.op as IneqOp) {
-        case '!=':
-          return node.bool(L !== R) as unknown as C;
-        case '<':
-          return node.bool(L < R) as unknown as C;
-        case '>':
-          return node.bool(L > R) as unknown as C;
-        case '<=':
-          return node.bool(L <= R) as unknown as C;
-        case '>=':
-          return node.bool(L >= R) as unknown as C;
-        default:
-          return node.bool(false) as unknown as C;
-      }
-    } else {
-      return deepEqual(a, b) as unknown as C;
-    }
-  }
-
-  // § - evaluate
-  private evaluate<A extends Node, B extends Node, C extends Node = Node>(
-    node: Node
-  ): C {
-    switch (node.kind) {
-      case 'algebraic-expression':
-        return this.evalAlgebra(node as AlgebraicExpression) as unknown as C;
-      case 'identifier':
-        return this.evalId(node);
-      case 'var-declaration-expression':
-      case 'const-declaration-expression':
-        return this.evalDeclare(node as Binding<C>);
-      case 'assignment-expression':
-        return this.evalBind(node as Bind<C>);
-      case 'inequation':
-        return this.evalInequation(node as Inequation<A, B>) as unknown as C;
-      case 'string-binary-expression':
-        return this.evalStringBinop(node as StringBinop<A, B>) as unknown as C;
-      case 'math-binary-expression':
-        return this.evalMathBinop(node as MathBinop<A, B>) as unknown as C;
-      case 'inf':
-        return node as unknown as C;
-      case 'rational':
-        return node as unknown as C;
-      case 'string':
-        return node as unknown as C;
-      case 'boolean':
-        return node as unknown as C;
-      case 'natural':
-        return node as unknown as C;
-      case 'integer':
-        return node as unknown as C;
-      case 'real':
-        return node as unknown as C;
-      case 'scientific':
-        return node as unknown as C;
-      case 'null':
-        return node as unknown as C;
-      default:
-        this.croak(`Unrecognized node type: ${node.kind}`);
-        return this.compileError as C;
-    }
-  }
-
-  // § - print
-  print() {
-    display(this.prog);
-    return this;
-  }
-  json() {
-    JSON.stringify(this.prog);
-  }
-  jsonLog() {
-    console.log(this.json());
-  }
-  log() {
-    console.log(this.prog);
-  }
-
-  // § - interpret
-  interpret(): Rot | null | Node {
-    if (this.prog === null || this.prog instanceof Rot)
-      return this.compileError;
-    let result: any = null;
-    for (let i = 0; i < this.prog.value.length; i++) {
-      if (this.runtimeError) return this.runtimeError;
-      result = this.evaluate(this.prog.value[i]);
-    }
-    return result;
   }
 }
 

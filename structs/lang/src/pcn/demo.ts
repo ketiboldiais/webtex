@@ -8,5 +8,5 @@ const parsing = prex.parse(input);
 // parsing.log();
 // console.log(parsing);
 // console.log(parsing.prog);
-const result = parsing.interpret();
-console.log(result);
+// const result = parsing.interpret();
+// console.log(result);

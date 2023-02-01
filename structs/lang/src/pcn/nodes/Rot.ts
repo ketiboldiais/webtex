@@ -9,7 +9,4 @@ export class Rot extends Node {
     this.type = type;
     this.value = `Error: ${message}`;
   }
-  get latex() {
-    return `\\text{${this.value}}`;
-  }
 }

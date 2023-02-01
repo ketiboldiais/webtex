@@ -9,7 +9,4 @@ export class StringVal extends Node {
     this.value = value;
     this.type = 'string';
   }
-  get latex() {
-    return `${this.value}`;
-  }
 }

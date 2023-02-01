@@ -9,7 +9,4 @@ export class ArrVal extends Node {
     this.value = value;
     this.type = 'array';
   }
-  get latex() {
-    return `${this.value}`;
-  }
 }

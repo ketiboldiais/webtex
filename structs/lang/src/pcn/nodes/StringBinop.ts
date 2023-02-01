@@ -12,9 +12,6 @@ export class StringBinop<A extends Node, B extends Node> extends BinaryExpr<
     this.type = 'string-binary-expression';
     this.value = { left, op, right };
   }
-  get latex() {
-    return `{ {${this.value.left.latex}} {${this.op}} {${this.value.right.latex}} }`;
-  }
   get op() {
     return this.value.op;
   }

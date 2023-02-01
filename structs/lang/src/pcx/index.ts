@@ -62,11 +62,13 @@ const succeed = <t, x>(state: State<t>, newState: State<x>): State<x> => ({
  * to construct new parsers.
  */
 
-export type Combinator<t> = (state: State<any>) => State<t>;
+export type Combinator<t, x extends string = any, y extends string = any> = (
+  state: State<any, x>
+) => State<t, y>;
 
-export class PCox<t> {
+export class PCox<t, x extends string = any> {
   eat: Combinator<t>;
-  constructor(applicative: Combinator<t>) {
+  constructor(applicative: Combinator<t, x>) {
     this.eat = applicative;
   }
   /**
@@ -83,9 +85,13 @@ export class PCox<t> {
     });
   }
 
-  parse(input: string) {
+  parse<t, x>(input: string): { result: t | 'ERROR'; type: x | 'ERROR' } {
     const out = this.run(input);
-    return { result: out.out, type: out.type };
+    if (out.err) return { result: 'ERROR', type: 'ERROR' };
+    return { result: out.out, type: out.type } as unknown as {
+      result: t;
+      type: x;
+    };
   }
 
   /**
@@ -99,13 +105,17 @@ export class PCox<t> {
    * - `index: number` - the Parser's current index
    * - `type: string` - the result’s custom typename
    */
-  map<t2>(
+  map<t2, previousType extends string, newType extends string>(
     fn: (
-      partialState: Outbox<t> & Typebox
-    ) => (Outbox<t2> & Typebox) | Outbox<t2> | Typebox
+      partialState: Outbox<t> & Typebox<previousType>
+    ) =>
+      | (Outbox<t2> & Typebox<newType> & Err)
+      | Outbox<t2>
+      | Typebox<newType>
+      | Err
   ) {
     const eat = this.eat;
-    return new PCox<t2>((state) => {
+    return new PCox<t2, newType>((state) => {
       const newState = eat(state);
       if (newState.err) return newState as unknown as State<t2>;
       return {
@@ -114,7 +124,7 @@ export class PCox<t> {
           out: newState.out,
           type: newState.type,
         }),
-      } as State<t2>;
+      } as unknown as State<t2>;
     });
   }
 
@@ -781,7 +791,7 @@ export type Value =
 export type Outbox<t> = { out: t };
 
 /** Parsers always specify a type name after working. */
-export type Typebox = { type: string };
+export type Typebox<x extends string = any> = { type: x };
 
 /** The `IndexBox` keeps track of placing. */
 export type Indexbox = { index: number };
@@ -799,10 +809,10 @@ export type Pkg<t> = Outbox<t> & Typebox;
  * Parsers and combinators never operate on raw strings.
  * The only thing they understand is a `State`.
  */
-export type State<t> = {
+export type State<t, x extends string = any> = {
   readonly input: string;
 } & Outbox<t> &
-  Typebox &
+  Typebox<x> &
   Indexbox &
   Erm &
   Err;

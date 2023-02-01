@@ -6,7 +6,8 @@ export type NumberType =
   | 'rational'
   | 'bigN'
   | 'real'
-  | 'inf';
+  | 'inf'
+  | 'ninf';
 export type RelOp = '<' | '>' | '<=' | '>=' | '=' | '==' | '!=';
 export type EqOp = Extract<RelOp, '=' | '=='>;
 export type IneqOp = Exclude<RelOp, '=' | '=='>;

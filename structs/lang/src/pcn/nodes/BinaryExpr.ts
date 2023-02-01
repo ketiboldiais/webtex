@@ -9,9 +9,6 @@ export class BinaryExpr<A extends Node, B extends Node> extends Node {
     this.type = 'binary-expression';
     this.value = { left, op, right };
   }
-  get latex() {
-    return `{ {${this.value.left.latex}} {${this.value.op}} {${this.value.right.latex}} }`;
-  }
   get op() {
     return this.value.op;
   }

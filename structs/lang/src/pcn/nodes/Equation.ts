@@ -9,9 +9,6 @@ export class Equation<A extends Node, B extends Node> extends BinaryExpr<A, B> {
     this.type = 'equation';
     this.value = { left, op, right };
   }
-  get latex() {
-    return `{${this.value.left.latex}} {${this.value.op}} {${this.value.right.latex}}`;
-  }
 }
 
 export class Inequation<A extends Node, B extends Node> extends BinaryExpr<
@@ -25,9 +22,6 @@ export class Inequation<A extends Node, B extends Node> extends BinaryExpr<
     this.type = 'inequation';
     this.value = { left, op, right };
   }
-  get latex() {
-    return `{ {${this.value.left.latex}} {${this.value.op}} {${this.value.right.latex}} }`;
-  }
 }
 
 export class FactorialExpression<T extends Node> extends Node {
@@ -37,8 +31,5 @@ export class FactorialExpression<T extends Node> extends Node {
     super(arg, op);
     this.type = 'factorial-expression';
     this.value = { arg, op };
-  }
-  get latex() {
-    return `{ {${this.value.arg}} {${this.value.op}} }`;
   }
 }

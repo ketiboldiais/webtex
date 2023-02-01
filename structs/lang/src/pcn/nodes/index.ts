@@ -1,4 +1,5 @@
 export * from './Node.js';
+export * from './Algebra.js';
 export * from './Array.js';
 export * from './BinaryExpr.js';
 export * from './Binding.js';
@@ -9,6 +10,7 @@ export * from './Rot.js';
 export * from './Id.js';
 export * from './Logic.js';
 export * from './Math.js';
+export * from './MathBinop.js';
 export * from './Nil.js';
 export * from './Prog.js';
 export * from './String.js';

@@ -9,7 +9,4 @@ export class SetVal extends Node {
     this.value = [name, value];
     this.type = 'set';
   }
-  get latex() {
-    return `\\{${this.value}\\}`;
-  }
 }
