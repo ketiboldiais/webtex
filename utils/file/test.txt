@@ -48,3 +48,579 @@ testing
       answer.unshift(ones);
     }
     addCarry(carry, answer);
+    
+
+
+    
+const num = {
+  integer: (a: number | string) => new Integer(Number(a)),
+  inf: (n: number | string) => new Inf(),
+  natural: (n: number | string) => new Natural(Number(n)),
+  bigN: (digits: number | string) => {
+    return typeof digits === 'number'
+      ? new BigN(`${digits}`)
+      : new BigN(digits);
+  },
+  rational: (x: number | string) => {
+    if (typeof x === 'string') x = Number(x);
+    let n = 0;
+    let d = 0;
+    if (x === 0) {
+      return new Rational([n, d]);
+    }
+    const a = Math.abs(x);
+    n = 0;
+    d = 1;
+    let r: number;
+    while (true) {
+      r = n / d;
+      if (Math.abs((r - a) / a) < 0.00001) break;
+      if (r < a) n++;
+      else d++;
+    }
+    n = x < 0 ? -n : n;
+    d = d;
+    return new Rational([n, d]);
+  },
+  real: (r: number | string) => new Real(Number(r)),
+  scientific: (x: number) => {
+    const s = x.toString().length;
+    const res = x.toExponential(s < 20 ? s : 10).split(/e\+?/);
+    return new Scientific([Number(res[0]), Number(res[1])]);
+  },
+};
+
+type NumBuilder = keyof typeof num;
+
+  // § - evalStringBinop
+  private evalStringBinop<A extends Node, B extends Node>(
+    N: StringBinop<A, B>
+  ): Node {
+    let left: StringVal = this.evaluate(N.left);
+    let right: StringVal = this.evaluate(N.right);
+    if (typeof left.value !== 'string' || typeof right.value !== 'string') {
+      return this.panic(
+        `String operators are only valid on string operands.`
+      ) as Node;
+    }
+    switch (N.op) {
+      case '++':
+        return node.string(left.value.concat(right.value)) as Node;
+      case '--':
+        return node.string(right.value.concat(left.value)) as Node;
+      default:
+        this.panic('Unrecognized string operator.') as Node;
+        return node.string('');
+    }
+  }
+
+  // § - evalMathBinop
+  /**
+   * Evaluates a math binary expression.
+   */
+  private evalMathBinop<A extends Node, B extends Node>(
+    argNode: MathBinop<A, B>
+  ): Node {
+    let L = this.evaluate<A, B, Node>(argNode.left);
+    let R = this.evaluate<A, B, Node>(argNode.right);
+    if (node.is.numeric(L) && node.is.numeric(R)) {
+      switch (argNode.op) {
+        case '*':
+        // return L.multiply(R);
+        case '+':
+        // return L.add(R);
+        case '-':
+        // return L.subtract(R);
+        case '/':
+        // return L.divide(R);
+        case '^':
+        // return L.power(R);
+        case '%':
+        // return L.quot(R);
+        case 'mod':
+        // return L.mod(R);
+        case 'rem':
+        // return L.rem(R);
+        default:
+          this.panic('Unrecognized binary math operator.');
+          return new Inf();
+      }
+    }
+    this.panic(`Math operators only valid on numerics.`);
+    return this.runtimeError as Node;
+  }
+
+  private evalId(node: Id) {
+    const x = this.env.read(node.value);
+    if (x instanceof Rot) {
+      this.runtimeError = x;
+    }
+    return x;
+  }
+  private evalBind<T extends Node>(node: Bind<T>): T {
+    if (!this.env.has(node.name)) {
+      this.panic(`Variable ${node.name} hasn’t been declared.`);
+    }
+    const val = this.evaluate(node.getVal());
+    return this.env.assign(node.name, val) as unknown as T;
+  }
+
+  private evalDeclare<T extends Node>(node: Binding<T>): T {
+    const val = this.evaluate(node.getVal());
+    return this.env.declare(node.name, val, node.isConst) as unknown as T;
+  }
+
+  private evalAlgebra(node: AlgebraicExpression) {
+    return node.read();
+  }
+
+
+
+  // § - evaluate
+  private evaluate<A extends Node, B extends Node, C extends Node = Node>(
+    node: Node
+  ): C {
+    switch (node.kind) {
+      case 'algebraic-expression':
+        return this.evalAlgebra(node as AlgebraicExpression) as unknown as C;
+      case 'identifier':
+        return this.evalId(node);
+      case 'var-declaration-expression':
+      case 'const-declaration-expression':
+        return this.evalDeclare(node as Binding<C>);
+      case 'assignment-expression':
+        return this.evalBind(node as Bind<C>);
+      case 'string-binary-expression':
+        return this.evalStringBinop(node as StringBinop<A, B>) as unknown as C;
+      case 'math-binary-expression':
+        return this.evalMathBinop(node as MathBinop<A, B>) as unknown as C;
+      case 'inf':
+        return node as unknown as C;
+      case 'rational':
+        return node as unknown as C;
+      case 'string':
+        return node as unknown as C;
+      case 'boolean':
+        return node as unknown as C;
+      case 'natural':
+        return node as unknown as C;
+      case 'integer':
+        return node as unknown as C;
+      case 'real':
+        return node as unknown as C;
+      case 'scientific':
+        return node as unknown as C;
+      case 'null':
+        return node as unknown as C;
+      default:
+        this.croak(`Unrecognized node type: ${node.kind}`);
+        return this.compileError as C;
+    }
+  }
+
+  // § - print
+  print() {
+    display(this.prog);
+    return this;
+  }
+  json() {
+    JSON.stringify(this.prog);
+  }
+  jsonLog() {
+    console.log(this.json());
+  }
+  log() {
+    console.log(this.prog);
+  }
+
+  // § - interpret
+  interpret(): Rot | null | Node {
+    if (this.prog === null || this.prog instanceof Rot)
+      return this.compileError;
+    let result: any = null;
+    for (let i = 0; i < this.prog.value.length; i++) {
+      if (this.runtimeError) return this.runtimeError;
+      result = this.evaluate(this.prog.value[i]);
+    }
+    return result;
+  }
+  
+
+  
+export class Inf extends Node {
+  value: number;
+  type: 'inf';
+  constructor() {
+    super(Infinity, 'inf');
+    this.value = Infinity;
+    this.type = 'inf';
+  }
+}
+
+export class Rational extends Node {
+  value: [number, number];
+  type: NumberType;
+  constructor(value: [number, number]) {
+    super(value, 'rational');
+    this.value = value;
+    this.type = 'rational';
+  }
+}
+
+export class Integer extends Node {
+  value: number;
+  type: NumberType;
+  constructor(value: number) {
+    super(value, 'integer');
+    this.value = value | 0;
+    this.type = 'integer';
+  }
+}
+
+export class Real extends Node {
+  value: number;
+  type: NumberType;
+  constructor(value: number) {
+    super(value, 'real');
+    this.value = value;
+    this.type = 'real';
+  }
+}
+
+export class Natural extends Node {
+  value: number;
+  type: NumberType;
+  constructor(value: number) {
+    super(value, 'natural');
+    this.value = value;
+    this.type = 'natural';
+  }
+}
+
+export class Scientific extends Node {
+  value: [number, number];
+  type: NumberType;
+  constructor(value: [number, number]) {
+    super(value, 'scientific');
+    this.value = value;
+    this.type = 'scientific';
+  }
+}
+
+export class BigN extends Node {
+  value: string;
+  type: NumberType;
+  private isFloat: boolean;
+  constructor(value: string, isFloat: boolean = false) {
+    super(value, 'bigN');
+    this.value = value;
+    this.type = 'bigN';
+    this.isFloat = isFloat;
+  }
+}
+
+const typeLookup: TypeTable = {
+  natural: {
+    natural: 'natural',
+    integer: 'integer',
+    scientific: 'scientific',
+    rational: 'rational',
+    bigN: 'bigN',
+    real: 'real',
+    inf: 'inf',
+    ninf: 'inf',
+  },
+  integer: {
+    natural: 'integer',
+    integer: 'integer',
+    scientific: 'scientific',
+    rational: 'rational',
+    bigN: 'bigN',
+    real: 'real',
+    inf: 'inf',
+    ninf: 'ninf',
+  },
+  scientific: {
+    natural: 'scientific',
+    integer: 'scientific',
+    scientific: 'scientific',
+    rational: 'scientific',
+    bigN: 'bigN',
+    real: 'scientific',
+    inf: 'inf',
+    ninf: 'ninf',
+  },
+  rational: {
+    natural: 'rational',
+    integer: 'rational',
+    scientific: 'scientific',
+    rational: 'rational',
+    bigN: 'bigN',
+    real: 'rational',
+    inf: 'inf',
+    ninf: 'ninf',
+  },
+  bigN: {
+    natural: 'bigN',
+    integer: 'bigN',
+    scientific: 'bigN',
+    rational: 'bigN',
+    bigN: 'bigN',
+    real: 'bigN',
+    inf: 'inf',
+    ninf: 'ninf',
+  },
+  real: {
+    natural: 'real',
+    integer: 'real',
+    scientific: 'scientific',
+    rational: 'real',
+    bigN: 'bigN',
+    real: 'real',
+    inf: 'inf',
+    ninf: 'ninf',
+  },
+  inf: {
+    natural: 'inf',
+    integer: 'inf',
+    scientific: 'inf',
+    rational: 'inf',
+    bigN: 'inf',
+    real: 'inf',
+    inf: 'inf',
+    ninf: 'inf',
+  },
+  ninf: {
+    natural: 'ninf',
+    integer: 'ninf',
+    scientific: 'ninf',
+    rational: 'ninf',
+    bigN: 'ninf',
+    real: 'ninf',
+    inf: 'ninf',
+    ninf: 'ninf',
+  },
+};
+
+import { NumberType } from '../types';
+
+type Value = [string, string] | [number, number] | number | string | bigint;
+
+type N<V extends Value> = V extends [string, string] | bigint | string
+  ? 'bigN'
+  : V extends [number, number]
+  ? 'rational' | 'scientific'
+  : NumberType;
+
+type ValueBox<V extends Value> = { value: V };
+type TypeBox<T extends NumberType> = { type: T };
+type TypeBoxMaker = <T extends NumberType>(type: T) => TypeBox<T>;
+type LexBox = { lexeme: string };
+type ValTypeBox<V extends Value, T extends NumberType> = ValueBox<V> &
+  TypeBox<T>;
+type ValTypeMaker = <V extends Value, T extends N<V>>(
+  value: V,
+  type: T
+) => ValTypeBox<V, T>;
+type ValBoxMaker = <V extends Value>(value: V) => ValueBox<V>;
+type DataBox<V extends Value, T extends NumberType> = ValueBox<V> &
+  TypeBox<T> &
+  LexBox;
+type DataMaker = <V extends Value, T extends N<V>>(
+  value: V,
+  type: T,
+  lexeme: string
+) => DataBox<V, T>;
+type DataTransformer = <
+  V1 extends Value,
+  T1 extends NumberType,
+  V2 extends Value,
+  T2 extends NumberType
+>(
+  d1: DataBox<V1, T1>,
+  d2: DataBox<V2, T2>
+) => DataBox<V2, T2>;
+
+const makeVal: ValBoxMaker = (value) => ({ value });
+const makeType: TypeBoxMaker = (type) => ({ type });
+const makeValType: ValTypeMaker = (value, type) => ({
+  value,
+  type,
+});
+const makeLexeme = (lexeme: string): LexBox => ({ lexeme });
+const makeData: DataMaker = (value, type, lexeme) => ({
+  value,
+  type,
+  lexeme,
+});
+const updateData: DataTransformer = (d1, d2) => ({ ...d1, ...d2 });
+
+type Dep = { [name: string]: Fn };
+class Fn {
+  name: string;
+  fn: Function;
+  deps: Dep;
+  constructor(name: string, fn: Function, deps: Dep = {}) {
+    this.name = name;
+    this.fn = fn;
+    this.deps = {
+      intPlus: new Fn('integerAdd', (a: number, b: number) => a + b),
+      ...deps,
+    };
+  }
+}
+
+type Factory = {
+  name: string;
+};
+
+type FactoryList = Factory[];
+
+const buildFactories = (factories: FactoryList) => {
+  const factoryBatch = {};
+  factories.forEach((factory) => {
+    factoryBatch[factory.name] = factory;
+  });
+  return factoryBatch;
+};
+
+const intadd = { name: 'intadd', add: (a: number, b: number) => a + b };
+const intsub = { name: 'intsub', add: (a: number, b: number) => a - b };
+
+const ints = buildFactories([intadd, intsub]);
+
+type type_int = atom<{ d: number; type: 'integer' }>;
+type int_maker = (d: number) => type_int;
+type type_real = atom<{ d: number; type: 'real' }>;
+type real_maker = (d: number) => type_real;
+type type_fraction = atom<{ d: number; type: 'fraction' }>;
+type fraction_maker = (n: number, d: number) => type_fraction;
+
+const int: int_maker = (d) => atom.of({ d, type: 'integer' });
+const real: real_maker = (d) => atom.of({ d, type: 'real' });
+const frac: fraction_maker = (n, d) => atom.of({ n, d, type: 'fraction' });
+
+
+type Func<T = any> = (...args: T[]) => any;
+const curry = (fn: Func, arity = fn.length, ...args: any[]): any =>
+  arity <= args.length ? fn(...args) : curry.bind(null, fn, arity, ...args);
+interface Integer {
+  n: number;
+  type: 'integer';
+}
+interface Real {
+  n: number;
+  type: 'real';
+}
+interface Rational {
+  n: number;
+  d: number;
+  type: 'rational';
+}
+interface BigN {
+  n: string;
+  type: 'rational';
+}
+interface Vector {
+  n: number[];
+  type: 'vector';
+}
+interface Matrix {
+  n: number[][];
+  type: 'matrix';
+}
+interface Point2d {
+  n: [number, number];
+  type: 'point2d';
+}
+interface Point3d {
+  n: [number, number, number];
+  type: 'point3d';
+}
+
+class atom<t> {
+  value: t;
+  constructor(x: t) {
+    this.value = x;
+  }
+  static of<t>(x: t) {
+    return new atom<t>(x);
+  }
+  map<x>(f: (a: t) => x) {
+    return atom.of(f(this.value));
+  }
+}
+
+class box<t> extends atom<t> {
+  value: t;
+  constructor(x: t) {
+    super(x);
+    this.value = x;
+  }
+  get nil() {
+    return this.value === null || this.value === undefined;
+  }
+  static of<t>(x: t) {
+    return new box<t>(x);
+  }
+  map<x>(f: (a: t) => x) {
+    return this.nil ? this : box.of(f(this.value));
+  }
+}
+
+
+class val<t> {
+  value: t;
+  constructor(x: t) {
+    this.value = x;
+  }
+  get nil() {
+    return this.value === null || this.value === undefined;
+  }
+  static of<t>(x: t) {
+    return new val<t>(x);
+  }
+  map<x>(f: (a: t) => x) {
+    return this.nil ? this : val.of(f(this.value));
+  }
+}
+interface semigroup<t> {
+  value: t;
+  concat(x: semigroup<t>): semigroup<t>;
+}
+
+interface monoid<t> extends semigroup<t> {
+  id: () => monoid<t>;
+}
+
+class Sum implements monoid<number> {
+  value: number;
+  constructor(x: number) {
+    this.value = x;
+  }
+  static id() {
+    return new Sum(0);
+  }
+  static of(x: number) {
+    return new Sum(x);
+  }
+  id() {
+    return new Sum(0);
+  }
+  concat(x: Sum) {
+    return new Sum(x.value + this.value);
+  }
+}
+
+const sum = (x: number) => Sum.of(x);
+
+const res = sum(5).concat(Sum.id());
+console.log(res);
+
+type semigroup<t> = {
+  x: t;
+  concat(x: semigroup<t>): semigroup<t>;
+};
+
+
+
