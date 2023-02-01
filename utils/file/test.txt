@@ -624,3 +624,148 @@ type semigroup<t> = {
 
 
 
+
+type monoid<t> = {
+  x: t;
+  id(): monoid<t>;
+  concat(x: monoid<t>): monoid<t>;
+};
+
+const natsum = (x: number = 0): monoid<number> => ({
+  x: Math.abs(Math.floor(x)),
+  concat: (y) => natsum(x + y.x),
+  id: () => natsum(0),
+});
+
+const natprod = (x: number = 1): monoid<number> => ({
+  x: Math.abs(Math.floor(x)),
+  concat: (y) => natprod(x * y.x),
+  id: () => natprod(1),
+});
+
+const res = [1, 2, 3, 4, 5].map(natsum).reduce((a, n) => a.concat(n), natsum());
+console.log(res);
+
+
+class natural extends atom<number, 'natural'> {
+  data: Data<number, 'natural'>;
+  type: Numeric;
+  constructor(n: number = 0) {
+    super(n, 'natural');
+    this.data = { value: n, type: 'natural' };
+    this.type = 'natural';
+  }
+  static parse(n: string | number): number {
+    if (is.number(n)) n = n.toString();
+    const p = parse_natural(n);
+    if (p.type === 'ERROR') return 0;
+    return Number(p.result);
+  }
+  // static of(n: string | number) {
+  // if (is.number(n)) return new natural(n);
+  // return new natural(natural.parse(n));
+  // }
+}
+class algebra<V extends Value, T extends Atom, O extends OpRecord> {
+  public value: V;
+  public name: T;
+  public operators: OpRecord;
+  constructor(n: V, t: T, ops: OpRecord = {}) {
+    this.value = n;
+    this.name = t;
+    this.operators = { ...this.operators, ...ops };
+  }
+  get nil() {
+    return this.value === null || this.value === undefined;
+  }
+  defineOp(ops: OpRecord) {
+    this.operators = { ...this.operators, ...ops };
+    return this;
+  }
+  static define<A extends Value, B extends Type, O2 extends OpRecord>(
+    type: A,
+    ops?: OpRecord
+  ) {
+    if (ops) return (value: A) => new algebra<A, B, O2>(value, type, ops);
+    return (value: A) => new algebra<A, B, O2>(value, type);
+  }
+  map<V2 extends Value, T2 extends Type, O2 extends OpRecord>(
+    fn: (a: V) => { value: V2; type: T2 }
+  ): algebra<V, T, O> | algebra<V2, T2, O2> {
+    if (this.nil) return this;
+    const res = fn(this.value);
+    return new algebra<V2, T2, O2>(res.value, res.type);
+  }
+  op(name: string) {
+    if (name in this.operators) {
+      return (a: V) =>
+        new algebra<V, T, O>(
+          this.operators[name](this.value, a),
+          this.name,
+          this.operators
+        );
+    }
+    return (_: V) => this;
+  }
+}
+
+const natural = algebra.define('natural', {
+  ['+']: (a: number, b: number) => Math.abs(a + b),
+  ['-']: (a: number, b: number) => Math.abs(a - b),
+  ['*']: (a: number, b: number) => Math.abs(a * b),
+  ['%']: (a: number, b: number) => Math.abs(a % b),
+  ['/']: (a: number, b: number) => Math.floor(a / b),
+});
+
+const n = natural(5).op('+')(5);
+console.log(n);
+
+import { a, word, any, maybe } from '../../pcx/index.js';
+import { show } from '../../pcx/util.js';
+
+type NumberType = 'natural' | 'integer';
+
+const is = {
+  string: (x: any): x is string => typeof x === 'string',
+  number: (x: any): x is number => typeof x === 'number',
+  array: (x: any): x is any[] => Array.isArray(x),
+  literal: (x: any) => typeof x === 'string' || typeof x === 'number',
+};
+const a_zero = a('0');
+
+const pNatural = word(any('digit'))
+  .or(a_zero)
+  .map<string, string, NumberType>((d) => {
+    let out = '';
+    if (is.array(d.out)) {
+      out = d.out.join('');
+      let i = 0;
+      while (out[i] === '0' && i < d.out.length) {
+        out = out.slice(i + 1);
+        i++;
+      }
+    } else {
+      out = d.out;
+    }
+    return { out, type: 'natural' };
+  });
+const pInteger = word(maybe(a('-')), pNatural).map<string, string, NumberType>(
+  (d) => ({
+    out: d.out.join(''),
+    type: 'integer',
+  })
+);
+
+type Numeric = natural|integer|decimal|fraction|complex|real;
+
+class numeric {
+  constructor(public val: any) {
+    this.val = val;
+  }
+}
+class natural {}
+class integer {}
+class decimal {}
+class fraction {}
+class complex {}
+class real {}

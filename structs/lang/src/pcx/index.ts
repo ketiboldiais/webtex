@@ -90,7 +90,7 @@ export class PCox<t, x extends string = any> {
     if (out.err) return { result: 'ERROR', type: 'ERROR' };
     return { result: out.out, type: out.type } as unknown as {
       result: t;
-      type: x;
+      type: x | 'ERROR';
     };
   }
 
@@ -224,9 +224,9 @@ export class PCox<t, x extends string = any> {
       }
    * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
    */
-  or(p: PCox<string>) {
+  or<x=any,y=any>(p: PCox<x>) {
     const self = this;
-    return new PCox<string>((state) => {
+    return new PCox<y>((state) => {
       const r1 = self.eat(state);
       if (!r1.err) return succeed(state, r1);
       const r2 = p.eat(state);
