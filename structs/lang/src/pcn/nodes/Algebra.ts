@@ -20,3 +20,5 @@ export class AlgebraicExpression extends Node {
     this.value.params.push(id);
   }
 }
+
+

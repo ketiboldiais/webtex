@@ -8,8 +8,9 @@ import Styles from "@styles/NavBar.module.css";
 
 
 function Navbar() {
-  const isLoggedIn = useAppSelector(selectLoginStatus);
-  const navItems = isLoggedIn ? <PrivateNav /> : <PublicNav />;
+  // const isLoggedIn = useAppSelector(selectLoginStatus);
+  // const navItems = isLoggedIn ? <PrivateNav /> : <PublicNav />;
+  const navItems = <PublicNav />;
   return <nav className={Styles.Container}>{navItems}</nav>;
 }
 

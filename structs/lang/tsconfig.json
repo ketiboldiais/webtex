@@ -3,7 +3,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "outDir": "./dist",
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "noImplicitThis": true
   },
   "include": ["src/pcx/index.ts", "./src/global.d.ts"],
   "exclude": ["./tests"]

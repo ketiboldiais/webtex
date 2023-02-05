@@ -15,7 +15,7 @@ export function Layout() {
           <h1>
             <Link to='docs'>Docs</Link>
           </h1>
-          <Navbar />
+          {/* <Navbar /> */}
         </header>
         <article className={Styles.mainContent}>
           <Outlet />

@@ -1,3 +1,5 @@
+import { log } from '../../utils/index.js';
+
 export type OpRecord = {
   [key: string]: any;
 };
@@ -53,3 +55,4 @@ const integer = algebra('integer', (x: number) => ({
   div: (a: number) => integer(x / a),
   sub: (a: number) => integer(x - a),
 }));
+

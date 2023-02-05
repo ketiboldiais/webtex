@@ -11,6 +11,7 @@ import {
 import {
   Node, Rot, Id, Nil, Prog, AlgebraicExpression, StructNode, SetVal, node} from './nodes/index.js';
 import { Environment } from './environment.js';
+import {display} from '../utils/index.js';
 
 class Prex {
   #transpileFunctions: boolean;
@@ -24,30 +25,8 @@ class Prex {
   private runtimeError: null | Rot;
   private nil: Nil;
   private env: Environment;
-  private transpiled: Map<string, Function>;
   prog: Prog | Rot | null;
-  /**
-   * @param transpileFunctions
-   * The `transpileFunctions` option will construct
-   * a single-line mathematical expression into a
-   * JavaScript function using the `new Function`
-   * constructor. Transpiled functions are not
-   * stored in the parser environment and cannot be read
-   * by non-transpiled functions.
-   * @warn Because of its performance and
-   * potential security concerns, the option defaults
-   * to false. The option is provided because
-   * this parser is primarily used by Webtex as a
-   * helper, whose results (1) only exist at runtime,
-   * (2) only exist on the user’s machine, and (3) aren’t
-   * persisted. Outside of these cases, this option
-   * should not be used.
-   * @warn This option should only be permitted for
-   * parsing results that remain only with the user.
-   * @warn This option will cause performance issues.
-   */
-
-  constructor(transpileFunctions = false) {
+  constructor() {
     this.lastStart = 0;
     this.lastEnd = 0;
     this.start = 0;
@@ -58,9 +37,7 @@ class Prex {
     this.src = '';
     this.nil = new Nil();
     this.prog = null;
-    this.transpiled = new Map();
     this.env = new Environment();
-    this.#transpileFunctions = transpileFunctions;
   }
   private init(src: string) {
     this.src = src.trimStart().trimEnd();
@@ -791,18 +768,5 @@ class Prex {
 }
 
 export const prex = new Prex();
-
-// const input = `
-// 2(x^2 + 1)
-// `;
-// const parsing = prex.parse(input);
-// parsing.print();
-// const expr = prex.algebra(`2(x^2 + 1)`);
-// display(expr);
-// expr.print()
-
-// parsing.log();
-// console.log(parsing);
-// console.log(parsing.prog);
-// const result = parsing.interpret();
-// display(result);
+const parsing = prex.parse(`2(x^2+1)`);
+display(parsing.prog)

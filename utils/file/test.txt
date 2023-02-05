@@ -769,3 +769,1031 @@ class decimal {}
 class fraction {}
 class complex {}
 class real {}
+
+class Sym {
+  symbol: string[];
+  constructor(s: string) {
+    this.symbol = [s];
+  }
+  get isTerminal() {
+    return this.symbol.length === 1;
+  }
+  and(arg: Sym) {
+    this.symbol = [...this.symbol, ...arg.symbol];
+    return this;
+  }
+}
+
+class Rule {
+  private _name: string;
+  private _body: Sym;
+  constructor(name: string) {
+    this._name = name;
+  }
+  is(def: Sym) {
+    this._body = def;
+    return { name: this._name, body: this._body };
+  }
+}
+
+const rule = (s: string) => {
+  return new Rule(s);
+};
+
+function grammar(...rules: any[]) {}
+
+const a = (s: string) => new Sym(s);
+const an = a;
+
+
+
+const g = grammar(
+  rule('SUM').is(an('a').and(a('+')).and(a('b'))),
+);
+
+class State {
+  constructor(
+    public grammar: Grammar,
+    public progress: any,
+    public columnIndex: number
+  ) {
+    this.grammar = grammar;
+    this.progress = progress; // the red dot
+    this.columnIndex = columnIndex; // the index of the column
+  }
+}
+
+type Column = State[];
+
+class Parser {
+  chart: Column[];
+  currentColumn:number;
+  src: string;
+  dot:number;
+  constructor(src: string) {
+    this.src = src;
+    this.chart = [];
+    this.currentColumn=0;
+    this.dot=0;
+  }
+  
+  /**
+   * Returns the current symbol to parse.
+   */
+  get current() {return ""}
+  
+  /**
+   * Returns true if the symbol is terminal,
+   * false otherwise.
+   */
+  isTerminal(s:string) {
+    return false;
+  }
+  
+  set nextColumn(s:State) {
+    this.currentColumn++;
+    this.chart[this.currentColumn].push(s)
+    this.dot++;
+  }
+
+  
+  parse() {
+    if (this.isTerminal(this.current)) {
+      this.runScanner("")
+    } else {
+      this.runPredictor();
+    }
+  }
+  get nextElement() {
+    return ""
+  }
+  
+  addStateToNextColumn(s:State) {
+    this.nextColumn=s;
+  }
+  
+  compare(a:string, b:string) {
+    if (a === b) this.addStateToNextColumn(state)
+  }
+  
+  runScanner(s:string) {
+    this.compare(s, this.nextElement)
+  }
+  runPredictor() {
+  }
+
+  /**
+   * Three operations are used to fill in the chart.
+   */
+  scan() {}
+  predict() {}
+  complete() {}
+}
+
+/**
+ *
+ *
+ * If we parse '1 + 2', we get a chart
+ * that looks like.
+ * The dot is the progress property.
+ * Each column is a set of states.
+ * The column index tells us where the rule started to match.
+ *
+ * | •1+2          | 1•+2          | 1+•2          | 1+2•          |
+ * | progress:    0| progress:    1| progress:    2| progress:    3|
+ * | columnix:    0| columnix:    1| columnix:    2| columnix:    3|
+ * | grammar       | grammar:     1| grammar:     2| grammar:     3|
+ *
+ */
+
+const insertChar = (s: string, c: string, i: number) => {
+  return s.slice(0, i) + c + s.slice(i);
+};
+
+class sym {
+  constructor(public symbol: string, public isTerminal: boolean) {
+    this.symbol = symbol;
+    this.isTerminal = isTerminal;
+  }
+}
+
+const nt = (symbol: string) => new sym(symbol, false);
+const t = (symbol: string) => new sym(symbol, true);
+type nonterminal = ReturnType<typeof nt>;
+type terminal = ReturnType<typeof t>;
+
+// type Rule = [string, sym[]];
+
+class Rule {
+  name: string;
+  definition: sym[];
+  constructor(name: string, definition: sym[]) {
+    this.name = name;
+    this.definition = definition;
+  }
+}
+
+const rule = (name: string, def: sym[]) => new Rule(name, def);
+
+type Rules = Rule[];
+type State = { name: string; body: string; dot: number; column: number };
+type GrammarList = { name: string; body: string }[];
+
+class Grammar {
+  grammarList: GrammarList;
+  dot: number;
+  nonterminals: Set<string>;
+  s: Set<State>[];
+  #logs: Set<string>[];
+  hist: string[];
+  src: string;
+  constructor(grammar: Rules) {
+    this.dot = 0;
+    this.#logs = [];
+    this.hist = [];
+    this.nonterminals = new Set<string>();
+    this.grammarList = [];
+    for (let i = 0; i < grammar.length; i++) {
+      const r = grammar[i];
+      const ruleName = r.name;
+      const grammarRule = { name: ruleName };
+      this.nonterminals.add(ruleName);
+      let rule = '';
+      for (let j = 0; j < r.definition.length; j++) {
+        const s = r.definition[j];
+        rule += s.symbol;
+        if (!s.isTerminal) this.nonterminals.add(s.symbol);
+      }
+      grammarRule['body'] = rule;
+      this.grammarList.push(grammarRule as { name: string; body: string });
+    }
+  }
+  string_set_array_of_length(n: number) {
+    let out: Set<string>[] = [];
+    for (let i = 0; i < n; i++) {
+      out.push(new Set());
+    }
+    return out;
+  }
+  sets_array_of_length(n: number) {
+    let out: Set<State>[] = [];
+    for (let i = 0; i < n; i++) {
+      out.push(new Set());
+    }
+    return out;
+  }
+
+  isNotAtEndOf(state: State) {
+    return state.body[state.dot] !== undefined;
+  }
+  nextElementOf(state: State) {
+    const d = state.dot;
+    const out = state.body[this.dot];
+    return out;
+  }
+  isTerminal(sym: string) {
+    return !this.nonterminals.has(sym);
+  }
+
+  predictor = (state: State, columnIdx: number) => {
+    const name = state.body[state.dot];
+    for (let i = 0; i < this.grammarList.length; i++) {
+      const r = this.grammarList[i];
+      if (r.name === name) {
+        const st = { ...r, dot: this.dot, column: columnIdx };
+        const string_st = JSON.stringify(st);
+        if (!this.#logs[columnIdx].has(string_st)) {
+          this.record(st, this.dot, columnIdx);
+          this.#logs[columnIdx].add(JSON.stringify(st));
+          this.s[columnIdx].add(st);
+        }
+      }
+    }
+  };
+  scanner = (state: State, columnIdx: number) => {
+    const match = state.body === this.src[columnIdx];
+    if (match) {
+      this.dot += 1;
+      const res = { ...state, dot: this.dot };
+      this.#logs[columnIdx + 1].add(JSON.stringify(res));
+      this.record(res, this.dot, columnIdx);
+      this.s[columnIdx + 1].add(res);
+    }
+    return 1;
+  };
+  record(state: State, dot: number, column: number) {
+    const cd =
+      state.name + ' => ' + insertChar(state.body, '•', dot) + ` S(${column})`;
+    this.hist.push(cd);
+  }
+  completor = (state: State, k: number) => {
+    const lastMatch = state.column;
+    const lastMatchName = state.name;
+    const lastMatchDot = state.dot;
+    const lastMatchStates = this.s[lastMatch];
+    let out: any[] = [];
+    for (state of lastMatchStates.values()) {
+      if (state.body[lastMatchDot - 1] === lastMatchName) {
+        this.record(state, lastMatchDot, lastMatch);
+        const st = { ...state, dot: lastMatchDot };
+        out.push(st);
+      }
+    }
+  };
+  parse(src: string) {
+    this.src = src;
+    const L = src.length;
+    this.s = this.sets_array_of_length(L);
+    this.#logs = this.string_set_array_of_length(L);
+    const st = { ...this.grammarList[0], dot: this.dot, column: 0 };
+    this.#logs[0].add(JSON.stringify(st));
+    this.record(st, 0, 0);
+    this.s[0].add(st);
+    for (let columnIdx = 0; columnIdx < L; columnIdx++) {
+      for (const state of this.s[columnIdx]) {
+        if (this.isNotAtEndOf(state)) {
+          if (this.isTerminal(this.nextElementOf(state))) {
+            this.scanner(state, columnIdx);
+            // return this.s;
+          } else {
+            this.predictor(state, columnIdx);
+          }
+        } else {
+          this.completor(state, columnIdx);
+        }
+      }
+    }
+    return this.s;
+  }
+}
+
+const _grammar = new Grammar([
+  rule('term', [nt('number'), t('+'), nt('number')]),
+  rule('term', [t('number')]),
+  rule('number', [t('1')]),
+]);
+const res = _grammar.parse('1+1');
+console.log(_grammar);
+//
+
+class Parser {
+  nonterminals: Set<string>;
+  rules: GrammarRule[];
+  src: string;
+  states: StateObj[][];
+  uniqueStates: Set<string>;
+  currentColumn: number;
+  inputLength: number;
+  parsed: string[];
+  constructor(grammar: Grammar) {
+    this.nonterminals = grammar.nonterminals;
+    this.parsed = [];
+    this.uniqueStates = new Set();
+    this.rules = grammar.rules;
+    this.currentColumn = 0;
+    this.states = [];
+  }
+  static of(grammar: Grammar) {
+    return new Parser(grammar);
+  }
+  parse(src: string) {
+    this.src = src;
+    this.inputLength = src.length;
+    this.states = new Array(src.length)
+      .fill([])
+      .map((_, i) =>
+        i === 0 ? [enstate(this.rules[0], 0, this.currentColumn)] : []
+      );
+    for (let column = 0; column < this.inputLength; column++) {
+      for (const _state of this.states[column]) {
+        if (this.isNotAtEnd(_state)) {
+          if (this.isTerminal(this.nextElementOfState(_state))) {
+            this.scan(_state, this.src[column]);
+          } else {
+            this.predict(_state);
+          }
+        } else {
+          this.complete(_state);
+        }
+      }
+    }
+    return this.states;
+  }
+  scan(_state: StateObj, element: string) {
+    const stateRuleBody = _state.rule;
+    let out: any[] = [];
+    let i: number;
+    for (i = 0; i < stateRuleBody.length; i++) {
+      if (element === stateRuleBody[i]) {
+        out.push(element);
+        this.parsed.push(element);
+      }
+    }
+    const newState = enstate(
+      _state.matchedRule,
+      _state.dot + _state.rule.length,
+      this.currentColumn,
+      true,
+    );
+    this.uniqueStates.add(newState.body);
+    this.states[this.currentColumn].push(newState);
+    this.currentColumn += element.length;
+  }
+  predict(_state: StateObj) {
+    this.uniqueStates.add(_state.body);
+    const name = _state.rule[_state.dot];
+    for (let i = 0; i < this.rules.length; i++) {
+      const rule = this.rules[i];
+      if (rule.name === name) {
+        const matchedState = enstate(rule, _state.dot, this.currentColumn);
+        if (!this.uniqueStates.has(matchedState.body)) {
+          this.states[this.currentColumn].push(matchedState);
+        }
+        this.uniqueStates.add(matchedState.body);
+      }
+    }
+  }
+  complete(_state: StateObj) {
+    const previousColumn = this.states[_state.lastMatchedColumn];
+    const name = _state.name;
+    const out: any = [];
+    for (let i = 0; i < previousColumn.length; i++) {
+      const stateEntry = previousColumn[i];
+      if (stateEntry.rule[stateEntry.dot] === name) {
+        const newState = enstate(
+          stateEntry.matchedRule,
+          stateEntry.dot + 1,
+          stateEntry.lastMatchedColumn,
+        );
+        this.uniqueStates.add(newState.body);
+        this.states[this.currentColumn].push(newState);
+        out.push(newState);
+      }
+    }
+  }
+  nextElementOfState(_state: StateObj): string {
+    return _state.rule[_state.dot];
+  }
+  isTerminal(element: string) {
+    return !this.nonterminals.has(element);
+  }
+  isNotAtEnd(_state: StateObj) {
+    return _state && _state.rule && _state.rule[_state.dot] !== undefined;
+  }
+}
+
+const parser = Parser.of(addition);
+parser.parse("2+3*4");
+console.log(parser);
+
+
+const enstate = (
+  rule: GrammarRule,
+  dot: number,
+  matchedColumn: number,
+  terminal = false,
+) => new StateObj(rule, dot, matchedColumn, terminal);
+
+
+
+// const initState = (grammar: Grammar): State => {
+// const rules = grammar.rules.map((d) => d.name + " => " + d.rule.join(" "));
+// let states = new Set<string>();
+// rules.forEach((d) => states.add(d));
+// return { ...grammar, states: [states] };
+// };
+
+// type State = { nonterminals: Set<string>; rules: GrammarRule[] };
+// const setDot = (grammar: Grammar, rule: number, at: number): Grammar => {
+// const _rule = grammar.rules[rule];
+// const _item = [..._rule.item.slice(0, at), "•", ..._rule.item.slice(at)];
+// const _rules: GrammarRule[] = grammar.rules.map((d, i) =>
+// i === rule ? ({ ...d, item: _item }) : ({ ...d })
+// );
+// return { ...grammar, rules: _rules };
+// };
+
+// const dottedG = setDot(G, 2, 1);
+// log(dottedG);
+// const sG = setState(G);
+// log(sG)
+
+
+
+
+
+
+
+
+
+
+
+type StateEntry = (string | string[])[];
+type State = {
+  item: StateEntry;
+  dot: number;
+  column: number;
+  seen: Set<string>;
+};
+type ParseState = Grammar & { state: State[] };
+
+const initState = (grammar: Grammar, setCount: number): ParseState => {
+  const _rule = grammar.rules[0];
+  const _item = ["•", ..._rule.item];
+  let stateEntry: StateEntry = _item;
+  const _seen = _item.reduceRight((_) =>
+    _rule.name + " => " + _item.join(" ")
+  ) as string;
+  const state: State = {
+    item: stateEntry,
+    dot: 0,
+    column: 0,
+    seen: new Set<string>().add(_seen),
+  };
+  const stateList = [state];
+  for (let i = 0; i < setCount; i++) {
+    stateList.push({} as any);
+  }
+  return {
+    ...grammar,
+    state: stateList,
+  };
+};
+
+const isNotAtEnd = (s: State) => {
+  const item = s.item;
+  console.log(item);
+  const dot = s.dot;
+  return item[dot + 1] !== undefined;
+};
+const nextElementOf = (s: State) => {
+  // console.log(s.items);
+  // console.log(s.items[s.column]);
+  // console.log(s.items[s.column][s.dot]);
+  // return 8;
+};
+
+const scan = () => ({});
+const predict = () => ({});
+const complete = () => ({});
+
+function parse(grammar: Grammar, input: string) {
+  const states = initState(grammar, input.length);
+  for (let i = 0; i < input.length; i++) {
+    
+    // for (const state of states.state[i]) {
+    // console.log(state)
+    // }
+    // let currentState = states[i];
+  }
+  return states;
+}
+
+const res = parse(G, "1+1");
+// display(res);
+log(res);
+
+class StateObj {
+  constructor(
+    public rule: GrammarRule,
+    public dot: number,
+    public matchedColumn: number,
+    public terminal: boolean,
+  ) {
+    this.rule = rule;
+    this.dot = dot;
+    this.matchedColumn = matchedColumn;
+    this.terminal = terminal;
+  }
+}
+
+const enstate = (
+  rule: GrammarRule,
+  dot: number,
+  matchedColumn: number,
+  terminal = false,
+) => new StateObj(rule, dot, matchedColumn, terminal);
+
+class Parser {
+  nonterminals: Set<string>;
+  rules: GrammarRule[];
+  src: string;
+  states: StateObj[][];
+  uniqueStates: Set<string>;
+  currentColumn: number;
+  inputLength: number;
+  parsed: string[];
+  constructor(grammar: Grammar) {
+    this.nonterminals = grammar.nonterminals;
+    this.parsed = [];
+    this.uniqueStates = new Set();
+    this.rules = grammar.rules;
+    this.currentColumn = 0;
+    this.states = [];
+  }
+  static of(grammar: Grammar) {
+    return new Parser(grammar);
+  }
+  parse(src: string) {
+    this.src = src;
+    this.inputLength = src.length;
+    this.states = new Array(src.length)
+      .fill([])
+      .map((_, i) =>
+        i === 0 ? [enstate(this.rules[0], 0, this.currentColumn)] : []
+      );
+    for (let column = 0; column < this.inputLength; column++) {
+      for (const _state of this.states[column]) {
+        if (this.isNotAtEnd(_state)) {
+          if (this.isTerminal(this.nextElementOfState(_state))) {
+            this.scan(_state, this.src[column]);
+          } else {
+            this.predict(_state);
+          }
+        } else {
+          this.complete(_state);
+        }
+      }
+    }
+    return this.states;
+  }
+  scan(_state: StateObj, element: string) {
+    const stateRuleBody = _state.rule;
+    let out: any[] = [];
+    let i: number;
+    for (i = 0; i < stateRuleBody.length; i++) {
+      if (element === stateRuleBody[i]) {
+        out.push(element);
+        this.parsed.push(element);
+      }
+    }
+    const newState = enstate(
+      _state.matchedRule,
+      _state.dot + _state.rule.length,
+      this.currentColumn,
+      true,
+    );
+    this.uniqueStates.add(newState.body);
+    this.states[this.currentColumn].push(newState);
+    this.currentColumn += element.length;
+  }
+  predict(_state: StateObj) {
+    this.uniqueStates.add(_state.body);
+    const name = _state.rule[_state.dot];
+    for (let i = 0; i < this.rules.length; i++) {
+      const rule = this.rules[i];
+      if (rule.name === name) {
+        const matchedState = enstate(rule, _state.dot, this.currentColumn);
+        if (!this.uniqueStates.has(matchedState.body)) {
+          this.states[this.currentColumn].push(matchedState);
+        }
+        this.uniqueStates.add(matchedState.body);
+      }
+    }
+  }
+  complete(_state: StateObj) {
+    const previousColumn = this.states[_state.lastMatchedColumn];
+    const name = _state.name;
+    const out: any = [];
+    for (let i = 0; i < previousColumn.length; i++) {
+      const stateEntry = previousColumn[i];
+      if (stateEntry.rule[stateEntry.dot] === name) {
+        const newState = enstate(
+          stateEntry.matchedRule,
+          stateEntry.dot + 1,
+          stateEntry.lastMatchedColumn,
+        );
+        this.uniqueStates.add(newState.body);
+        this.states[this.currentColumn].push(newState);
+        out.push(newState);
+      }
+    }
+  }
+  nextElementOfState(_state: StateObj): string {
+    return _state.rule[_state.dot];
+  }
+  isTerminal(element: string) {
+    return !this.nonterminals.has(element);
+  }
+  isNotAtEnd(_state: StateObj) {
+    return _state && _state.rule && _state.rule[_state.dot] !== undefined;
+  }
+}
+
+class Chart<t> {
+  #keyprefix: string;
+  keycount: number;
+  data: { [key: string]: t[] };
+  seen: Set<string>;
+  current: number;
+  keynow: string;
+  constructor(keyprefix: string, initialData?: t[], count = 1) {
+    this.#keyprefix = keyprefix;
+    this.keycount = count;
+    this.seen = new Set<string>();
+    this.data = {} as { [key: string]: t[] };
+    for (let i = 0; i < count; i++) {
+      this.data[`${this.#keyprefix}${i}`] = [];
+    }
+    if (initialData) {
+      this.data[`${this.#keyprefix}${0}`] = initialData;
+      for (let i = 0; i < initialData.length; i++) {
+        this.record(initialData[i]);
+      }
+    }
+    this.current = 0;
+    this.keynow = this.#keyprefix + this.current;
+  }
+
+  /** Returns the current key. */
+  private get currentKey() {
+    this.keynow = this.#keyprefix + this.current;
+    return this.keynow;
+  }
+
+  /** Records a value added. */
+  private record<t>(value: t) {
+    const v = JSON.stringify(value);
+    this.seen.add(v);
+  }
+
+  /** Pushes a value to to the current key. */
+  push(...value: t[]) {
+    for (let i = 0; i < value.length; i++) {
+      this.record(value[i]);
+      this.data[this.currentKey].push(value[i]);
+    }
+    return this;
+  }
+
+  /** Moves to the next key. */
+  nextKey() {
+    if (this.keycount <= this.current + 1) {
+      this.current += 1;
+      this.keycount += 1;
+      this.data[this.currentKey] = [] as t[];
+    } else {
+      this.current += 1;
+    }
+    return this;
+  }
+
+  /** Moves to the previous key. */
+  prevKey() {
+    this.current -= 1;
+    return this;
+  }
+  loop(fn: (d: t, index: number) => t) {
+    for (let i = 0; i < this.keycount; i++) {
+      const k = `${this.#keyprefix}${i}`;
+      const currentRow = this.data[k];
+      const out: t[] = [];
+      for (let j = 0; j < currentRow.length; j++) {
+        out.push(fn(currentRow[j], j));
+      }
+			this.data[k] = out;
+    }
+    return this;
+  }
+}
+
+
+
+const chart = <T>(keyprefix: string, intitialData?: T[], count = 1) =>
+  new Chart<T>(keyprefix, intitialData, count);
+
+const x = chart("s", [1, 2, 3]).nextKey().push(5).push(10).loop(d=>d**2);
+
+console.log(x);
+
+const node = <t>(value: t | null, tag: string | number | null, color?: Color) =>
+  new RBN<t>(value, color, tag);
+
+const defc = (a: number, b: number) => a > b;
+const deft = <t>(a: t) => JSON.stringify(a);
+
+class RedBlackTree<t> {
+  root: RBN<t | null>;
+  cmp: CompFn<t>;
+  tagfn: TagFunction<t>;
+  constructor(cmp: CompFn<t> = defc, tagfn: TagFunction<t> = deft) {
+    this.tagfn = tagfn;
+    this.root = node(null, null);
+    this.cmp = cmp;
+  }
+  addNode(value: t) {
+    const tag = this.tagfn(value);
+    const nullNode = node(value, this.tagfn(value));
+    const newNode = node(value, this.tagfn(value), Color.red);
+    if (this.root.isNull) this.root = nullNode;
+    else {
+    }
+    return this;
+  }
+}
+
+const redBlackTree = () => new RedBlackTree();
+
+const rbt = redBlackTree();
+
+console.log(rbt);
+
+enum Color {
+  red = "red",
+  black = "black",
+}
+
+type TagType = string|number|null;
+
+class rbNode<t> {
+  left: rbNode<t|null> | null;
+  right: rbNode<t|null> | null;
+  Value: t | null;
+  Color: Color;
+  Tag: TagType;
+  constructor(value:t|null=null, tag:TagType, color=Color.black) {
+    this.left = new rbNode(null,null);
+    this.right = new rbNode(null,null);
+    this.Value = value;
+    this.Color = color;
+    this.Tag = tag;
+  }
+  get value() { return this.Value; }
+  get color() { return this.Color; }
+  get tag() { return this.Tag; }
+  get leftChild() { return this.left; }
+  get rightChild() { return this.right; }
+  get hasLeftChild() { return this.left !== null; }
+  get hasRightChild() { return this.right !== null; }
+  get isNull() { return this.value === null; }
+  get isRed() { return this.color === Color.red; }
+  get isBlack() { return this.color === Color.black; }
+  setRightChild(node: rbNode<t>) {
+    this.right = node;
+    return this;
+  }
+  setLeftChild(node: rbNode<t>) {
+    this.left = node;
+    return this;
+  }
+}
+const node = <t>(value:t, tag:TagType, color?:Color) => new rbNode<t>(value, tag, color);
+
+type ObjCmp<R> = (a: keyof R, b: keyof R) => boolean;
+type NumCmp = (a: number, b: number) => boolean;
+type StrCmp = (a: string, b: string) => boolean;
+type Cfn<t> = ObjCmp<t> | NumCmp | StrCmp;
+type Tfn<t> = (d: t) => string | number;
+const defc = (a: string, b: string) => a > b;
+const deft = <t>(a:t) => {
+  if (typeof a === 'number') return a;
+  else if (typeof a === 'string') return a;
+  else return (Math.random()*1000);
+};
+
+const x = deft('hello');
+
+
+class RedBlackTree<t> {
+  compare: Cfn<t>;
+  tag: Tfn<t>;
+  root: rbNode<t>|rbNode<null>;
+  constructor(data?:t[], cmp:Cfn<t> = defc, tfn?:Tfn<t>) {
+    this.compare=cmp;
+    this.tag = tfn !== undefined ? tfn : deft;
+    this.root = node(null, null);
+  }
+}
+
+const redBlackTree = <t>(data?:t[], cmp?:Cfn<t>, tfn?:Tfn<t>) => new RedBlackTree(data, cmp, tfn);
+
+const rbt = redBlackTree();
+console.log(rbt);
+
+
+type NODE<T> = TreeNode<T> | TreeNode<null> | null;
+
+class TreeNode<T> {
+  value: T;
+  left: NODE<T>;
+  right: NODE<T>;
+  color: color;
+  constructor(value: T, color: color, left: NODE<T>, right: NODE<T>) {
+    this.value = value;
+    this.color = color;
+    this.left = left;
+    this.right = right;
+  }
+}
+
+class BlackNode<t> extends TreeNode<t | null> {
+  constructor(value: t | null, tag: string | number | null = null) {
+    super(value, color.black, null, null);
+  }
+}
+
+class RedNode<T> extends TreeNode<T> {
+  constructor(value: T) {
+    super(value, color.red, new BlackNode(null), new BlackNode(null));
+  }
+}
+
+const rednode = <t>(value: t) => new RedNode(value);
+const blacknode = <t>(value: t | null = null) => new BlackNode(value);
+
+type ObjCmp<t> = (a: t, b: t) => boolean;
+class RedBlackTree<t> {
+  root: BlackNode<t | null>;
+  #comparer: ObjCmp<t>;
+  public constructor(cmp: ObjCmp<t>) {
+    this.root = blacknode(null);
+    this.#comparer = cmp;
+  }
+  push(value: t) {
+    if (this.root.value === null) {
+      this.root = blacknode(value);
+    } else {
+      const nullchild = blacknode(null);
+    }
+    return this;
+  }
+}
+const redBlackTree = <t>(fn: ObjCmp<t>) => new RedBlackTree(fn);
+
+const rbt = redBlackTree((a: number, b: number) => a > b);
+
+const j = rbt.push(5);
+
+console.log(j);
+
+enum Color {
+  red = "red",
+  black = "black",
+}
+
+class Nilnode {
+  value: null;
+  left: null;
+  right: null;
+  color: Color;
+  constructor() {
+    this.value = null;
+    this.left = null;
+    this.right = null;
+    this.color = Color.black;
+  }
+}
+
+const nilnode = () => new Nilnode();
+
+class Rbnode<t> {
+  value: t;
+  color: Color;
+  left: Rbnode<t> | Nilnode;
+  right: Rbnode<t> | Nilnode;
+  constructor(
+    value: t,
+    color: Color,
+    left: Rbnode<t> | Nilnode,
+    right: Rbnode<t> | Nilnode,
+  ) {
+    this.value = value;
+    this.color = color;
+    this.left = left;
+    this.right = right;
+  }
+}
+class Blacknode<t> extends Rbnode<t> {
+  constructor(value: t) {
+    super(value, Color.black, nilnode(), nilnode());
+    this.value = value;
+  }
+}
+const blacknode = <t>(val: t) => new Blacknode(val);
+class Rednode<t> extends Rbnode<t> {
+  constructor(value: t) {
+    super(value, Color.red, nilnode(), nilnode());
+    this.value = value;
+  }
+}
+const rednode = <t>(val: t) => new Rednode(val);
+const isRednode = (n: any) => n instanceof Rednode;
+const isBlacknode = (n: any) => n instanceof Blacknode;
+const isNilnode = (n: any) => n instanceof Nilnode;
+const isnil = (n: any) => n === undefined || n === null;
+
+type anode<t> = Rbnode<t> | Blacknode<t> | Nilnode;
+type Cmpfn<t> = (a: t, b: t) => boolean;
+class Rbtree<t> {
+  compare: Cmpfn<t>;
+  root: Blacknode<t> | Nilnode;
+  constructor(compare: Cmpfn<t>, initialValue?:t) {
+    this.compare = compare;
+    this.root = initialValue!==undefined ? blacknode(initialValue) : nilnode();
+  }
+  push(value: t) {
+    if (isNilnode(this.root)) {
+      return new Rbtree(this.compare, value);
+    }
+    const correctRight = (node:anode<t>, value:t) => {
+    }
+    const insert = (node:anode<t>|null, value:t) => {
+      const nullchild = nilnode();
+      const newnode = rednode(value);
+      if (node===null) return newnode;
+      if (node===undefined) return newnode;
+      if (node.value===null) return newnode;
+      if (node.value===undefined) return newnode;
+      if (node.right===undefined) return newnode;
+      else if (this.compare(value, node.value)) {
+        node.right = insert(node.right, value);
+        if (node.color===Color.red) return node;
+        // else if (node.right.color===Color.red) return correctRight(node,value);
+        else return newnode;
+      }
+      else return newnode;
+    }
+  }
+}
+
+const redBlackTree = <t>(cfn: Cmpfn<t>) => new Rbtree<t>(cfn);
+
+const rbt = redBlackTree((a: number, b: number) => a > b);
+
+rbt.push(10);
+
+interface iBinaryTree<t> {
+  compare: compareFn<t>;
+  root: tnode<t>;
+  preorder(this: iBinaryTree<t>, fn: (nodeval: t) => t): this;
+  inorder(this: iBinaryTree<t>, fn: (nodeval: t) => t): this;
+  postorder(this: iBinaryTree<t>, fn: (nodeval: t) => t): this;
+}
+function binaryTree<t, r extends Settings<t>>(settings: Settings<t> & r) {
+  return function (root: tnode<t>): iBinaryTree<t> & r {
+    const compare = settings.compare;
+    return {
+      ...settings,
+      root,
+      compare,
+      push(this: iBinaryTree<t>, val: tnode<t>) {
+        return this;
+      },
+      preorder(this: iBinaryTree<t>, fn: (nodeval: t) => t) {
+        return this;
+      },
+      inorder(this: iBinaryTree<t>, fn: (nodeval: t) => t) {
+        return this;
+      },
+      postorder(this: iBinaryTree<t>, fn: (nodeval: t) => t) {
+        return this;
+      },
+    };
+  };
+}
+
+const bst = binaryTree({
+  compare: (a: number, b: number) => a < b,
+});
+
+const b1 = bst(node(10));
