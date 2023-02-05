@@ -23,23 +23,10 @@ export default defineConfig({
   server: {
     port: 5174,
     host: '127.0.0.1',
-    hmr: {
-      clientPort:443,
-    },
-    proxy: {
-      "/api": {
-        target: "https://api.webtexdev.cloud",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ""),
-      },
-    },
   },
   preview: {
     host: "localhost",
     strictPort: true,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-    },
   },
   build: {
     target: "esnext",

@@ -2,9 +2,16 @@ import { scaleLinear } from '@visx/scale';
 import { Axis } from '@visx/axis';
 import { line } from 'd3-shape';
 import { CSSProperties, ReactNode } from 'react';
-import { range } from '@webtex/fp';
 type JSXs = ReactNode;
 type Quad = [number, number, number, number];
+
+const ag = (start: number, stop: number, step: number, inc = 0) =>
+  Array(Math.ceil((stop + inc - start) / step))
+    .fill(start)
+    .map((x, y) => x + y * step);
+
+const range = (start: number, stop: number, step = 1) =>
+  ag(start, stop, step, 0);
 
 const perspect = (dimension: number) => (margins: Quad) => (going: 'x' | 'y') =>
   going === 'x'
