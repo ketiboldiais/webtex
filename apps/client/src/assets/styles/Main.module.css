@@ -1,0 +1,72 @@
+@font-face {
+  font-family: "Muli";
+  font-style: normal;
+  font-weight: normal;
+  src: url("../fonts/Muli-Regular.ttf");
+}
+@font-face {
+  font-family: "Muli";
+  font-style: italic;
+  font-weight: normal;
+  src: url("../fonts/Muli-Italic.ttf");
+}
+@font-face {
+  font-family: "Muli";
+  font-style: normal;
+  font-weight: bold;
+  src: url("../fonts/Muli-Bold.ttf");
+}
+@font-face {
+  font-family: "Muli";
+  font-style: italic;
+  font-weight: bold;
+  src: url("../fonts/Muli-BoldItalic.ttf");
+}
+.Main {
+  position: fixed;
+  top: 40px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: scroll;
+  display: grid;
+  grid-template-columns: 1.5fr 5fr;
+}
+
+.AddButton {
+  color: hsl(210deg, 16%, 76%);
+  padding: 0 0.25rem;
+  margin: 0;
+  line-height: 0;
+  width: -webkit-fit-content;
+  width: -moz-fit-content;
+  width: fit-content;
+}
+
+.DeleteButton {
+  color: hsl(4deg, 75%, 55%);
+  padding: 0 0.25rem;
+  margin: 0;
+  line-height: 0;
+  width: -webkit-fit-content;
+  width: -moz-fit-content;
+  width: fit-content;
+}
+
+.SideBar {
+  padding: 0.25rem;
+  border-right: solid thin hsl(208deg, 21%, 88%);
+}
+.SideBar .NoteList {
+  list-style: none;
+  padding: 0;
+  font-size: 0.8rem;
+}
+.SideBar .NoteEntry {
+  box-shadow: 0px 1px 3px hsl(4deg, 0%, 91%), 0 1px 2px hsl(4deg, 0%, 50%);
+  padding: 0.25rem;
+}
+.SideBar .NoteHeader {
+  display: grid;
+  grid-template-columns: 10fr 1fr;
+}/*# sourceMappingURL=Main.module.css.map */

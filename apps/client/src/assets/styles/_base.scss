@@ -25,6 +25,8 @@
 
 $mainFont: 'Muli';
 
+$line: solid thin lightgrey;
+
 $xxsmall: 0.6rem;
 $xsmall: 0.8rem;
 $small: 1rem;
@@ -182,8 +184,10 @@ $full: 100%;
 }
 
 @mixin Box {
-  border: solid thin red;
+  border: solid thin lightgrey;
 }
+
+
 
 @mixin FullWidth {
   width: 100%;
