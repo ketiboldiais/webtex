@@ -26,7 +26,6 @@
   position: relative;
   color: hsl(209deg, 15%, 28%);
   width: 7rem;
-  height: -webkit-fit-content;
   height: -moz-fit-content;
   height: fit-content;
   font-size: 0.8rem;

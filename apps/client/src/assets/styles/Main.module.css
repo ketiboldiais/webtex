@@ -38,7 +38,6 @@
   padding: 0 0.25rem;
   margin: 0;
   line-height: 0;
-  width: -webkit-fit-content;
   width: -moz-fit-content;
   width: fit-content;
 }
@@ -48,7 +47,6 @@
   padding: 0 0.25rem;
   margin: 0;
   line-height: 0;
-  width: -webkit-fit-content;
   width: -moz-fit-content;
   width: fit-content;
 }

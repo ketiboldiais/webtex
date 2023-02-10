@@ -21,7 +21,11 @@ import { NodeEventPlugin } from "@lexical/react/LexicalNodeEventPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
-import { INSERT_ORDERED_LIST_COMMAND, ListItemNode, ListNode } from "@lexical/list";
+import {
+  INSERT_ORDERED_LIST_COMMAND,
+  ListItemNode,
+  ListNode,
+} from "@lexical/list";
 import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
 import Autofocus from "../src/components/Editor/plugins/Autofocus";
 import theme from "../src/components/Editor/EditorTheme";
@@ -120,6 +124,7 @@ const initNoteList = await db_getNotes().then((notes) => {
     noteListArray.push(note);
     init[note.id] = note;
   });
+  init[WelcomeNote.id] = WelcomeNote;
   return init;
 }).catch(() => ({ [WelcomeNote.id]: WelcomeNote }));
 
@@ -243,6 +248,7 @@ function SideBar() {
   const dispatch = useAppDispatch();
   const notes = getNotes();
   const noteCount = getNoteCount();
+  
 
   return (
     <div className={S.Sidebar}>
@@ -257,19 +263,10 @@ function SideBar() {
             dispatch(addNote(newNote));
           }}
         />
-        <SearchBar />
       </div>
       <ul className={S.NoteList}>
         {notes.map((note) => <NoteItem key={note.id} note={note} />)}
       </ul>
-    </div>
-  );
-}
-
-function SearchBar() {
-  return (
-    <div className={S.SearchBar}>
-      <input type={"text"} placeholder={"Query"} />
     </div>
   );
 }
@@ -293,6 +290,7 @@ function NoteItem({ note }: { note: Note }) {
               dispatch(deleteNote(note));
             }}
             children={"delete"}
+            className={S.deleteBtn}
           />
         </div>
         <small>{note.date}</small>
@@ -305,9 +303,7 @@ function titleNote(note1: Note, note2: Note) {
   return note1.id === note2.id ? note2.title : note1.title;
 }
 function styleNoteItem(note1: Note, note2: Note) {
-  return note1.id === note2.id
-    ? `${S.NoteItem} ${S.activeNote}`
-    : `${S.NoteItem}`;
+  return note1.id === note2.id ? `${S.Item} ${S.Active}` : `${S.Item}`;
 }
 
 const editorConfig = {
@@ -375,8 +371,7 @@ function TextEditor() {
           />
           <HistoryPlugin />
           <RichTextPlugin
-            contentEditable={
-              <ContentEditable className={S.EditorInput} />}
+            contentEditable={<ContentEditable className={S.EditorInput} />}
             placeholder={<div className={S.EditorPlaceholder}></div>}
             ErrorBoundary={LexicalErrorBoundary}
           />
@@ -390,7 +385,7 @@ function TextEditor() {
           <NodeEventPlugin
             nodeType={RootNode}
             eventType="click"
-            eventListener={()=>setIsEditing(true)}
+            eventListener={() => setIsEditing(true)}
           />
           <OnChangePlugin
             onChange={(editorState) => doc.current = editorState}

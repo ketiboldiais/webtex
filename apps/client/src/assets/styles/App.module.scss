@@ -7,8 +7,9 @@
 	height: 90vh;
 	button {
 		background-color: inherit;
+		font-family: 'Muli';
 		border: 0;
-		&:hover { cursor: pointer };
+		cursor: pointer;
 		@include Shadow1(4);}
 	h1 { text-align: center }
 	.NavBar {
@@ -29,32 +30,28 @@
 			margin-right: 5px;
 			padding: 0 5px;
 			@include Shadow1(5);
-			.Header {
-				margin-top: 10px;
-				display: flex;
-				flex-direction: column;
-				.SearchBar {
-					input {
-						background-color: white;
-						color: $coolGrey4;
-						margin-bottom: 0;
-						margin-top: 10px;
-						border-radius: 5px;
-						padding: $pad1;
-						border: $line;}}
-				.AddButton { font-size: 1em; }}
+			.controlPanel {
+				display: grid;
+				margin-top: 5px;
+				grid-template-columns: 1fr 1fr 1fr;
+				column-gap: 5px;
+				.addBtn { width: 100%; }
+				.undoBtn { width: 100%; }
+				.redoBtn { width: 100%; }
+			}
 			.NoteList {
 				padding: 0;
+				margin: 0;
 				list-style: none;
 				display: flex;
 				flex-direction: column-reverse;
-				.activeNote {
+				.Active {
 					background-color: $blue4;
 					color: $coolGrey5;
-					button {
+					.deleteBtn {
 						color: rgb(255, 149, 103);
 						box-shadow: none;}}
-				.NoteItem {
+				.Item {
 					small { font-size: 0.7rem }
 					margin: 5px 2px;
 					padding: 2px 5px;
@@ -63,7 +60,7 @@
 					.NoteItemHeader {
 						margin-top: 5px;
 						display: grid;
-						grid-template-columns: 7fr 1fr;
+						grid-template-columns: 8fr 1fr;
 						strong {
 							font-size: 0.8em;
 							max-width: 90%;
@@ -93,7 +90,7 @@
 				width: 90%;
 				margin: 0;
 				.EditorToolbar {
-					display: flex;
+					display: flex; 
 					flex-wrap: wrap;
 					position: fixed;
 					width: fit-content;

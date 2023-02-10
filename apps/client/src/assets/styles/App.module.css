@@ -30,11 +30,10 @@
 }
 .App button {
   background-color: inherit;
+  font-family: "Muli";
   border: 0;
-  box-shadow: 0px 1px 3px hsl(4deg, 0%, 91%), 0 1px 2px hsl(4deg, 0%, 50%);
-}
-.App button:hover {
   cursor: pointer;
+  box-shadow: 0px 1px 3px hsl(4deg, 0%, 91%), 0 1px 2px hsl(4deg, 0%, 50%);
 }
 .App h1 {
   text-align: center;
@@ -61,54 +60,54 @@
   padding: 0 5px;
   box-shadow: 0px 1px 3px hsl(5deg, 0%, 91%), 0 1px 2px hsl(5deg, 0%, 50%);
 }
-.App .Workspace .Sidebar .Header {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
+.App .Workspace .Sidebar .controlPanel {
+  display: grid;
+  margin-top: 5px;
+  grid-template-columns: 1fr 1fr 1fr;
+  -moz-column-gap: 5px;
+       column-gap: 5px;
 }
-.App .Workspace .Sidebar .Header .SearchBar input {
-  background-color: white;
-  color: hsl(210deg, 16%, 76%);
-  margin-bottom: 0;
-  margin-top: 10px;
-  border-radius: 5px;
-  padding: 0.25rem;
-  border: solid thin lightgrey;
+.App .Workspace .Sidebar .controlPanel .addBtn {
+  width: 100%;
 }
-.App .Workspace .Sidebar .Header .AddButton {
-  font-size: 1em;
+.App .Workspace .Sidebar .controlPanel .undoBtn {
+  width: 100%;
+}
+.App .Workspace .Sidebar .controlPanel .redoBtn {
+  width: 100%;
 }
 .App .Workspace .Sidebar .NoteList {
   padding: 0;
+  margin: 0;
   list-style: none;
   display: flex;
   flex-direction: column-reverse;
 }
-.App .Workspace .Sidebar .NoteList .activeNote {
+.App .Workspace .Sidebar .NoteList .Active {
   background-color: hsl(215deg, 75%, 55%);
   color: hsl(208deg, 21%, 88%);
 }
-.App .Workspace .Sidebar .NoteList .activeNote button {
+.App .Workspace .Sidebar .NoteList .Active .deleteBtn {
   color: rgb(255, 149, 103);
   box-shadow: none;
 }
-.App .Workspace .Sidebar .NoteList .NoteItem {
+.App .Workspace .Sidebar .NoteList .Item {
   margin: 5px 2px;
   padding: 2px 5px;
   box-shadow: 0px 1px 3px hsl(5deg, 0%, 91%), 0 1px 2px hsl(5deg, 0%, 50%);
 }
-.App .Workspace .Sidebar .NoteList .NoteItem small {
+.App .Workspace .Sidebar .NoteList .Item small {
   font-size: 0.7rem;
 }
-.App .Workspace .Sidebar .NoteList .NoteItem:hover {
+.App .Workspace .Sidebar .NoteList .Item:hover {
   cursor: pointer;
 }
-.App .Workspace .Sidebar .NoteList .NoteItem .NoteItemHeader {
+.App .Workspace .Sidebar .NoteList .Item .NoteItemHeader {
   margin-top: 5px;
   display: grid;
-  grid-template-columns: 7fr 1fr;
+  grid-template-columns: 8fr 1fr;
 }
-.App .Workspace .Sidebar .NoteList .NoteItem .NoteItemHeader strong {
+.App .Workspace .Sidebar .NoteList .Item .NoteItemHeader strong {
   font-size: 0.8em;
   max-width: 90%;
   overflow: hidden;
@@ -149,7 +148,6 @@
   display: flex;
   flex-wrap: wrap;
   position: fixed;
-  width: -webkit-fit-content;
   width: -moz-fit-content;
   width: fit-content;
   margin-left: -2vw;
@@ -232,7 +230,6 @@
   background-color: white;
 }
 .App .Workspace .TextEditor .Lexical .EditorToolbar .SaveButton {
-  width: -webkit-fit-content;
   width: -moz-fit-content;
   width: fit-content;
 }
@@ -245,7 +242,6 @@
   font-size: 15px;
   -webkit-user-select: none;
      -moz-user-select: none;
-      -ms-user-select: none;
           user-select: none;
   display: inline-block;
   pointer-events: none;
