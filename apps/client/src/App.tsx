@@ -1,10 +1,28 @@
-import React, { useEffect, useRef, useState } from "react";
-import { DEFAULT_NOTE_CONTENT, WELCOME_NOTE_CONTENT } from "./Defaults";
+import {
+  ButtonHTMLAttributes,
+  ChangeEventHandler,
+  createContext,
+  createElement,
+  Dispatch,
+  MouseEventHandler,
+  ReactNode,
+  SetStateAction,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  DEFAULT_NOTE_CONTENT,
+  EMPTY_NOTE,
+  WELCOME_NOTE_CONTENT,
+} from "./Defaults";
 import S from "@styles/App.module.css";
 import {
   configureStore,
   createListenerMiddleware,
   createSlice,
+  nanoid,
   PayloadAction,
 } from "@reduxjs/toolkit";
 import {
@@ -13,7 +31,10 @@ import {
   useDispatch,
   useSelector,
 } from "react-redux";
-import { LexicalComposer } from "@lexical/react/LexicalComposer";
+import {
+  InitialEditorStateType,
+  LexicalComposer,
+} from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { EquationNode, MathPlugin } from "./Equation";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
@@ -23,6 +44,7 @@ import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import {
   INSERT_ORDERED_LIST_COMMAND,
+  INSERT_UNORDERED_LIST_COMMAND,
   ListItemNode,
   ListNode,
 } from "@lexical/list";
@@ -33,6 +55,7 @@ import {
   EditorState,
   FORMAT_ELEMENT_COMMAND,
   FORMAT_TEXT_COMMAND,
+  LexicalEditor,
   RootNode,
 } from "lexical";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
@@ -183,19 +206,19 @@ const {
 const noteListenerMiddleware = createListenerMiddleware();
 noteListenerMiddleware.startListening({
   actionCreator: addNote,
-  effect: async (action, api) => {
+  effect: async (action) => {
     await db_addNote(action.payload);
   },
 });
 noteListenerMiddleware.startListening({
   actionCreator: deleteNote,
-  effect: async (action, api) => {
+  effect: async (action) => {
     await db_deleteNote(action.payload);
   },
 });
 noteListenerMiddleware.startListening({
   actionCreator: saveNote,
-  effect: async (action, api) => {
+  effect: async (action) => {
     await db_saveNote(action.payload);
   },
 });
@@ -229,17 +252,69 @@ export function App() {
     <Provider store={store}>
       <div className={S.App}>
         <Navbar />
-        <Workspace />
+        <main>
+          <Workspace />
+        </main>
       </div>
     </Provider>
   );
 }
 
+interface IEditorContext {
+  editor: LexicalEditor;
+  activeEditor: LexicalEditor;
+  activeNoteId: string;
+  setActiveNoteId: Dispatch<SetStateAction<string>>;
+  activeNoteTitle: string;
+  setActiveEditor: Dispatch<SetStateAction<LexicalEditor>>;
+  setActiveNoteTitle: Dispatch<SetStateAction<string>>;
+}
+function EditorContextProvider({ children }: { children: ReactNode }) {
+  const activeNote = getActiveNote();
+  const [editor] = useLexicalComposerContext();
+  const [activeEditor, setActiveEditor] = useState(editor);
+  const [activeNoteId, setActiveNoteId] = useState(activeNote.id);
+  const [activeNoteTitle, setActiveNoteTitle] = useState(activeNote.title);
+
+  const value: IEditorContext = {
+    editor,
+    activeEditor,
+    setActiveEditor,
+    activeNoteId,
+    setActiveNoteId,
+    activeNoteTitle,
+    setActiveNoteTitle,
+  };
+
+  return (
+    <EditorContext.Provider value={value}>
+      {children}
+    </EditorContext.Provider>
+  );
+}
+const EditorContext = createContext<IEditorContext>({} as IEditorContext);
+const useEditor = () => useContext(EditorContext);
+
 function Workspace() {
+  const activeNote = getActiveNote();
+  const defaultConfig = {
+    namespace: "editor",
+    theme,
+    nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, EquationNode],
+    onError(error: any) {
+      throw error;
+    },
+    editorState: activeNote.content,
+  };
   return (
     <div className={S.Workspace}>
-      <SideBar />
-      <TextEditor />
+      <LexicalComposer initialConfig={defaultConfig}>
+        <EditorContextProvider>
+          <SideBar />
+          <Editor />
+        </EditorContextProvider>
+      </LexicalComposer>
+      {/* <TextEditor /> */}
     </div>
   );
 }
@@ -248,60 +323,62 @@ function SideBar() {
   const dispatch = useAppDispatch();
   const notes = getNotes();
   const noteCount = getNoteCount();
-  
-
+  function createNote(event: BtnEvt) {
+    event.stopPropagation();
+    const title = `untitled${noteCount}`;
+    const id = nanoid(10);
+    const newnote = makeNote(id, title, EMPTY_NOTE);
+    dispatch(addNote(newnote));
+  }
+  function destroyNote(event: BtnEvt, note: Note) {
+    event.stopPropagation();
+    dispatch(deleteNote(note));
+  }
   return (
     <div className={S.Sidebar}>
       <div className={S.Header}>
-        <button
-          children={"New Note"}
-          className={S.AddButton}
-          onClick={() => {
-            const title = `untitled${noteCount}`;
-            const ID = id(noteCount + 1);
-            const newNote = makeNote(ID, title, DEFAULT_NOTE_CONTENT);
-            dispatch(addNote(newNote));
-          }}
-        />
+        <Button label={"New Note"} click={createNote} />
       </div>
       <ul className={S.NoteList}>
-        {notes.map((note) => <NoteItem key={note.id} note={note} />)}
+        {notes.map((note) => (
+          <NoteItem key={note.id} note={note} onDelete={destroyNote} />
+        ))}
       </ul>
     </div>
   );
 }
-
-function NoteItem({ note }: { note: Note }) {
+interface INoteItem {
+  note: Note;
+  onDelete: (event: BtnEvt, note: Note) => void;
+}
+function NoteItem({ note, onDelete }: INoteItem) {
   const dispatch = useAppDispatch();
   const activeNote = getActiveNote();
+  const { activeNoteTitle, setActiveNoteId, setActiveNoteTitle } = useEditor();
+  function switchNote(event: LiEvt) {
+    event.stopPropagation();
+    dispatch(setActiveNote(note));
+  }
+  const noteTitle = note.id === activeNote.id ? activeNoteTitle : note.title;
   return (
-    <li
-      onClick={(event) => {
-        event.stopPropagation();
-        dispatch(setActiveNote(note));
-      }}
-    >
-      <div className={styleNoteItem(note, activeNote)}>
-        <div className={S.NoteItemHeader}>
-          <strong>{titleNote(note, activeNote)}</strong>
-          <button
-            onClick={(event) => {
-              event.stopPropagation();
-              dispatch(deleteNote(note));
-            }}
-            children={"delete"}
-            className={S.deleteBtn}
-          />
-        </div>
-        <small>{note.date}</small>
+    <li onClick={switchNote} className={styleNoteItem(note, activeNote)}>
+      <div className={S.NoteItemHeader}>
+        <Boldtext content={noteTitle} />
+        <Button label={"delete"} click={(e) => onDelete(e, note)} />
       </div>
+      <Subtext content={note.date} />
     </li>
   );
 }
 
-function titleNote(note1: Note, note2: Note) {
-  return note1.id === note2.id ? note2.title : note1.title;
+function Boldtext({ content }: { content: string }) {
+  return <strong>{content}</strong>;
 }
+
+function Subtext({ content }: { content: string }) {
+  return <small>{content}</small>;
+}
+
 function styleNoteItem(note1: Note, note2: Note) {
   return note1.id === note2.id ? `${S.Item} ${S.Active}` : `${S.Item}`;
 }
@@ -315,17 +392,16 @@ const editorConfig = {
   },
 };
 
-function TextEditor() {
-  const activeNote = getActiveNote();
-  const [title, setTitle] = useState(activeNote.title);
-  const [isEditing, setIsEditing] = useState(false);
-
-  const doc = useRef<EditorState | null>(null);
+function Editor() {
   const dispatch = useAppDispatch();
+  const activeNote = getActiveNote();
+  const doc = useRef<EditorState | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const { activeNoteId, activeNoteTitle } = useEditor();
 
   const save = () => {
     const content = getContent(doc.current);
-    const note = makeNote(activeNote.id, title, content);
+    const note = makeNote(activeNoteId, activeNoteTitle, content);
     dispatch(saveNote(note));
   };
 
@@ -333,189 +409,100 @@ function TextEditor() {
     if (!isEditing) save();
   }, [isEditing]);
 
+  return (
+    <div className={S.TextEditor}>
+      <EditorToolbar />
+      <div className={S.Lexical} onBlur={() => setIsEditing(false)}>
+        <DocTitle />
+        <HistoryPlugin />
+        <RichTextPlugin
+          contentEditable={<ContentEditable className={S.EditorInput} />}
+          placeholder={<div className={S.EditorPlaceholder}></div>}
+          ErrorBoundary={LexicalErrorBoundary}
+        />
+        <NodeEventPlugin
+          nodeType={RootNode}
+          eventType={"click"}
+          eventListener={() => setIsEditing(true)}
+        />
+        <UpdatePlugin
+          value={activeNote && activeNote.content
+            ? activeNote.content
+            : DEFAULT_NOTE_CONTENT}
+        />
+        <OnChangePlugin onChange={(editorState) => doc.current = editorState} />
+        <ListPlugin />
+        <MathPlugin />
+      </div>
+    </div>
+  );
+}
+
+type InputFn = ChangeEventHandler<HTMLInputElement>;
+
+function DocTitle() {
+  const activeNote = getActiveNote();
+  const [title, setTitle] = useState(activeNote.title);
+  const { setActiveNoteTitle, setActiveNoteId } = useEditor();
+
+  const updateTitle: InputFn = (event) => {
+    setTitle(event.target.value);
+  };
+
   useEffect(() => {
-    dispatch(updateActiveNoteTitle(title));
+    setActiveNoteTitle(title);
   }, [title]);
 
   useEffect(() => {
     setTitle(activeNote.title);
+    setActiveNoteId(activeNote.id);
   }, [activeNote]);
 
   return (
-    <div className={S.TextEditor}>
-      <div className={S.TextEditorHeader}>
-        <input
-          type="text"
-          required
-          value={title}
-          placeholder={"Untitled"}
-          className={S.NoteTitle}
-          onChange={(event) => {
-            setIsEditing(true);
-            setTitle(event.target.value);
-            setIsEditing(false);
-          }}
-        />
-      </div>
-      <div className={S.Lexical} onBlur={() => setIsEditing(false)}>
-        <LexicalComposer initialConfig={{ ...editorConfig, editable: true }}>
-          <EditorToolbar
-            children={[
-              <button
-                key={"editor-save"}
-                onClick={() => save()}
-                className={S.SaveButton}
-                children={"Save"}
-              />,
-            ]}
-          />
-          <HistoryPlugin />
-          <RichTextPlugin
-            contentEditable={<ContentEditable className={S.EditorInput} />}
-            placeholder={<div className={S.EditorPlaceholder}></div>}
-            ErrorBoundary={LexicalErrorBoundary}
-          />
-          <ListPlugin />
-          <MathPlugin />
-          <UpdatePlugin
-            value={activeNote && activeNote.content
-              ? activeNote.content
-              : DEFAULT_NOTE_CONTENT}
-          />
-          <NodeEventPlugin
-            nodeType={RootNode}
-            eventType="click"
-            eventListener={() => setIsEditing(true)}
-          />
-          <OnChangePlugin
-            onChange={(editorState) => doc.current = editorState}
-            ignoreSelectionChange
-            ignoreHistoryMergeTagChange
-          />
-          <Autofocus />
-        </LexicalComposer>
-      </div>
+    <div className={S.NoteTitle}>
+      <input
+        type={"text"}
+        value={title}
+        placeholder={"Untitled"}
+        onChange={updateTitle}
+      />
     </div>
   );
 }
 
-type ToolbarOption = { label: string; value: string };
-const opts: ToolbarOption[] = [
-  { label: "Paragraph", value: "p" },
-  { label: "Heading 1", value: "h1" },
-  { label: "Heading 2", value: "h2" },
-  { label: "Heading 3", value: "h3" },
-  { label: "Heading 4", value: "h4" },
-  { label: "Heading 5", value: "h5" },
-  { label: "Heading 6", value: "h6" },
-];
-
-const blockMap = {
-  bullet: "Bulleted List",
-  check: "Check List",
-  code: "Code Block",
-  h1: "Heading 1",
-  h2: "Heading 2",
-  h3: "Heading 3",
-  h4: "Heading 4",
-  h5: "Heading 5",
-  h6: "Heading 6",
-  number: "Numbered List",
-  paragraph: "Normal",
-  quote: "Quote",
-};
-type BlockType = keyof typeof blockMap;
-
-function EditorToolbar({ children }: { children: JSX.Element[] }) {
+function EditorToolbar() {
   const [editor] = useLexicalComposerContext();
-
+  const trigger = {
+    bold: () => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold"),
+    strikethrough: () =>
+      editor.dispatchCommand(FORMAT_TEXT_COMMAND, "strikethrough"),
+    italicize: () => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic"),
+    underline: () => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline"),
+    align: {
+      left: () => editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "left"),
+      center: () => editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "center"),
+      right: () => editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "right"),
+      justify: () => editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "justify"),
+    },
+    list: {
+      ordered: () =>
+        editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined),
+      unordered: () =>
+        editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined),
+    },
+  };
   return (
     <div className={S.EditorToolbar}>
-      {children}
-      <Bold
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold")}
-      />
-      <Cross
-        onClick={() =>
-          editor.dispatchCommand(FORMAT_TEXT_COMMAND, "strikethrough")}
-      />
-      <Italic
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic")}
-      />
-      <Underline
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline")}
-      />
-      <AlignLeft
-        onClick={() => editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "left")}
-      />
-      <AlignCenter
-        onClick={() => editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "center")}
-      />
-      <AlignRight
-        onClick={() => editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "right")}
-      />
-      <Justify
-        onClick={() =>
-          editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "justify")}
-      />
-    </div>
-  );
-}
-
-type DropdownOption = {
-  label: string;
-  value: string;
-};
-
-type DropdownProps = {
-  options: DropdownOption[];
-  chosenOption?: DropdownOption;
-  onChange: (chosenOption?: DropdownOption) => void;
-};
-
-function Dropdown({ options, chosenOption, onChange }: DropdownProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [highlightedIndex, setHighlightedIndex] = useState(0);
-  const selectOption = (option: DropdownOption) => {
-    if (option !== chosenOption) onChange(option);
-  };
-  const IsChosen = (option: DropdownOption) => {
-    return option === chosenOption;
-  };
-  useEffect(() => {
-    if (isOpen) setHighlightedIndex(0);
-  }, [isOpen]);
-  return (
-    <div
-      tabIndex={0}
-      className={S.DropdownContainer}
-      onBlur={() => setIsOpen(false)}
-      onClick={() => setIsOpen((prev) => !prev)}
-    >
-      <span className={S.ValueField}>{chosenOption?.label}</span>
-      <div className={S.divider}></div>
-      <div className={S.caret}></div>
-      <dl className={`${S.optionsList} ${isOpen && S.show}`}>
-        {options.map((option, i: number) => (
-          <dt
-            key={`${option.value}-${option.label}-${i}`}
-            className={`${IsChosen(option) && S.selected} ${
-              i === highlightedIndex && S.highlighted
-            }`}
-            onMouseEnter={() => setHighlightedIndex(i)}
-            onClick={(event) => {
-              event.stopPropagation();
-              selectOption(option);
-              setIsOpen(false);
-            }}
-          >
-            <div className={S.Checkbox}>
-              {IsChosen(option) && <div className={S.Checked}></div>}
-            </div>
-            {option.label}
-          </dt>
-        ))}
-      </dl>
+      <Button label={<BoldIcon />} click={trigger.bold} />
+      <Button label={<StrikeIcon />} click={trigger.strikethrough} />
+      <Button label={<ItalicIcon />} click={trigger.italicize} />
+      <Button label={<UnderlineIcon />} click={trigger.underline} />
+      <Button label={<AlignLeftIcon />} click={trigger.align.left} />
+      <Button label={<AlignCenterIcon />} click={trigger.align.center} />
+      <Button label={<AlignRightIcon />} click={trigger.align.right} />
+      <Button label={<JustifyIcon />} click={trigger.align.justify} />
+      <Button label={<OLIcon />} click={trigger.list.ordered} />
+      <Button label={<ULIcon />} click={trigger.list.unordered} />
     </div>
   );
 }
@@ -547,11 +534,57 @@ function Navbar() {
   );
 }
 
-type ClickEvt = React.MouseEvent<HTMLButtonElement>;
-type ClickFn = React.MouseEventHandler<HTMLButtonElement>;
-
-interface NoteItemProps {
-  title: string;
-  date: string;
-  className: string;
+type BtnFn = MouseEventHandler<HTMLButtonElement>;
+type BtnEvt = Parameters<BtnFn>[0];
+interface ButtonProps {
+  click: BtnFn;
+  label?: string | ReactNode;
+  className?: string;
 }
+import boldSVG from "./icons/bold.svg";
+function BoldIcon() {
+  return <img src={boldSVG} />;
+}
+import centerSVG from "./icons/alignCenter.svg";
+function AlignCenterIcon() {
+  return <img src={centerSVG} />;
+}
+import italicSVG from "./icons/italic.svg";
+function ItalicIcon() {
+  return <img src={italicSVG} />;
+}
+import strikeSVG from "./icons/strike.svg";
+function StrikeIcon() {
+  return <img src={strikeSVG} />;
+}
+import underlineSVG from "./icons/underline.svg";
+function UnderlineIcon() {
+  return <img src={underlineSVG} />;
+}
+import alignLeftSVG from "./icons/alignLeft.svg";
+function AlignLeftIcon() {
+  return <img src={alignLeftSVG} />;
+}
+import alignRightSVG from "./icons/alignRight.svg";
+function AlignRightIcon() {
+  return <img src={alignRightSVG} />;
+}
+import justifySVG from "./icons/justify.svg";
+function JustifyIcon() {
+  return <img src={justifySVG} />;
+}
+import ulSVG from "./icons/bulletedList.svg";
+function ULIcon() {
+  return <img src={ulSVG} />;
+}
+import olSVG from "./icons/numberedList.svg";
+function OLIcon() {
+  return <img src={olSVG} />;
+}
+
+function Button({ click, label, className }: ButtonProps) {
+  return <button onClick={click} className={className}>{label}</button>;
+}
+
+type LiFn = MouseEventHandler<HTMLLIElement>;
+type LiEvt = Parameters<LiFn>[0];

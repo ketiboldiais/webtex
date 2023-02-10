@@ -1,9 +1,11 @@
+import { MouseEventHandler } from "react";
+
 type EditorButton = React.ButtonHTMLAttributes<HTMLButtonElement>;
+type BtnFn = MouseEventHandler<HTMLButtonElement>;
 
-
-export const Bold = ({ ...props }: EditorButton) => {
+export const Bold = ({ click }: {click:BtnFn}) => {
   return (
-    <button {...props}>
+    <button onClick={click}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="16"
@@ -277,7 +279,6 @@ export const Save = ({ ...props }: EditorButton) => {
   );
 };
 
-
 export const SaveButton = ({ ...props }: EditorButton) => {
   return (
     <button {...props}>
@@ -287,4 +288,3 @@ export const SaveButton = ({ ...props }: EditorButton) => {
     </button>
   );
 };
-
