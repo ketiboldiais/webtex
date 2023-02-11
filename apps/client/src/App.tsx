@@ -1,3 +1,26 @@
+/**
+ * @file App.tsx
+ * Some preliminary comments:
+ * There's a fair amount of complexity with this application,
+ * but taking a functional approach makes things much easier.
+ * First, there are a lot of states to manage:
+ *
+ * 1. The global, Redux state.
+ * 2. The editor state.
+ * 3. The toolbar state.
+ * 4. The note list state.
+ * 5. The change-history state.
+ *
+ * These states MUST ALL be kept in sync. The real challenge
+ * is syncing the global Redux state with the Lexical editor
+ * state. Lexical uses its own shadow DOM, and it uses flushSync
+ * for certain updates. Accordingly, we can't use useEffect or
+ * simple auto-save to save the user's current work. Doing so
+ * can cause flushSync to trigger while React is already rendering.
+ * Because of this friction, we must make even smaller substates
+ * with React's useContext hook.
+ */
+
 import {
   ChangeEventHandler,
   createContext,
@@ -5,6 +28,7 @@ import {
   MouseEventHandler,
   ReactNode,
   SetStateAction,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -29,35 +53,16 @@ import {
   useDispatch,
   useSelector,
 } from "react-redux";
-import { LexicalComposer } from "@lexical/react/LexicalComposer";
-import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
-import { EquationNode, MathPlugin } from "./Equation";
-import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
-import { NodeEventPlugin } from "@lexical/react/LexicalNodeEventPlugin";
-import { ContentEditable } from "@lexical/react/LexicalContentEditable";
-import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
-import { ListPlugin } from "@lexical/react/LexicalListPlugin";
-import {
-  INSERT_ORDERED_LIST_COMMAND,
-  INSERT_UNORDERED_LIST_COMMAND,
-  ListItemNode,
-  ListNode,
-} from "@lexical/list";
+
 import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
 import { $wrapNodes } from "@lexical/selection";
 import theme from "../src/components/Editor/EditorTheme";
-import {
-  $getSelection,
-  $isRangeSelection,
-  EditorState,
-  FORMAT_ELEMENT_COMMAND,
-  FORMAT_TEXT_COMMAND,
-  LexicalEditor,
-  RootNode,
-} from "lexical";
-import { $createHeadingNode, HeadingNode, QuoteNode } from "@lexical/rich-text";
+
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import Dexie, { Table } from "dexie";
+
+/* -------------------------------------------------------------------------- */
+/*                               NOTE UTILITIES                               */
+/* -------------------------------------------------------------------------- */
 
 interface Note {
   id: string;
@@ -68,6 +73,30 @@ interface Note {
 
 const WelcomeNote = makeNote(`webtexDOCS`, "Welcome", WELCOME_NOTE_CONTENT);
 const BlankNote = makeNote(id(0), "", DEFAULT_NOTE_CONTENT);
+function makeNote(id: string, title: string, content: string): Note {
+  return {
+    id,
+    title,
+    content,
+    date: new Date().toLocaleDateString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  };
+}
+function id(noteCount: number) {
+  return `note${noteCount}`;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                  DATABASE                                  */
+/* -------------------------------------------------------------------------- */
+/**
+ * Webtex uses IndexedDB to store notes. The IndexedDB API is fairly hairy
+ * to work with, and it's best to just use an existing, well-tested library.
+ * In this case, we use Dexie.
+ */
+import Dexie, { Table } from "dexie";
 
 class NoteDB extends Dexie {
   notes!: Table<Note>;
@@ -114,29 +143,23 @@ async function db_saveNote(note: Note) {
   }
 }
 
-function makeNote(id: string, title: string, content: string): Note {
-  return {
-    id,
-    title,
-    content,
-    date: new Date().toLocaleDateString(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-  };
-}
-function id(noteCount: number) {
-  return `note${noteCount}`;
-}
+/* -------------------------------------------------------------------------- */
+/*                              REDUX NOTE SLICE                              */
+/* -------------------------------------------------------------------------- */
 
 type NoteListObj = { [noteId: string]: Note };
+
 interface NoteState {
   notelist: NoteListObj;
   notes: Note[];
   activeNote: Note;
   noteCount: number;
 }
+
 let noteListArray: Note[] = [];
+
+/* ------------------------------ Initial State ----------------------------- */
+
 const initNoteList = await db_getNotes().then((notes) => {
   let init: NoteListObj = {};
   notes.forEach((note) => {
@@ -153,6 +176,8 @@ const initialState: NoteState = {
   notes: [...noteListArray, WelcomeNote],
   noteCount: Object.values(initNoteList).length,
 };
+
+/* ---------------------------------- Slice --------------------------------- */
 
 const noteSlice = createSlice({
   name: "notes",
@@ -201,19 +226,38 @@ const {
   deleteNote,
 } = noteSlice.actions;
 
+/* --------------------------- Listener Middleware -------------------------- */
+
 const noteListenerMiddleware = createListenerMiddleware();
+
+/**
+ * Saves a note to the database the moment a note is added.
+ * Todo: Only add notes that actually have content. At the moment,
+ * this listener will add notes blindly.
+ */
 noteListenerMiddleware.startListening({
   actionCreator: addNote,
   effect: async (action) => {
     await db_addNote(action.payload);
   },
 });
+
+/**
+ * Deletes a note from the database
+ * the moment a note is deleted.
+ */
 noteListenerMiddleware.startListening({
   actionCreator: deleteNote,
   effect: async (action) => {
     await db_deleteNote(action.payload);
   },
 });
+
+/**
+ * Saves a note to the database
+ * the moment a note is saved.
+ * Todo: Limit this action as well.
+ */
 noteListenerMiddleware.startListening({
   actionCreator: saveNote,
   effect: async (action) => {
@@ -221,6 +265,10 @@ noteListenerMiddleware.startListening({
   },
 });
 const noteListeners = noteListenerMiddleware.middleware;
+
+/* -------------------------------------------------------------------------- */
+/*                         REDUX STORE (GLOBAL STATE)                         */
+/* -------------------------------------------------------------------------- */
 
 const notesReducer = noteSlice.reducer;
 const store = configureStore({
@@ -230,17 +278,20 @@ const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({}).concat(noteListeners),
 });
+
+/* -------------------------------- Selectors ------------------------------- */
+
 type RootState = ReturnType<typeof store.getState>;
 type AppDispatch = typeof store.dispatch;
-
 const useAppDispatch = () => useDispatch<AppDispatch>();
-
 const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
-
 const getNotes = (): Note[] => useAppSelector((state) => state.notes.notes);
-
 const getActiveNote = (): Note =>
   useAppSelector((state) => state.notes.activeNote);
+
+/* -------------------------------------------------------------------------- */
+/*                                  REACT APP                                 */
+/* -------------------------------------------------------------------------- */
 
 export function App() {
   return (
@@ -255,8 +306,12 @@ export function App() {
   );
 }
 
+/* ------------------------ SUBSTATE: EDITOR CONTEXT ------------------------ */
+
+import { LexicalComposer } from "@lexical/react/LexicalComposer";
+
 interface IEditorContext {
-  editor: LexicalEditor;
+  initEditor: LexicalEditor;
   activeEditor: LexicalEditor;
   activeNoteId: string;
   setActiveNoteId: Dispatch<SetStateAction<string>>;
@@ -272,7 +327,7 @@ function EditorContextProvider({ children }: { children: ReactNode }) {
   const [activeNoteTitle, setActiveNoteTitle] = useState(activeNote.title);
 
   const value: IEditorContext = {
-    editor,
+    initEditor: editor,
     activeEditor,
     setActiveEditor,
     activeNoteId,
@@ -289,6 +344,10 @@ function EditorContextProvider({ children }: { children: ReactNode }) {
 }
 const EditorContext = createContext<IEditorContext>({} as IEditorContext);
 const useEditor = () => useContext(EditorContext);
+
+/* -------------------------------------------------------------------------- */
+/*                               PAGE: WORKSPACE                              */
+/* -------------------------------------------------------------------------- */
 
 function Workspace() {
   const activeNote = getActiveNote();
@@ -314,20 +373,32 @@ function Workspace() {
   );
 }
 
+/* --------------------------------- SIDEBAR -------------------------------- */
+
 function SideBar() {
   const dispatch = useAppDispatch();
   let notes = getNotes();
-  const { editor } = useEditor();
+  const { activeEditor } = useEditor();
   const active = getActiveNote();
+
+  const [notesOpen, openNotes] = useState(true);
+
+  const toggle: BtnFn = (event) => {
+    event.stopPropagation();
+    console.log("clicked");
+    openNotes(!notesOpen);
+  };
+
   function createNote(event: BtnEvt) {
     event.stopPropagation();
     const title = ``;
     const id = nanoid(10);
     const newnote = makeNote(id, title, EMPTY_NOTE);
     dispatch(addNote(newnote));
-    const newstate = editor.parseEditorState(newnote.content);
-    editor.setEditorState(newstate);
+    const newstate = activeEditor.parseEditorState(newnote.content);
+    activeEditor.setEditorState(newstate);
   }
+
   function destroyNote(event: BtnEvt, note: Note) {
     event.stopPropagation();
     dispatch(deleteNote(note));
@@ -335,20 +406,25 @@ function SideBar() {
       let ns = notes.filter((n) => n.id !== note.id);
       if (ns.length) {
         const newnote = ns[0];
-        const newstate = editor.parseEditorState(newnote.content);
-        editor.setEditorState(newstate);
+        const newstate = activeEditor.parseEditorState(newnote.content);
+        activeEditor.setEditorState(newstate);
       } else {
-        const blank = editor.parseEditorState(EMPTY_NOTE);
-        editor.setEditorState(blank);
+        const blank = activeEditor.parseEditorState(EMPTY_NOTE);
+        activeEditor.setEditorState(blank);
       }
     }
   }
   return (
     <div className={S.Sidebar}>
       <div className={S.Header}>
-        <Button label={"New Note"} click={createNote} />
+        <Button
+          label={"notes"}
+          click={toggle}
+          className={S.SidebarToggle}
+        />
+        <Button label={"new"} click={createNote} />
       </div>
-      <ul className={S.NoteList}>
+      <ul className={notesOpen ? `${S.NoteList} ${S.NotesOpen}` : S.NoteList}>
         {notes.map((note) => (
           <NoteItem key={note.id} note={note} onDelete={destroyNote} />
         ))}
@@ -356,6 +432,15 @@ function SideBar() {
     </div>
   );
 }
+
+/* -------------------------------- NOTE ITEM ------------------------------- */
+/**
+ * Each note item in the sidebar is rendered as a NoteItem component.
+ * Every note can be deleted except the documentation page.
+ * This ensures that the note list is never empty, reducing the complexity
+ * of keeping all the states in sync.
+ */
+
 interface INoteItem {
   note: Note;
   onDelete: (event: BtnEvt, note: Note) => void;
@@ -364,12 +449,12 @@ function NoteItem({ note, onDelete }: INoteItem) {
   const dispatch = useAppDispatch();
   const activeNote = getActiveNote();
   const { activeNoteTitle } = useEditor();
-  const { editor } = useEditor();
+  const { activeEditor } = useEditor();
   function switchNote(event: LiEvt) {
     event.stopPropagation();
     dispatch(setActiveNote(note));
-    const newstate = editor.parseEditorState(note.content);
-    editor.setEditorState(newstate);
+    const newstate = activeEditor.parseEditorState(note.content);
+    activeEditor.setEditorState(newstate);
   }
   const noteTitle = note.id === activeNote.id ? activeNoteTitle : note.title;
   return (
@@ -388,17 +473,62 @@ function NoteItem({ note, onDelete }: INoteItem) {
   );
 }
 
-function Boldtext({ content }: { content: string }) {
-  return <strong>{content}</strong>;
-}
-
-function Subtext({ content }: { content: string }) {
-  return <small>{content}</small>;
-}
-
 function styleNoteItem(note1: Note, note2: Note) {
   return note1.id === note2.id ? `${S.Item} ${S.Active}` : `${S.Item}`;
 }
+
+/* --------------------------------- EDITOR --------------------------------- */
+/**
+ * This is the actual text-editor component. It's a function that takes
+ * no arguments.
+ *
+ * To minimize global dispatches, we don't save
+ * on first render (because the displayed note
+ * is already saved) and we don't save while
+ * the user is typing (a user typing at
+ * 90 WPM roughly translates to 7 dispatches every
+ * second -- that's far too much). We accomplish this with
+ * the useEffect hook below.
+ *
+ * If the user is editing, however, we will use autoSave
+ * during brief pauses:
+ */
+
+import { useAutosave } from "@hooks/useAutosave";
+
+/** Type definitions provded by Lexical. */
+import { EditorState, LexicalEditor, RootNode } from "lexical";
+
+/** Commands provided by Lexical. */
+import { FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND } from "lexical";
+
+/** Selection helper functions provided by Lexical. */
+import { $getSelection, $isRangeSelection } from "lexical";
+
+/** The Editor uses various plugins provided by Lexical. */
+import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
+import { NodeEventPlugin } from "@lexical/react/LexicalNodeEventPlugin";
+import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
+
+/** RichTextPlugin & Dependencies */
+import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
+import { ContentEditable } from "@lexical/react/LexicalContentEditable";
+import { $createHeadingNode, HeadingNode, QuoteNode } from "@lexical/rich-text";
+
+/** List Plugin & Dependecies */
+import { ListPlugin } from "@lexical/react/LexicalListPlugin";
+import {
+  INSERT_ORDERED_LIST_COMMAND,
+  INSERT_UNORDERED_LIST_COMMAND,
+  ListItemNode,
+  ListNode,
+} from "@lexical/list";
+
+/**
+ * Custom plugin: Math Plugin
+ * Enables inline-markdown KaTeX rendering.
+ */
+import { EquationNode, MathPlugin } from "./Equation";
 
 function Editor() {
   const dispatch = useAppDispatch();
@@ -414,23 +544,25 @@ function Editor() {
   };
 
   useEffect(() => {
-    if (!isEditing && !isFirstRender) {
-      save();
-    }
+    if (!isEditing && !isFirstRender) save();
   }, [isEditing]);
+
+  useAutosave({
+    data: { activeNoteTitle, content: getContent(doc.current) },
+    onSave: () => {
+      if (!isEditing && !isFirstRender) save();
+    },
+  });
 
   return (
     <div className={S.TextEditor}>
-      <EditorToolbar />
+      <Toolbar />
       <div className={S.Lexical} onBlur={() => setIsEditing(false)}>
-        <DocTitle />
+        <NoteTitle />
         <HistoryPlugin />
         <RichTextPlugin
           contentEditable={<ContentEditable className={S.EditorInput} />}
-          placeholder={
-            <div className={S.EditorPlaceholder}>
-            </div>
-          }
+          placeholder={<div className={S.EditorPlaceholder}></div>}
           ErrorBoundary={LexicalErrorBoundary}
         />
         <NodeEventPlugin
@@ -449,9 +581,15 @@ function Editor() {
   );
 }
 
-type InputFn = ChangeEventHandler<HTMLInputElement>;
-
-function DocTitle() {
+/* ------------------------------- NOTE TITLE ------------------------------- */
+/**
+ * The note title is what links the editor to what's shown in the notelist
+ * panel. We separate it from the editor because again, it isn't necessary
+ * for the editor's functionality. When the input changes, the active note's
+ * title in the notelist changes accordingly. Again, this is a nice feature,
+ * but not necessary.
+ */
+function NoteTitle() {
   const activeNote = getActiveNote();
   const [title, setTitle] = useState(activeNote.title);
   const { setActiveNoteTitle, setActiveNoteId } = useEditor();
@@ -481,8 +619,84 @@ function DocTitle() {
   );
 }
 
-function EditorToolbar() {
+/* -------------------------------------------------------------------------- */
+/*                               Editor Toolbar                               */
+/* -------------------------------------------------------------------------- */
+/**
+ * We need a separate, toolbar state to sync changes in the editor with
+ * what's shown on the toolbar. This state is separated because (1) the editor
+ * doesn't necessarily need it to the function (it's just a nice-to-have),
+ * and (2) it has nothing to do with the global state.
+ */
+/* ------------------------ Substate: Toolbar Context ----------------------- */
+interface ToolbarCtx {
+  isBold: boolean;
+  isItalic: boolean;
+  isUnderline: boolean;
+  isCrossed: boolean;
+  isLink: boolean;
+  isSubScript: boolean;
+  isSuperScript: boolean;
+  isCode: boolean;
+  fontFamily: boolean;
+  fontSize: boolean;
+  fontColor: boolean;
+  blockType: string;
+  selectedElementKey: string;
+  applyStyleText: (styles: Record<string, string>) => void;
+}
+/**
+ * We don't initialize this yet because it's returned by the
+ * Toolbar plugin.
+ */
+const ToolbarContext = createContext<ToolbarCtx>({} as ToolbarCtx);
+
+/**
+ * We define a Blocktype as a sum type, whose members are
+ * the keys of blocktypeMap. The keys biject to what's
+ * displayed in the toolbar.
+ */
+type Blocktype = keyof typeof blocktypeMap;
+const blocktypeMap = {
+  orderedList: "Numbered List",
+  unorderedList: "Bulleted List",
+  checkList: "Check List",
+  h1: "Heading 1",
+  h2: "Heading 2",
+  h3: "Heading 3",
+  h4: "Heading 4",
+  h5: "Heading 5",
+  h6: "Heading 6",
+  paragraph: "Normal",
+  quote: "Quote",
+};
+
+/**
+ * For now, we're going to limit the font
+ * customization options.
+ */
+type FontSize = "12px" | "14px" | "16px";
+type FontColor = "blue" | "red" | "black";
+type FontFamily = "CMU Serif" | "Times New Roman";
+
+function Toolbar() {
   const [editor] = useLexicalComposerContext();
+  const [blockType, setBlocktype] = useState<Blocktype>("paragraph");
+  const [selectedElementKey, setSelectedElementKey] = useState(null);
+  const [fontSize, setFontSize] = useState<FontSize>("12px");
+  const [fontColor, setFontColor] = useState<FontColor>("black");
+  const [fontFamily, setFontFamily] = useState<FontFamily>("CMU Serif");
+  const [isLink, setIsLink] = useState(false);
+  const [isBold, setIsBold] = useState(false);
+  const [isItalic, setIsItalic] = useState(false);
+  const [isUnderline, setIsUnderline] = useState(false);
+  const [isCrossed, setIsCrossed] = useState(false);
+  const [isSubscript, setIsSubscript] = useState(false);
+  const [isSuperscript, setIsSuperscript] = useState(false);
+  const [isCode, setIsCode] = useState(false);
+
+  const updateToolbar = useCallback(() => {}, []);
+
   const trigger = {
     bold: () => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold"),
     strikethrough: () =>
@@ -510,6 +724,7 @@ function EditorToolbar() {
       });
     },
   };
+
   return (
     <div className={S.EditorToolbar}>
       <Button label={<BoldIcon />} click={trigger.bold} />
@@ -611,6 +826,13 @@ function OLIcon() {
   return <img src={olSVG} />;
 }
 
+function Boldtext({ content }: { content: string }) {
+  return <strong>{content}</strong>;
+}
+
+function Subtext({ content }: { content: string }) {
+  return <small>{content}</small>;
+}
 function Button({ click, label, className }: ButtonProps) {
   return <button onClick={click} className={className}>{label}</button>;
 }
@@ -618,3 +840,4 @@ function Button({ click, label, className }: ButtonProps) {
 type LiFn = MouseEventHandler<HTMLLIElement>;
 type DivFn = MouseEventHandler<HTMLDivElement>;
 type LiEvt = Parameters<LiFn>[0];
+type InputFn = ChangeEventHandler<HTMLInputElement>;

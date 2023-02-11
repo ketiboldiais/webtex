@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from "react";
 
 function useDebounce<T>(data: T, interval: number) {
   const [liveData, setLiveData] = useState<T>(data);
@@ -47,6 +47,6 @@ export function useAutosave<A, B>({
         handleSave.current(valueOnCleanup.current);
       }
     },
-    [saveOnUnmount]
+    [saveOnUnmount],
   );
 }

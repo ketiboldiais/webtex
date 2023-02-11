@@ -54,7 +54,55 @@
     padding: 0;
   }
   .App main .Workspace .Sidebar {
-    display: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
+    border: none;
+  }
+  .App main .Workspace .Sidebar .Header {
+    display: flex;
+    justify-content: flex-start;
+  }
+  .App main .Workspace .Sidebar .Header button {
+    width: -moz-fit-content;
+    width: fit-content;
+    padding: 0.3em 0.5em;
+    margin: 0 5px;
+    border: none;
+  }
+  .App main .Workspace .Sidebar .NoteList {
+    list-style: none;
+    font-size: 0.85em;
+    padding: 0;
+    margin: 0;
+    height: 0;
+    overflow: hidden;
+  }
+  .App main .Workspace .Sidebar .NoteList li {
+    width: 100%;
+    display: grid;
+    padding: 5px;
+    grid-template-columns: 5fr 2fr;
+    cursor: pointer;
+  }
+  .App main .Workspace .Sidebar .NoteList li:hover {
+    background-color: rgb(222, 233, 233);
+  }
+  .App main .Workspace .Sidebar .NoteList li:hover button {
+    color: hsl(208deg, 12%, 58%);
+    border: none;
+    box-shadow: none;
+  }
+  .App main .Workspace .Sidebar .NoteList li .NoteItemHeader {
+    display: flex;
+    justify-content: space-between;
+  }
+  .App main .Workspace .Sidebar .NoteList li .NoteItemHeader button {
+    padding: 0 2px;
+    margin: 0 8px;
+    width: -moz-fit-content;
+    width: fit-content;
   }
   .App main .Workspace .TextEditor {
     display: flex;
@@ -226,26 +274,37 @@
     height: 100%;
     padding: 0 5px;
     margin-left: 0.3em;
-    box-shadow: 0px 1px 3px hsl(5deg, 0%, 91%), 0 1px 2px hsl(5deg, 0%, 50%);
+    margin-top: -4px;
   }
   .App main .Workspace .Sidebar .Header {
     margin-top: 5px;
+    display: flex;
+    justify-content: flex-end;
   }
   .App main .Workspace .Sidebar .Header button {
-    width: 100%;
-    padding: 0.5em;
-    box-shadow: none;
-    border: solid thin hsl(210deg, 16%, 76%);
-    color: hsl(208deg, 12%, 58%);
+    width: -moz-fit-content;
+    width: fit-content;
+    margin: 0 2px;
+    padding: 0.1em 0.5em;
+    box-shadow: 0px 1px 3px hsl(3deg, 0%, 91%), 0 1px 2px hsl(3deg, 0%, 50%);
+  }
+  .App main .Workspace .Sidebar .Header button svg {
+    width: 50px;
+    height: 50px;
   }
   .App main .Workspace .Sidebar .NoteList {
     padding: 0;
-    margin: 0;
+    box-shadow: 0px 1px 3px hsl(5deg, 0%, 91%), 0 1px 2px hsl(5deg, 0%, 50%);
+    margin: 10px 0;
     list-style: none;
     display: flex;
     flex-direction: column;
     overflow-y: scroll;
     scrollbar-width: none;
+    transition: linear 0.3s ease-in;
+  }
+  .App main .Workspace .Sidebar .NoteList .NotesOpen {
+    background-color: red;
   }
   .App main .Workspace .Sidebar .NoteList::-webkit-scrollbar {
     display: none;
@@ -259,18 +318,21 @@
     box-shadow: none;
   }
   .App main .Workspace .Sidebar .NoteList .Item {
-    margin: 5px 2px;
-    padding: 2px 5px;
     box-shadow: 0px 1px 3px hsl(5deg, 0%, 91%), 0 1px 2px hsl(5deg, 0%, 50%);
+    margin: 0;
+    padding: 0;
   }
   .App main .Workspace .Sidebar .NoteList .Item small {
     font-size: 0.7rem;
+    display: block;
+    padding: 4px;
   }
   .App main .Workspace .Sidebar .NoteList .Item:hover {
     cursor: pointer;
   }
   .App main .Workspace .Sidebar .NoteList .Item .NoteItemHeader {
     margin-top: 5px;
+    padding: 4px;
     display: grid;
     grid-template-columns: 8fr 1fr;
   }
