@@ -5,10 +5,8 @@ import {
   MouseEventHandler,
   ReactNode,
   SetStateAction,
-  useCallback,
   useContext,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -51,7 +49,6 @@ import theme from "../src/components/Editor/EditorTheme";
 import {
   $getSelection,
   $isRangeSelection,
-  CLEAR_EDITOR_COMMAND,
   EditorState,
   FORMAT_ELEMENT_COMMAND,
   FORMAT_TEXT_COMMAND,

@@ -1,249 +1,413 @@
 @import './base';
 
-.App {
-	font-size: 1em;
-	font-family: 'Muli';
-	margin: 0;
-	padding: 0;
-	display: grid;
-	grid-template-columns: 1fr;
-	grid-template-rows: 0.8fr 30fr;
-
-	button {
-		background-color: inherit;
+@media (max-width:500px) {
+	.App {
+		font-size: 1em;
 		font-family: 'Muli';
-		border: 0;
-		cursor: pointer;
-		@include Shadow1(4);
-	}
-
-	.NavBar {
-		display: flex;
-		flex-direction: row-reverse;
-		padding-right: 10px;
-
-		h1 {
-			padding: 0;
-			font-size: 0.8rem;
-			margin: 2px 0;
-			color: $coolGrey4;
-		}
-	}
-
-	main {
-		height: 100vh;
-		position: absolute;
-		top: 28px;
 		margin: 0;
 		padding: 0;
+		display: grid;
 
-		.Workspace {
-			display: grid;
-			grid-template-columns: 3fr 9fr;
-			column-gap: 0.8em;
-			height: 94%;
+		button {
+			background-color: inherit;
+			font-family: 'Muli';
+			border: 0;
+			cursor: pointer;
+			@include Shadow1(4);
+		}
 
-			.Sidebar {
-				height: 100%;
-				padding: 0 5px;
-				margin-left: 0.3em;
-				@include Shadow1(5);
+		.NavBar {
+			display: flex;
+			flex-direction: row-reverse;
+			padding-right: 10px;
 
-				.Header {
-					margin-top: 5px;
+			h1 {
+				padding: 0;
+				font-size: 0.8rem;
+				margin: 2px 0;
+				color: $coolGrey4;
+			}
+		}
 
-					button {
-						width: 100%;
-						padding: 0.5em;
-						box-shadow: none;
-						border: solid thin $coolGrey4;
-						color: $coolGrey3;
-					}
+		main {
+			height: 100vh;
+			width: 100%;
+			padding: 0;
+			.Workspace {
+				.Sidebar {
+					display: none;
 				}
-
-				.NoteList {
-					padding: 0;
-					margin: 0;
-					list-style: none;
+				.TextEditor {
 					display: flex;
 					flex-direction: column;
-					overflow-y: scroll;
-					scrollbar-width: none;
-
-					&::-webkit-scrollbar {
-						display: none;
-					}
-
-					.Active {
-						background-color: $blue4;
-						color: $coolGrey5;
-
-						button {
-							color: rgb(255, 149, 103);
-							box-shadow: none;
-						}
-					}
-
-					.Item {
-						small {
-							font-size: 0.7rem
-						}
-
-						margin: 5px 2px;
-						padding: 2px 5px;
-
-						&:hover {
-							cursor: pointer
-						}
-
-						@include Shadow1(5);
-
-						.NoteItemHeader {
-							margin-top: 5px;
-							display: grid;
-							grid-template-columns: 8fr 1fr;
-
-							strong {
-								font-size: 0.8em;
-								max-width: 90%;
-								overflow: hidden;
-								white-space: nowrap;
-								text-overflow: ellipsis;
+					align-items: center;
+					height: 100%;
+					.EditorToolbar {
+						display: flex;
+						flex-wrap: wrap;
+						justify-content: space-evenly;
+						padding:0.3em;
+						width: 100%;
+						.dropdown {
+							width: 6em;
+							height: 100%;
+							padding: 4px;
+							z-index: 10;
+							position: relative;
+							display: flex;
+							align-items: center;
+							flex-wrap: wrap;
+							&:hover {
+								cursor: pointer;
 							}
+							@include Shadow1(4);
+							.placeholder {
+								font-size: 0.8em;
+								padding-left: 0.3em;
+							}
+							.optionsList {
+								position: absolute;
+								overflow: hidden;
+								z-index: 10;
+								top: calc(100% + 0.25em);
+								padding: 0;
+								margin: 0;
+								height: 0;
+								transition: height 0.3s ease;
+							}
+							.active {
+								height: 150px;
+								background-color: white;
+								border: solid thin $coolGrey5;
+							}
+							button {
+								width: 100%;
+								margin: 3px 0;
+								padding: 0;
+								height: fit-content;
+								box-shadow: none;
+								&:hover {
+									background-color: $coolGrey4;
+								}
+							}
+						}
+					}
+					.Lexical {
+						height: 100%;
+						overflow-y: scroll;
+						scrollbar-color: $coolGrey4 white;
+						scrollbar-width: thin;
+						&::-webkit-scrollbar {
+							width: 7px;
+						}
+
+						&::-webkit-scrollbar-track {
+							background: white;
+						}
+
+						&::-webkit-scrollbar-thumb {
+							background-color: $coolGrey4;
+							border-radius: 5px;
+						}
+
+						.NoteTitle {
+							input {
+								text-align: center;
+								font-family: 'CMU Serif';
+								font-size: 1.2rem;
+								border: none;
+								outline: none;
+							}
+							border: none;
+							width: fit-content;
+							margin: 5% auto;
+						}
+						width: 97%;
+						margin: 0.5em auto;
+						border: solid thin #e4e4e4;
+						padding: 1em 2em;
+						@include Card;
+						.EditorPlaceholder {
+							overflow: hidden;
+							position: absolute;
+							text-overflow: ellipsis;
+							top: 15px;
+							left: 10px;
+							font-size: 15px;
+							user-select: none;
+							display: inline-block;
+							pointer-events: none;
+						}
+						.EditorInput {
+							margin: 0;
+							padding: 0;
+							display: block;
+							outline: none;
+							position: relative;
+							scrollbar-width: none;
+							font-size: 0.93em;
+							font-family: 'CMU Serif';
+							height: 75vh;
 						}
 					}
 				}
 			}
+		}
+	}
+}
 
-			.TextEditor {
-				display: flex;
-				flex-direction: column;
-				align-items: center;
-				height: 100%;
 
-				.EditorToolbar {
-					display: flex;
-					flex-wrap: wrap;
-					align-items: flex-start;
-					width: 100%;
+@media (min-width:500px) {
+	.App {
+		font-size: 1em;
+		font-family: 'Muli';
+		margin: 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: 1fr;
+		grid-template-rows: 0.8fr 30fr;
 
-					button {
-						margin-right: 2px;
-					}
+		button {
+			background-color: inherit;
+			font-family: 'Muli';
+			border: 0;
+			cursor: pointer;
+			@include Shadow1(4);
+		}
 
-					.dropdown {
-						width: 6em;
-						height: 100%;
-						padding: 1px;
-						z-index: 10;
-						position: relative;
-						display: flex;
-						align-items: center;
-						flex-wrap: wrap;
+		.NavBar {
+			display: flex;
+			flex-direction: row-reverse;
+			padding-right: 10px;
 
-						&:hover {
-							cursor: pointer;
-						}
+			h1 {
+				padding: 0;
+				font-size: 0.8rem;
+				margin: 2px 0;
+				color: $coolGrey4;
+			}
+		}
 
-						@include Shadow1(4);
+		main {
+			height: 100vh;
+			position: absolute;
+			top: 28px;
+			margin: 0;
+			// background-color: teal;
+			width: 100%;
+			padding: 0;
 
-						.placeholder {
-							font-size: 0.8em;
-							padding-left: 0.3em;
-						}
+			.Workspace {
+				display: grid;
+				margin: auto;
+				width: 100%;
+				grid-template-columns: 3fr 9fr;
+				column-gap: 0.8em;
+				height: 94%;
 
-						.optionsList {
-							position: absolute;
-							overflow: hidden;
-							z-index: 10;
-							top: calc(100% + 0.25em);
-							padding: 0;
-							margin: 0;
-							height: 0;
-							transition: height 0.3s ease;
-						}
+				.Sidebar {
+					height: 100%;
+					padding: 0 5px;
+					margin-left: 0.3em;
+					@include Shadow1(5);
 
-						.active {
-							height: 150px;
-							background-color: white;
-							border: solid thin $coolGrey5;
-						}
+					.Header {
+						margin-top: 5px;
 
 						button {
 							width: 100%;
-							margin: 3px 0;
-							padding: 0;
-							height: fit-content;
+							padding: 0.5em;
 							box-shadow: none;
+							border: solid thin $coolGrey4;
+							color: $coolGrey3;
+						}
+					}
+
+					.NoteList {
+						padding: 0;
+						margin: 0;
+						list-style: none;
+						display: flex;
+						flex-direction: column;
+						overflow-y: scroll;
+						scrollbar-width: none;
+
+						&::-webkit-scrollbar {
+							display: none;
+						}
+
+						.Active {
+							background-color: $blue4;
+							color: $coolGrey5;
+
+							button {
+								color: rgb(255, 149, 103);
+								box-shadow: none;
+							}
+						}
+
+						.Item {
+							small {
+								font-size: 0.7rem
+							}
+
+							margin: 5px 2px;
+							padding: 2px 5px;
 
 							&:hover {
-								background-color: $coolGrey4;
+								cursor: pointer
+							}
+
+							@include Shadow1(5);
+
+							.NoteItemHeader {
+								margin-top: 5px;
+								display: grid;
+								grid-template-columns: 8fr 1fr;
+
+								strong {
+									font-size: 0.8em;
+									max-width: 90%;
+									overflow: hidden;
+									white-space: nowrap;
+									text-overflow: ellipsis;
+								}
 							}
 						}
 					}
 				}
 
-				.Lexical {
+				.TextEditor {
+					display: flex;
+					flex-direction: column;
+					align-items: center;
 					height: 100%;
-					overflow-y: scroll;
-					scrollbar-color: $coolGrey4 white;
-					scrollbar-width: thin;
-					&::-webkit-scrollbar {
-						width: 7px;
-					}
-					&::-webkit-scrollbar-track {
-						background: white;
-					}
-					&::-webkit-scrollbar-thumb {
-						background-color: $coolGrey4;
-						border-radius: 5px;
-					}
 
-					.NoteTitle {
-						input {
-							text-align: center;
-							font-family: 'CMU Serif';
-							font-size: 1.2rem;
-							border: none;
-							outline: none;
+					.EditorToolbar {
+						display: flex;
+						flex-wrap: wrap;
+						align-items: flex-start;
+						width: 100%;
+
+						button {
+							margin-right: 2px;
 						}
 
-						border: none;
-						width: fit-content;
-						margin: 5% auto;
+						.dropdown {
+							width: 6em;
+							height: 100%;
+							padding: 1px;
+							z-index: 10;
+							position: relative;
+							display: flex;
+							align-items: center;
+							flex-wrap: wrap;
+
+							&:hover {
+								cursor: pointer;
+							}
+
+							@include Shadow1(4);
+
+							.placeholder {
+								font-size: 0.8em;
+								padding-left: 0.3em;
+							}
+
+							.optionsList {
+								position: absolute;
+								overflow: hidden;
+								z-index: 10;
+								top: calc(100% + 0.25em);
+								padding: 0;
+								margin: 0;
+								height: 0;
+								transition: height 0.3s ease;
+							}
+
+							.active {
+								height: 150px;
+								background-color: white;
+								border: solid thin $coolGrey5;
+							}
+
+							button {
+								width: 100%;
+								margin: 3px 0;
+								padding: 0;
+								height: fit-content;
+								box-shadow: none;
+
+								&:hover {
+									background-color: $coolGrey4;
+								}
+							}
+						}
 					}
 
-					width: 100%;
-					margin: 0.5em;
-					margin-right: 1.2em;
-					margin-bottom: 0;
-					border: solid thin #e4e4e4;
-					padding: 1em 2em;
-					@include Card;
+					.Lexical {
+						height: 100%;
+						overflow-y: scroll;
+						scrollbar-color: $coolGrey4 white;
+						scrollbar-width: thin;
 
-					.EditorPlaceholder {
-						overflow: hidden;
-						position: absolute;
-						text-overflow: ellipsis;
-						top: 15px;
-						left: 10px;
-						font-size: 15px;
-						user-select: none;
-						display: inline-block;
-						pointer-events: none;
-					}
+						&::-webkit-scrollbar {
+							width: 7px;
+						}
 
+						&::-webkit-scrollbar-track {
+							background: white;
+						}
 
-					.EditorInput {
-						margin: 0;
-						padding: 0;
-						display: block;
-						outline: none;
-						position: relative;
-						scrollbar-width: none;
-						font-size: 0.93em;
-						font-family: 'CMU Serif';
-						height: 75vh;
+						&::-webkit-scrollbar-thumb {
+							background-color: $coolGrey4;
+							border-radius: 5px;
+						}
+
+						.NoteTitle {
+							input {
+								text-align: center;
+								font-family: 'CMU Serif';
+								font-size: 1.2rem;
+								border: none;
+								outline: none;
+							}
+
+							border: none;
+							width: fit-content;
+							margin: 5% auto;
+						}
+
+						width: 100%;
+						margin: 0.5em;
+						margin-right: 1.2em;
+						margin-bottom: 0;
+						border: solid thin #e4e4e4;
+						padding: 1em 2em;
+						@include Card;
+
+						.EditorPlaceholder {
+							overflow: hidden;
+							position: absolute;
+							text-overflow: ellipsis;
+							top: 15px;
+							left: 10px;
+							font-size: 15px;
+							user-select: none;
+							display: inline-block;
+							pointer-events: none;
+						}
+						.EditorInput {
+							margin: 0;
+							padding: 0;
+							display: block;
+							outline: none;
+							position: relative;
+							scrollbar-width: none;
+							font-size: 0.93em;
+							font-family: 'CMU Serif';
+							height: 75vh;
+						}
 					}
 				}
 			}
