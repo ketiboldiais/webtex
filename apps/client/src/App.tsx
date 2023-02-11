@@ -21,45 +21,6 @@
  * with React's useContext hook.
  */
 
-import {
-  ChangeEventHandler,
-  createContext,
-  Dispatch,
-  MouseEventHandler,
-  ReactNode,
-  SetStateAction,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import {
-  DEFAULT_NOTE_CONTENT,
-  EMPTY_NOTE,
-  WELCOME_NOTE_CONTENT,
-} from "./Defaults";
-import S from "@styles/App.module.css";
-import {
-  configureStore,
-  createListenerMiddleware,
-  createSlice,
-  nanoid,
-  PayloadAction,
-} from "@reduxjs/toolkit";
-import {
-  Provider,
-  TypedUseSelectorHook,
-  useDispatch,
-  useSelector,
-} from "react-redux";
-
-import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
-import { $wrapNodes } from "@lexical/selection";
-import theme from "../src/components/Editor/EditorTheme";
-
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-
 /* -------------------------------------------------------------------------- */
 /*                               NOTE UTILITIES                               */
 /* -------------------------------------------------------------------------- */
@@ -71,8 +32,23 @@ interface Note {
   date: string;
 }
 
+/**
+ * These are default notes. They're stringified ASTs
+ * of the Lexical editor.
+ *
+ * WELCOME_NOTE_CONTENT
+ * - The documentation note.
+ *
+ * EMPTY_NOTE
+ * - The note used as a placeholder in the event
+ *   the active note in Redux is undefined, as well
+ *   as the note used when creating a new note.
+ */
+import { EMPTY_NOTE, WELCOME_NOTE_CONTENT } from "./Defaults";
+
 const WelcomeNote = makeNote(`webtexDOCS`, "Welcome", WELCOME_NOTE_CONTENT);
-const BlankNote = makeNote(id(0), "", DEFAULT_NOTE_CONTENT);
+const BlankNote = makeNote(id(0), "", EMPTY_NOTE);
+
 function makeNote(id: string, title: string, content: string): Note {
   return {
     id,
@@ -146,6 +122,13 @@ async function db_saveNote(note: Note) {
 /* -------------------------------------------------------------------------- */
 /*                              REDUX NOTE SLICE                              */
 /* -------------------------------------------------------------------------- */
+/**
+ * We use Redux to manage the global state.
+ */
+import { nanoid, PayloadAction } from "@reduxjs/toolkit";
+import { Provider } from "react-redux";
+
+/* ------------------------ Initial Note Slice State ------------------------ */
 
 type NoteListObj = { [noteId: string]: Note };
 
@@ -157,8 +140,6 @@ interface NoteState {
 }
 
 let noteListArray: Note[] = [];
-
-/* ------------------------------ Initial State ----------------------------- */
 
 const initNoteList = await db_getNotes().then((notes) => {
   let init: NoteListObj = {};
@@ -178,6 +159,7 @@ const initialState: NoteState = {
 };
 
 /* ---------------------------------- Slice --------------------------------- */
+import { createSlice } from "@reduxjs/toolkit";
 
 const noteSlice = createSlice({
   name: "notes",
@@ -227,6 +209,13 @@ const {
 } = noteSlice.actions;
 
 /* --------------------------- Listener Middleware -------------------------- */
+/**
+ * To save to the Dexie database, we use listener middleware.
+ * We do so to keep the notes slice reducers as pure as possible.
+ * Saving to Dexie is a side-effect, unnecessary for the the note
+ * slice reducer to function.
+ */
+import { createListenerMiddleware } from "@reduxjs/toolkit";
 
 const noteListenerMiddleware = createListenerMiddleware();
 
@@ -267,10 +256,13 @@ noteListenerMiddleware.startListening({
 const noteListeners = noteListenerMiddleware.middleware;
 
 /* -------------------------------------------------------------------------- */
-/*                         REDUX STORE (GLOBAL STATE)                         */
+/*                         Redux Store (Global State)                         */
 /* -------------------------------------------------------------------------- */
 
+import { configureStore } from "@reduxjs/toolkit";
+
 const notesReducer = noteSlice.reducer;
+
 const store = configureStore({
   reducer: {
     notes: notesReducer,
@@ -280,6 +272,8 @@ const store = configureStore({
 });
 
 /* -------------------------------- Selectors ------------------------------- */
+
+import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
 
 type RootState = ReturnType<typeof store.getState>;
 type AppDispatch = typeof store.dispatch;
@@ -292,6 +286,24 @@ const getActiveNote = (): Note =>
 /* -------------------------------------------------------------------------- */
 /*                                  REACT APP                                 */
 /* -------------------------------------------------------------------------- */
+
+/** React dependencies. */
+import {
+  ChangeEventHandler,
+  createContext,
+  Dispatch,
+  MouseEventHandler,
+  ReactNode,
+  SetStateAction,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
+/** Application Styles. */
+import S from "@styles/App.module.css";
 
 export function App() {
   return (
@@ -307,8 +319,9 @@ export function App() {
 }
 
 /* ------------------------ SUBSTATE: EDITOR CONTEXT ------------------------ */
-
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import theme from "../src/components/Editor/EditorTheme";
 
 interface IEditorContext {
   initEditor: LexicalEditor;
@@ -499,11 +512,15 @@ import { useAutosave } from "@hooks/useAutosave";
 /** Type definitions provded by Lexical. */
 import { EditorState, LexicalEditor, RootNode } from "lexical";
 
+/** Error boundary handler for debugging, provided by Lexical. */
+import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
+
 /** Commands provided by Lexical. */
 import { FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND } from "lexical";
 
 /** Selection helper functions provided by Lexical. */
 import { $getSelection, $isRangeSelection } from "lexical";
+import { $wrapNodes } from "@lexical/selection";
 
 /** The Editor uses various plugins provided by Lexical. */
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
@@ -767,7 +784,7 @@ function Dropdown(
 }
 
 function getContent(editor: EditorState | null) {
-  return editor === null ? DEFAULT_NOTE_CONTENT : JSON.stringify(editor);
+  return editor === null ? EMPTY_NOTE : JSON.stringify(editor);
 }
 
 function Navbar() {
