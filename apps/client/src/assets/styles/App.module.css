@@ -84,7 +84,12 @@
   margin: 0;
   list-style: none;
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
+  overflow-y: scroll;
+  scrollbar-width: none;
+}
+.App main .Workspace .Sidebar .NoteList::-webkit-scrollbar {
+  display: none;
 }
 .App main .Workspace .Sidebar .NoteList .Active {
   background-color: hsl(215deg, 75%, 55%);
@@ -161,7 +166,7 @@
   transition: height 0.3s ease;
 }
 .App main .Workspace .TextEditor .EditorToolbar .dropdown .active {
-  height: 130px;
+  height: 150px;
   background-color: white;
   border: solid thin hsl(208deg, 21%, 88%);
 }
@@ -178,14 +183,27 @@
 }
 .App main .Workspace .TextEditor .Lexical {
   height: 100%;
+  overflow-y: scroll;
+  scrollbar-color: hsl(210deg, 16%, 76%) white;
+  scrollbar-width: thin;
   width: 100%;
   margin: 0.5em;
   margin-right: 1.2em;
   margin-bottom: 0;
   border: solid thin #e4e4e4;
-  padding: 1em 1.8em;
+  padding: 1em 2em;
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
   transition: 0.3s;
+  border-radius: 5px;
+}
+.App main .Workspace .TextEditor .Lexical::-webkit-scrollbar {
+  width: 7px;
+}
+.App main .Workspace .TextEditor .Lexical::-webkit-scrollbar-track {
+  background: white;
+}
+.App main .Workspace .TextEditor .Lexical::-webkit-scrollbar-thumb {
+  background-color: hsl(210deg, 16%, 76%);
   border-radius: 5px;
 }
 .App main .Workspace .TextEditor .Lexical .NoteTitle {
@@ -219,11 +237,12 @@
 }
 .App main .Workspace .TextEditor .Lexical .EditorInput {
   margin: 0;
+  padding: 0;
   display: block;
   outline: none;
   position: relative;
-  height: -moz-fit-content;
-  height: fit-content;
-  overflow-y: overlay;
+  scrollbar-width: none;
+  font-size: 0.93em;
   font-family: "CMU Serif";
+  height: 75vh;
 }/*# sourceMappingURL=App.module.css.map */

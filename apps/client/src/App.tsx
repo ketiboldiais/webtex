@@ -8,6 +8,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -50,6 +51,7 @@ import theme from "../src/components/Editor/EditorTheme";
 import {
   $getSelection,
   $isRangeSelection,
+  CLEAR_EDITOR_COMMAND,
   EditorState,
   FORMAT_ELEMENT_COMMAND,
   FORMAT_TEXT_COMMAND,
@@ -67,7 +69,7 @@ interface Note {
   date: string;
 }
 
-const WelcomeNote = makeNote(id(0), "Welcome", WELCOME_NOTE_CONTENT);
+const WelcomeNote = makeNote(`webtexDOCS`, "Welcome", WELCOME_NOTE_CONTENT);
 const BlankNote = makeNote(id(0), "", DEFAULT_NOTE_CONTENT);
 
 class NoteDB extends Dexie {
@@ -116,7 +118,15 @@ async function db_saveNote(note: Note) {
 }
 
 function makeNote(id: string, title: string, content: string): Note {
-  return { id, title, content, date: new Date().toDateString() };
+  return {
+    id,
+    title,
+    content,
+    date: new Date().toLocaleDateString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  };
 }
 function id(noteCount: number) {
   return `note${noteCount}`;
@@ -125,6 +135,7 @@ function id(noteCount: number) {
 type NoteListObj = { [noteId: string]: Note };
 interface NoteState {
   notelist: NoteListObj;
+  notes: Note[];
   activeNote: Note;
   noteCount: number;
 }
@@ -142,6 +153,7 @@ const initNoteList = await db_getNotes().then((notes) => {
 const initialState: NoteState = {
   notelist: initNoteList,
   activeNote: noteListArray.length !== 0 ? noteListArray[0] : WelcomeNote,
+  notes: [...noteListArray, WelcomeNote],
   noteCount: Object.values(initNoteList).length,
 };
 
@@ -151,21 +163,22 @@ const noteSlice = createSlice({
   reducers: {
     addNote(state, action: PayloadAction<Note>) {
       const newNote = action.payload;
+      state.notes.unshift(action.payload);
       state.notelist[newNote.id] = newNote;
       state.noteCount = Object.values(state.notelist).length;
       state.activeNote = state.notelist[newNote.id];
-    },
-    updateActiveNoteTitle(state, action: PayloadAction<string>) {
-      state.activeNote.title = action.payload;
     },
     deleteNote(state, action: PayloadAction<Note>) {
       if (state.noteCount > 1) {
         state.noteCount -= 1;
         delete state.notelist[action.payload.id];
-        const notelist = Object.values(state.notelist);
-        state.activeNote = notelist[notelist.length - 1];
+        state.notes = state.notes.filter((n) => n.id !== action.payload.id);
+        if (state.notes.length) {
+          state.activeNote = state.notes[0];
+        } else {
+          state.activeNote = BlankNote;
+        }
       } else {
-        state.notelist[action.payload.id] = BlankNote;
         state.activeNote = BlankNote;
       }
     },
@@ -178,6 +191,7 @@ const noteSlice = createSlice({
     saveNote(state, action: PayloadAction<Note>) {
       const note = action.payload;
       state.notelist[note.id] = note;
+      state.notes = state.notes.map((n) => n.id === note.id ? note : n);
       state.activeNote = note;
     },
   },
@@ -187,7 +201,6 @@ const {
   saveNote,
   addNote,
   setActiveNote,
-  updateActiveNoteTitle,
   deleteNote,
 } = noteSlice.actions;
 
@@ -227,10 +240,7 @@ const useAppDispatch = () => useDispatch<AppDispatch>();
 
 const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 
-const getNoteCount = () => useAppSelector((state) => state.notes.noteCount);
-
-const getNotes = (): Note[] =>
-  Object.values(useAppSelector((state) => state.notes.notelist));
+const getNotes = (): Note[] => useAppSelector((state) => state.notes.notes);
 
 const getActiveNote = (): Note =>
   useAppSelector((state) => state.notes.activeNote);
@@ -293,6 +303,7 @@ function Workspace() {
       throw error;
     },
     editorState: activeNote.content,
+    editable: true,
   };
   return (
     <div className={S.Workspace}>
@@ -308,18 +319,32 @@ function Workspace() {
 
 function SideBar() {
   const dispatch = useAppDispatch();
-  const notes = getNotes();
-  const noteCount = getNoteCount();
+  let notes = getNotes();
+  const { editor } = useEditor();
+  const active = getActiveNote();
   function createNote(event: BtnEvt) {
     event.stopPropagation();
-    const title = `untitled${noteCount}`;
+    const title = ``;
     const id = nanoid(10);
     const newnote = makeNote(id, title, EMPTY_NOTE);
     dispatch(addNote(newnote));
+    const newstate = editor.parseEditorState(newnote.content);
+    editor.setEditorState(newstate);
   }
   function destroyNote(event: BtnEvt, note: Note) {
     event.stopPropagation();
     dispatch(deleteNote(note));
+    if (note.id === active.id) {
+      let ns = notes.filter((n) => n.id !== note.id);
+      if (ns.length) {
+        const newnote = ns[0];
+        const newstate = editor.parseEditorState(newnote.content);
+        editor.setEditorState(newstate);
+      } else {
+        const blank = editor.parseEditorState(EMPTY_NOTE);
+        editor.setEditorState(blank);
+      }
+    }
   }
   return (
     <div className={S.Sidebar}>
@@ -341,17 +366,25 @@ interface INoteItem {
 function NoteItem({ note, onDelete }: INoteItem) {
   const dispatch = useAppDispatch();
   const activeNote = getActiveNote();
-  const { activeNoteTitle, setActiveNoteId, setActiveNoteTitle } = useEditor();
+  const { activeNoteTitle } = useEditor();
+  const { editor } = useEditor();
   function switchNote(event: LiEvt) {
     event.stopPropagation();
     dispatch(setActiveNote(note));
+    const newstate = editor.parseEditorState(note.content);
+    editor.setEditorState(newstate);
   }
   const noteTitle = note.id === activeNote.id ? activeNoteTitle : note.title;
   return (
     <li onClick={switchNote} className={styleNoteItem(note, activeNote)}>
       <div className={S.NoteItemHeader}>
         <Boldtext content={noteTitle} />
-        <Button label={"delete"} click={(e) => onDelete(e, note)} />
+        {note.id !== `webtexDOCS` && (
+          <Button
+            label={"delete"}
+            click={(e) => onDelete(e, note)}
+          />
+        )}
       </div>
       <Subtext content={note.date} />
     </li>
@@ -370,20 +403,11 @@ function styleNoteItem(note1: Note, note2: Note) {
   return note1.id === note2.id ? `${S.Item} ${S.Active}` : `${S.Item}`;
 }
 
-const editorConfig = {
-  namespace: "editor",
-  theme,
-  nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, EquationNode],
-  onError(error: any) {
-    throw error;
-  },
-};
-
 function Editor() {
   const dispatch = useAppDispatch();
-  const activeNote = getActiveNote();
   const doc = useRef<EditorState | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isFirstRender, setIsFirstRender] = useState(true);
   const { activeNoteId, activeNoteTitle } = useEditor();
 
   const save = () => {
@@ -393,7 +417,9 @@ function Editor() {
   };
 
   useEffect(() => {
-    if (!isEditing) save();
+    if (!isEditing && !isFirstRender) {
+      save();
+    }
   }, [isEditing]);
 
   return (
@@ -404,18 +430,19 @@ function Editor() {
         <HistoryPlugin />
         <RichTextPlugin
           contentEditable={<ContentEditable className={S.EditorInput} />}
-          placeholder={<div className={S.EditorPlaceholder}></div>}
+          placeholder={
+            <div className={S.EditorPlaceholder}>
+            </div>
+          }
           ErrorBoundary={LexicalErrorBoundary}
         />
         <NodeEventPlugin
           nodeType={RootNode}
           eventType={"click"}
-          eventListener={() => setIsEditing(true)}
-        />
-        <UpdatePlugin
-          value={activeNote && activeNote.content
-            ? activeNote.content
-            : DEFAULT_NOTE_CONTENT}
+          eventListener={() => {
+            setIsEditing(true);
+            setIsFirstRender(false);
+          }}
         />
         <OnChangePlugin onChange={(editorState) => doc.current = editorState} />
         <ListPlugin />
@@ -529,21 +556,6 @@ function Dropdown(
 
 function getContent(editor: EditorState | null) {
   return editor === null ? DEFAULT_NOTE_CONTENT : JSON.stringify(editor);
-}
-
-interface updateProps {
-  value: string;
-}
-
-function UpdatePlugin({ value }: updateProps) {
-  const [editor] = useLexicalComposerContext();
-  useEffect(() => {
-    if (value) {
-      const initialEditorState = editor.parseEditorState(value);
-      editor.setEditorState(initialEditorState);
-    }
-  }, [value, editor]);
-  return <></>;
 }
 
 function Navbar() {
