@@ -120,8 +120,55 @@
 					flex-wrap: wrap;
 					align-items: flex-start;
 					width: 100%;
+
 					button {
 						margin-right: 2px;
+					}
+
+					.dropdown {
+						width: 6em;
+						height: 100%;
+						padding: 1px;
+						z-index: 10;
+						position: relative;
+						display: flex;
+						align-items: center;
+						flex-wrap: wrap;
+						&:hover {
+							cursor: pointer;
+						}
+						@include Shadow1(4);
+						.placeholder {
+							font-size: 0.8em;
+							padding-left: 0.3em;
+						}
+						.optionsList {
+							position: absolute;
+							overflow: hidden;
+							z-index: 10;
+							top: calc(100% + 0.25em);
+							padding: 0;
+							margin: 0;
+							height: 0;
+							transition: height 0.3s ease;
+						}
+						.active {
+							height: 130px;
+							background-color: white;
+							border: solid thin $coolGrey5;
+						}
+
+						button {
+							width: 100%;
+							margin: 3px 0;
+							padding: 0;
+							height: fit-content;
+							box-shadow: none;
+
+							&:hover {
+								background-color: $coolGrey4;
+							}
+						}
 					}
 				}
 

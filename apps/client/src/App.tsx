@@ -1,12 +1,11 @@
 import {
-  ButtonHTMLAttributes,
   ChangeEventHandler,
   createContext,
-  createElement,
   Dispatch,
   MouseEventHandler,
   ReactNode,
   SetStateAction,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -31,10 +30,7 @@ import {
   useDispatch,
   useSelector,
 } from "react-redux";
-import {
-  InitialEditorStateType,
-  LexicalComposer,
-} from "@lexical/react/LexicalComposer";
+import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { EquationNode, MathPlugin } from "./Equation";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
@@ -49,28 +45,20 @@ import {
   ListNode,
 } from "@lexical/list";
 import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
-import Autofocus from "../src/components/Editor/plugins/Autofocus";
+import { $wrapNodes } from "@lexical/selection";
 import theme from "../src/components/Editor/EditorTheme";
 import {
+  $getSelection,
+  $isRangeSelection,
   EditorState,
   FORMAT_ELEMENT_COMMAND,
   FORMAT_TEXT_COMMAND,
   LexicalEditor,
   RootNode,
 } from "lexical";
-import { HeadingNode, QuoteNode } from "@lexical/rich-text";
+import { $createHeadingNode, HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import Dexie, { Table } from "dexie";
-import {
-  AlignCenter,
-  AlignLeft,
-  AlignRight,
-  Bold,
-  Cross,
-  Italic,
-  Justify,
-  Underline,
-} from "@components/Editor/Buttons/EditorButtons";
 
 interface Note {
   id: string;
@@ -314,7 +302,6 @@ function Workspace() {
           <Editor />
         </EditorContextProvider>
       </LexicalComposer>
-      {/* <TextEditor /> */}
     </div>
   );
 }
@@ -490,6 +477,14 @@ function EditorToolbar() {
       unordered: () =>
         editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined),
     },
+    h1: () => {
+      editor.update(() => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          $wrapNodes(selection, () => $createHeadingNode("h1"));
+        }
+      });
+    },
   };
   return (
     <div className={S.EditorToolbar}>
@@ -503,6 +498,31 @@ function EditorToolbar() {
       <Button label={<JustifyIcon />} click={trigger.align.justify} />
       <Button label={<OLIcon />} click={trigger.list.ordered} />
       <Button label={<ULIcon />} click={trigger.list.unordered} />
+      <Dropdown title={"Format"}>
+        <Button label={"Heading 1"} click={trigger.h1} />
+        <Button label={"Heading 2"} click={trigger.h1} />
+        <Button label={"Heading 3"} click={trigger.h1} />
+        <Button label={"Heading 4"} click={trigger.h1} />
+        <Button label={"Heading 5"} click={trigger.h1} />
+      </Dropdown>
+    </div>
+  );
+}
+
+function Dropdown(
+  { title, children }: { title?: string; children: ReactNode },
+) {
+  const [open, setOpen] = useState(false);
+  const toggle: DivFn = (event) => {
+    event.stopPropagation();
+    setOpen(!open);
+  };
+  return (
+    <div onClick={toggle} className={S.dropdown}>
+      <div className={S.placeholder}>{title}</div>
+      <div className={open ? `${S.optionsList} ${S.active}` : S.optionsList}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -587,4 +607,5 @@ function Button({ click, label, className }: ButtonProps) {
 }
 
 type LiFn = MouseEventHandler<HTMLLIElement>;
+type DivFn = MouseEventHandler<HTMLDivElement>;
 type LiEvt = Parameters<LiFn>[0];
