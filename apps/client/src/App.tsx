@@ -326,6 +326,7 @@ export function App() {
 }
 
 /* ------------------------ SUBSTATE: EDITOR CONTEXT ------------------------ */
+
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import theme from "../src/components/Editor/EditorTheme";
@@ -505,7 +506,15 @@ function styleNoteItem(note1: Note, note2: Note) {
 import { useAutosave } from "@hooks/useAutosave";
 
 /** Type definitions provded by Lexical. */
-import { EditorState, LexicalEditor, RootNode } from "lexical";
+import {
+  $createParagraphNode,
+  COMMAND_PRIORITY_CRITICAL,
+  EditorState,
+  ElementNode,
+  LexicalEditor,
+  RootNode,
+  SELECTION_CHANGE_COMMAND,
+} from "lexical";
 
 /** Error boundary handler for debugging, provided by Lexical. */
 import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
@@ -514,8 +523,28 @@ import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
 import { FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND } from "lexical";
 
 /** Selection helper functions provided by Lexical. */
-import { $getSelection, $isRangeSelection } from "lexical";
-import { $wrapNodes } from "@lexical/selection";
+import { $getSelection, $isRangeSelection, RangeSelection } from "lexical";
+import {
+  $getSelectionStyleValueForProperty,
+  $isAtNodeEnd,
+  $patchStyleText,
+  $wrapNodes,
+} from "@lexical/selection";
+
+/** Returns the selected node. */
+function getSelectedNode(selection: RangeSelection) {
+  const anchor = selection.anchor;
+  const focus = selection.focus;
+  const anchorNode = selection.anchor.getNode();
+  const focusNode = selection.focus.getNode();
+  if (anchorNode === focusNode) return anchorNode;
+  const isBackward = selection.isBackward();
+  if (isBackward) {
+    return $isAtNodeEnd(focus) ? anchorNode : focusNode;
+  } else {
+    return $isAtNodeEnd(anchor) ? focusNode : anchorNode;
+  }
+}
 
 /** The Editor uses various plugins provided by Lexical. */
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
@@ -525,16 +554,28 @@ import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 /** RichTextPlugin & Dependencies */
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
-import { $createHeadingNode, HeadingNode, QuoteNode } from "@lexical/rich-text";
+import {
+  $createHeadingNode,
+  $createQuoteNode,
+  $isHeadingNode,
+  HeadingNode,
+  HeadingTagType,
+  QuoteNode,
+} from "@lexical/rich-text";
 
 /** List Plugin & Dependecies */
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import {
+  $isListNode,
   INSERT_ORDERED_LIST_COMMAND,
   INSERT_UNORDERED_LIST_COMMAND,
   ListItemNode,
   ListNode,
+  REMOVE_LIST_COMMAND,
 } from "@lexical/list";
+
+/** Link Plugin & Dependecies */
+import { $isLinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
 
 /**
  * Custom plugin: Math Plugin
@@ -647,14 +688,15 @@ interface ToolbarCtx {
   isUnderline: boolean;
   isCrossed: boolean;
   isLink: boolean;
-  isSubScript: boolean;
-  isSuperScript: boolean;
+  isSubscript: boolean;
+  isSuperscript: boolean;
   isCode: boolean;
-  fontFamily: boolean;
-  fontSize: boolean;
-  fontColor: boolean;
-  blockType: string;
-  selectedElementKey: string;
+  insertLink: () => void;
+  fontFamily: string;
+  fontSize: string;
+  fontColor: string;
+  blockType: Blocktype;
+  selectedElementKey: string | null;
   applyStyleText: (styles: Record<string, string>) => void;
 }
 /**
@@ -670,9 +712,9 @@ const ToolbarContext = createContext<ToolbarCtx>({} as ToolbarCtx);
  */
 type Blocktype = keyof typeof blocktypeMap;
 const blocktypeMap = {
-  orderedList: "Numbered List",
-  unorderedList: "Bulleted List",
-  checkList: "Check List",
+  number: "Numbered List",
+  bullet: "Bulleted List",
+  check: "Check List",
   h1: "Heading 1",
   h2: "Heading 2",
   h3: "Heading 3",
@@ -683,21 +725,15 @@ const blocktypeMap = {
   quote: "Quote",
 };
 
-/**
- * For now, we're going to limit the font
- * customization options.
- */
-type FontSize = "12px" | "14px" | "16px";
-type FontColor = "blue" | "red" | "black";
-type FontFamily = "CMU Serif" | "Times New Roman";
-
 function Toolbar() {
-  const [editor] = useLexicalComposerContext();
+  const { initEditor, activeEditor, setActiveEditor } = useEditor();
   const [blockType, setBlocktype] = useState<Blocktype>("paragraph");
-  const [selectedElementKey, setSelectedElementKey] = useState(null);
-  const [fontSize, setFontSize] = useState<FontSize>("12px");
-  const [fontColor, setFontColor] = useState<FontColor>("black");
-  const [fontFamily, setFontFamily] = useState<FontFamily>("CMU Serif");
+  const [selectedElementKey, setSelectedElementKey] = useState<string | null>(
+    null,
+  );
+  const [fontSize, setFontSize] = useState<string>("12px");
+  const [fontColor, setFontColor] = useState<string>("black");
+  const [fontFamily, setFontFamily] = useState<string>("CMU Serif");
   const [isLink, setIsLink] = useState(false);
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
@@ -707,69 +743,216 @@ function Toolbar() {
   const [isSuperscript, setIsSuperscript] = useState(false);
   const [isCode, setIsCode] = useState(false);
 
-  const updateToolbar = useCallback(() => {}, []);
+  /**
+   * When the user makes a selection, we want to
+   * indicate that selection's current type
+   * in the toolbar.
+   */
+  const updateToolbar = useCallback(() => {
+    const selection = $getSelection();
+    if ($isRangeSelection(selection)) {
+      const anchor = selection.anchor.getNode();
+      const element = anchor.getKey() === "root"
+        ? anchor
+        : anchor.getTopLevelElementOrThrow();
+      const elementKey = element.getKey();
+      const elementDOM = activeEditor.getElementByKey(elementKey);
 
-  const trigger = {
-    bold: () => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold"),
-    strikethrough: () =>
-      editor.dispatchCommand(FORMAT_TEXT_COMMAND, "strikethrough"),
-    italicize: () => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic"),
-    underline: () => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline"),
-    align: {
-      left: () => editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "left"),
-      center: () => editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "center"),
-      right: () => editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "right"),
-      justify: () => editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "justify"),
-    },
-    list: {
-      ordered: () =>
-        editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined),
-      unordered: () =>
-        editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined),
-    },
-    h1: () => {
-      editor.update(() => {
-        const selection = $getSelection();
-        if ($isRangeSelection(selection)) {
-          $wrapNodes(selection, () => $createHeadingNode("h1"));
+      /** Handle text selection type */
+      setIsBold(selection.hasFormat("bold"));
+      setIsItalic(selection.hasFormat("italic"));
+      setIsUnderline(selection.hasFormat("underline"));
+      setIsCrossed(selection.hasFormat("strikethrough"));
+      setIsSubscript(selection.hasFormat("subscript"));
+      setIsSuperscript(selection.hasFormat("superscript"));
+      setIsCode(selection.hasFormat("code"));
+
+      /** Handle link selection type */
+      const node = getSelectedNode(selection);
+      const parent = node.getParent();
+      setIsLink($isLinkNode(parent) || $isLinkNode(node));
+
+      /** Handle list selection type */
+      if (elementDOM !== null) {
+        setSelectedElementKey(elementKey);
+        if ($isListNode(element)) {
+          const parentList = $getNearestNodeOfType<ListNode>(anchor, ListNode);
+          const type = parentList
+            ? parentList.getListType()
+            : element.getListType();
+          setBlocktype(type as Blocktype);
+        } else {
+          const type = $isHeadingNode(element)
+            ? element.getTag()
+            : element.getType();
+          setBlocktype(type as Blocktype);
+          return;
         }
-      });
+      }
+
+      /** Handle buttons */
+      setFontSize(
+        $getSelectionStyleValueForProperty(selection, "font-size", "12px"),
+      );
+      setFontColor(
+        $getSelectionStyleValueForProperty(selection, "color", "black"),
+      );
+      setFontFamily(
+        $getSelectionStyleValueForProperty(
+          selection,
+          "font-family",
+          "CMU Serif",
+        ),
+      );
+    }
+  }, [activeEditor]);
+
+  useEffect(() => {
+    return initEditor.registerCommand(
+      SELECTION_CHANGE_COMMAND,
+      (_payload, newEditor) => {
+        updateToolbar();
+        setActiveEditor(newEditor);
+        return false;
+      },
+      COMMAND_PRIORITY_CRITICAL,
+    );
+  }, [initEditor, updateToolbar]);
+
+  const applyStyleText = useCallback((styles: Record<string, string>) => {
+    activeEditor.update(() => {
+      const selection = $getSelection();
+      if ($isRangeSelection(selection)) {
+        $patchStyleText(selection, styles);
+      }
+    });
+  }, [activeEditor]);
+
+  const insertLink = useCallback(() => {
+    if (!isLink) {
+      initEditor.dispatchCommand(TOGGLE_LINK_COMMAND, "https://");
+    } else {
+      initEditor.dispatchCommand(TOGGLE_LINK_COMMAND, null);
+    }
+  }, [initEditor, isLink]);
+
+  const ctxObject: ToolbarCtx = {
+    fontFamily,
+    fontSize,
+    fontColor,
+    isBold,
+    isItalic,
+    isUnderline,
+    isCode,
+    isLink,
+    applyStyleText,
+    insertLink,
+    isCrossed,
+    isSubscript,
+    isSuperscript,
+    selectedElementKey,
+    blockType,
+  };
+  const trigger = {
+    bold: () => activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold"),
+    strikethrough: () =>
+      activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, "strikethrough"),
+    italicize: () =>
+      activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic"),
+    underline: () =>
+      activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline"),
+    align: {
+      left: () => activeEditor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "left"),
+      center: () =>
+        activeEditor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "center"),
+      right: () =>
+        activeEditor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "right"),
+      justify: () =>
+        activeEditor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "justify"),
     },
   };
-
   return (
-    <div className={S.EditorToolbar}>
-      <Button label={<BoldIcon />} click={trigger.bold} />
-      <Button label={<StrikeIcon />} click={trigger.strikethrough} />
-      <Button label={<ItalicIcon />} click={trigger.italicize} />
-      <Button label={<UnderlineIcon />} click={trigger.underline} />
-      <Button label={<AlignLeftIcon />} click={trigger.align.left} />
-      <Button label={<AlignCenterIcon />} click={trigger.align.center} />
-      <Button label={<AlignRightIcon />} click={trigger.align.right} />
-      <Button label={<JustifyIcon />} click={trigger.align.justify} />
-      <Button label={<OLIcon />} click={trigger.list.ordered} />
-      <Button label={<ULIcon />} click={trigger.list.unordered} />
-      <Dropdown title={"Format"}>
-        <Button label={"Heading 1"} click={trigger.h1} />
-        <Button label={"Heading 2"} click={trigger.h1} />
-        <Button label={"Heading 3"} click={trigger.h1} />
-        <Button label={"Heading 4"} click={trigger.h1} />
-        <Button label={"Heading 5"} click={trigger.h1} />
-      </Dropdown>
-    </div>
+    <ToolbarContext.Provider value={ctxObject}>
+      <div className={S.EditorToolbar}>
+        <Button label={<BoldIcon />} click={trigger.bold} />
+        <Button label={<StrikeIcon />} click={trigger.strikethrough} />
+        <Button label={<ItalicIcon />} click={trigger.italicize} />
+        <Button label={<UnderlineIcon />} click={trigger.underline} />
+        <Button label={<AlignLeftIcon />} click={trigger.align.left} />
+        <Button label={<AlignCenterIcon />} click={trigger.align.center} />
+        <Button label={<AlignRightIcon />} click={trigger.align.right} />
+        <Button label={<JustifyIcon />} click={trigger.align.justify} />
+        <BlockTypeDropdown />
+      </div>
+    </ToolbarContext.Provider>
   );
 }
 
-function Dropdown(
-  { title, children }: { title?: string; children: ReactNode },
-) {
+function BlockTypeDropdown() {
+  const { initEditor } = useEditor();
+  const { blockType } = useContext(ToolbarContext);
+
+  function formatParagraph() {
+    if (blockType !== "paragraph") {
+      initEditor.update(selectionUpdate(() => $createParagraphNode()));
+    }
+  }
+
+  function formatHeading(heading: HeadingTagType) {
+    if (blockType !== heading) {
+      initEditor.update(selectionUpdate(() => $createHeadingNode(heading)));
+    }
+  }
+
+  function formatQuote() {
+    if (blockType !== "quote") {
+      initEditor.update(selectionUpdate(() => $createQuoteNode()));
+    }
+  }
+
+  function formatBulletList() {
+    const command = blockType !== "bullet"
+      ? INSERT_UNORDERED_LIST_COMMAND
+      : REMOVE_LIST_COMMAND;
+    initEditor.dispatchCommand(command, undefined);
+  }
+  function formatNumberedList() {
+    const command = blockType !== "number"
+      ? INSERT_ORDERED_LIST_COMMAND
+      : REMOVE_LIST_COMMAND;
+    initEditor.dispatchCommand(command, undefined);
+  }
+
+  return (
+    <Dropdown title={blocktypeMap[blockType]}>
+      <Button label={"Paragraph"} click={formatParagraph} />
+      <Button label={"Quote"} click={formatQuote} />
+      <Button label={"Heading 1"} click={() => formatHeading("h1")} />
+      <Button label={"Heading 2"} click={() => formatHeading("h2")} />
+      <Button label={"Heading 3"} click={() => formatHeading("h3")} />
+      <Button label={"Heading 4"} click={() => formatHeading("h4")} />
+      <Button label={"Heading 5"} click={() => formatHeading("h5")} />
+      <Button label={"Numbered List"} click={formatNumberedList} />
+      <Button label={"Bulleted List"} click={formatBulletList} />
+    </Dropdown>
+  );
+}
+
+interface typeDropdown {
+  title?: string;
+  children: ReactNode;
+  className?: string;
+}
+
+function Dropdown({ title, children, className }: typeDropdown) {
+  const classname = className ? `${className} ${S.dropdown}` : S.dropdown;
   const [open, setOpen] = useState(false);
   const toggle: DivFn = (event) => {
     event.stopPropagation();
     setOpen(!open);
   };
   return (
-    <div onClick={toggle} className={S.dropdown}>
+    <div onClick={toggle} className={classname}>
       <div className={S.placeholder}>{title}</div>
       <div className={open ? `${S.optionsList} ${S.active}` : S.optionsList}>
         {children}
@@ -834,6 +1017,7 @@ function ULIcon() {
   return <img src={ulSVG} />;
 }
 import olSVG from "./icons/numberedList.svg";
+import { $getNearestNodeOfType } from "@lexical/utils";
 function OLIcon() {
   return <img src={olSVG} />;
 }
@@ -849,6 +1033,14 @@ function Button({ click, label, className }: ButtonProps) {
   return <button onClick={click} className={className}>{label}</button>;
 }
 
+function selectionUpdate(callback: () => ElementNode) {
+  return () => {
+    const selection = $getSelection();
+    if ($isRangeSelection(selection)) {
+      $wrapNodes(selection, callback);
+    }
+  };
+}
 type LiFn = MouseEventHandler<HTMLLIElement>;
 type DivFn = MouseEventHandler<HTMLDivElement>;
 type LiEvt = Parameters<LiFn>[0];

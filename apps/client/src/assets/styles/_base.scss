@@ -365,7 +365,10 @@ $full: 100%;
   button {
     width: 100%;
     margin: 0.3em 0;
+    margin-left: 3px;
     padding: 0;
+    text-align: left;
+    font-size: 0.8rem;
     height: fit-content;
     box-shadow: none;
     @include Hover($coolGrey4);
@@ -373,7 +376,7 @@ $full: 100%;
 }
 
 @mixin DropdownActive {
-  height: 150px;
+  height: 170px;
   background-color: white;
   border: solid thin $coolGrey5;
 }
@@ -459,7 +462,7 @@ $full: 100%;
 }
 
 @mixin DropdownBase {
-  width: 6em;
+  width: 6.5em;
   margin-left: 2px;
   height: 100%;
   padding: 4px 1px;

@@ -172,7 +172,7 @@ function EquationComponent({ equation, inline, nodeKey }: EquationProps) {
       editor.update(() => {
         const node = $getNodeByKey(nodeKey);
         if ($isEquationNode(node)) {
-          node.setEquationd(equationValue);
+          node.setEquation(equationValue);
           if (restoreSelection) {
             node.selectNext(0, 0);
           }

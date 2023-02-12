@@ -9,6 +9,8 @@
   },
   "dependencies": {
     "@lexical/clipboard": "^0.7.7",
+    "@lexical/code": "^0.7.7",
+    "@lexical/link": "^0.7.7",
     "@lexical/list": "^0.7.7",
     "@lexical/markdown": "^0.7.7",
     "@lexical/react": "^0.7.7",

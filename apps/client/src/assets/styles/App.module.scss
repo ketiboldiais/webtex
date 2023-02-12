@@ -36,7 +36,6 @@
 				flex-direction: column;
 				justify-content: center;
 				margin: 0 2vw;
-				// align-items: center;
 				.EditorToolbar {
 					display: flex;
 					@include ShadowButton(fit-content, inherit, 0 2px);

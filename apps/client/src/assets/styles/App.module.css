@@ -155,7 +155,7 @@
   cursor: pointer;
 }
 .App main .Workspace .TextEditor .EditorToolbar .dropdown {
-  width: 6em;
+  width: 6.5em;
   margin-left: 2px;
   height: 100%;
   padding: 4px 1px;
@@ -187,14 +187,17 @@
   transition: height 0.3s ease;
 }
 .App main .Workspace .TextEditor .EditorToolbar .dropdown .active {
-  height: 150px;
+  height: 170px;
   background-color: white;
   border: solid thin hsl(208deg, 21%, 88%);
 }
 .App main .Workspace .TextEditor .EditorToolbar .dropdown button {
   width: 100%;
   margin: 0.3em 0;
+  margin-left: 3px;
   padding: 0;
+  text-align: left;
+  font-size: 0.8rem;
   height: -moz-fit-content;
   height: fit-content;
   box-shadow: none;
