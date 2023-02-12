@@ -1,504 +1,57 @@
 @import './base';
 
-@media (max-width:500px) {
-	.App {
-		font-size: 1em;
-		font-family: 'Muli';
-		margin: 0;
+.App {
+	@include AppBase;
+	display: grid;
+	grid-template-columns: 1fr;
+	grid-template-rows: 0.8fr 30fr;
+	.NavBar { @include NavBarStyles; }
+	main {
+		height: 100vh;
+		width: 100vw;
+		position: absolute;
+		top: 28px;
 		padding: 0;
-		display: grid;
-
-		button {
-			background-color: inherit;
-			font-family: 'Muli';
-			border: 0;
-			cursor: pointer;
-			@include Shadow1(4);
-		}
-
-		.NavBar {
+		.Workspace {
 			display: flex;
-			flex-direction: row-reverse;
-			padding-right: 10px;
-
-			h1 {
-				padding: 0;
-				font-size: 0.8rem;
-				margin: 2px 0;
-				color: $coolGrey4;
-			}
-		}
-
-		main {
-			height: 100vh;
-			width: 100%;
-			padding: 0;
-
-			.Workspace {
-				.Sidebar {
-					display: flex;
-					flex-direction: column;
-					justify-content: center;
-					width: 100%;
-					border: none;
-
-					.Header {
-						display: flex;
-						justify-content: flex-start;
-
-						button {
-							width: fit-content;
-							padding: 0.3em 0.5em;
-							margin: 0 5px;
-							border: none;
-						}
-					}
-
-					.NoteList {
-						list-style: none;
-						font-size: 0.85em;
-						padding: 0;
-						margin: 0;
-						height: 0;
-						overflow: hidden;
-
-						li {
-							width: 100%;
-							display: grid;
-							padding: 5px;
-							grid-template-columns: 5fr 2fr;
-							cursor: pointer;
-
-							&:hover {
-								background-color: rgb(222, 233, 233);
-
-								button {
-									color: $coolGrey3;
-									border: none;
-									box-shadow: none;
-								}
-							}
-
-							.NoteItemHeader {
-								display: flex;
-								justify-content: space-between;
-
-								button {
-									padding: 0 2px;
-									margin: 0 8px;
-									width: fit-content;
-								}
-							}
-						}
-					}
-				}
-
-				.TextEditor {
-					display: flex;
-					flex-direction: column;
-					align-items: center;
-					height: 100%;
-
-					.EditorToolbar {
-						display: flex;
-						flex-wrap: wrap;
-						justify-content: space-evenly;
-						padding: 0.3em;
-						width: 100%;
-
-						.dropdown {
-							width: 6em;
-							height: 100%;
-							padding: 4px;
-							z-index: 10;
-							position: relative;
-							display: flex;
-							align-items: center;
-							flex-wrap: wrap;
-
-							&:hover {
-								cursor: pointer;
-							}
-
-							@include Shadow1(4);
-
-							.placeholder {
-								font-size: 0.8em;
-								padding-left: 0.3em;
-							}
-
-							.optionsList {
-								position: absolute;
-								overflow: hidden;
-								z-index: 10;
-								top: calc(100% + 0.25em);
-								padding: 0;
-								margin: 0;
-								height: 0;
-								transition: height 0.3s ease;
-							}
-
-							.active {
-								height: 150px;
-								background-color: white;
-								border: solid thin $coolGrey5;
-							}
-
-							button {
-								width: 100%;
-								margin: 3px 0;
-								padding: 0;
-								height: fit-content;
-								box-shadow: none;
-
-								&:hover {
-									background-color: $coolGrey4;
-								}
-							}
-						}
-					}
-
-					.Lexical {
-						height: 100%;
-						overflow-y: scroll;
-						scrollbar-color: $coolGrey4 white;
-						scrollbar-width: thin;
-
-						&::-webkit-scrollbar {
-							width: 7px;
-						}
-
-						&::-webkit-scrollbar-track {
-							background: white;
-						}
-
-						&::-webkit-scrollbar-thumb {
-							background-color: $coolGrey4;
-							border-radius: 5px;
-						}
-
-						.NoteTitle {
-							input {
-								text-align: center;
-								font-family: 'CMU Serif';
-								font-size: 1.2rem;
-								border: none;
-								outline: none;
-							}
-
-							border: none;
-							width: fit-content;
-							margin: 5% auto;
-						}
-
-						width: 97%;
-						margin: 0.5em auto;
-						border: solid thin #e4e4e4;
-						padding: 1em 2em;
-						@include Card;
-
-						.EditorPlaceholder {
-							overflow: hidden;
-							position: absolute;
-							text-overflow: ellipsis;
-							top: 15px;
-							left: 10px;
-							font-size: 15px;
-							user-select: none;
-							display: inline-block;
-							pointer-events: none;
-						}
-
-						.EditorInput {
-							margin: 0;
-							padding: 0;
-							display: block;
-							outline: none;
-							position: relative;
-							scrollbar-width: none;
-							font-size: 0.93em;
-							font-family: 'CMU Serif';
-							height: 75vh;
-						}
-					}
+			justify-content: center;
+			.Sidebar {
+				margin: 0 1vw;
+				display: flex;
+				flex-direction: column;
+				flex: 3;
+				.Header { @include NotelistToolbar; }
+				.NoteList {
+					flex-grow: 1;
+					@include UnstyledList(0, 10px 0);
+					@include NoScrollbar;
+					@include Shadow1(5);
+					.Active { @include ActiveNoteBase; }
+					.Item { @include NoteItemBase; }
 				}
 			}
-		}
-	}
-}
-
-
-@media (min-width:500px) {
-	.App {
-		font-size: 1em;
-		font-family: 'Muli';
-		margin: 0;
-		padding: 0;
-		display: grid;
-		grid-template-columns: 1fr;
-		grid-template-rows: 0.8fr 30fr;
-
-		button {
-			background-color: inherit;
-			font-family: 'Muli';
-			border: 0;
-			cursor: pointer;
-			@include Shadow1(4);
-		}
-
-		.NavBar {
-			display: flex;
-			flex-direction: row-reverse;
-			padding-right: 10px;
-
-			h1 {
-				padding: 0;
-				font-size: 0.8rem;
-				margin: 2px 0;
-				color: $coolGrey4;
-			}
-		}
-
-		main {
-			height: 100vh;
-			position: absolute;
-			top: 28px;
-			margin: 0;
-			// background-color: teal;
-			width: 100%;
-			padding: 0;
-
-			.Workspace {
-				display: grid;
-				margin: auto;
-				width: 100%;
-				grid-template-columns: 3fr 9fr;
-				column-gap: 0.8em;
-				height: 94%;
-
-				.Sidebar {
-					height: 100%;
-					padding: 0 5px;
-					margin-left: 0.3em;
-					margin-top: -4px;
-
-					.Header {
-						margin-top: 5px;
-						display: flex;
-						justify-content: flex-end;
-
-						button {
-							width: fit-content;
-							margin: 0 2px;
-							padding: 0.1em 0.5em;
-							@include Shadow1(3);
-
-							svg {
-								width: 50px;
-								height: 50px;
-							}
-						}
-					}
-
-					.NoteList {
-						padding: 0;
-						@include Shadow1(5);
-						margin: 10px 0;
-						list-style: none;
-						display: flex;
-						flex-direction: column;
-						overflow-y: scroll;
-						scrollbar-width: none;
-						// width: 0;
-						transition: linear 0.3s ease-in;
-						.NotesOpen {
-							// width: 100%;
-							background-color: red;
-						}
-
-						&::-webkit-scrollbar {
-							display: none;
-						}
-
-						.Active {
-							background-color: $blue4;
-							color: $coolGrey5;
-
-							button {
-								color: rgb(255, 149, 103);
-								box-shadow: none;
-							}
-
-						}
-
-						.Item {
-							@include Shadow1(5);
-
-							margin: 0;
-							padding: 0;
-
-							small {
-								font-size: 0.7rem;
-								display: block;
-								padding: 4px;
-							}
-
-							&:hover {
-								cursor: pointer
-							}
-
-
-							.NoteItemHeader {
-								margin-top: 5px;
-								padding: 4px;
-								display: grid;
-								grid-template-columns: 8fr 1fr;
-
-								strong {
-									font-size: 0.8em;
-									max-width: 90%;
-									overflow: hidden;
-									white-space: nowrap;
-									text-overflow: ellipsis;
-								}
-							}
-						}
-					}
-				}
-
-				.TextEditor {
+			.TextEditor {
+				flex: 10;
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				margin: 0 2vw;
+				// align-items: center;
+				.EditorToolbar {
 					display: flex;
-					flex-direction: column;
-					align-items: center;
-					height: 100%;
-
-					.EditorToolbar {
-						display: flex;
-						flex-wrap: wrap;
-						align-items: flex-start;
-						width: 100%;
-
-						button {
-							margin-right: 2px;
-						}
-
-						.dropdown {
-							width: 6em;
-							height: 100%;
-							padding: 1px;
-							z-index: 10;
-							position: relative;
-							display: flex;
-							align-items: center;
-							flex-wrap: wrap;
-
-							&:hover {
-								cursor: pointer;
-							}
-
-							@include Shadow1(4);
-
-							.placeholder {
-								font-size: 0.8em;
-								padding-left: 0.3em;
-							}
-
-							.optionsList {
-								position: absolute;
-								overflow: hidden;
-								z-index: 10;
-								top: calc(100% + 0.25em);
-								padding: 0;
-								margin: 0;
-								height: 0;
-								transition: height 0.3s ease;
-							}
-
-							.active {
-								height: 150px;
-								background-color: white;
-								border: solid thin $coolGrey5;
-							}
-
-							button {
-								width: 100%;
-								margin: 3px 0;
-								padding: 0;
-								height: fit-content;
-								box-shadow: none;
-
-								&:hover {
-									background-color: $coolGrey4;
-								}
-							}
-						}
-					}
-
-					.Lexical {
-						height: 100%;
-						overflow-y: scroll;
-						scrollbar-color: $coolGrey4 white;
-						scrollbar-width: thin;
-
-						&::-webkit-scrollbar {
-							width: 7px;
-						}
-
-						&::-webkit-scrollbar-track {
-							background: white;
-						}
-
-						&::-webkit-scrollbar-thumb {
-							background-color: $coolGrey4;
-							border-radius: 5px;
-						}
-
-						.NoteTitle {
-							input {
-								text-align: center;
-								font-family: 'CMU Serif';
-								font-size: 1.2rem;
-								border: none;
-								outline: none;
-							}
-
-							border: none;
-							width: fit-content;
-							margin: 5% auto;
-						}
-
-						width: 100%;
-						margin: 0.5em;
-						margin-right: 1.2em;
-						margin-bottom: 0;
-						border: solid thin #e4e4e4;
-						padding: 1em 2em;
-						@include Card;
-
-						.EditorPlaceholder {
-							overflow: hidden;
-							position: absolute;
-							text-overflow: ellipsis;
-							top: 15px;
-							left: 10px;
-							font-size: 15px;
-							user-select: none;
-							display: inline-block;
-							pointer-events: none;
-						}
-
-						.EditorInput {
-							margin: 0;
-							padding: 0;
-							display: block;
-							outline: none;
-							position: relative;
-							scrollbar-width: none;
-							font-size: 0.93em;
-							font-family: 'CMU Serif';
-							height: 75vh;
-						}
-					}
+					@include ShadowButton(fit-content, inherit, 0 2px);
+					.dropdown { @include DropdownBase; }
+					margin-bottom: 1vh;
+				}
+				.Lexical {
+					@include LexicalBase;
+					@include Scrollbar;
+					// background-color: green;
+					padding: 2em 3em;
+					.NoteTitle { @include NoteTitleBase; }
+					@include Card;
+					.EditorPlaceholder { @include EditorPlaceholderDiv; }
+					.EditorInput { @include EditorInputBase; }
 				}
 			}
 		}

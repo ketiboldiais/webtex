@@ -22,449 +22,244 @@
   font-weight: bold;
   src: url("../fonts/Muli-BoldItalic.ttf");
 }
-@media (max-width: 500px) {
-  .App {
-    font-size: 1em;
-    font-family: "Muli";
-    margin: 0;
-    padding: 0;
-    display: grid;
-  }
-  .App button {
-    background-color: inherit;
-    font-family: "Muli";
-    border: 0;
-    cursor: pointer;
-    box-shadow: 0px 1px 3px hsl(4deg, 0%, 91%), 0 1px 2px hsl(4deg, 0%, 50%);
-  }
-  .App .NavBar {
-    display: flex;
-    flex-direction: row-reverse;
-    padding-right: 10px;
-  }
-  .App .NavBar h1 {
-    padding: 0;
-    font-size: 0.8rem;
-    margin: 2px 0;
-    color: hsl(210deg, 16%, 76%);
-  }
-  .App main {
-    height: 100vh;
-    width: 100%;
-    padding: 0;
-  }
-  .App main .Workspace .Sidebar {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    width: 100%;
-    border: none;
-  }
-  .App main .Workspace .Sidebar .Header {
-    display: flex;
-    justify-content: flex-start;
-  }
-  .App main .Workspace .Sidebar .Header button {
-    width: -moz-fit-content;
-    width: fit-content;
-    padding: 0.3em 0.5em;
-    margin: 0 5px;
-    border: none;
-  }
-  .App main .Workspace .Sidebar .NoteList {
-    list-style: none;
-    font-size: 0.85em;
-    padding: 0;
-    margin: 0;
-    height: 0;
-    overflow: hidden;
-  }
-  .App main .Workspace .Sidebar .NoteList li {
-    width: 100%;
-    display: grid;
-    padding: 5px;
-    grid-template-columns: 5fr 2fr;
-    cursor: pointer;
-  }
-  .App main .Workspace .Sidebar .NoteList li:hover {
-    background-color: rgb(222, 233, 233);
-  }
-  .App main .Workspace .Sidebar .NoteList li:hover button {
-    color: hsl(208deg, 12%, 58%);
-    border: none;
-    box-shadow: none;
-  }
-  .App main .Workspace .Sidebar .NoteList li .NoteItemHeader {
-    display: flex;
-    justify-content: space-between;
-  }
-  .App main .Workspace .Sidebar .NoteList li .NoteItemHeader button {
-    padding: 0 2px;
-    margin: 0 8px;
-    width: -moz-fit-content;
-    width: fit-content;
-  }
-  .App main .Workspace .TextEditor {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    height: 100%;
-  }
-  .App main .Workspace .TextEditor .EditorToolbar {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-evenly;
-    padding: 0.3em;
-    width: 100%;
-  }
-  .App main .Workspace .TextEditor .EditorToolbar .dropdown {
-    width: 6em;
-    height: 100%;
-    padding: 4px;
-    z-index: 10;
-    position: relative;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    box-shadow: 0px 1px 3px hsl(4deg, 0%, 91%), 0 1px 2px hsl(4deg, 0%, 50%);
-  }
-  .App main .Workspace .TextEditor .EditorToolbar .dropdown:hover {
-    cursor: pointer;
-  }
-  .App main .Workspace .TextEditor .EditorToolbar .dropdown .placeholder {
-    font-size: 0.8em;
-    padding-left: 0.3em;
-  }
-  .App main .Workspace .TextEditor .EditorToolbar .dropdown .optionsList {
-    position: absolute;
-    overflow: hidden;
-    z-index: 10;
-    top: calc(100% + 0.25em);
-    padding: 0;
-    margin: 0;
-    height: 0;
-    transition: height 0.3s ease;
-  }
-  .App main .Workspace .TextEditor .EditorToolbar .dropdown .active {
-    height: 150px;
-    background-color: white;
-    border: solid thin hsl(208deg, 21%, 88%);
-  }
-  .App main .Workspace .TextEditor .EditorToolbar .dropdown button {
-    width: 100%;
-    margin: 3px 0;
-    padding: 0;
-    height: -moz-fit-content;
-    height: fit-content;
-    box-shadow: none;
-  }
-  .App main .Workspace .TextEditor .EditorToolbar .dropdown button:hover {
-    background-color: hsl(210deg, 16%, 76%);
-  }
-  .App main .Workspace .TextEditor .Lexical {
-    height: 100%;
-    overflow-y: scroll;
-    scrollbar-color: hsl(210deg, 16%, 76%) white;
-    scrollbar-width: thin;
-    width: 97%;
-    margin: 0.5em auto;
-    border: solid thin #e4e4e4;
-    padding: 1em 2em;
-    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
-    transition: 0.3s;
-    border-radius: 5px;
-  }
-  .App main .Workspace .TextEditor .Lexical::-webkit-scrollbar {
-    width: 7px;
-  }
-  .App main .Workspace .TextEditor .Lexical::-webkit-scrollbar-track {
-    background: white;
-  }
-  .App main .Workspace .TextEditor .Lexical::-webkit-scrollbar-thumb {
-    background-color: hsl(210deg, 16%, 76%);
-    border-radius: 5px;
-  }
-  .App main .Workspace .TextEditor .Lexical .NoteTitle {
-    border: none;
-    width: -moz-fit-content;
-    width: fit-content;
-    margin: 5% auto;
-  }
-  .App main .Workspace .TextEditor .Lexical .NoteTitle input {
-    text-align: center;
-    font-family: "CMU Serif";
-    font-size: 1.2rem;
-    border: none;
-    outline: none;
-  }
-  .App main .Workspace .TextEditor .Lexical:hover {
-    box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
-  }
-  .App main .Workspace .TextEditor .Lexical .EditorPlaceholder {
-    overflow: hidden;
-    position: absolute;
-    text-overflow: ellipsis;
-    top: 15px;
-    left: 10px;
-    font-size: 15px;
-    -webkit-user-select: none;
-       -moz-user-select: none;
-            user-select: none;
-    display: inline-block;
-    pointer-events: none;
-  }
-  .App main .Workspace .TextEditor .Lexical .EditorInput {
-    margin: 0;
-    padding: 0;
-    display: block;
-    outline: none;
-    position: relative;
-    scrollbar-width: none;
-    font-size: 0.93em;
-    font-family: "CMU Serif";
-    height: 75vh;
-  }
+.App {
+  font-size: 1em;
+  font-family: "Muli";
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 0.8fr 30fr;
 }
-@media (min-width: 500px) {
-  .App {
-    font-size: 1em;
-    font-family: "Muli";
-    margin: 0;
-    padding: 0;
-    display: grid;
-    grid-template-columns: 1fr;
-    grid-template-rows: 0.8fr 30fr;
-  }
-  .App button {
-    background-color: inherit;
-    font-family: "Muli";
-    border: 0;
-    cursor: pointer;
-    box-shadow: 0px 1px 3px hsl(4deg, 0%, 91%), 0 1px 2px hsl(4deg, 0%, 50%);
-  }
-  .App .NavBar {
-    display: flex;
-    flex-direction: row-reverse;
-    padding-right: 10px;
-  }
-  .App .NavBar h1 {
-    padding: 0;
-    font-size: 0.8rem;
-    margin: 2px 0;
-    color: hsl(210deg, 16%, 76%);
-  }
-  .App main {
-    height: 100vh;
-    position: absolute;
-    top: 28px;
-    margin: 0;
-    width: 100%;
-    padding: 0;
-  }
-  .App main .Workspace {
-    display: grid;
-    margin: auto;
-    width: 100%;
-    grid-template-columns: 3fr 9fr;
-    -moz-column-gap: 0.8em;
-         column-gap: 0.8em;
-    height: 94%;
-  }
-  .App main .Workspace .Sidebar {
-    height: 100%;
-    padding: 0 5px;
-    margin-left: 0.3em;
-    margin-top: -4px;
-  }
-  .App main .Workspace .Sidebar .Header {
-    margin-top: 5px;
-    display: flex;
-    justify-content: flex-end;
-  }
-  .App main .Workspace .Sidebar .Header button {
-    width: -moz-fit-content;
-    width: fit-content;
-    margin: 0 2px;
-    padding: 0.1em 0.5em;
-    box-shadow: 0px 1px 3px hsl(3deg, 0%, 91%), 0 1px 2px hsl(3deg, 0%, 50%);
-  }
-  .App main .Workspace .Sidebar .Header button svg {
-    width: 50px;
-    height: 50px;
-  }
-  .App main .Workspace .Sidebar .NoteList {
-    padding: 0;
-    box-shadow: 0px 1px 3px hsl(5deg, 0%, 91%), 0 1px 2px hsl(5deg, 0%, 50%);
-    margin: 10px 0;
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    overflow-y: scroll;
-    scrollbar-width: none;
-    transition: linear 0.3s ease-in;
-  }
-  .App main .Workspace .Sidebar .NoteList .NotesOpen {
-    background-color: red;
-  }
-  .App main .Workspace .Sidebar .NoteList::-webkit-scrollbar {
-    display: none;
-  }
-  .App main .Workspace .Sidebar .NoteList .Active {
-    background-color: hsl(215deg, 75%, 55%);
-    color: hsl(208deg, 21%, 88%);
-  }
-  .App main .Workspace .Sidebar .NoteList .Active button {
-    color: rgb(255, 149, 103);
-    box-shadow: none;
-  }
-  .App main .Workspace .Sidebar .NoteList .Item {
-    box-shadow: 0px 1px 3px hsl(5deg, 0%, 91%), 0 1px 2px hsl(5deg, 0%, 50%);
-    margin: 0;
-    padding: 0;
-  }
-  .App main .Workspace .Sidebar .NoteList .Item small {
-    font-size: 0.7rem;
-    display: block;
-    padding: 4px;
-  }
-  .App main .Workspace .Sidebar .NoteList .Item:hover {
-    cursor: pointer;
-  }
-  .App main .Workspace .Sidebar .NoteList .Item .NoteItemHeader {
-    margin-top: 5px;
-    padding: 4px;
-    display: grid;
-    grid-template-columns: 8fr 1fr;
-  }
-  .App main .Workspace .Sidebar .NoteList .Item .NoteItemHeader strong {
-    font-size: 0.8em;
-    max-width: 90%;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-  .App main .Workspace .TextEditor {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    height: 100%;
-  }
-  .App main .Workspace .TextEditor .EditorToolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    width: 100%;
-  }
-  .App main .Workspace .TextEditor .EditorToolbar button {
-    margin-right: 2px;
-  }
-  .App main .Workspace .TextEditor .EditorToolbar .dropdown {
-    width: 6em;
-    height: 100%;
-    padding: 1px;
-    z-index: 10;
-    position: relative;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    box-shadow: 0px 1px 3px hsl(4deg, 0%, 91%), 0 1px 2px hsl(4deg, 0%, 50%);
-  }
-  .App main .Workspace .TextEditor .EditorToolbar .dropdown:hover {
-    cursor: pointer;
-  }
-  .App main .Workspace .TextEditor .EditorToolbar .dropdown .placeholder {
-    font-size: 0.8em;
-    padding-left: 0.3em;
-  }
-  .App main .Workspace .TextEditor .EditorToolbar .dropdown .optionsList {
-    position: absolute;
-    overflow: hidden;
-    z-index: 10;
-    top: calc(100% + 0.25em);
-    padding: 0;
-    margin: 0;
-    height: 0;
-    transition: height 0.3s ease;
-  }
-  .App main .Workspace .TextEditor .EditorToolbar .dropdown .active {
-    height: 150px;
-    background-color: white;
-    border: solid thin hsl(208deg, 21%, 88%);
-  }
-  .App main .Workspace .TextEditor .EditorToolbar .dropdown button {
-    width: 100%;
-    margin: 3px 0;
-    padding: 0;
-    height: -moz-fit-content;
-    height: fit-content;
-    box-shadow: none;
-  }
-  .App main .Workspace .TextEditor .EditorToolbar .dropdown button:hover {
-    background-color: hsl(210deg, 16%, 76%);
-  }
-  .App main .Workspace .TextEditor .Lexical {
-    height: 100%;
-    overflow-y: scroll;
-    scrollbar-color: hsl(210deg, 16%, 76%) white;
-    scrollbar-width: thin;
-    width: 100%;
-    margin: 0.5em;
-    margin-right: 1.2em;
-    margin-bottom: 0;
-    border: solid thin #e4e4e4;
-    padding: 1em 2em;
-    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
-    transition: 0.3s;
-    border-radius: 5px;
-  }
-  .App main .Workspace .TextEditor .Lexical::-webkit-scrollbar {
-    width: 7px;
-  }
-  .App main .Workspace .TextEditor .Lexical::-webkit-scrollbar-track {
-    background: white;
-  }
-  .App main .Workspace .TextEditor .Lexical::-webkit-scrollbar-thumb {
-    background-color: hsl(210deg, 16%, 76%);
-    border-radius: 5px;
-  }
-  .App main .Workspace .TextEditor .Lexical .NoteTitle {
-    border: none;
-    width: -moz-fit-content;
-    width: fit-content;
-    margin: 5% auto;
-  }
-  .App main .Workspace .TextEditor .Lexical .NoteTitle input {
-    text-align: center;
-    font-family: "CMU Serif";
-    font-size: 1.2rem;
-    border: none;
-    outline: none;
-  }
-  .App main .Workspace .TextEditor .Lexical:hover {
-    box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
-  }
-  .App main .Workspace .TextEditor .Lexical .EditorPlaceholder {
-    overflow: hidden;
-    position: absolute;
-    text-overflow: ellipsis;
-    top: 15px;
-    left: 10px;
-    font-size: 15px;
-    -webkit-user-select: none;
-       -moz-user-select: none;
-            user-select: none;
-    display: inline-block;
-    pointer-events: none;
-  }
-  .App main .Workspace .TextEditor .Lexical .EditorInput {
-    margin: 0;
-    padding: 0;
-    display: block;
-    outline: none;
-    position: relative;
-    scrollbar-width: none;
-    font-size: 0.93em;
-    font-family: "CMU Serif";
-    height: 75vh;
-  }
+.App .NavBar {
+  display: flex;
+  flex-direction: row-reverse;
+  padding-right: 10px;
+}
+.App .NavBar h1 {
+  padding: 0;
+  font-size: 0.8rem;
+  margin: 2px 0;
+  color: hsl(210deg, 16%, 76%);
+}
+.App main {
+  height: 100vh;
+  width: 100vw;
+  position: absolute;
+  top: 28px;
+  padding: 0;
+}
+.App main .Workspace {
+  display: flex;
+  justify-content: center;
+}
+.App main .Workspace .Sidebar {
+  margin: 0 1vw;
+  display: flex;
+  flex-direction: column;
+  flex: 3;
+}
+.App main .Workspace .Sidebar .Header {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: normal;
+  flex-wrap: nowrap;
+}
+.App main .Workspace .Sidebar .Header button {
+  width: -moz-fit-content;
+  width: fit-content;
+  padding: 2px 5px;
+  color: inherit;
+  margin: 0;
+  background-color: inherit;
+  box-shadow: 0px 1px 3px hsl(4deg, 0%, 91%), 0 1px 2px hsl(4deg, 0%, 50%);
+  font-family: "Muli";
+  border: 0;
+  cursor: pointer;
+}
+.App main .Workspace .Sidebar .Header button {
+  background-color: white;
+}
+.App main .Workspace .Sidebar .Header .ShowNotesButton {
+  margin-right: 5px;
+}
+.App main .Workspace .Sidebar .NoteList {
+  flex-grow: 1;
+  list-style: none;
+  padding: 0.2em 0.4em;
+  margin: 10px 0;
+  scrollbar-width: none;
+  box-shadow: 0px 1px 3px hsl(5deg, 0%, 91%), 0 1px 2px hsl(5deg, 0%, 50%);
+}
+.App main .Workspace .Sidebar .NoteList::-webkit-scrollbar {
+  display: none;
+}
+.App main .Workspace .Sidebar .NoteList .Active {
+  background-color: hsl(215deg, 75%, 55%);
+  color: hsl(208deg, 21%, 88%);
+}
+.App main .Workspace .Sidebar .NoteList .Active button {
+  color: #ffab6a;
+  border: solid thin #ffab6a;
+  background-color: inherit;
+}
+.App main .Workspace .Sidebar .NoteList .Item {
+  box-shadow: 0px 1px 3px hsl(5deg, 0%, 91%), 0 1px 2px hsl(5deg, 0%, 50%);
+}
+.App main .Workspace .Sidebar .NoteList .Item small {
+  font-size: 0.7rem;
+  display: block;
+  padding: 0.3em;
+}
+.App main .Workspace .Sidebar .NoteList .Item:hover {
+  cursor: pointer;
+}
+.App main .Workspace .Sidebar .NoteList .Item .NoteItemHeader {
+  margin-top: 5px;
+  padding: 4px;
+  display: grid;
+  grid-template-columns: 8fr 1fr;
+}
+.App main .Workspace .Sidebar .NoteList .Item .NoteItemHeader strong {
+  font-size: 0.8em;
+  max-width: 90%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.App main .Workspace .Sidebar .NoteList .Item .DeleteButton {
+  cursor: pointer;
+}
+.App main .Workspace .TextEditor {
+  flex: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin: 0 2vw;
+}
+.App main .Workspace .TextEditor .EditorToolbar {
+  display: flex;
+  margin-bottom: 1vh;
+}
+.App main .Workspace .TextEditor .EditorToolbar button {
+  width: -moz-fit-content;
+  width: fit-content;
+  padding: 2px 5px;
+  color: inherit;
+  margin: 0 2px;
+  background-color: inherit;
+  box-shadow: 0px 1px 3px hsl(4deg, 0%, 91%), 0 1px 2px hsl(4deg, 0%, 50%);
+  font-family: "Muli";
+  border: 0;
+  cursor: pointer;
+}
+.App main .Workspace .TextEditor .EditorToolbar .dropdown {
+  width: 6em;
+  margin-left: 2px;
+  height: 100%;
+  padding: 4px 1px;
+  z-index: 10;
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: nowrap;
+  box-shadow: 0px 1px 3px hsl(4deg, 0%, 91%), 0 1px 2px hsl(4deg, 0%, 50%);
+}
+.App main .Workspace .TextEditor .EditorToolbar .dropdown:hover {
+  cursor: pointer;
+  background-color: inherit;
+}
+.App main .Workspace .TextEditor .EditorToolbar .dropdown .placeholder {
+  font-size: 0.8em;
+  padding-left: 0.3em;
+}
+.App main .Workspace .TextEditor .EditorToolbar .dropdown .optionsList {
+  position: absolute;
+  overflow: hidden;
+  z-index: 10;
+  top: calc(100% + 0.25em);
+  padding: 0;
+  margin: 0;
+  height: 0;
+  transition: height 0.3s ease;
+}
+.App main .Workspace .TextEditor .EditorToolbar .dropdown .active {
+  height: 150px;
+  background-color: white;
+  border: solid thin hsl(208deg, 21%, 88%);
+}
+.App main .Workspace .TextEditor .EditorToolbar .dropdown button {
+  width: 100%;
+  margin: 0.3em 0;
+  padding: 0;
+  height: -moz-fit-content;
+  height: fit-content;
+  box-shadow: none;
+}
+.App main .Workspace .TextEditor .EditorToolbar .dropdown button:hover {
+  cursor: pointer;
+  background-color: hsl(210deg, 16%, 76%);
+}
+.App main .Workspace .TextEditor .Lexical {
+  height: 100%;
+  overflow-y: scroll;
+  border: solid thin #e4e4e4;
+  scrollbar-color: hsl(210deg, 16%, 76%) white;
+  scrollbar-width: thin;
+  padding: 2em 3em;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+  transition: 0.3s;
+  border-radius: 5px;
+}
+.App main .Workspace .TextEditor .Lexical::-webkit-scrollbar {
+  width: 7px;
+}
+.App main .Workspace .TextEditor .Lexical::-webkit-scrollbar-track {
+  background: white;
+}
+.App main .Workspace .TextEditor .Lexical::-webkit-scrollbar-thumb {
+  background-color: hsl(210deg, 16%, 76%);
+  border-radius: 5px;
+}
+.App main .Workspace .TextEditor .Lexical .NoteTitle {
+  border: none;
+  width: -moz-fit-content;
+  width: fit-content;
+  margin: 0 auto;
+}
+.App main .Workspace .TextEditor .Lexical .NoteTitle input {
+  text-align: center;
+  font-family: "CMU Serif";
+  font-size: 1.2rem;
+  border: none;
+  outline: none;
+}
+.App main .Workspace .TextEditor .Lexical:hover {
+  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
+}
+.App main .Workspace .TextEditor .Lexical .EditorPlaceholder {
+  overflow: hidden;
+  position: absolute;
+  text-overflow: ellipsis;
+  top: 15px;
+  left: 10px;
+  font-size: 15px;
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
+  display: inline-block;
+  pointer-events: none;
+}
+.App main .Workspace .TextEditor .Lexical .EditorInput {
+  margin: 0;
+  padding: 0;
+  display: block;
+  outline: none;
+  scrollbar-width: none;
+  font-size: 0.9em;
+  font-family: "CMU Serif";
+  height: 75vh;
 }/*# sourceMappingURL=App.module.css.map */

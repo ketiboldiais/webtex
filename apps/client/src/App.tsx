@@ -158,7 +158,8 @@ const initialState: NoteState = {
   noteCount: Object.values(initNoteList).length,
 };
 
-/* ---------------------------------- Slice --------------------------------- */
+/* -------------------------- Slice Initialization -------------------------- */
+
 import { createSlice } from "@reduxjs/toolkit";
 
 const noteSlice = createSlice({
@@ -253,6 +254,12 @@ noteListenerMiddleware.startListening({
     await db_saveNote(action.payload);
   },
 });
+
+/**
+ * Pointer to all the listeners.
+ * We concatenate the pointee to
+ * the Redux Store's middlware field.
+ */
 const noteListeners = noteListenerMiddleware.middleware;
 
 /* -------------------------------------------------------------------------- */
@@ -394,14 +401,6 @@ function SideBar() {
   const { activeEditor } = useEditor();
   const active = getActiveNote();
 
-  const [notesOpen, openNotes] = useState(true);
-
-  const toggle: BtnFn = (event) => {
-    event.stopPropagation();
-    console.log("clicked");
-    openNotes(!notesOpen);
-  };
-
   function createNote(event: BtnEvt) {
     event.stopPropagation();
     const title = ``;
@@ -430,14 +429,9 @@ function SideBar() {
   return (
     <div className={S.Sidebar}>
       <div className={S.Header}>
-        <Button
-          label={"notes"}
-          click={toggle}
-          className={S.SidebarToggle}
-        />
         <Button label={"new"} click={createNote} />
       </div>
-      <ul className={notesOpen ? `${S.NoteList} ${S.NotesOpen}` : S.NoteList}>
+      <ul className={S.NoteList}>
         {notes.map((note) => (
           <NoteItem key={note.id} note={note} onDelete={destroyNote} />
         ))}
@@ -478,6 +472,7 @@ function NoteItem({ note, onDelete }: INoteItem) {
           <Button
             label={"delete"}
             click={(e) => onDelete(e, note)}
+            className={S.DeleteButton}
           />
         )}
       </div>
