@@ -311,17 +311,60 @@ import {
 
 /** Application Styles. */
 import S from "@styles/App.module.css";
+import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
 
 export function App() {
   return (
     <Provider store={store}>
-      <div className={S.App}>
-        <Navbar />
-        <main>
-          <Workspace />
-        </main>
-      </div>
+      <BrowserRouter>
+        <div className={S.App}>
+          <Navbar />
+          <Page />
+        </div>
+      </BrowserRouter>
     </Provider>
+  );
+}
+
+/* --------------------------------- NAVBAR --------------------------------- */
+
+function Navbar() {
+  return (
+    <nav className={S.NavBar}>
+      <h1>Webtex</h1>
+      <ul className={S.LinkList}>
+        <li>
+          <Link to="/">Workspace</Link>
+        </li>
+        {/* <li><Link to="/packages">Packages</Link></li> */}
+      </ul>
+    </nav>
+  );
+}
+
+/* ----------------------------- Page Component ----------------------------- */
+
+function Page() {
+  return (
+    <main>
+      <Routes>
+        <Route path={"/"} element={<Workspace />} />
+        {/* <Route path={"/packages"} element={<Packages />} /> */}
+      </Routes>
+    </main>
+  );
+}
+
+/* ------------------------------ PACKAGES PAGE ----------------------------- */
+
+function Packages() {
+  return (
+    <div>
+      <p>
+        This is the packages page for Webtex, which outlines some of the modules
+        used by the editor.
+      </p>
+    </div>
   );
 }
 
@@ -530,6 +573,7 @@ import {
   $patchStyleText,
   $wrapNodes,
 } from "@lexical/selection";
+import { $getNearestNodeOfType } from "@lexical/utils";
 
 /** Returns the selected node. */
 function getSelectedNode(selection: RangeSelection) {
@@ -938,12 +982,6 @@ function BlockTypeDropdown() {
   );
 }
 
-interface typeDropdown {
-  title?: string;
-  children: ReactNode;
-  className?: string;
-}
-
 function Dropdown({ title, children, className }: typeDropdown) {
   const classname = className ? `${className} ${S.dropdown}` : S.dropdown;
   const [open, setOpen] = useState(false);
@@ -963,14 +1001,6 @@ function Dropdown({ title, children, className }: typeDropdown) {
 
 function getContent(editor: EditorState | null) {
   return editor === null ? EMPTY_NOTE : JSON.stringify(editor);
-}
-
-function Navbar() {
-  return (
-    <nav className={S.NavBar}>
-      <h1>Webtex</h1>
-    </nav>
-  );
 }
 
 type BtnFn = MouseEventHandler<HTMLButtonElement>;
@@ -1012,15 +1042,6 @@ import justifySVG from "./icons/justify.svg";
 function JustifyIcon() {
   return <img src={justifySVG} />;
 }
-import ulSVG from "./icons/bulletedList.svg";
-function ULIcon() {
-  return <img src={ulSVG} />;
-}
-import olSVG from "./icons/numberedList.svg";
-import { $getNearestNodeOfType } from "@lexical/utils";
-function OLIcon() {
-  return <img src={olSVG} />;
-}
 
 function Boldtext({ content }: { content: string }) {
   return <strong>{content}</strong>;
@@ -1045,3 +1066,9 @@ type LiFn = MouseEventHandler<HTMLLIElement>;
 type DivFn = MouseEventHandler<HTMLDivElement>;
 type LiEvt = Parameters<LiFn>[0];
 type InputFn = ChangeEventHandler<HTMLInputElement>;
+
+interface typeDropdown {
+  title?: string;
+  children: ReactNode;
+  className?: string;
+}

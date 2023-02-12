@@ -395,9 +395,20 @@ $full: 100%;
 @mixin NavBarStyles {
   @include Flex_Row_Reverse;
   padding-right: 10px;
-
-  h1 {
-    @include NavH1;
+  h1,
+  li,
+  a {
+    display: block;
+    padding: 0;
+    margin: 0;
+    font-size: 0.8rem;
+    margin: 2px 4px;
+    color: $coolGrey4;
+  }
+  .LinkList {
+    @include UnstyledList(0, 0);
+    display: flex;
+    justify-content: flex-end;
   }
 }
 
@@ -455,7 +466,11 @@ $full: 100%;
 @mixin NotelistToolbar {
   @include FlexRow(flex-end, normal, nowrap);
   @include ShadowButton(fit-content, inherit, 0);
-  button { background-color: white; }
+
+  button {
+    background-color: white;
+  }
+
   .ShowNotesButton {
     margin-right: 5px;
   }
@@ -497,15 +512,19 @@ $full: 100%;
 
 @mixin NoteItemBase {
   @include Shadow1(5);
+
   small {
     @include Smalltext;
   }
+
   &:hover {
     cursor: pointer
   }
+
   .NoteItemHeader {
     @include NoteItemHeader;
   }
+
   .DeleteButton {
     cursor: pointer;
   }

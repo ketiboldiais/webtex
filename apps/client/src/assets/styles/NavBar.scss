@@ -4,11 +4,13 @@
 	display: flex;
 	flex-direction: row-reverse;
 	padding-right: 10px;
-
 	h1 {
 		padding: 0;
 		font-size: 0.8rem;
 		margin: 2px 0;
 		color: $coolGrey4;
+	}
+	.Links {
+		list-style: none;
 	}
 }
