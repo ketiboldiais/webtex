@@ -1,4 +1,4 @@
-import { log } from '../utils/index.js';
+import { log } from "../utils/index.js";
 
 type Result = Match | Failure;
 type PRat = (text: string, i: number, type: string) => Result;
@@ -15,7 +15,7 @@ class Output {
     type: string,
     start: number,
     end: number,
-    err: boolean
+    err: boolean,
   ) {
     this.text = text;
     this.type = type;
@@ -32,15 +32,23 @@ class Output {
   }
 }
 
+export type Parsing<T> = {
+  err: string|boolean|null;
+  start: number;
+  end: number;
+  value: string;
+  type: T;
+};
+
 export class Match extends Output {
   children: Match[];
   result: string;
   constructor(
     text: string,
-    typename: string = '',
+    typename: string = "",
     start: number,
     end: number,
-    children: Match[] = []
+    children: Match[] = [],
   ) {
     super(text, typename, start, end, false);
     this.children = children;
@@ -53,14 +61,14 @@ export class Failure extends Output {
   children: Failure[];
   constructor(
     text: string,
-    parserName: string = '',
+    parserName: string = "",
     start: number,
     end: number,
-    children: Failure[] = []
+    children: Failure[] = [],
   ) {
     super(text, `ERROR`, start, end, true);
     this.children = children;
-    this.type = 'ERROR';
+    this.type = "ERROR";
     this.result = `Error | ${parserName}`;
   }
 }
@@ -90,20 +98,21 @@ type MutableArg = {
   err: boolean;
   children: { result: string; type: string; start: number; end: number }[];
 };
-type MutableReturn = Omit<Mutable, 'children' | 'err'>;
+type MutableReturn = Omit<Mutable, "children" | "err">;
 
 export class P<T> {
   private fn: PRat;
   private _type: string;
-  constructor(fn: PRat, typename: string = 'text') {
+  constructor(fn: PRat, typename: string = "text") {
     this._type = typename;
     this.fn = fn;
   }
   map(fn: (res: MutableArg) => Partial<MutableReturn>) {
     return new P((txt, i, typename) => {
       const res = this.fn(txt, i, typename);
-      if (res.children.length === 0)
+      if (res.children.length === 0) {
         return new Failure(txt, typename, i, i, []);
+      }
       const mod = fn({
         ...res,
         children: res.children.map((d) => ({
@@ -119,7 +128,7 @@ export class P<T> {
       const end = mod.end ? mod.end : res.end;
       if (res.err) {
         return new Failure(txt, type, start, end, res.children).setResult(
-          result
+          result,
         );
       } else {
         return new Match(txt, type, start, end, res.children).setResult(result);
@@ -129,6 +138,10 @@ export class P<T> {
   run(src: string): Data<T> {
     const { type, start, end, err, children, result } = this.parse(src);
     return { type: type as T, start, end, err, children, result };
+  }
+  read(src: string, index: number=0): Parsing<T> {
+    const { type, end, result: value, err, start } = this.parse(src, index);
+    return { type: type as T, start, end, value, err };
   }
   parse(src: string, i = 0) {
     return this.fn(src, i, this._type);
@@ -141,12 +154,12 @@ export class P<T> {
    * Returns a `Match` if both the calling parser and the
    * argument parser succeed. Returns the `Fail` of the first
    * parser that fails.
-   * 
+   *
    * @example
    * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      const x = lit('x');  
-      const y = lit('y');  
-      const z = lit('z');  
+      const x = lit('x');
+      const y = lit('y');
+      const z = lit('z');
       const xyz = x.and(y).and(z)
       console.log(xyz.parse('xyz'))
    * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -180,12 +193,12 @@ export class P<T> {
    * If the calling parser fails, the argument parser is attempted.
    * If the argument parser succeeds, its match is returned.
    * If the argument parser fails both failures are returned.
-   * 
+   *
    * @example
    * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      const x = lit('x');  
-      const y = lit('y');  
-      const z = lit('z');  
+      const x = lit('x');
+      const y = lit('y');
+      const z = lit('z');
       const xyz = x.or(y).or(z)
       console.log(xyz.parse('xyz'))
    * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -201,8 +214,8 @@ export class P<T> {
       }
    * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
    */
-  or(p: P<T>) {
-    return new P<T>((txt, i) => {
+  or<T, X>(p: P<T>) {
+    return new P<X>((txt, i) => {
       let res = this.fn(txt, i, this._type);
       if (!res.err) {
         return new Match(txt, res.type, i, i + res.result.length, []);
@@ -218,18 +231,19 @@ export class P<T> {
     return new P<T>((txt, i, type = p._type) => {
       let res = this.fn(txt, i, type);
       let out = p.parse(txt, res.end);
-      if (!out.err)
+      if (!out.err) {
         return new Match(txt, type, i, out.end, [
           ...res.children,
           ...out.children,
         ]);
+      }
       return res;
     });
   }
 }
 
-export const lit = (pattern: string): P<'literal'> =>
-  new P((text: string, i: number, type = 'literal') => {
+export const lit = (pattern: string): P<"literal"> =>
+  new P((text: string, i: number, type = "literal") => {
     if (text.startsWith(pattern, i)) {
       return new Match(text, type, i, i + pattern.length);
     } else {
@@ -239,74 +253,74 @@ export const lit = (pattern: string): P<'literal'> =>
 
 // todo - These parser collections should be rewritten as generator functions.
 export const numeral = [
-  lit('0'),
-  lit('1'),
-  lit('2'),
-  lit('3'),
-  lit('4'),
-  lit('5'),
-  lit('6'),
-  lit('7'),
-  lit('8'),
-  lit('9'),
+  lit("0"),
+  lit("1"),
+  lit("2"),
+  lit("3"),
+  lit("4"),
+  lit("5"),
+  lit("6"),
+  lit("7"),
+  lit("8"),
+  lit("9"),
 ];
 
 const upperCase = {
-  A: lit('A').type('char'),
-  B: lit('B').type('char'),
-  C: lit('C').type('char'),
-  D: lit('D').type('char'),
-  E: lit('E').type('char'),
-  F: lit('F').type('char'),
-  G: lit('G').type('char'),
-  H: lit('H').type('char'),
-  I: lit('I').type('char'),
-  J: lit('J').type('char'),
-  K: lit('K').type('char'),
-  L: lit('L').type('char'),
-  M: lit('M').type('char'),
-  N: lit('N').type('char'),
-  O: lit('O').type('char'),
-  P: lit('P').type('char'),
-  Q: lit('Q').type('char'),
-  R: lit('R').type('char'),
-  S: lit('S').type('char'),
-  T: lit('T').type('char'),
-  U: lit('U').type('char'),
-  V: lit('V').type('char'),
-  W: lit('W').type('char'),
-  X: lit('X').type('char'),
-  Y: lit('Y').type('char'),
-  Z: lit('Z').type('char'),
+  A: lit("A").type("char"),
+  B: lit("B").type("char"),
+  C: lit("C").type("char"),
+  D: lit("D").type("char"),
+  E: lit("E").type("char"),
+  F: lit("F").type("char"),
+  G: lit("G").type("char"),
+  H: lit("H").type("char"),
+  I: lit("I").type("char"),
+  J: lit("J").type("char"),
+  K: lit("K").type("char"),
+  L: lit("L").type("char"),
+  M: lit("M").type("char"),
+  N: lit("N").type("char"),
+  O: lit("O").type("char"),
+  P: lit("P").type("char"),
+  Q: lit("Q").type("char"),
+  R: lit("R").type("char"),
+  S: lit("S").type("char"),
+  T: lit("T").type("char"),
+  U: lit("U").type("char"),
+  V: lit("V").type("char"),
+  W: lit("W").type("char"),
+  X: lit("X").type("char"),
+  Y: lit("Y").type("char"),
+  Z: lit("Z").type("char"),
 };
 
 const lowerCase = {
-  a: lit('a').type('char'),
-  b: lit('b').type('char'),
-  c: lit('c').type('char'),
-  d: lit('d').type('char'),
-  e: lit('e').type('char'),
-  f: lit('f').type('char'),
-  g: lit('g').type('char'),
-  h: lit('h').type('char'),
-  i: lit('i').type('char'),
-  j: lit('j').type('char'),
-  k: lit('k').type('char'),
-  l: lit('l').type('char'),
-  m: lit('m').type('char'),
-  n: lit('n').type('char'),
-  o: lit('o').type('char'),
-  p: lit('p').type('char'),
-  q: lit('q').type('char'),
-  r: lit('r').type('char'),
-  s: lit('s').type('char'),
-  t: lit('t').type('char'),
-  u: lit('u').type('char'),
-  v: lit('v').type('char'),
-  w: lit('w').type('char'),
-  x: lit('x').type('char'),
-  y: lit('y').type('char'),
-  z: lit('z').type('char'),
+  a: lit("a").type("char"),
+  b: lit("b").type("char"),
+  c: lit("c").type("char"),
+  d: lit("d").type("char"),
+  e: lit("e").type("char"),
+  f: lit("f").type("char"),
+  g: lit("g").type("char"),
+  h: lit("h").type("char"),
+  i: lit("i").type("char"),
+  j: lit("j").type("char"),
+  k: lit("k").type("char"),
+  l: lit("l").type("char"),
+  m: lit("m").type("char"),
+  n: lit("n").type("char"),
+  o: lit("o").type("char"),
+  p: lit("p").type("char"),
+  q: lit("q").type("char"),
+  r: lit("r").type("char"),
+  s: lit("s").type("char"),
+  t: lit("t").type("char"),
+  u: lit("u").type("char"),
+  v: lit("v").type("char"),
+  w: lit("w").type("char"),
+  x: lit("x").type("char"),
+  y: lit("y").type("char"),
+  z: lit("z").type("char"),
 };
 
 export const letter = {
@@ -321,12 +335,12 @@ export const chain = <T>(...parsers: P<T>[]): P<T> =>
     for (let parser of parsers) {
       let result = parser.parse(txt, i);
       if (result.err) return result;
-      if (result.result !== '') {
+      if (result.result !== "") {
         children.push(result);
       }
       i = result.end;
     }
-    const str = children.reduce((p, c) => (p += c.result), '');
+    const str = children.reduce((p, c) => (p += c.result), "");
     return new Match(txt, type, start, i, children).setResult(str);
   });
 
@@ -338,16 +352,17 @@ export const rgx = (regex: RegExp) =>
   });
 
 export const not = <T>(parser: P<T>) =>
-  new P((txt, i, type = 'not') => {
+  new P((txt, i, type = "not") => {
     const res = parser.parse(txt, i);
-    if (!res.err)
+    if (!res.err) {
       return new Failure(
         `Expected no “${txt[i]}”, got “${txt[i]}”`,
         type,
         i,
         res.end,
-        res.children
+        res.children,
       );
+    }
     return new Match(txt, type, i, i);
   });
 
@@ -357,11 +372,11 @@ export const oneof = <T>(...patterns: P<T>[]): P<T> =>
       let result = pattern.parse(text, i);
       if (!result.err) return result;
     }
-    return new Failure(text, 'oneOf', i, i);
+    return new Failure(text, "oneOf", i, i);
   });
 
 export const union = <T>(parser: P<T>) =>
-  new P((text, i, type = 'union') => {
+  new P((text, i, type = "union") => {
     let start = i;
     let initRes = parser.parse(text, i);
     if (initRes instanceof Failure) return initRes;
@@ -377,7 +392,7 @@ export const union = <T>(parser: P<T>) =>
     return new Match(text, type, start, i, out);
   });
 
-export const wildcard = new P<string>((text, i, type = 'wildcard') =>
+export const wildcard = new P<string>((text, i, type = "wildcard") =>
   i < text.length
     ? new Match(text, type, i, i + 1, [])
     : new Match(text, type, i, i, [])
@@ -397,49 +412,49 @@ export const repeat = <T>(parser: P<T>) =>
     return new Match(txt, type, i, children.length, children);
   });
 
-// log(repeat(lit('0')).parse('0000'));
-
-export const many = <T>(...parsers: P<T>[]) => {
+export const asMany = <T>(...parsers: P<T>[]) => {
   return new P<T>((txt, i, type) => {
     const res = repeat(oneof(...parsers)).parse(txt, i);
     if (res.err) {
       return res;
     }
     const children: Match[] = res.children;
-    const result: string = children.reduceRight((p, c) => (c.result += p), '');
+    const result: string = children.reduceRight((p, c) => (c.result += p), "");
     return new Match(txt, type, i, i + result.length, []);
   });
 };
+
 export const strung = (
-  option?: 'upper-case-letters' | 'lower-case-letters' | 'letters' | 'digits'
+  option?: "upper-case-letters" | "lower-case-letters" | "letters" | "digits",
 ) => {
   switch (option) {
-    case 'lower-case-letters':
-      return many(...Object.values(lowerCase)).type('lower-case-letters');
-    case 'upper-case-letters':
-      return many(...Object.values(upperCase)).type('upper-case-letters');
-    case 'letters':
-      return many(...Object.values(letter)).type('letters');
-    case 'digits':
-      return many(...numeral).type('digits');
+    case "lower-case-letters":
+      return asMany(...Object.values(lowerCase)).type("lower-case-letters");
+    case "upper-case-letters":
+      return asMany(...Object.values(upperCase)).type("upper-case-letters");
+    case "letters":
+      return asMany(...Object.values(letter)).type("letters");
+    case "digits":
+      return asMany(...numeral).type("digits");
     default:
-      return many<any>(wildcard);
+      return asMany<any>(wildcard);
   }
 };
-export const ws = many(lit(' '), lit('\t'), lit('\r'), lit('\n'));
+export const ws = asMany(lit(" "), lit("\t"), lit("\r"), lit("\n"));
 export const skip = <T>(parser: P<T>) => {
   return new P<T>((txt, i, type) => {
     const res = parser.parse(txt, i);
-    if (res.err) return new Match('', type, i, i, []);
-    return new Match('', type, i, i + res.result.length, []);
+    if (res.err) return new Match("", type, i, i, []);
+    return new Match("", type, i, i + res.result.length, []);
   });
 };
 export const maybe = <T>(parser: P<T>) => {
   return new P<T>((txt, i, type) => {
     const res = parser.parse(txt, i);
-    if (res.err) return new Match('', type, i, i, []);
+    if (res.err) return new Match("", type, i, i, []);
     return res;
   });
 };
 
 export const glyph = (p: P<any>) => chain(skip(ws), p, skip(ws));
+export const char = (s: string) => glyph(lit(s));

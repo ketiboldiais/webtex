@@ -32,26 +32,26 @@
   grid-template-rows: 0.8fr 30fr;
 }
 .App .NavBar {
+  padding-right: 10px;
   display: flex;
   flex-direction: row-reverse;
-  padding-right: 10px;
 }
-.App .NavBar h1,
 .App .NavBar li,
-.App .NavBar a {
+.App .NavBar a,
+.App .NavBar h1 {
   display: block;
+  text-decoration: none;
   padding: 0;
-  margin: 0;
-  font-size: 0.8rem;
-  margin: 2px 4px;
+  margin: 0 0.4em;
   color: hsl(210deg, 16%, 76%);
+  font-size: 0.9rem;
 }
 .App .NavBar .LinkList {
-  list-style: none;
-  padding: 0.2em 0.4em;
-  margin: 0;
   display: flex;
   justify-content: flex-end;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 .App main {
   height: 100vh;
@@ -59,6 +59,38 @@
   position: absolute;
   top: 28px;
   padding: 0;
+}
+.App main .Packages {
+  margin: 0;
+  padding: 2em;
+  padding-bottom: 50%;
+  overflow-y: scroll;
+  scrollbar-color: hsl(210deg, 16%, 76%) white;
+  scrollbar-width: thin;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.App main .Packages::-webkit-scrollbar {
+  width: 7px;
+}
+.App main .Packages::-webkit-scrollbar-track {
+  background: white;
+}
+.App main .Packages::-webkit-scrollbar-thumb {
+  background-color: hsl(210deg, 16%, 76%);
+  border-radius: 5px;
+}
+.App main .Packages ol li {
+  padding: 0.4em;
+}
+.App main .Packages h2 {
+  padding: 0;
+  margin: 1em 0 0 0;
+}
+.App main .Packages p {
+  padding: 0;
+  margin: 0.8em 0;
 }
 .App main .Workspace {
   display: flex;
@@ -218,15 +250,15 @@
   background-color: hsl(210deg, 16%, 76%);
 }
 .App main .Workspace .TextEditor .Lexical {
-  height: 100%;
+  height: 90vh;
   overflow-y: scroll;
   border: solid thin #e4e4e4;
   scrollbar-color: hsl(210deg, 16%, 76%) white;
   scrollbar-width: thin;
-  padding: 2em 3em;
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
   transition: 0.3s;
   border-radius: 5px;
+  padding: 0;
 }
 .App main .Workspace .TextEditor .Lexical::-webkit-scrollbar {
   width: 7px;
@@ -237,6 +269,9 @@
 .App main .Workspace .TextEditor .Lexical::-webkit-scrollbar-thumb {
   background-color: hsl(210deg, 16%, 76%);
   border-radius: 5px;
+}
+.App main .Workspace .TextEditor .Lexical:hover {
+  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
 }
 .App main .Workspace .TextEditor .Lexical .NoteTitle {
   border: none;
@@ -250,9 +285,8 @@
   font-size: 1.2rem;
   border: none;
   outline: none;
-}
-.App main .Workspace .TextEditor .Lexical:hover {
-  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
+  margin-top: 2em;
+  margin-bottom: 0.4em;
 }
 .App main .Workspace .TextEditor .Lexical .EditorPlaceholder {
   overflow: hidden;
@@ -269,11 +303,11 @@
 }
 .App main .Workspace .TextEditor .Lexical .EditorInput {
   margin: 0;
-  padding: 0;
+  padding: 0 5em;
   display: block;
   outline: none;
   scrollbar-width: none;
-  font-size: 0.9em;
+  font-size: 0.88em;
   font-family: "CMU Serif";
-  height: 75vh;
+  height: 100%;
 }/*# sourceMappingURL=App.module.css.map */

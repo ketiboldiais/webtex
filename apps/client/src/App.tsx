@@ -336,7 +336,9 @@ function Navbar() {
         <li>
           <Link to="/">Workspace</Link>
         </li>
-        {/* <li><Link to="/packages">Packages</Link></li> */}
+        <li>
+          <Link to="/packages">Packages</Link>
+        </li>
       </ul>
     </nav>
   );
@@ -349,21 +351,19 @@ function Page() {
     <main>
       <Routes>
         <Route path={"/"} element={<Workspace />} />
-        {/* <Route path={"/packages"} element={<Packages />} /> */}
+        <Route path={"/packages"} element={<Packages />} />
       </Routes>
     </main>
   );
 }
 
 /* ------------------------------ PACKAGES PAGE ----------------------------- */
+import Entry1 from "./Blog/Entry1.mdx";
 
 function Packages() {
   return (
-    <div>
-      <p>
-        This is the packages page for Webtex, which outlines some of the modules
-        used by the editor.
-      </p>
+    <div className={S.Packages}>
+      <Entry1 />
     </div>
   );
 }

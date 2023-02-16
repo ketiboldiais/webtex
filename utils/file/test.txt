@@ -1797,3 +1797,648 @@ const bst = binaryTree({
 });
 
 const b1 = bst(node(10));
+
+import {
+  asMany,
+  chain,
+  letter,
+  lit,
+  maybe,
+  numeral,
+  oneof,
+} from "./parsers/pkt/index.js";
+const { log: print } = console;
+
+const natural = asMany(...numeral.slice(1)).maybe(numeral[0]).type("natural");
+const dash = lit("-");
+const negInt = chain(dash, natural).type("integer");
+const int = chain(natural.or(negInt)).type("integer");
+const dot = lit(".");
+const float = chain(int, dot, maybe(asMany(numeral[0])), natural).type("float");
+const fslash = lit("/");
+const rational = chain(float.or(int), fslash, float.or(int)).type("rational");
+const scientific = chain(float.or(int), letter.E, float.or(int)).type(
+  "scientific",
+);
+const numeric = oneof(scientific, rational, float, int);
+
+const ERROR = Symbol("ERROR");
+type Err = typeof ERROR;
+type ErrNode = { value: string; type: Err };
+type NumberNode = { value: string; type: string };
+type Node = NumberNode | ErrNode;
+
+
+const { log: show } = console;
+class St {
+  constructor(public value: string, public log: string[] = []) {
+    this.value = value;
+    this.log = log || [];
+  }
+  bind(fn: (s: string) => string) {
+    let value = fn(this.value);
+    return new St(value, [...this.log, this.value]);
+  }
+}
+
+const x = new St("abcd")
+  .bind((s) => s.toUpperCase())
+  .bind((s) => s.charAt(1))
+  .bind((s) => s.toLowerCase());
+
+const nil = Symbol("nil");
+type Nil = typeof nil;
+const isnil = (v: any): v is Nil => v === nil;
+
+class Opt<t> {
+  constructor(public value: t | Nil) {
+    this.value = value;
+  }
+  map<y>(fn: (a: t) => y): Opt<t | y> {
+    return isnil(this.value) ? this : new Opt(fn(this.value));
+  }
+}
+
+function markPosition(
+  rules: FormattedRule[],
+  ruleIndex: number,
+  position: number,
+  ruleName: string,
+) {
+  const update = rules[ruleIndex][ruleName].map((s, i) =>
+    i === position ? "•" : s
+  );
+  return rules.map((r, i) => i === ruleIndex ? { [ruleName]: update } : r);
+}
+const grammar = Grammar(
+  { P: ["S"] },
+  { S: ["S", lit("+"), "M"] },
+  { S: ["M"] },
+  { M: ["M", lit("*"), "T"] },
+  { M: ["T"] },
+  { T: [num("integer")] },
+);
+
+type SetArg = { set: number };
+type SetListOpArgs<t> = SetArg & { val: t };
+function setList<t>(count: number) {
+  const sets: Set<t>[] = [];
+  for (let i = 0; i < count; i++) sets.push(new Set<t>());
+  return {
+    sets,
+    insert({ set, val }: SetListOpArgs<t>) {
+      this.sets[set].add(val);
+      return this;
+    },
+    remove({ set, val }: SetListOpArgs<t>) {
+      if (this.sets[set].has(val)) {
+        this.sets[set].delete(val);
+      }
+      return this;
+    },
+    clear({ set }: SetArg) {
+      this.sets[set].clear();
+      return this;
+    },
+    read({ set }: SetArg) {
+      return Array.from(this.sets[set]);
+    },
+  };
+}
+
+type Rule = { [key: string]: (string | P<string>)[] };
+function Grammar(...rules: Rule[]) {
+  const nonterminals = new Set<string>();
+  const forms: any[] = [];
+  const name = (rule: Rule) => Object.keys(rule)[0];
+  const formatRule = (rule: Rule) => {
+    let rulename = name(rule);
+    let body = Object.values(rule)[0].map((v) => v instanceof P ? v.type : v);
+    return [rulename, body];
+  };
+  rules.forEach((r) => nonterminals.add(name(r)));
+  rules.forEach((r) => {
+    forms.push(formatRule(r));
+  });
+  return {
+    rules,
+    nonterminals,
+    forms,
+  };
+}
+type GrammarObj = ReturnType<typeof Grammar>;
+type FRule = [string, string[]];
+type PushProps = { rule: number; column: number; dot: "left" | "right" };
+function Parser(grammar: GrammarObj) {
+  const name = (rule: Rule) => Object.keys(rule)[0];
+  function stateSet(source: string) {
+    const setlist = setList<string>(source.length);
+    const formatrule = (rule: string[], dot: number) => {
+      let r = [...rule.slice(0, dot), "•", ...rule.slice(dot)].join("");
+      return r;
+    };
+    return {
+      states: setlist,
+      pushStringRule(
+        { rule, column, dot }: {
+          rule: string;
+          column: number;
+          dot: "left" | "right";
+        },
+      ) {
+        const pos = dot === "left" ? 0 : rule.length;
+        const stringRule = formatrule([rule.slice(1)], pos);
+        if (column < this.states.sets.length) {
+          this.states.insert({ set: column, val: stringRule });
+        }
+        return this;
+      },
+      push({ rule, column, dot }: PushProps) {
+        const pos = dot === "left" ? 0 : grammar.forms[rule][1].length;
+        const stringRule = formatrule(grammar.forms[rule][1], pos);
+        if (column < this.states.sets.length) {
+          this.states.insert({ set: column, val: stringRule });
+        }
+        return this;
+      },
+    };
+  }
+  function isNotAtEnd(s: string) {
+    for (let i = 0; i < s.length; i++) {
+      if (s[i] === "•" && i < s.length - 1) return true;
+    }
+    return false;
+    k;
+  }
+  function getNextElement(s: string) {
+    return [...s].reduce((p, c, i) => c === "•" ? p + s[i + 1] : p, "");
+  }
+  function isTerminal(s: string) {
+    return !grammar.nonterminals.has(s);
+  }
+  function getBody(rule: Rule) {
+    return Object.values(rule)[0];
+  }
+  function getParser(k: number): P<string> | null {
+    const body = getBody(grammar.rules[k + 1]).filter(
+      (v, i) => v instanceof P && i === k + 1,
+    )[0];
+    if (body === undefined) return null;
+    return body as P<string>;
+  }
+  function parse(source: string) {
+    const s = stateSet(source).push({ rule: 0, column: 0, dot: "left" });
+    function scan(state: string, k: number) {
+      const parser = getParser(k);
+      if (parser !== null) {
+        const res = parser.run(source[k + 1]);
+        const ri = grammar.rules.indexOf(grammar.rules[k + 1]);
+        show(state);
+        if (!res.err) {
+          s.pushStringRule({ rule: state, column: k + 1, dot: "right" });
+        }
+      }
+    }
+    function predict(state: string, k: number) {
+      const term = getNextElement(state);
+      show(state);
+      grammar.rules.forEach((r, i) => {
+        if (name(r) === term) s.push({ rule: i, column: k, dot: "left" });
+      });
+    }
+    const complete = (state: string) => {};
+
+    for (let k = 0; k < source.length; k++) {
+      for (let state of s.states.sets[k]) {
+        if (isNotAtEnd(state)) {
+          if (isTerminal(getNextElement(state))) {
+            scan(state, k);
+          } else predict(state, k);
+        } else {
+          complete(state);
+        }
+      }
+    }
+    return { s, grammar };
+  }
+  return { parse };
+}
+
+const parser = Parser(grammar);
+show(parser.parse("2+3*4"));
+
+
+
+
+
+
+
+
+
+const initState = (source:string) => ({
+  index: 0,
+  token: "",
+  source,
+});
+type State = ReturnType<typeof initState>;
+function Parser() {
+  const str = (S: State, end: number) => S.source.slice(S.index, end);
+  const charprev = (S: State) => S.source.charAt(S.index - 1);
+  const charnow = (S: State) => str(S, 1);
+  const charnext = (S: State) => S.source.charAt(S.index + 1);
+  const tick = (S: State) => S.index += 1;
+  function parse(src: string) {
+    const state = initState(src);
+    token(state);
+    return state;
+  }
+  function token(state:State) {
+    state.token=charnow(state)
+  }
+  return { parse };
+}
+
+
+
+const parser = Parser();
+const parsing = parser.parse("1+2");
+show(parsing);
+
+
+
+
+
+
+type KeyVal<T, V> =
+  & keyof { [P in keyof T as T[P] extends V ? P : never]: P }
+  & keyof T;
+
+type Rules = {
+  [key: string]: (string | P<string>)[];
+};
+
+function objval<t extends Object>(k: t) {
+  return Object.values(k)[0];
+}
+
+function objkey<t extends Object>(k: t) {
+  return Object.keys(k)[0];
+}
+
+function dedupe<t>(arr: t[]) {
+  return Array.from(new Set(arr));
+}
+type Strp = string | P<string>;
+
+function Grammar<t, v>(...rules: Rules[]) {
+  const nonterminals = dedupe(rules.map((r) => objkey(r)));
+  const ruleBodies: ([string, string])[] = rules.map(
+    (r) => [
+      objkey(r),
+      objval(r).map((d: Strp) => d instanceof P ? d.type : d).join(""),
+    ],
+  );
+  return ({ rules, ruleBodies, nonterminals });
+}
+
+const grammar = Grammar(
+  { P: ["S"] },
+  { S: ["S", lit("+"), "M"] },
+  { S: ["M"] },
+  { M: ["M", lit("*"), "T"] },
+  { M: ["T"] },
+  { T: [num("integer")] },
+);
+
+type GrammarObj = ReturnType<typeof Grammar>;
+type StateSet = Set<string>;
+
+function Parser(grammar: GrammarObj) {
+  const isnonterminal = (s: string) => grammar.nonterminals.includes(s);
+  const isterminal = (s: string) => !isnonterminal(s);
+  const initsets = (count: number) => {
+    let states = [];
+    for (let i = 0; i < count; i++) states.push(new Set<string>());
+    return states;
+  };
+  const notEnd = (state: string) => {
+    return state.indexOf("•") !== state.length - 1;
+  };
+  const nextElement = (state: string) => {
+    return state[state.indexOf("•") + 1];
+  };
+  const addRule = (
+    ruleIndex: number,
+    s: StateSet,
+    pos: number,
+    dot: number,
+  ) => {
+    const ruleBody = grammar.ruleBodies[ruleIndex];
+    const rr = [...ruleBody[1].slice(0, dot), "•", ...ruleBody[1].slice(dot)]
+      .join("");
+    s.add(rr);
+  };
+  function parse(src: string) {
+    const S = initsets(src.length);
+    let setIndex = 0;
+    addRule(0, S[setIndex], 0, 0);
+    const scan = (state:string, k:number) => {
+      show('in scanner')
+    };
+    const predict = (state: string, k: number) => {
+      const term = nextElement(state);
+      let i = 0;
+      for (const rule of grammar.rules) {
+        if (objkey(rule) === term) {
+          addRule(i, S[setIndex], k, 0);
+        }
+        i++;
+      }
+    };
+    const complete = () => {};
+    for (let k = 0; k < src.length; k++) {
+      for (let state of S[k]) {
+        if (notEnd(state)) {
+          if (isterminal(nextElement(state))) {
+            scan(state, k);
+          } else predict(state, k);
+        } else complete();
+      }
+    }
+    return { src, grammar, S };
+  }
+  return { parse };
+}
+const parser = Parser(grammar).parse("2+3*4");
+
+show(parser);
+
+
+
+
+function rules(symbol: string, expansion: (string | P<string>)[]) {
+  return new Rule(symbol, expansion);
+}
+const r1 = rules("P", ["P", lit("+"), "T"]);
+const c1 = chart(5);
+r1.setDot(0);
+c1.insert({ entry: r1.print, setNumber: 0 });
+show(c1.print(0));
+
+class Rule {
+  public expansion: (string | P<string>)[];
+  public symbol: string;
+  constructor(symbol: string, expansion: (string | P<string>)[]) {
+    this.symbol = symbol;
+    this.expansion = expansion;
+  }
+}
+
+class Chart {
+  public chart: State[][];
+  public lastAddedState: State | null;
+  constructor(columns: number) {
+    this.chart = [];
+    for (let i = 0; i < columns; i++) {
+      this.chart.push([]);
+    }
+    this.lastAddedState = null;
+  }
+  get sets() {
+    return this.chart;
+  }
+  insert({ entry, setNumber }: InsertArgs) {
+    const stateColumn = this.chart[setNumber];
+    for (let i = 0; i < stateColumn.length; i++) {
+      const state = stateColumn[i];
+      if (state.rule === entry.rule) {
+        return;
+      }
+    }
+    this.chart[setNumber].push(entry);
+    this.lastAddedState = entry;
+  }
+  allFrom({ setNumber, asArray = true }: allFromArgs) {
+    return asArray ? this.chart[setNumber] : Array.from(this.chart[setNumber]);
+  }
+  entryCount({ setNumber }: entryCountArgs) {
+    return this.chart[setNumber].length;
+  }
+  print(column: number) {
+    let str = "";
+    str += "--------------------------\n";
+    str += `Column: ${column}\n`;
+    for (const entry of this.chart[column]) {
+      str += entry + `\n`;
+    }
+    str += "--------------------------\n";
+    return str;
+  }
+}
+
+type InsertArgs = { entry: State; setNumber: number };
+type allFromArgs = { setNumber: number; asArray: boolean };
+type entryCountArgs = { setNumber: number };
+
+function chart(columnCount: number) {
+  return new Chart(columnCount);
+}
+
+function rule(name: string) {
+  return {
+    is(...definition: (string | P<string>)[]) {
+      return new Rule(name, definition);
+    },
+  };
+}
+
+class GrammarObj {
+  rules: Rule[];
+  nonterminals: Set<string>;
+  constructor(rules: Rule[]) {
+    this.rules = rules;
+    this.nonterminals = new Set();
+    rules.forEach((r) => this.nonterminals.add(r.symbol));
+  }
+  isNonTerminal(symbol: string) {
+    return this.nonterminals.has(symbol);
+  }
+  isTerminal(symbol: string) {
+    return !this.isNonTerminal(symbol);
+  }
+  getRule(index: number) {
+    const rule = this.rules[index];
+    if (rule === undefined) throw new Error("[getRule]: out of bounds index");
+    return rule;
+  }
+  getRHS(index: number) {
+    const rule = this.rules[index];
+    if (rule === undefined) throw new Error("[getRHS]: out of bounds index");
+    return rule.expansion;
+  }
+  get allRightHands() {
+    return this.rules.map((r) => r.expansion);
+  }
+  get print() {
+    let str = "";
+    this.rules.forEach((r) => str += r.symbol + `\n`);
+    return str;
+  }
+}
+
+function Grammar(...rules: Rule[]) {
+  return new GrammarObj(rules);
+}
+
+const grammar = Grammar(
+  rule("P").is("S"),
+  rule("S").is("S", lit("+"), "M"),
+  rule("S").is("M"),
+  rule("M").is("M", lit("*"), "T"),
+  rule("M").is("T"),
+  rule("T").is(num("integer")),
+);
+
+type ArgsState = {
+  rule: Rule;
+  dot: number;
+  setIndex: number;
+};
+const DOT = "●";
+class State {
+  public ruleDef: Rule;
+  public dot: number;
+  private columnIdx: number;
+  private print: string;
+  constructor({ rule, dot, setIndex }: ArgsState) {
+    this.ruleDef = rule;
+    this.dot = dot;
+    this.columnIdx = setIndex;
+    this.print = this.updatePrint(rule.symbol, rule.expansion);
+    if (this.dot >= 0) {
+      this.setDot(dot);
+    }
+  }
+  private updatePrint(symbol: string, expansion: (string | P<string>)[]) {
+    let print = [symbol, "=>"];
+    for (let i = 0; i < expansion.length; i++) {
+      let sym = expansion[i];
+      if (sym instanceof P) {
+        print.push(sym.type);
+      } else print.push(sym);
+    }
+    return print.join("");
+  }
+  onRightHas(s: string) {
+    for (let i = 0; i < this.print.length; i++) {
+      const current = this.print[i];
+      const next = this.print[i + 1];
+      if (current === DOT) {
+        return next === undefined && next===s ? "" : this;
+      }
+    }
+  }
+
+  setDot(index: number) {
+    const str = [
+      ...this.ruleDef.expansion.slice(0, index),
+      DOT,
+      ...this.ruleDef.expansion.slice(index),
+    ];
+    this.print = this.updatePrint(this.ruleDef.symbol, str);
+    this.dot = index;
+    return this;
+  }
+  get rule() {
+    return this.print;
+  }
+  get isNotAtEnd() {
+    return !this.isComplete;
+  }
+  get isComplete() {
+    const rhsLength = this.ruleDef.expansion.length;
+    return this.dot >= rhsLength;
+  }
+  /** Sets the current state set index.. */
+  set columnIndex(index: number) {
+    this.columnIdx = index;
+  }
+  /** Returns the current state set index. */
+  get columnIndex() {
+    return this.columnIdx;
+  }
+}
+
+function Parser(grammar: GrammarObj) {
+  function parse(source: string) {
+    const tokenCount = source.length;
+    const rules = grammar.rules;
+    const s = chart(tokenCount);
+    const parseState = new State({
+      rule: rules[0],
+      dot: 0,
+      setIndex: 0,
+    });
+    s.insert({ entry: parseState, setNumber: parseState.columnIndex });
+    for (let k = 0; k < tokenCount; k++) {
+      for (let state of s.chart[k]) {
+        if (state.isNotAtEnd) {
+          if (isTerminal(nextElement(state))) {
+            scan(nextElement(state) as P<string>, k, source[k], s);
+          } else predict(nextElement(state), k, s);
+        } else complete(nextElement(state), k, s);
+      }
+    }
+    function nextElement(state: State) {
+      return state.ruleDef.expansion[state.dot];
+    }
+    function complete(s: string | P<string>, k: number, chart: Chart) {
+      const lastAddedState = chart.lastAddedState;
+      if (lastAddedState !== null) {
+        const lastAddedStateMatchColumn = lastAddedState.columnIndex;
+        const lastAddedStateRuleName = lastAddedState.ruleDef.symbol;
+        for (const state of chart.sets[lastAddedStateMatchColumn]) {
+          show(state.onRightHas(lastAddedStateRuleName))
+        }
+      }
+    }
+    function predict(s: strp, k: number, chart: Chart) {
+      for (const rule of grammar.rules) {
+        if (rule.symbol === s) {
+          chart.insert({
+            entry: new State({ rule, dot: 0, setIndex: 0 }),
+            setNumber: k,
+          });
+        }
+      }
+    }
+    function scan(s: P<string>, k: number, term: string, chart: Chart) {
+      const parsing = s.run(term);
+      if (!parsing.err) {
+        const lastAddedState = chart.lastAddedState;
+        if (lastAddedState !== null) {
+          chart.insert({
+            entry: new State({
+              rule: lastAddedState.ruleDef,
+              dot: 1,
+              setIndex: k,
+            }),
+            setNumber: k + 1,
+          });
+        }
+      }
+    }
+    function isTerminal(s: string | P<string>): s is P<string> {
+      return s instanceof P;
+    }
+
+    return { grammar, source, s };
+  }
+
+  return { parse };
+}
+
+const parsing = Parser(grammar).parse("2+3*4");
+
+show(parsing);
+type strp = string | P<string>;

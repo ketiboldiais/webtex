@@ -1,0 +1,58 @@
+# Webtex Dependencies
+
+This is the packages page for Webtex, which outlines some of the modules used by the editor.
+
+## Lexical
+Undoubtedly, the most important component to Webtex is the Lexical
+editor. Lexical's modularity and low-level architecture provides a
+clean environment for developing plugins. Many of the editor's
+existing plugins can be found on Lexical's Github page. Plugins
+developed specifically for Webtex can be found in the Webtex monorepo.
+
+## Dexie
+For data persistence, Webtex uses the IndexedDB API through the Dexie
+library. In contrast to local storage, IndexedDB is asynchronous and
+non-render-blocking, allowing Webtex to focus on text editing.
+
+## Redux
+An architectural challenge to applications like Webtex is deciding on
+a state management tool. As a whole, Webtex has three different
+components at play, each with their own separate states.
+
+The Lexical editor has its own underlying state model, independent of
+the DOM. IndexedDB has its own. And the front-end application (what's
+shown to the user) has its own state as well. Moreover, within each of
+these components, there are smaller, micro-states. The editor's
+toolbar, the notes panel, undo-redo history&mdash;all of these are
+substates independent of one another.
+
+The complexity is greatly reduced with a functional approach. Instead
+of attempting to track each state by a single, monolithic handler, we
+break it down into smaller, independent modules. Redux makes this
+approach easy. Webtex maintains a single Redux slice that only cares
+about: (1) what's created, (2) what's read, (3) what's updated, and
+(4) what's deleted. Everything else&mdash;what's rendered on the
+editor, what's displayed on the toolbar, what's highlighted,
+etc.&mdash;is handled by React's useContext, useState, and useEffect
+hooks.
+
+## FPlot
+Webtex renders function plots with FPlot, a React component that renders function plots. 
+
+
+## Parsers
+A significant challenge to rendering function plots within a text
+editor, rich or plain, is parsing user input. Regular expressions are
+insufficient, because mathematical notation is anything but
+context-free.
+
+To solve this problem, Webtex uses several custom parsers. First, a
+recursive descent parser for managing side effects and directing
+parser flow. Second, parser combinators and packrat parsers for
+performing the actual substantive parsing. And third, an Earley parser
+for handling extreme edge cases.
+
+For the vast majority of user inputs, the parser combinators and
+packrat parsers get the job done. The trickier edge cases are implicit
+multiplication, right-recursive grammars, and ambiguous notations like
+${\sin^{-1}x}$ versus ${x^{-1}.}$

@@ -5,13 +5,17 @@ import { CSSProperties, ReactNode } from 'react';
 type JSXs = ReactNode;
 type Quad = [number, number, number, number];
 
-const ag = (start: number, stop: number, step: number, inc = 0) =>
-  Array(Math.ceil((stop + inc - start) / step))
-    .fill(start)
-    .map((x, y) => x + y * step);
+const {ceil} = Math;
 
-const range = (start: number, stop: number, step = 1) =>
-  ag(start, stop, step, 0);
+function ag(start: number,stop: number,step: number,inc=0) {
+  return Array(ceil((stop+inc-start)/step))
+    .fill(start)
+    .map((x,y) => x+y*step);
+}
+
+function range(start: number,stop: number,step=1) {
+  return ag(start,stop,step,0);
+}
 
 const perspect = (dimension: number) => (margins: Quad) => (going: 'x' | 'y') =>
   going === 'x'
