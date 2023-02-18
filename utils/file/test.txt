@@ -2442,3 +2442,45 @@ const parsing = Parser(grammar).parse("2+3*4");
 
 show(parsing);
 type strp = string | P<string>;
+
+
+
+
+  function parend(state: State, n: astnode) {
+    const leftParen = ch("(");
+    const rightParen = ch(")");
+    const leftBracket = ch("[");
+    const rightBracket = ch("]");
+    const comma = ch(",");
+    let params = [];
+    while (check(state, [leftParen, leftBracket])) {
+      if (check(state, [leftParen])) {
+        if (node.is.varnode(n)) {
+          eat(state, leftParen);
+          if (!check(state, [rightParen])) {
+            params.push(expression(state));
+            while (check(state, [comma])) {
+              eat(state, comma);
+              params.push(expression(state));
+            }
+          }
+          const ateRParen = eat(state, rightParen);
+          if (!ateRParen) panic(state, "expected right paren");
+          n = node.call(n, params);
+        } else return n;
+      } else if (check(state, [leftBracket])) {
+        eat(state, leftBracket);
+        if (!check(state, [rightBracket])) {
+          params.push(expression(state));
+          while (check(state, [comma])) {
+            eat(state, comma);
+            params.push(expression(state));
+          }
+        }
+        const ateRBracket = eat(state, rightBracket);
+        if (!ateRBracket) panic(state, "expected right bracket");
+        n = node.arrnode(params);
+      } else return n;
+    }
+    return n;
+  }

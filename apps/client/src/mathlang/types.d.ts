@@ -1,141 +1,139 @@
-interface R<t> {
-  res: t;
-  rem: string;
-  err: string | null;
-  type: string;
-}
-
-type outfn = <t>(
-  res: t,
-  rem: string,
-  err: string | null,
-  type?: string,
-) => R<t>;
-
-type numberOptions =
-  | "digit"
-  | "natural"
-  | "integer"
-  | "negative-integer"
-  | "positive-integer"
-  | "float"
-  | "rational"
-  | "binary"
-  | "octal"
-  | "hex"
-  | "scientific"
-  | "any";
-type numeric =
-  | "num:scientific"
-  | "num:integer"
-  | "num:real"
-  | "num:hexadecimal"
-  | "num:binary"
-  | "num:octal"
-  | "num:rational"
-  | "num:Infinity"
-  | "string:string"
-  | "num:NaN";
-
-type symbolic = "name:variable" | "name:function";
-type bool =
-  | "bool:false"
-  | "bool:true";
-type litType =
-  | bool
-  | symbolic
-  | numeric;
-interface basenode {
-  type: `${nodeclass}:${nodesubclass}:${string}`;
-}
-type nodeclass = "num" | "string" | "name" | "bool" | "expression" | "function";
-type nodesubclass = "function" | "variable" | "2" | "n" | "1";
-
-interface literal extends basenode {
-  value: string | boolean | number;
-  type: litType;
-}
-interface numnode extends literal {
-  value: string;
-  type: numeric;
-}
-interface boolnode extends literal {
-  value: boolean;
-  type: bool;
-}
-interface stringnode extends literal {
-  value: string;
-  type: "string:string";
-}
-interface fnamenode extends literal {
-  value: string;
-  type: "name:function";
-}
-interface varnamenode extends literal {
-  value: string;
-  type: "name:variable";
-}
-
-interface naryex extends basenode {
-  op: string;
-  args: astnode[];
-  type: `expression:n`;
-}
-interface binex extends basenode {
-  left: astnode;
-  op: string;
-  right: astnode;
-  type: `expression:2`;
-}
-interface fnode extends basenode {
-  name: string;
-  params: string[];
-  body: astnode;
-  type: "function:def";
-}
-interface callnode extends basenode {
-  caller: string;
-  args: astnode;
-  type: "function:call";
-}
-interface errnode extends basenode {
-  error: string;
-  origin: string;
-  type: "error";
-}
-interface unex extends basenode {
-  op: string;
-  arg: astnode;
-  type: "expression:1";
-}
-
-interface emptynode extends basenode {
-  type: "empty:empty";
-  value: null;
-}
-type astnode =
-  | literal
-  | fnode
-  | callnode
-  | binex
-  | errnode
-  | unex
-  | naryex
-  | emptynode;
-type errObj = ReturnType<typeof err>;
-type binaryBuilder = (left: astnode, op: string, right: astnode) => astnode;
-type naryBuilder = (args: astnode[], op: string) => naryex;
 type parser = (state: State) => astnode;
+type Res = R<string | string[]>;
 type State = {
   src: string;
   start: number;
   end: number;
+  danglingDelimiter: boolean;
   prevtoken: string;
   remaining: string;
-  error: errObj[];
-  logs: any[];
+  error: errnode | null;
 };
-type Res = R<string | string[]>;
+
+type binaryOperator =
+  | "+"
+  | "-"
+  | "*"
+  | "/"
+  | "%"
+  | "rem"
+  | "mod"
+  | "to"
+  | "|"
+  | "&"
+  | ">>"
+  | "<<"
+  | ">>>"
+  | "=="
+  | "="
+  | "!="
+  | ">"
+  | ">="
+  | "<"
+  | "<="
+  | "++"
+  | "--"
+  | "^";
+type unaryOperator = "+" | "~" | "not" | "-";
+
+type Operator =
+  | binaryOperator
+  | unaryOperator;
+
+interface emptynode {
+  value: "empty";
+  kind: "empty::empty";
+}
+interface rootnode {
+  value: emptynode | astnode;
+  kind: "tree::root";
+}
+interface opnode {
+  value: Operator;
+  kind: `operator`;
+}
+type opnodeb = (value: Operator) => opnode;
+
+interface binexnode {
+  value: { left: astnode; op: opnode; right: astnode };
+  kind: `binary-expression`;
+}
+type binexb = (left: astnode, op: opnode, right: astnode) => binexnode;
+
+interface preFixUnaryNode {
+  value: { op: opnode; right: astnode };
+  kind: `unary-expression`;
+}
+
+type literal =
+  | "hexadecimal"
+  | "binary"
+  | "octal"
+  | "scientific"
+  | "float"
+  | "integer"
+  | "rational"
+  | "string"
+  | "bool";
+
+type stringb = (value: string) => stringnode;
+
+interface litnode {
+  value: string;
+  kind: literal;
+}
+
+interface varnode {
+  value: string;
+  kind: "variable";
+}
+
+type varnodeb = (value: string) => varnode;
+
+interface listnode {
+  value: astnode[];
+  kind: "list::list";
+}
+interface errnode {
+  value: string;
+  kind: "error::error";
+}
+interface callnode {
+  value: {
+    name: astnode;
+    args: astnode[];
+  };
+  kind: "function::call";
+}
+type callnodeb = (name: astnode, args: astnode[]) => callnode;
+type astnode =
+  | rootnode
+  | litnode
+  | listnode
+  | emptynode
+  | opnode
+  | binexnode
+  | preFixUnaryNode
+  | varnode
+  | callnode
+  | errnode
+  | binarynode;
+
+type Delimiter = "(" | ")" | "," | '[' | ']';
+
+type tokenspec = {
+  operator: {
+    binary: { [key in binaryOperator]: P<string> };
+    unary: { [key in unaryOperator]: P<string> };
+  };
+  delimiter: {
+    [key in Delimiter]: P<string>;
+  };
+  lit: { [key in literal]: P<string> };
+  symbol: {
+    variable: P<string>;
+  };
+};
 
 interface ParserSettings {
   /**

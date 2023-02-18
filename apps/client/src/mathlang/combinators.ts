@@ -1,5 +1,32 @@
 const { log } = console;
 
+export interface R<t> {
+  res: t;
+  rem: string;
+  err: string | null;
+  type: string;
+}
+
+type outfn = <t>(
+  res: t,
+  rem: string,
+  err: string | null,
+  type?: string,
+) => R<t>;
+type numberOptions =
+  | "digit"
+  | "natural"
+  | "integer"
+  | "negative-integer"
+  | "positive-integer"
+  | "float"
+  | "rational"
+  | "binary"
+  | "octal"
+  | "hex"
+  | "scientific"
+  | "any";
+  
 export const output: outfn = (res, rem, err, type = "") => ({
   res,
   rem,
@@ -226,26 +253,28 @@ export function num(option: numberOptions): P<string> {
   const nonzeroDigits = digits.slice(1);
   const zero = lit("0");
   const minus = lit("-");
-  const numeral = term(choice(from(digits)));
-  const posint = term(word([
+  const numeral = choice(from(digits));
+  const posint = word([
     many(from(nonzeroDigits)),
     possibly(many(from(digits))),
-  ]));
-  const natural = term(zero.or(posint));
-  const negint = term(word([minus, posint]));
-  const integer = term(zero.or(negint).or(posint));
-  const float = term(word([
+  ]);
+  const natural = zero.or(posint);
+  const negint = word([minus, posint]);
+  const integer = zero.or(negint).or(posint);
+  const float = word([
     integer,
     lit("."),
     word([many([zero]), posint]).or(natural),
-  ]));
-  const rational = term(word([integer, lit("/"), integer]));
-  const scientific = term(
-    word([float.or(integer), lit("e").or(lit("E")), float.or(integer)]),
-  );
-  const binary = term(word([lit("0b"), many(from(["0", "1"]))]));
-  const octal = term(word([lit("0o"), many(from(digits))]));
-  const hex = term(word([
+  ]);
+  const rational = word([integer, lit("/"), integer]);
+  const scientific = word([
+    float.or(integer),
+    lit("e").or(lit("E")),
+    float.or(integer),
+  ]);
+  const binary = word([lit("0b"), many(from(["0", "1"]))]);
+  const octal = word([lit("0o"), many(from(digits))]);
+  const hex = word([
     lit("0x"),
     many(
       from([
@@ -254,7 +283,7 @@ export function num(option: numberOptions): P<string> {
         ...asciiGen([97, 122]),
       ]),
     ),
-  ]));
+  ]);
   let parser: P<string>;
   switch (option) {
     case "digit":
@@ -377,9 +406,11 @@ export function many(parsers: P<any>[]) {
   });
 }
 
-const allbut = (p: P<string>) =>
-  new P((input) => {
-    if (input === "") return output("", "", null, `allbut`);
+export function allbut(p: P<string>) {
+  return new P((input) => {
+    if (input === "") {
+      return output("", "", null, `allbut`);
+    }
     let rem = input;
     let res = "";
     let i = 0;
@@ -387,14 +418,15 @@ const allbut = (p: P<string>) =>
       let str = p.run(rem);
       if (str.err) {
         res = input.slice(0, i);
-      } else break;
+      } else {
+        break;
+      }
       rem = input.slice(i);
       i++;
     }
     return output(res, input.slice(res.length), null, `allbut`);
   });
+}
 
-const dquoted = amid(lit(`"`), lit(`"`));
-const dquotedString = dquoted(allbut(lit(`"`)));
-log(dquotedString.run(`"good"`));
-
+export const dquoted = amid(lit(`"`), lit(`"`));
+export const dquotedString = dquoted(allbut(lit(`"`)));
