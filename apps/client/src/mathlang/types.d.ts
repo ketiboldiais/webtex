@@ -34,6 +34,7 @@ type numeric =
   | "num:octal"
   | "num:rational"
   | "num:Infinity"
+  | "string:string"
   | "num:NaN";
 
 type symbolic = "name:variable" | "name:function";
@@ -47,7 +48,7 @@ type litType =
 interface basenode {
   type: `${nodeclass}:${nodesubclass}:${string}`;
 }
-type nodeclass = "num" | "name" | "bool" | "expression" | "function";
+type nodeclass = "num" | "string" | "name" | "bool" | "expression" | "function";
 type nodesubclass = "function" | "variable" | "2" | "n" | "1";
 
 interface literal extends basenode {
@@ -61,6 +62,10 @@ interface numnode extends literal {
 interface boolnode extends literal {
   value: boolean;
   type: bool;
+}
+interface stringnode extends literal {
+  value: string;
+  type: "string:string";
 }
 interface fnamenode extends literal {
   value: string;
@@ -104,7 +109,19 @@ interface unex extends basenode {
   type: "expression:1";
 }
 
-type astnode = literal | fnode | callnode | binex | errnode | unex | naryex;
+interface emptynode extends basenode {
+  type: "empty:empty";
+  value: null;
+}
+type astnode =
+  | literal
+  | fnode
+  | callnode
+  | binex
+  | errnode
+  | unex
+  | naryex
+  | emptynode;
 type errObj = ReturnType<typeof err>;
 type binaryBuilder = (left: astnode, op: string, right: astnode) => astnode;
 type naryBuilder = (args: astnode[], op: string) => naryex;
@@ -113,9 +130,10 @@ type State = {
   src: string;
   start: number;
   end: number;
-  previous: [number, number];
+  prevtoken: string;
   remaining: string;
-  error: null | errObj;
+  error: errObj[];
+  logs: any[];
 };
 type Res = R<string | string[]>;
 

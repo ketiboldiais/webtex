@@ -1,3 +1,5 @@
+const { log } = console;
+
 export const output: outfn = (res, rem, err, type = "") => ({
   res,
   rem,
@@ -13,6 +15,14 @@ export class P<t> {
     return new P<k>((input): R<k> => {
       const p = this.run(input);
       return output(p.res, p.rem, p.err, fn(p)) as unknown as R<k>;
+    });
+  }
+  chain<x>(fn: (a: R<t>) => P<x>) {
+    const run = this.run;
+    return new P((input) => {
+      const res = run(input);
+      if (res.err) return output(res.res, res.rem, res.err) as unknown as R<x>;
+      return fn(res).run(res.rem);
     });
   }
   map<x>(fn: (a: t) => x): P<x> {
@@ -129,7 +139,9 @@ export function term(p: P<string>) {
   const ws = choice([lit(" "), lit("\t"), lit("\r"), lit("\n")]);
   return new P((input) => {
     const res = chain([hop(ws), p, hop(ws)]).map((d) => d[0]).run(input);
-    return res;
+    return res.res === undefined
+      ? output("", input, "no match in choice", res.type)
+      : res;
   });
 }
 
@@ -364,3 +376,25 @@ export function many(parsers: P<any>[]) {
     return output(result, res.rem, res.err);
   });
 }
+
+const allbut = (p: P<string>) =>
+  new P((input) => {
+    if (input === "") return output("", "", null, `allbut`);
+    let rem = input;
+    let res = "";
+    let i = 0;
+    while (rem !== "") {
+      let str = p.run(rem);
+      if (str.err) {
+        res = input.slice(0, i);
+      } else break;
+      rem = input.slice(i);
+      i++;
+    }
+    return output(res, input.slice(res.length), null, `allbut`);
+  });
+
+const dquoted = amid(lit(`"`), lit(`"`));
+const dquotedString = dquoted(allbut(lit(`"`)));
+log(dquotedString.run(`"good"`));
+

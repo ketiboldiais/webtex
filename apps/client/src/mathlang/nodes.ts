@@ -1,4 +1,5 @@
 import {
+  any,
   ch,
   chain,
   choice,
@@ -19,30 +20,6 @@ export const token = {
   delimiter: {
     lparen: ch("("),
     rparen: ch(")"),
-  },
-  relation: {
-    ["<"]: ch("<"),
-    [">"]: ch(">"),
-    ["<="]: ch("<="),
-    [">="]: ch(">="),
-    ["=="]: ch("=="),
-    ["!="]: ch("!="),
-    ["="]: ch("="),
-  },
-  binop: {
-    ["+"]: ch("+"),
-    ["-"]: ch("-"),
-    ["*"]: ch("*"),
-    ["/"]: ch("/"),
-    ["%"]: ch("%"),
-    rem: ch("rem"),
-    mod: ch("mod"),
-    ["^"]: ch("^"),
-  },
-  unaryop: {
-    ["+"]: ch("+"),
-    ["~"]: ch("~"),
-    not: ch("not"),
   },
   number: {
     hex: term(num("hex")).typemap<litType>((_) => "num:hexadecimal"),
@@ -118,6 +95,7 @@ export const node = {
         return { value, type } as fnamenode;
       case "name:variable":
         return { value, type } as varnamenode;
+      case "string:string":
       case "num:binary":
       case "num:Infinity":
       case "num:NaN":
@@ -132,6 +110,7 @@ export const node = {
   },
   is: {
     bool: (node: any): node is boolnode => typeclass(node) === "bool",
+    string: (node: any): node is stringnode => typeclass(node) === "string",
     num: (node: any): node is numnode => typeclass(node) === "num",
     fname: (node: any): node is fnamenode =>
       typeclass(node) === "name" && subclass(node) === "function",
@@ -182,3 +161,5 @@ export const node = {
     type: "expression:1",
   }),
 };
+
+
