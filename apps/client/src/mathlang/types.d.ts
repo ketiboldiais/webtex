@@ -1,5 +1,6 @@
 type parser = (state: State) => astnode;
 type Res = R<string | string[]>;
+type Tup = string | [...Tup[]];
 type State = {
   src: string;
   start: number;
@@ -9,7 +10,6 @@ type State = {
   remaining: string;
   error: errnode | null;
 };
-
 type binaryOperator =
   | "+"
   | "-"
@@ -34,7 +34,7 @@ type binaryOperator =
   | "++"
   | "--"
   | "^";
-type unaryOperator = "+" | "~" | "not" | "-";
+type unaryOperator = "not" | "~";
 
 type Operator =
   | binaryOperator
@@ -42,26 +42,34 @@ type Operator =
 
 interface emptynode {
   value: "empty";
-  kind: "empty::empty";
+  kind: "empty";
 }
 interface rootnode {
   value: emptynode | astnode;
-  kind: "tree::root";
+  kind: "root";
 }
-interface opnode {
-  value: Operator;
-  kind: `operator`;
+
+interface binopnode {
+  value: 'operator-binary';
+  kind: binaryOperator;
 }
-type opnodeb = (value: Operator) => opnode;
+
+interface unaryopnode {
+  value: 'operator-unary';
+  kind: unaryOperator;
+}
+
+type operator = binaryOperator | unaryOperator;
 
 interface binexnode {
-  value: { left: astnode; op: opnode; right: astnode };
+  value: { left: astnode; op: binopnode; right: astnode };
   kind: `binary-expression`;
 }
+
 type binexb = (left: astnode, op: opnode, right: astnode) => binexnode;
 
-interface preFixUnaryNode {
-  value: { op: opnode; right: astnode };
+interface unarynode {
+  value: { op: unaryopnode; right: astnode };
   kind: `unary-expression`;
 }
 
@@ -75,6 +83,21 @@ type literal =
   | "rational"
   | "string"
   | "bool";
+
+type nodekind =
+  | "variable"
+  | 'empty'
+  | 'unknown'
+  | "list"
+  | "error"
+  | "function::call"
+  | "root"
+  | "binary-expression"
+  | 'operator-binary'
+  | 'operator-unary'
+  | "unary-expression"
+  | operator
+  | literal;
 
 type stringb = (value: string) => stringnode;
 
@@ -92,12 +115,14 @@ type varnodeb = (value: string) => varnode;
 
 interface listnode {
   value: astnode[];
-  kind: "list::list";
+  kind: "list";
 }
+
 interface errnode {
   value: string;
-  kind: "error::error";
+  kind: "error";
 }
+
 interface callnode {
   value: {
     name: astnode;
@@ -105,21 +130,22 @@ interface callnode {
   };
   kind: "function::call";
 }
+
 type callnodeb = (name: astnode, args: astnode[]) => callnode;
 type astnode =
   | rootnode
   | litnode
   | listnode
+  | binopnode
+  | unaryopnode
   | emptynode
-  | opnode
   | binexnode
-  | preFixUnaryNode
+  | unarynode
   | varnode
   | callnode
-  | errnode
-  | binarynode;
+  | errnode;
 
-type Delimiter = "(" | ")" | "," | '[' | ']';
+type Delimiter = "(" | ")" | "," | "[" | "]";
 
 type tokenspec = {
   operator: {
@@ -134,25 +160,3 @@ type tokenspec = {
     variable: P<string>;
   };
 };
-
-interface ParserSettings {
-  /**
-   * Option that sets expression builder. Defaults
-   * to conventional.
-   *
-   * - `conventional` - Constructs a conventional
-   * parse tree. In particular, binary expressions
-   * take the form:
-   * ~~~
-   * {left: astnode, op: string, right: astnode}
-   * ~~~
-   * - `algebraic` - Constructs a parse tree closer
-   * to the S-expression format, conducive to algebraic
-   * simplification. In particular, binary expressions
-   * take the form:
-   * ~~~
-   * {op: string, args: astnode[]}
-   * ~~~
-   */
-  ast?: "conventional" | "algebraic";
-}

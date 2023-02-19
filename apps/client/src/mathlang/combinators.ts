@@ -1,5 +1,3 @@
-const { log } = console;
-
 export interface R<t> {
   res: t;
   rem: string;
@@ -26,7 +24,7 @@ type numberOptions =
   | "hex"
   | "scientific"
   | "any";
-  
+
 export const output: outfn = (res, rem, err, type = "") => ({
   res,
   rem,
@@ -41,19 +39,29 @@ export class P<t> {
   typemap<k extends string>(fn: (res: R<t>) => k) {
     return new P<k>((input): R<k> => {
       const p = this.run(input);
-      return output(p.res, p.rem, p.err, fn(p)) as unknown as R<k>;
+      p.type = fn(p);
+      return output(p.res, p.rem, p.err, p.type) as unknown as R<k>;
     });
   }
   chain<x>(fn: (a: R<t>) => P<x>) {
     const run = this.run;
     return new P((input) => {
       const res = run(input);
-      if (res.err) return output(res.res, res.rem, res.err) as unknown as R<x>;
+      if (res.err) {
+        return output(res.res, res.rem, res.err) as unknown as R<x>;
+      }
       return fn(res).run(res.rem);
     });
   }
+  then<k>(fn: (a: R<t>) => Partial<R<k>>) {
+    return new P((input) => {
+      const p = this.run(input);
+      const f = fn(p);
+      return { ...p, ...f };
+    });
+  }
   map<x>(fn: (a: t) => x): P<x> {
-    return new P<x>((input) => {
+    return new P<x>((input): R<x> => {
       const parsed = this.run(input);
       const res = fn(parsed.res);
       return output(res, parsed.rem, parsed.err, parsed.type);
@@ -141,9 +149,10 @@ export function word(parsers: P<string>[]) {
 }
 
 /** From the provided parsers, returns the first successful parser's result. */
-export function choice<t>(parsers: P<t>[]) {
-  return new P<t>((input) => {
-    let nx: R<t> = parsers[0].run(input);
+
+export function choice(parsers: P<any>[]) {
+  return new P((input) => {
+    let nx = parsers[0].run(input);
     for (let i = 1; i < parsers.length; i++) {
       if (!nx.err) return nx;
       nx = parsers[i].run(nx.rem);
@@ -162,13 +171,10 @@ export function hop(parser: P<string>) {
   });
 }
 
-export function term(p: P<string>) {
+export function term<t>(p: P<t>) {
   const ws = choice([lit(" "), lit("\t"), lit("\r"), lit("\n")]);
   return new P((input) => {
-    const res = chain([hop(ws), p, hop(ws)]).map((d) => d[0]).run(input);
-    return res.res === undefined
-      ? output("", input, "no match in choice", res.type)
-      : res;
+    return chain([hop(ws), p, hop(ws)]).map((d) => d[0]).run(input);
   });
 }
 
@@ -258,22 +264,26 @@ export function num(option: numberOptions): P<string> {
     many(from(nonzeroDigits)),
     possibly(many(from(digits))),
   ]);
-  const natural = zero.or(posint);
-  const negint = word([minus, posint]);
-  const integer = zero.or(negint).or(posint);
+  const natural = zero.or(posint).typemap((_) => "natural");
+  const negint = word([minus, posint]).typemap((_) => "negint");
+  const integer = zero.or(negint).or(posint).typemap((_) => "integer");
   const float = word([
     integer,
     lit("."),
     word([many([zero]), posint]).or(natural),
-  ]);
-  const rational = word([integer, lit("/"), integer]);
+  ]).typemap((_) => "float");
+  const rational = word([integer, lit("/"), integer]).typemap((_) =>
+    "rational"
+  );
   const scientific = word([
     float.or(integer),
     lit("e").or(lit("E")),
     float.or(integer),
-  ]);
-  const binary = word([lit("0b"), many(from(["0", "1"]))]);
-  const octal = word([lit("0o"), many(from(digits))]);
+  ]).typemap((_) => "scientific");
+  const binary = word([lit("0b"), many(from(["0", "1"]))]).typemap((_) =>
+    "binary"
+  );
+  const octal = word([lit("0o"), many(from(digits))]).typemap((_) => "octal");
   const hex = word([
     lit("0x"),
     many(
@@ -283,7 +293,7 @@ export function num(option: numberOptions): P<string> {
         ...asciiGen([97, 122]),
       ]),
     ),
-  ]);
+  ]).typemap((_) => "hex");
   let parser: P<string>;
   switch (option) {
     case "digit":
@@ -389,6 +399,10 @@ export function latin(option: "lower" | "upper" | "any") {
   });
 }
 
+export function lazy<t>(parser: () => P<t>): P<t> {
+  return new P<t>((input) => parser().run(input));
+}
+
 export function amid<a, b, c>(pL: P<a>, pR: P<b>) {
   return (pC: P<c>) => chain([pL, pC, pR]).map((d) => d[1]);
 }
@@ -397,12 +411,12 @@ export function amid<a, b, c>(pL: P<a>, pR: P<b>) {
  * Repeatedly executes the parsers provided. This is similar
  * to `repeat`, but on a list of parsers.
  */
-export function many(parsers: P<any>[]) {
+export function many<t>(parsers: P<t>[]) {
   return new P<string>((input) => {
     const res = (repeat(choice(parsers)) as P<string[]>).run(input);
-    if (res.err) return output("", res.rem, res.err);
+    if (res.err) return output("", res.rem, res.err, res.type);
     const result = res.res.flat().join("");
-    return output(result, res.rem, res.err);
+    return output(result, res.rem, res.err, res.type);
   });
 }
 
