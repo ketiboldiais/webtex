@@ -1,552 +1,715 @@
+import treeify from "treeify";
 import {
-  amid,
-  ch,
+  a,
   chain,
-  choice,
-  dquotedString,
-  latin,
-  lazy,
-  lit,
-  many,
-  num,
+  dquoted,
+  literal,
+  of,
+  oneof,
   P,
   R,
-  repeat,
+  regex,
   term,
 } from "./combinators";
-import {
-  binex,
-  binop,
-  callnode,
-  err,
-  listnode,
-  litnode,
-  prefixUnary,
-  unaryop,
-  variable,
-} from "./nodes";
 
-namespace algebra {
-  export function make(src: string) {
-    const numeral = many([num("any")]).typemap((d) => "number");
-    const variable = many([latin("any")]).typemap((d) => "variable");
-    const digits = term(many([numeral, variable]));
-    const lparen = ch("(");
-    const rparen = ch(")");
-    const parend = amid<string, string, Tup>(lparen, rparen);
-    const operator = choice([
-      ch("+"),
-      ch("-"),
-      ch("*"),
-      ch("%"),
-      ch("//"),
-      ch("/"),
-      ch("mod"),
-      ch("cos"),
-      ch("sin"),
-      ch("tan"),
-      ch("rem"),
-    ]);
-    const expr: P<Tup> = lazy(() => choice([digits, operation]));
-    const operation = choice([
-      parend(
-        chain([
-          operator,
-          repeat(expr),
-        ]),
-      ),
-      chain([operator, repeat(expr)]),
-    ]).map<Tup>((d) => typeof d === "string" ? d : d.flat());
-    return expr.run(src).res;
-  }
+const { log } = console;
 
-  /* -------------------------------------------------------------------------- */
-  /*                                   PARSER                                   */
-  /* -------------------------------------------------------------------------- */
+const view = (x: any) => log(treeify.asTree(x, true, false));
 
-  export function parse(src: string) {
-    /**
-     * Token specification object.
-     * The keys in this object are strictly
-     * defined in types.d.ts.
-     * Adding a key that isn't specified in
-     * types.d.ts will cause errors.
-     */
-    const ast: tokenspec = {
-      lit: {
-        hexadecimal: term(num("hex")),
-        binary: term(num("binary")),
-        octal: term(num("octal")),
-        scientific: term(num("scientific")),
-        float: term(num("float")),
-        integer: term(num("integer")),
-        rational: term(num("rational")),
-        string: term(dquotedString),
-        bool: term(choice([ch("true"), ch("false")])),
-      },
-      delimiter: {
-        ["("]: ch("("),
-        [")"]: ch(")"),
-        [","]: ch(","),
-        ["["]: ch("["),
-        ["]"]: ch("]"),
-      },
-      symbol: {
-        variable: chain([many([latin("any")])]).map((d) => d.flat().join("")),
-      },
-      operator: {
-        binary: {
-          ["|"]: ch("|"),
-          ["&"]: ch("&"),
-          ["!="]: ch("!="),
-          ["=="]: ch("!="),
-          ["="]: ch("="),
-          [">="]: ch(">="),
-          ["<="]: ch("<="),
-          ["<"]: ch("<"),
-          [">"]: ch(">"),
-          [">>"]: ch(">>"),
-          ["<<"]: ch("<<"),
-          [">>>"]: ch(">>>"),
-          ["to"]: ch("to"),
-          ["+"]: ch("+"),
-          ["-"]: ch("-"),
-          ["/"]: ch("/"),
-          ["*"]: ch("*"),
-          ["%"]: ch("%"),
-          ["rem"]: ch("rem"),
-          ["mod"]: ch("mod"),
-          ["++"]: ch("++"),
-          ["--"]: ch("--"),
-          ["^"]: ch("^"),
-        },
-        unary: {
-          ["not"]: lit("not"),
-          ["~"]: lit("~"),
-        },
-      },
-    };
+const node: nodeFactory = (op) => (...x) => ({ ...op(...x) });
 
-    const nil: emptynode = { value: "empty", kind: "empty" };
+const num = node((value: string) => ({
+  value,
+  kind: "NUMBER",
+  atomic: true,
+} as $numnode));
 
-    function run(src: string) {
-      const state = enstate(src);
-      let node: rootnode = { value: nil, kind: "root" };
-      while (state.start < state.end && state.remaining) {
-        node.value = expression(state);
-        if (state.error) {
-          node.value = state.error;
-          return node;
-        }
-      }
-      return node;
+const scinum = node((value: string) => ({
+  value: value.split("E").length === 1 ? value.split("e") : value.split("E"),
+  kind: "SCIENTIFIC-NUMBER",
+  atomic: true,
+} as $scinode));
+
+const complexnum = node((value: string) => ({
+  value,
+  kind: "COMPLEX-NUMBER",
+  atomic: true,
+} as $complexnode));
+
+const str = node((value: string) => ({
+  value,
+  kind: "STRING",
+  atomic: true,
+} as $strnode));
+
+const bool = node((val: string) => ({
+  value: val === "true",
+  kind: "BOOL",
+  atomic: true,
+} as $boolnode));
+
+const frac = node((src: string) => ({
+  value: src.split("/"),
+  kind: "FRACTION",
+  atomic: true,
+} as $fracnode));
+
+const symbolnode = node((value: string, native = "") => ({
+  value,
+  kind: "SYMBOL",
+  native,
+  atomic: true,
+} as $symnode));
+
+const nil: $nilnode = { value: "nil", kind: "NIL", atomic: true };
+const err = (error: string) => ({
+  error,
+  kind: "ERROR",
+  atomic: true,
+} as $errnode);
+
+type OP_NAME = typeof operators[keyof typeof operators];
+type Operator = keyof typeof operators;
+
+/** Operators record. */
+const operators = {
+  "+": "ADD",
+  "^": "POW",
+  "-": "SUB",
+  "*": "MUL",
+  ".*": "DOTMUL",
+  "./": "DOTDIV",
+  "//": "QUOT",
+  "%": "BMOD",
+  "rem": "REM",
+  "mod": "MOD",
+  "not": "NOT",
+  "~": "BITNOT",
+  "div": "DIV",
+  "!": "FACT",
+  "'": "DERIVE",
+} as const;
+
+const relnode = node((op: string, params: astnode[]) => ({
+  op,
+  params,
+  kind: "RELATION",
+  atomic: false,
+} as $relnode));
+
+const defnode = node((op: astnode, children: astnode[], body: astnode) => ({
+  op,
+  kind: "FUNCTION_DEFINITION",
+  children,
+  body,
+  atomic: false,
+} as $defnode));
+
+const callnode = node((op: astnode, args: astnode[], native = "") => ({
+  op,
+  kind: "FUNCTION_CALL",
+  native,
+  args,
+  atomic: false,
+} as $callnode));
+
+const operator = node((
+  op: Operator,
+  kind: OP_NAME,
+  args: astnode[],
+  associativity: "left" | "right",
+) => ({
+  op,
+  kind,
+  args,
+  associativity,
+  atomic: false,
+} as $opnode));
+
+interface ParserSettings {
+  logging: boolean;
+  constants: { [key: string]: string };
+  functions: { [key: string]: string };
+}
+const defaultSettings: ParserSettings = {
+  logging: false,
+  functions: {
+    abs: `Math.abs`,
+    acos: `Math.acos`,
+    acosh: `Math.acosh`,
+    asin: `Math.asin`,
+    asinh: `Math.asinh`,
+    atan: `Math.atan`,
+    atanh: `Math.atanh`,
+    atan2: `Math.atan2`,
+    cbrt: `Math.cbrt`,
+    ceil: `Math.ceil`,
+    clz32: `Math.clz32`,
+    cos: `Math.cos`,
+    cosh: `Math.cosh`,
+    exp: `Math.exp`,
+    expm1: `Math.expm1`,
+    floor: `Math.floor`,
+    fround: `Math.fround`,
+    hypot: `Math.hypot`,
+    imul: `Math.imul`,
+    log: `Math.log`,
+    ln: `Math.log`,
+    log1p: `Math.log1p`,
+    log10: `Math.log10`,
+    lg: `Math.log2`,
+    log2: `Math.log2`,
+    max: `Math.max`,
+    min: `Math.min`,
+    pow: `Math.pow`,
+    random: `Math.random`,
+    round: `Math.round`,
+    sign: `Math.sign`,
+    sin: `Math.sin`,
+    sinh: `Math.sinh`,
+    sqrt: `Math.sqrt`,
+    tan: `Math.tan`,
+    tanh: `Math.tanh`,
+    trunc: `Math.trunc`,
+  },
+  constants: {
+    e: `Math.E`,
+    ln2: `Math.LN2`,
+    ln10: `Math.LN10`,
+    log2e: `Math.LOG2E`,
+    pi: `Math.PI`,
+    sqrt1_2: `Math.SQRT1_2`,
+    sqrt2: `Math.SQRT2`,
+  },
+};
+function Parser(settings: ParserSettings = defaultSettings) {
+  const withLogs = settings.logging;
+  const tickWithLogs = (state: State, result: R<string>) => {
+    state.logs.push(`PARSED: ${result.res}`);
+    state.prev = result.res;
+    state.idx = state.src.length - result.rem.length;
+    state.rem = result.rem;
+  };
+
+  /** Updates the state indices.  */
+  const tickWithoutLogs = (state: State, result: R<string>) => {
+    state.prev = result.res;
+    state.idx = state.src.length - result.rem.length;
+    state.rem = result.rem;
+  };
+  const tick = withLogs ? tickWithLogs : tickWithoutLogs;
+
+  const enstate = (src: string) => ({
+    src,
+    rem: src,
+    prev: "",
+    idx: 0,
+    error: "",
+    logs: [],
+  });
+
+  const token = {
+    variable: regex(/^\w+/),
+    number: of("real-number"),
+
+    // unary-prefix
+    ["not"]: a("not"),
+    ["~"]: a("~"),
+
+    // unary-postfix
+    ["!"]: a("!"),
+    ["'"]: a("'"),
+
+    // delimiters
+    ["("]: a("("),
+    [")"]: a(")"),
+    ["["]: a("["),
+    ["]"]: a("]"),
+    ["{"]: a("{"),
+    ["}"]: a("}"),
+    [","]: a(","),
+
+    // relational-operators
+    ["="]: a("="),
+    ["!="]: a("!="),
+    ["<"]: a("<"),
+    [">"]: a(">"),
+    ["<="]: a("<="),
+    [">="]: a(">="),
+
+    // assignment operator
+    [":="]: a(":="),
+  };
+
+  const panic = (state: State, reason: string) => {
+    state.error = reason;
+  };
+
+  /** Consumes an expected token. */
+  const eat = (state: State, parser: P<string>) => {
+    const result = parser.run(state.rem);
+    if (result.err) {
+      return false;
     }
+    tick(state, result);
+    return true;
+  };
 
-    function expression(state: State): astnode {
-      return bitwiseor(state);
-    }
-
-    function bitwiseor(state: State): astnode {
-      return binexp(state, "|", bitwiseand);
-    }
-
-    function bitwiseand(state: State): astnode {
-      return binexp(state, "&", unequal);
-    }
-
-    function unequal(state: State) {
-      return binexp(state, "!=", doubleEqual);
-    }
-
-    function doubleEqual(state: State): astnode {
-      return binexp(state, "==", equality);
-    }
-
-    function equality(state: State): astnode {
-      return binexp(state, "=", gte);
-    }
-
-    function gte(state: State): astnode {
-      return binexp(state, ">=", lte);
-    }
-
-    function lte(state: State): astnode {
-      return binexp(state, "<=", lt);
-    }
-
-    function lt(state: State): astnode {
-      return binexp(state, "<", gt);
-    }
-
-    function gt(state: State): astnode {
-      return binexp(state, ">", shiftLeft);
-    }
-
-    function shiftLeft(state: State): astnode {
-      return binexp(state, ">>", shiftRight);
-    }
-
-    function shiftRight(state: State): astnode {
-      return binexp(state, "<<", logShift);
-    }
-
-    function logShift(state: State): astnode {
-      return binexp(state, ">>>", convert);
-    }
-
-    /**
-     * Parses a conversion expression.
-     * E.g., 2kg to lbs
-     */
-    function convert(state: State): astnode {
-      return binexp(state, "to", sumexp);
-    }
-
-    function sumexp(state: State): astnode {
-      return binexp(state, "+", difexp);
-    }
-
-    function difexp(state: State): astnode {
-      return binexp(state, "-", divexp);
-    }
-
-    function divexp(state: State): astnode {
-      return binexp(state, "/", prodexp);
-    }
-
-    function prodexp(state: State): astnode {
-      return binexp(state, "*", juxtaprod);
-    }
-
-    /** Parses 'implicit multiplication.' */
-    function juxtaprod(state: State) {
-      let n = percent(state);
-      let last = n;
-      while (
-        check(state, [ast.symbol.variable, num("any"), ast.delimiter["("]])
-      ) {
-        last = percent(state);
-        n = binex(n, binop("*"), last);
-      }
-      return n;
-    }
-
-    /** Parses a % b. We treat this expression as the integer quotient. */
-    function percent(state: State) {
-      return binexp(state, "%", rem);
-    }
-
-    /** Parses a rem b. (Follows the mathematical definition of remainder). */
-    function rem(state: State) {
-      return binexp(state, "rem", mod);
-    }
-
-    /** Parses a mod b. (Follows JS's definition of '%'. */
-    function mod(state: State) {
-      return binexp(state, "mod", unaryNot);
-    }
-
-    function unaryNot(state: State): astnode {
-      return unaryPrefixExp(state, "not", powex);
-    }
-
-    function powex(state: State): astnode {
-      return binexp(state, "^", literal_hex);
-    }
-
-    // BEGIN LITERAL PARSING
-
-    function literal_hex(state: State): astnode {
-      return literal(state, "hexadecimal", binarynum);
-    }
-
-    function binarynum(state: State): astnode {
-      return literal(state, "binary", octalnum);
-    }
-
-    function octalnum(state: State): astnode {
-      return literal(state, "octal", scinum);
-    }
-
-    function scinum(state: State): astnode {
-      return literal(state, "scientific", rational);
-    }
-
-    function rational(state: State): astnode {
-      return literal(state, "rational", float);
-    }
-
-    function float(state: State): astnode {
-      return literal(state, "float", integer);
-    }
-
-    function integer(state: State): astnode {
-      return literal(state, "integer", bool);
-    }
-
-    function bool(state: State): astnode {
-      return literal(state, "bool", string);
-    }
-
-    function string(state: State): astnode {
-      return literal(state, "string", varnode);
-    }
-
-    // END LITERAL PARSING
-
-    /**
-     * Parses a variable. Note the branching here.
-     * We regonize the syntax `f(x)` as a function
-     * call. So, if we encounter a variable followed
-     * by a left-paren, we parse a call expression.
-     * Otherwise, we parse a parenthesized expression.
-     */
-    function varnode(state: State): astnode {
-      const parsing = check<string>(state, [ast.symbol.variable]);
-      if (parsing) {
-        tick(state, parsing);
-        let node: astnode = variable(parsing.res);
-        if (check(state, [ast.delimiter["("]])) {
-          node = callExpr(state, node);
-        }
-        return node;
-      }
-      return parenExp(state);
-    }
-
-    /** Parses a function call expression. */
-    function callExpr(state: State, node: astnode): astnode {
-      let args: astnode[] = [];
-      eat(state, ast.delimiter["("]);
-      if (!check(state, [ast.delimiter[")"]])) {
-        args.push(expression(state));
-        while (check(state, [ast.delimiter[","]])) {
-          eat(state, ast.delimiter[","]);
-          args.push(expression(state));
-        }
-        const ateRightParen = eat(state, ast.delimiter[")"]);
-        if (!ateRightParen) panic(state, err("expected right paren"));
-        node = callnode(node, args);
-      } else eat(state, ast.delimiter[")"]);
-      return node;
-    }
-
-    /** Parses a parenthesized expression. */
-    function parenExp(state: State): astnode {
-      if (check(state, [ast.delimiter["("]])) {
-        eat(state, ast.delimiter["("]);
-        let expr = expression(state);
-        eat(state, ast.delimiter[")"]);
-        return expr;
-      }
-      return bracketExp(state);
-    }
-
-    /**
-     * Parses a bracketed expression.
-     * In mathlang, brackets are used exclusively
-     * for lists. They are not used for property
-     * indexing like JavaScript.
-     */
-    function bracketExp(state: State): astnode {
-      if (check(state, [ast.delimiter["["]])) {
-        let elements: astnode[] = [];
-        eat(state, ast.delimiter["["]);
-        elements.push(expression(state));
-        while (check(state, [ast.delimiter[","]])) {
-          eat(state, ast.delimiter[","]);
-          elements.push(expression(state));
-        }
-        const ateLeftBracket = eat(state, ast.delimiter["]"]);
-        if (!ateLeftBracket) panic(state, err("expected right bracket"));
-        return listnode(elements);
-      }
-      return EOI(state);
-    }
-
-    /**
-     * Returns an error node. This is only reached if
-     * the parser hits a character not found in the
-     * tokenspec.
-     */
-    function EOI(state: State) {
-      const error = err("Unexpected end of input");
-      panic(state, error);
-      return error;
-    }
-
-    /** Puts the state in panic mode, immediately halting execution. */
-    function panic(state: State, error: errnode) {
-      state.error = error;
-      state.start += state.end;
-    }
-
-    /** Initializes the parser state. */
-    function enstate(src: string): State {
-      return ({
-        src,
-        start: 0,
-        end: src.length,
-        remaining: src,
-        prevtoken: "",
-        danglingDelimiter: false,
-        error: null,
-      });
-    }
-
-    /**
-     * Checks if the remaining source contains a possible match.
-     * The parser combinators will match if they encounter a match.
-     * But, we don't always want that because of context. The `check`
-     * function allows us to try a conditional parse. What to do
-     * in the event of a successful (or unsuccessful) parse is determined
-     * by the caller.
-     */
-    function check<t>(state: State, parsers: P<t>[]) {
-      const count = parsers.length;
-      for (let i = 0; i < count; i++) {
-        const parser = parsers[i];
-        const res = parser.run(state.remaining);
-        if (!res.err) return res;
-      }
-      return null;
-    }
-
-    /** Updates the current state's indices. */
-    function tick(state: State, result: Res) {
-      const parsed = Array.isArray(result.res)
-        ? result.res.join("")
-        : result.res;
-      if (state.start > state.src.length) {
-        panic(state, err("Unexpected overread."));
-        return;
-      }
-      const remainingLength = result.rem.length;
-      state.prevtoken = parsed;
-      state.start = state.src.length - remainingLength;
-      state.remaining = result.rem;
-    }
-
-    /**
-     * Consumes the token. If it matches, move forward.
-     * If it doesn't don't move forward.
-     */
-    function eat(state: State, parser: P<string>) {
-      const res = parser.run(state.remaining);
-      if (res.err) return false;
+  /** If the parser succeeds, updates the state and returns true. Else, false. */
+  const match = (state: State, parser: P<string>) => {
+    const res = parser.run(state.rem);
+    if (!res.err) {
       tick(state, res);
       return true;
     }
+    return false;
+  };
 
-    /** Parsing template for unary prefix expressions. */
-    function unaryPrefixExp(
-      state: State,
-      operator: unaryOperator,
-      child: parser,
-    ): astnode {
-      let expr = child(state);
-      const parser = ast.operator.unary[operator];
-      while (check(state, [parser])) {
-        let op = parser.run(state.remaining);
-        if (!op.err) tick(state, op);
-        let right = child(state);
-        expr = prefixUnary(unaryop(op.res), right);
-      }
-      return expr;
+  /** Checks if the token matches without updating the state. */
+  const check = (state: State, parser: P<string>) => {
+    const result = parser.run(state.rem);
+    if (!result.err) return result;
+    return null;
+  };
+
+  /** Template for parsing constant nodes. */
+  const lit: litfn = (state, parser, nextStage, nodeBuilder) => {
+    const result = parser.run(state.rem);
+    if (!result.err) {
+      tick(state, result);
+      return nodeBuilder(result.res);
     }
+    withLogs && state.logs.push(`CALL: ${nextStage.name}`);
+    return nextStage(state);
+  };
 
-    /**
-     * Parsing template for binary expressions.
-     * Note that this doesn't account for right-associativity.
-     * We leave that to the interpreter.
-     */
-    function binexp(
-      state: State,
-      operator: binaryOperator,
-      child: parser,
-    ): astnode {
-      let expr = child(state);
-      const parser = ast.operator.binary[operator];
-      while (check(state, [parser])) {
-        let op = parser.run(state.remaining);
-        if (!op.err) tick(state, op);
-        let right = child(state);
-        expr = binex(expr, binop(op.res), right);
-      }
-      return expr;
+  /** Parses the expression string, returning a parse tree.*/
+  function parse(expression: string) {
+    expression = expression.trim();
+    const state = enstate(expression);
+    const root: $rootnode = { value: nil, kind: "ROOT", atomic: false };
+    while (state.rem && state.idx < state.src.length && !state.error) {
+      root.value = expr(state);
     }
-
-    /** Parsing template for literal values. */
-    function literal(state: State, typename: literal, child: parser): astnode {
-      const parser = ast.lit[typename];
-      const parsing: R<string> | null = check(state, [parser]);
-      if (parsing) {
-        tick(state, parsing);
-        return litnode(parsing.res, typename);
-      }
-      return child(state);
+    return withLogs ? { state, root } : { root };
+  }
+  function expr(state: State) {
+    withLogs && state.logs.push(`CALL: expr`);
+    if (state.error) return nil;
+    return relation(state);
+  }
+  function relation(state: State) {
+    let node = addition(state);
+    let params: astnode[] = [];
+    const tokens = oneof([
+      token["<="],
+      token[">="],
+      token["<"],
+      token[">"],
+      token["!="],
+      token["="],
+    ]);
+    while (match(state, tokens)) {
+      const op = state.prev;
+      const right = addition(state);
+      params = [node, right];
+      node = relnode(op, params);
     }
-
-    return run(src);
+    return node;
   }
 
-  export function kind(node: astnode): nodekind {
-    function k(n: astnode): nodekind {
-      switch (n.kind) {
-        case "root":
-          return k(n.value);
-        case "binary":
-          return n.kind;
-        case "binary-expression":
-          return n.value.op.kind;
-        case "bool":
-          return n.kind;
-        case "empty":
-          return n.kind;
-        case "error":
-          return n.kind;
-        case "float":
-          return n.kind;
-        case "function::call":
-          return n.kind;
-        case "hexadecimal":
-          return n.kind;
-        case "integer":
-          return n.kind;
-        case "list":
-          return n.kind;
-        case "octal":
-          return n.kind;
-        case "rational":
-          return n.kind;
-        case "scientific":
-          return n.kind;
-        case "string":
-          return n.kind;
-        case "variable":
-          return n.kind;
-        case "unary-expression":
-          return n.value.op.kind;
-        default:
-          return "unknown";
-      }
+  /**
+   * Parses an additive expression.
+   * @example
+   * a + b   // (real addition)
+   * a - b   // (real subtraction)
+   */
+  function addition(state: State) {
+    withLogs && state.logs.push(`CALL: addition`);
+    let node: astnode = product(state);
+    let params: astnode[] = [];
+    const plus = oneof([a("+"), a("-")]);
+    while (match(state, plus)) {
+      const op = state.prev as Operator;
+      const name = operators[op];
+      const right = product(state);
+      params = [node, right];
+      node = operator(op, name, params, "left");
     }
-    return k(node);
+    return node;
   }
+
+  /**
+   * Parses a product expression.
+   * @example
+   * a ./ b   // (dot division)
+   * a .* b   // (dot product)
+   * a * b    // (real multiplication)
+   * a / b    // (real division)
+   */
+  function product(state: State) {
+    withLogs && state.logs.push(`CALL: product`);
+    let node: astnode = implicitProduct(state);
+    let prev: astnode = node;
+    const ops = oneof([a("./"), a(".*"), a("*"), a("/")]);
+    while (match(state, ops)) {
+      const op = state.prev as Operator;
+      const name = operators[op];
+      prev = implicitProduct(state);
+      node = operator(op, name, [node, prev], "left");
+    }
+    return node;
+  }
+
+  function implicitProduct(state: State) {
+    let node: astnode = quotient(state);
+    let prev: astnode = node;
+    const tokens = oneof([token.variable, of("real-number"), token["("]]);
+    while (check(state, tokens)) {
+      prev = quotient(state);
+      node = operator("*", "MUL", [node, prev], "left");
+    }
+    return node;
+  }
+
+  /**
+   * Parses a quotient expression.
+   * @example
+   * a % b      // (mod, as it works in JS)
+   * a div b    // (integer division)
+   * a mod b    // (mathematical modulo)
+   * a rem b    // (mathematical remainder)
+   */
+  function quotient(state: State) {
+    let node: astnode = prefixUnary(state);
+    let prev: astnode = node;
+    const ops = oneof([a("%"), a("div"), a("mod"), a("rem")]);
+    while (match(state, ops)) {
+      const op = state.prev as Operator;
+      const name = operators[op];
+      prev = prefixUnary(state);
+      node = operator(op, name, [node, prev], "left");
+    }
+    return node;
+  }
+
+  function prefixUnary(state: State) {
+    const ops = oneof([a("not"), a("~")]);
+    let params: astnode[] = [];
+    if (match(state, ops)) {
+      let op = state.prev as Operator;
+      let name = operators[op];
+      params = [prefixUnary(state)];
+      return operator(op, name, params, "left");
+    }
+    return power(state);
+  }
+
+  /**
+   * Parses a power expression. Power expressions
+   * are right-associative.
+   * @example
+   * a^b // (a raised to the b)
+   */
+  function power(state: State) {
+    withLogs && state.logs.push(`CALL: power`);
+    let node: astnode = complex(state);
+    let prev: astnode = node;
+    const ops = a("^");
+    while (match(state, ops)) {
+      const op = state.prev as Operator;
+      const name = operators[op];
+      prev = complex(state);
+      node = operator(op, name, [node, prev], "right");
+    }
+    return node;
+  }
+
+  function complex(state: State) {
+    const real = of("real-number");
+    const i = literal("i");
+    const pComplex = chain([real, i]).map((d) => d.join(""));
+    return lit(state, term(pComplex), hex, complexnum);
+  }
+
+  function hex(state: State) {
+    withLogs && state.logs.push(`CALL: hex`);
+    return lit(state, term(of("hexadecimal-number")), binary, num);
+  }
+
+  function binary(state: State) {
+    return lit(state, term(of("binary-number")), octal, num);
+  }
+
+  function octal(state: State) {
+    return lit(state, term(of("binary-number")), scientific, num);
+  }
+
+  function scientific(state: State) {
+    return lit(state, term(of("scientific-number")), fraction, scinum);
+  }
+
+  function fraction(state: State) {
+    return lit(state, term(of("rational")), float, frac);
+  }
+
+  function float(state: State) {
+    return lit(state, term(of("float")), integer, num);
+  }
+
+  function integer(state: State) {
+    return lit(state, term(of("integer")), boolean, num);
+  }
+
+  function boolean(state: State) {
+    return lit(
+      state,
+      oneof([term(a("false")), term(a("true"))]),
+      string,
+      bool,
+    );
+  }
+
+  function string(state: State) {
+    return lit(state, dquoted, variable, str);
+  }
+
+  function variable(state: State) {
+    const parsing = check(state, token.variable);
+    if (parsing) {
+      tick(state, parsing);
+      let native = "";
+      if (settings.constants.hasOwnProperty(parsing.res)) {
+        native = settings.constants[parsing.res];
+      }
+      let node: astnode = symbolnode(parsing.res, native);
+      if (check(state, token["("])) {
+        node = callexpr(state, node);
+      }
+      return node;
+    }
+    return parenexpr(state);
+  }
+
+  function callexpr(state: State, node: astnode) {
+    let args: astnode[] = [];
+    eat(state, token["("]);
+    if (!check(state, token[")"])) {
+      args.push(expr(state));
+      while (match(state, token[","])) {
+        args.push(expr(state));
+      }
+      const hasRightParen = eat(state, token[")"]);
+      if (!hasRightParen) panic(state, `Expected right paren`);
+      else {
+        let native = "";
+        if (isSymbol(node) && settings.functions.hasOwnProperty(node.value)) {
+          native = settings.functions[node.value];
+        }
+        node = callnode(node, args, native);
+      }
+    } else eat(state, token[")"]);
+    if (match(state, token[":="])) {
+      const body = expr(state);
+      node = defnode(node, args, body);
+    }
+    return node;
+  }
+
+  function parenexpr(state: State): astnode {
+    if (check(state, token["("])) {
+      eat(state, token["("]);
+      let content = expr(state);
+      eat(state, token[")"]);
+      return content;
+    } else eat(state, token[")"]);
+    return errstate(state);
+  }
+
+  function errstate(state: State) {
+    state.idx = state.src.length;
+    return err("Reached end of state");
+  }
+
+  return { parse };
 }
 
-/* ------------------- Live Testing - Remove in Production ------------------ */
+const r = Parser().parse(`2 * (a + x)`);
+log(r);
+view(r);
 
-import treeify from "treeify";
+/* -------------------------------------------------------------------------- */
+/*                                   TYPINGS                                  */
+/* -------------------------------------------------------------------------- */
 
-function log(objx: any) {
-  console.log(objx);
+type nodeFactory = <V extends any[], R>(op: (...d: V) => R) => (...x: V) => R;
+type NODEKIND =
+  | "FUNCTION_DEFINITION"
+  | "SCIENTIFIC-NUMBER"
+  | "COMPLEX-NUMBER"
+  | "ERROR"
+  | "ROOT"
+  | "NIL"
+  | "RELATION"
+  | "SYMBOL"
+  | "NUMBER"
+  | "FRACTION"
+  | "FUNCTION_CALL"
+  | "BOOL"
+  | "STRING"
+  | OP_NAME;
+type treenode = {
+  kind: NODEKIND;
+  atomic: boolean;
+};
+
+interface $defnode extends treenode {
+  op: astnode;
+  kind: "FUNCTION_DEFINITION";
+  children: astnode[];
+  body: astnode;
+}
+function isFunctionDef(node: treenode): node is $defnode {
+  return node.kind === "FUNCTION_DEFINITION";
 }
 
-const view = (x: any) => log(treeify.asTree(x, true, true));
-const { parse, kind } = algebra;
+interface $complexnode extends treenode {
+  value: string;
+  kind: "COMPLEX-NUMBER";
+}
+function isComplex(node: treenode): node is $complexnode {
+  return node.kind === "COMPLEX-NUMBER";
+}
 
-const p = parse("2 + 1 = x");
-const k = kind(p);
-log(k);
-log(p);
+interface $scinode extends treenode {
+  value: [string, string];
+  kind: "SCIENTIFIC-NUMBER";
+}
+function isScinode(node: treenode): node is $scinode {
+  return node.kind === "SCIENTIFIC-NUMBER";
+}
+
+interface $numnode extends treenode {
+  value: string;
+  kind: "NUMBER";
+}
+function isNumnode(node: treenode): node is $numnode {
+  return node.kind === "NUMBER";
+}
+
+interface $strnode extends treenode {
+  value: string;
+  kind: "STRING";
+}
+function isStringnode(node: treenode): node is $strnode {
+  return node.kind === "STRING";
+}
+
+interface $boolnode extends treenode {
+  value: boolean;
+  kind: "BOOL";
+}
+function isBoolnode(node: treenode): node is $boolnode {
+  return node.kind === "BOOL";
+}
+
+interface $fracnode extends treenode {
+  value: [string, string];
+  kind: "FRACTION";
+}
+function isFracnode(node: treenode): node is $fracnode {
+  return node.kind === "FRACTION";
+}
+
+interface $symnode extends treenode {
+  value: string;
+  native: string;
+  kind: "SYMBOL";
+}
+function isSymbol(node: treenode): node is $symnode {
+  return node.kind === "SYMBOL";
+}
+
+interface $relnode extends treenode {
+  op: string;
+  kind: "RELATION";
+  params: astnode[];
+}
+function isRelnode(node: treenode): node is $relnode {
+  return node.kind === "RELATION";
+}
+
+interface $nilnode extends treenode {
+  value: "nil";
+  kind: "NIL";
+}
+function isNilnode(node: treenode): node is $nilnode {
+  return node.kind === "NIL";
+}
+
+interface $rootnode extends treenode {
+  value: astnode;
+  kind: "ROOT";
+}
+function isRootnode(node: treenode): node is $rootnode {
+  return node.kind === "ROOT";
+}
+
+interface $errnode extends treenode {
+  error: string;
+  kind: "ERROR";
+}
+function isErrNode(node: treenode): node is $errnode {
+  return node.kind === "ERROR";
+}
+
+interface $callnode extends treenode {
+  op: astnode;
+  kind: "FUNCTION_CALL";
+  native: string;
+  args: astnode[];
+}
+function isCallnode(node: treenode): node is $callnode {
+  return node.kind === "FUNCTION_CALL";
+}
+
+interface $opnode extends treenode {
+  op: Operator;
+  kind: OP_NAME;
+  args: astnode[];
+  associativity: "left" | "right";
+}
+function isOpnode(node: treenode): node is $opnode {
+  return (node.hasOwnProperty("associativity"));
+}
+
+type astnode =
+  | $strnode
+  | $boolnode
+  | $numnode
+  | $scinode
+  | $fracnode
+  | $symnode
+  | $nilnode
+  | $opnode
+  | $callnode
+  | $complexnode
+  | $defnode
+  | $relnode
+  | $rootnode
+  | $errnode;
+type stage = (state: State) => astnode;
+type litfn = (
+  state: State,
+  parser: P<string>,
+  child: stage,
+  node: (str: string) => astnode,
+) => astnode;
+type State = {
+  src: string;
+  rem: string;
+  prev: string;
+  idx: number;
+  error: string;
+  logs: string[];
+};
