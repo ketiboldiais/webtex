@@ -14,6 +14,7 @@ node_modules
 dist
 dist-ssr
 *.local
+/Users/ketiboldiais/My Drive/webtex/apps/client/src/mathlang/save.txt
 
 # Editor directories and files
 .vscode/*
