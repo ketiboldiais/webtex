@@ -1,14 +1,9 @@
-import { choice } from "@components/parsers/pcx";
-
 export interface R<t> {
   res: t;
   rem: string;
   err: string | null;
   type: string;
 }
-type Tag<t> = Pick<R<t>, "type">;
-
-const { log } = console;
 
 type outfn = <t>(
   res: t,

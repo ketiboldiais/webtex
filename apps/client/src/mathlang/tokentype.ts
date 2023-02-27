@@ -19,15 +19,20 @@ export enum TOKEN {
   COMMA, LEFT_PAREN, RIGHT_PAREN,
   LEFT_BRACKET, RIGHT_BRACKET, LEFT_BRACE,
   RIGHT_BRACE, DOUBLE_QUOTE, SEMICOLON,
+  COLON, DOT, 
   
   // math-operators
-  PLUS, MINUS, STAR, DOT_STAR, SLASH, DOT_SLASH,
-  PERCENT, DOT_PERCENT, CARET, DOT_CARET, TILDE, BANG,
-  EQUAL, COLON, DOT, MOD, DIV, REM, TO, ASSIGN, 
+  PLUS, MINUS, STAR, SLASH,
+  PERCENT, CARET, BANG,
+  MOD, DIV, REM, TO,
 
   // relational-operators
   DEQUAL, NEQ, LT, GT, GTE, LTE,
+  EQUAL, TILDE, 
   
+  // definition
+  ASSIGN, 
+
   // bitwise operators
   AMP, VBAR, CARET_VBAR, 
   LSHIFT, RSHIFT, LOG_SHIFT,
@@ -42,25 +47,23 @@ export enum TOKEN {
   
   // constants
   FALSE, TRUE, INF, NAN, NULL, 
-  SYMBOL, STRING, NUMBER,
+  SYMBOL, STRING,
+  
+  // number data types
+  INTEGER,
+  FLOAT, 
+  FRACTION,
+  COMPLEX_NUMBER,
+  OCTAL_NUMBER, HEX_NUMBER, BINARY_NUMBER,
+  SCIENTIFIC_NUMBER
 }
 
-export const error = {
-  expected: {
-    semicolon: `[statement]: Expected ‘;’ to end statement`,
-    id: `[identifier]: Expected identifier`,
-    leftBrace: `[braced-expression]: Expected ‘{’`,
-    rightBrace: `[braced-expression]: Expected ‘}’`,
-    leftParen: `[parenthesized-expression]: Expected ‘(’`,
-    rightParen: `[parenthesized-expression]: Expected ‘)’`,
-    leftBracket: `[bracketed-expression]: Expected ‘[’`,
-    rightBracket: `[bracketed-expression]: Expected ‘]’`,
-    number: `[literal]: Expected number.`,
-    string: `[literal]: Expected string.`,
-    true: `[literal]: Expected ‘true’.`,
-    false: `[literal]: Expected ‘false’.`,
-    null: `[literal]: Expected ‘null’.`,
-  },
-  noJaggedArrays:
-    `[bracketed-expression]: Jagged sequences are only permitted on lists.`,
-};
+export type NUM_TOKEN =
+  TOKEN.INTEGER
+  | TOKEN.FRACTION
+  | TOKEN.FLOAT
+  | TOKEN.COMPLEX_NUMBER
+  | TOKEN.OCTAL_NUMBER
+  | TOKEN.HEX_NUMBER
+  | TOKEN.BINARY_NUMBER
+  | TOKEN.SCIENTIFIC_NUMBER;
