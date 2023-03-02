@@ -18,6 +18,7 @@
     "strictFunctionTypes": true,
     "strictPropertyInitialization": true,
     "useUnknownInCatchVariables": false,
+    // "noImplicitAny": false,
     "noImplicitThis": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,

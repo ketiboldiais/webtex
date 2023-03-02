@@ -25,6 +25,17 @@ export enum TOKEN {
   PLUS, MINUS, STAR, SLASH,
   PERCENT, CARET, BANG,
   MOD, DIV, REM, TO,
+  
+  // list-operators
+  DOT_PLUS, 
+  DOT_MINUS, 
+  DOT_STAR, 
+  DOT_SLASH, 
+  DOT_PERCENT, 
+  DOT_CARET, 
+  DOT_MOD, 
+  DOT_DIV, 
+  DOT_REM, 
 
   // relational-operators
   DEQUAL, NEQ, LT, GT, GTE, LTE,

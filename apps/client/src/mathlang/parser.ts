@@ -1,22 +1,10 @@
-import { log, str } from "./dev";
-import { Queue } from "./queue";
-import { NUM_TOKEN, TOKEN, Token } from "./tokentype";
-import { error } from "./error";
-import {
-  ATOM,
-  Err,
-  EXPR,
-  Expr,
-  Lit,
-  NIL,
-  Nil,
-  OPERATOR,
-  REF,
-  Subtree,
-  Sym,
-} from "./nodes";
-import { AST, Atom, Root, UnaryExpr } from "./nodes";
-import { Environment } from "./env";
+import { log } from "./dev.js";
+import { Queue } from "./queue.js";
+import { NUM_TOKEN, TOKEN, Token } from "./tokentype.js";
+
+/* -------------------------------------------------------------------------- */
+/*                                    LEXER                                   */
+/* -------------------------------------------------------------------------- */
 
 const keywords = {
   [`and`]: TOKEN.AND,
@@ -210,15 +198,9 @@ export class Lexer {
   private number() {
     while (this.isDigit(this.peek)) this.advance();
     if (this.prev === "0") {
-      if (this.match("b")) {
-        return this.binary;
-      }
-      if (this.match("o")) {
-        return this.octal;
-      }
-      if (this.match("x")) {
-        return this.hex;
-      }
+      if (this.match("b")) return this.binary;
+      if (this.match("o")) return this.octal;
+      if (this.match("x")) return this.hex;
     }
     if (this.stillSeesNumber) {
       if (this.peek === ".") this.numtype = TOKEN.FLOAT;
@@ -238,9 +220,6 @@ export class Lexer {
       this.numtype = TOKEN.COMPLEX_NUMBER;
     }
     return this.token(this.numtype);
-  }
-  private isSpace(s: string) {
-    return /\s/.test(s);
   }
   private get scientific() {
     this.advance();
@@ -310,11 +289,56 @@ export class Lexer {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/*                                   PARSER                                   */
+/* -------------------------------------------------------------------------- */
+
+import {
+  ast,
+  ASTNode,
+  EXPR,
+  Interpreter,
+  print,
+  Root,
+  ToString,
+  Vector,
+} from "./node.js";
+
+class TokenStream {
+  tokens: Token[];
+  length: number;
+  constructor(tokens: Token[]) {
+    this.tokens = tokens;
+    this.length = tokens.length;
+  }
+  toString() {
+    function buildTokenString(token: Token) {
+      const lex = ` ${token.lexeme}`.padEnd(12);
+      const line = ` ${token.line}`.padEnd(8);
+      const type = ` ${TOKEN[token.type]}`.padEnd(25);
+      return `|${lex}|${line}|${type}|`;
+    }
+    const lex = ` Token`.padEnd(12);
+    const line = ` Line`.padEnd(8);
+    const type = ` Type`.padEnd(25);
+    const _lex = `------------`;
+    const _line = `--------`;
+    const _type = `-------------------------`;
+    const header = `|${lex}|${line}|${type}|\n`;
+    const _header = `|${_lex}|${_line}|${_type}|\n`;
+    let str = header + _header;
+    for (let i = 0; i < this.length; i++) {
+      str += buildTokenString(this.tokens[i]) + `\n`;
+    }
+    return str;
+  }
+}
+
 interface Rule {
   left: "term" | "factor" | "quotient" | "unaryPrefix" | "imul";
   ops: TOKEN[];
   right: "term" | "factor" | "quotient" | "unaryPrefix" | "imul";
-  node: (left: AST, operator: OPERATOR, right: AST) => AST;
+  astnode: (left: ASTNode, operator: string, right: ASTNode) => ASTNode;
 }
 
 export interface Parser {
@@ -326,7 +350,7 @@ export interface Parser {
    * no error occurred, the field
    * is the empty string.
    */
-  error: Err | Nil;
+  error: string | null;
   /**
    * The result of the parsing
    * is an array of ASTs.
@@ -334,120 +358,160 @@ export interface Parser {
    * terminated by a semicolon) is entered,
    * the result will have a length of 1.
    */
-  result: AST[];
+  result: Root;
   /**
    * Generates an array of tokens from
    * the input source. This method isn't
    * used by the parser, but is useful
    * for debugging expressions. The
    * result property always has at least
-   * one AST. By default, it contains
-   * the empty node, an object with the shape:
+   * one ASTNode. By default, it contains
+   * the empty astnode, an object with the shape:
    * ~~~
    * {value: 'null', kind: 'null' }
    * ~~~
    * Note that the value is a string `'null'`,
    * not the literal `null`. If an error
    * occurred during parsing, then the result
-   * field contains a single error node:
+   * field contains a single error astnode:
    * ~~~
    * {value: [error-message], kind: 'error' }
    * ~~~
    * where [error-message] is a string.
    */
-  tokenize(source: string): Token[];
+  tokenize(source: string): TokenStream;
   /**
    * Parses the input source, returning
-   * an AST. The parse result
+   * an ASTNode. The parse result
    * is accessible via the result property.
    * If an error occurred during the parse,
    * the result property will contain an
-   * error node.
+   * error astnode.
    */
-  parse(source: string): AST;
+  parse(source: string): this;
 }
 
 type PrecRule = { prec: number; arity: number; assoc: "left" | "right" };
 type RuleSet = Record<string, PrecRule>;
-
+import { math } from "./node.js";
 type LIB = {
-  constants: { [key: string]: string };
-  functions: { [key: string]: string };
+  constants: { [key: string]: number };
+  functions: { [key: string]: Function };
 };
-const GLOBAL: LIB = {
+export const GLOBAL: LIB = {
   constants: {
-    e: `Math.E`,
-    PI: `Math.PI`,
-    LN2: `Math.LN2`,
-    LN10: `Math.LN10`,
-    LOG2E: `Math.LOG2E`,
-    LOG10E: `Math.LOG10E`,
-    SQRT1_2: `Math.SQRT1_2`,
-    SQRT2: `Math.SQRT2`,
+    e: Math.E,
+    PI: Math.PI,
+    LN2: Math.LN2,
+    LN10: Math.LN10,
+    LOG2E: Math.LOG2E,
+    LOG10E: Math.LOG10E,
+    SQRT1_2: Math.SQRT1_2,
+    SQRT2: Math.SQRT2,
   },
   functions: {
-    abs: `Math.abs`,
-    acos: `Math.acos`,
-    acosh: `Math.acosh`,
-    asin: `Math.asin`,
-    asinh: `Math.asinh`,
-    atan: `Math.atan`,
-    atanh: `Math.atanh`,
-    atan2: `Math.atan2`,
-    cbrt: `Math.cbrt`,
-    ceil: `Math.ceil`,
-    clz32: `Math.clz32`,
-    cos: `Math.cos`,
-    cosh: `Math.cosh`,
-    exp: `Math.exp`,
-    expm1: `Math.expm1`,
-    floor: `Math.floor`,
-    fround: `Math.fround`,
-    hypot: `Math.hypot`,
-    imul: `Math.imul`,
-    log: `Math.log`,
-    ln: `Math.log`,
-    log1p: `Math.log1p`,
-    log10: `Math.log10`,
-    log2: `Math.log2`,
-    lg: `Math.log2`,
-    max: `Math.max`,
-    min: `Math.min`,
-    pow: `Math.pow`,
-    random: `Math.random`,
-    round: `Math.round`,
-    sign: `Math.sign`,
-    sin: `Math.sin`,
-    sinh: `Math.sinh`,
-    sqrt: `Math.sqrt`,
-    tan: `Math.tan`,
-    tanh: `Math.tanh`,
-    trunc: `Math.trunc`,
+    abs: Math.abs,
+    acos: Math.acos,
+    acosh: Math.acosh,
+    asin: Math.asin,
+    asinh: Math.asinh,
+    atan: Math.atan,
+    atanh: Math.atanh,
+    atan2: Math.atan2,
+    cbrt: Math.cbrt,
+    ceil: Math.ceil,
+    clz32: Math.clz32,
+    cos: Math.cos,
+    cosh: Math.cosh,
+    exp: Math.exp,
+    expm1: Math.expm1,
+    floor: Math.floor,
+    fround: Math.fround,
+    hypot: Math.hypot,
+    imul: Math.imul,
+    log: Math.log,
+    ln: Math.log,
+    log1p: Math.log1p,
+    log10: Math.log10,
+    log2: Math.log2,
+    lg: Math.log2,
+    max: Math.max,
+    min: Math.min,
+    pow: Math.pow,
+    random: Math.random,
+    round: Math.round,
+    sign: Math.sign,
+    sin: Math.sin,
+    sinh: Math.sinh,
+    sqrt: Math.sqrt,
+    tan: Math.tan,
+    tanh: Math.tanh,
+    trunc: Math.trunc,
   },
 };
+
+/* -------------------------------------------------------------------------- */
+/*                                 ENVIRONMENT                                */
+/* -------------------------------------------------------------------------- */
+
+export class Environment {
+  variables: Map<string, ASTNode>;
+  constants: Map<string, ASTNode>;
+  functions: Map<string, { params: ASTNode[]; body: ASTNode }>;
+  parent?: Environment;
+  lib: LIB;
+  constructor(lib: LIB, parent?: Environment) {
+    this.variables = new Map();
+    this.constants = new Map();
+    this.functions = new Map();
+    this.lib = lib;
+    this.parent = parent;
+  }
+  declareFunction(name: string, params: ASTNode[], body: ASTNode) {
+    this.functions.set(name, { params, body });
+  }
+  declareVariable(name: string, value: ASTNode): ASTNode | null {
+    if (this.variables.has(name)) {
+      return null;
+    }
+    this.variables.set(name, value);
+    return value;
+  }
+  resolve(name: string): Environment | null {
+    if (this.variables.has(name)) {
+      return this;
+    }
+    if (this.parent === undefined) {
+      return null;
+    }
+    return this.parent.resolve(name);
+  }
+  lookup(name: string) {
+    const env = this.resolve(name);
+    if (env === null) return null;
+    return env?.variables.get(name);
+  }
+}
 
 export class Parser {
   private previous: Token;
-  private scanner;
+  private scanner: Lexer;
   private peek: Token;
   private rules: RuleSet;
   private queue: Queue<Token>;
   private opStack: Token[];
   private environment: Environment;
   private idx: number;
-  private global: LIB;
   constructor(rules?: RuleSet) {
-    this.global = GLOBAL;
     this.idx = 0;
-    this.environment = new Environment();
+    this.environment = new Environment(GLOBAL);
     this.source = "";
-    this.error = NIL;
+    this.error = null;
     this.queue = new Queue();
     this.opStack = [];
     this.scanner = new Lexer();
     this.previous = new Token(TOKEN.NIL, "", 0);
     this.peek = new Token(TOKEN.NIL, "", 0);
-    this.result = [new Atom("null", ATOM.NULL)];
     this.rules = rules || {
       ["+"]: { prec: 0, arity: 2, assoc: "left" },
       ["-"]: { prec: 0, arity: 2, assoc: "left" },
@@ -465,12 +529,15 @@ export class Parser {
     return this.environment.functions.has(s);
   }
   private isCoreFunction(s: string) {
-    return this.global.functions.hasOwnProperty(s);
+    return this.environment.lib.functions.hasOwnProperty(s);
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                                SHUNTING YARD                               */
-  /* -------------------------------------------------------------------------- */
+  get string() {
+    return print(this.result);
+  }
+
+  /* ------------------------------ SHUNTING YARD ----------------------------- */
+
   private isOp(token: Token) {
     return this.rules.hasOwnProperty(token.lexeme);
   }
@@ -534,18 +601,16 @@ export class Parser {
     return this.queue.array;
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                                  TOKENIZE                                  */
-  /* -------------------------------------------------------------------------- */
+  /* -------------------------------- TOKENIZE -------------------------------- */
   tokenize(src: string) {
-    let out = [];
+    let out: Token[] = [];
     this.scanner.init(src);
     while (true) {
       const token = this.scanner.getToken();
       out.push(token);
       if (token.type === TOKEN.EOF) break;
     }
-    return out;
+    return new TokenStream(out);
   }
   private init(source: string) {
     this.source = source;
@@ -554,19 +619,22 @@ export class Parser {
     this.previous = this.peek;
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                               PRIMARY PARSER                               */
-  /* -------------------------------------------------------------------------- */
+  /* -------------------------- BEGIN PRIMARY PARSER -------------------------- */
+
   parse(source: string) {
     this.init(source);
-    this.result = this.stmntList();
-    if (this.error instanceof Err) this.result = [this.error];
-    return new Root(this.result, this.environment);
+    const result = this.stmntList();
+    if (this.error !== null) {
+      this.result = ast.root(this.error);
+    }
+    this.result = ast.root(result);
+    return this;
   }
 
   /* -------------------------- Parse: Statement List ------------------------- */
+
   private stmntList() {
-    const statements: AST[] = [this.stmnt()];
+    const statements: ASTNode[] = [this.stmnt()];
     while (this.peek.type !== TOKEN.EOF) {
       statements.push(this.stmnt());
     }
@@ -574,7 +642,9 @@ export class Parser {
   }
 
   /* ---------------------------- Parse: Statement ---------------------------- */
+
   private stmnt() {
+    // return this.exprStmt();
     return this.variableDeclaration();
   }
 
@@ -583,50 +653,55 @@ export class Parser {
     if (this.match([TOKEN.LET])) {
       const name = this.eat(
         TOKEN.SYMBOL,
-        "Expected variable name.",
-        "variable-declaration",
+        this.expected("variable-name"),
       );
-      const sym = Lit.symbol(name);
-      let init = NIL;
+      const sym = ast.symbol(name);
+      let init: ASTNode = ast.nil;
       if (this.match([TOKEN.LEFT_PAREN])) {
-        return this.functionDeclaration(sym);
+        return this.functionDeclaration(name);
       }
       if (this.match([TOKEN.ASSIGN])) init = this.expression();
-      this.eat(
-        TOKEN.SEMICOLON,
-        error.expected.semicolon,
-        "variable-declaration",
-      );
+      this.eat(TOKEN.SEMICOLON, this.expected(";"));
       this.environment.declareVariable(name, init);
-      return Expr.variableDefinition(sym, init);
+      return ast.def(name, [], init);
     }
     return this.exprStmt();
   }
-
-  private functionDeclaration(node: Sym) {
-    let params: AST[] = [];
+  private functionDeclaration(name: string) {
+    let params: ASTNode[] = [];
     if (!this.check(TOKEN.RIGHT_PAREN)) {
       do {
         params.push(this.expression());
       } while (this.match([TOKEN.COMMA]));
-      this.eat(
-        TOKEN.RIGHT_PAREN,
-        "expected ‘)’ to close the parameter list",
-        "function-declaration",
-      );
-    } else {this.eat(
-        TOKEN.RIGHT_PAREN,
-        "expected ‘)’ to close the parameter list",
-        "function-declaration",
-      );}
-    this.eat(
-      TOKEN.ASSIGN,
-      "Expected assignment operator ‘:=’",
-      "function-declaration",
-    );
+      this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
+    } else this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
+    this.eat(TOKEN.ASSIGN, this.expected(":="));
     const body = this.expression();
-    this.environment.declareFunction(node.value, params, body);
-    return Expr.functionDefinition(node, params, body);
+    this.environment.declareFunction(name, params, body);
+    return ast.def(name, params, body);
+  }
+
+  private isDefined(n: string) {
+    return this.environment.variables.has(n) ||
+      this.environment.functions.has(n);
+  }
+  private unaryExpression(op: string, args: ASTNode[]) {
+    return !this.isDefined(op) ? ast.algebra1(op, args) : ast.unex(op, args);
+  }
+
+  private binaryExpression(left: ASTNode, op: string, right: ASTNode) {
+    let type = EXPR.ARITHMETIC;
+    if (
+      left.isSymbol() && !this.isDefined(left.value) ||
+      (right.isSymbol() && !this.isDefined(right.value)) ||
+      (left.isBinaryExpr()) && left.type === EXPR.ALGEBRAIC ||
+      (right.isBinaryExpr()) && right.type === EXPR.ALGEBRAIC ||
+      (left.isUnaryExpr()) && left.type === EXPR.ALGEBRAIC ||
+      (right.isUnaryExpr()) && right.type === EXPR.ALGEBRAIC
+    ) {
+      type = EXPR.ALGEBRAIC;
+    }
+    return ast.binex(left, op, right, type);
   }
 
   /* ----------------------- Parse: Expression Statement ---------------------- */
@@ -634,11 +709,7 @@ export class Parser {
     const expr = this.expression();
     if (this.source[this.idx] === undefined) {
       this.advance();
-    } else {this.eat(
-        TOKEN.SEMICOLON,
-        error.expected.semicolon,
-        "expression-statement",
-      );}
+    } else this.eat(TOKEN.SEMICOLON, this.expected(";"));
     return expr;
   }
 
@@ -653,7 +724,7 @@ export class Parser {
       left: "term",
       ops: [TOKEN.NEQ, TOKEN.EQUAL, TOKEN.LTE, TOKEN.GTE, TOKEN.LT, TOKEN.GT],
       right: "term",
-      node: (left, op, right) => Expr.binaryRelation(left, op, right),
+      astnode: (left, op, right) => this.binaryExpression(left, op, right),
     });
   }
 
@@ -663,10 +734,7 @@ export class Parser {
       left: "factor",
       ops: [TOKEN.MINUS, TOKEN.PLUS],
       right: "factor",
-      node: (left, op, right) =>
-        this.isAlgebraic(left, right)
-          ? Expr.algebraBinary(left, op, right)
-          : Expr.arithmeticBinary(left, op, right),
+      astnode: (left, op, right) => this.binaryExpression(left, op, right),
     });
   }
 
@@ -676,14 +744,12 @@ export class Parser {
       left: "imul",
       ops: [TOKEN.STAR, TOKEN.SLASH],
       right: "imul",
-      node: (left, op, right) =>
-        this.isAlgebraic(left, right)
-          ? Expr.algebraBinary(left, op, right)
-          : Expr.arithmeticBinary(left, op, right),
+      astnode: (left, op, right) => this.binaryExpression(left, op, right),
     });
   }
 
   /* --------------------- Parse: Implicit Multiplication --------------------- */
+
   private imul() {
     let node = this.quotient();
     let prev = node;
@@ -702,52 +768,47 @@ export class Parser {
       )
     ) {
       prev = this.quotient();
-      node = this.isAlgebraic(node, prev)
-        ? Expr.algebraBinary(node, "*", prev)
-        : Expr.arithmeticBinary(node, "*", prev);
+      node = this.binaryExpression(node, "*", prev);
     }
     return node;
   }
 
   /* ----------------------------- Parse: Quotient ---------------------------- */
+
   private quotient() {
     return this.parseExpression({
       left: "unaryPrefix",
       ops: [TOKEN.PERCENT, TOKEN.MOD, TOKEN.REM, TOKEN.DIV],
       right: "unaryPrefix",
-      node: (left, op, right) =>
-        this.isAlgebraic(left, right)
-          ? Expr.algebraBinary(left, op, right)
-          : Expr.arithmeticBinary(left, op, right),
+      astnode: (left, op, right) => this.binaryExpression(left, op, right),
     });
   }
 
   /* --------------------------- Parse: Unary Prefix -------------------------- */
+
   private unaryPrefix() {
     if (this.match([TOKEN.NOT, TOKEN.TILDE])) {
-      const op = this.previous.lexeme as OPERATOR;
+      const op = this.previous.lexeme;
       const arg = this.power();
-      const type: EXPR = op === "~" ? EXPR.BITWISE : EXPR.LOGIC;
-      const kind: EXPR = this.isAlgebraic(arg) ? EXPR.ALGEBRAIC : type;
-      return new UnaryExpr(op, Expr.tuple([arg]), kind, "core");
+      return this.unaryExpression(op, [arg]);
     }
     return this.power();
   }
 
   /* ------------------------------ Parse: Power ------------------------------ */
-  private power(): AST {
-    let node: AST = this.primary();
+
+  private power(): ASTNode {
+    let node: ASTNode = this.primary();
     while (this.match([TOKEN.CARET])) {
-      const op = this.previous.lexeme as OPERATOR;
-      const right: AST = this.unaryPrefix();
-      node = this.isAlgebraic(node, right)
-        ? Expr.algebraBinary(node, op, right)
-        : Expr.arithmeticBinary(node, op, right);
+      const op = this.previous.lexeme;
+      const arg: ASTNode = this.unaryPrefix();
+      node = this.binaryExpression(node, op, arg);
     }
     return node;
   }
 
   /* ----------------------------- Parse: Primary ----------------------------- */
+
   private primary() {
     switch (this.peek.type) {
       case TOKEN.LEFT_PAREN:
@@ -764,197 +825,150 @@ export class Parser {
   }
 
   /* ----------------------------- Parse: Variable ---------------------------- */
-  private id(): AST {
-    const name = this.eat(TOKEN.SYMBOL, error.expected.id, "variable");
-    let node: Sym = new Sym(name);
+
+  private id(): ASTNode {
+    const name = this.eat(TOKEN.SYMBOL, this.expected("id"));
+    let node = ast.symbol(name);
     if (this.check(TOKEN.LEFT_PAREN) && this.isFunction(name)) {
-      return this.callexpr(node);
+      return this.callexpr(name);
     }
-    // if (this.match([TOKEN.ASSIGN])) {
-    // const body: AST = this.expression();
-    // node = new Definition(node, [], body, "variable-definition");
-    // }
-    // if (this.match([TOKEN.LEFT_PAREN])) {
-    // node = this.callexpr(node);
-    // return node;
-    // }
     return node;
   }
 
   /* -------------------------- Parse: Function Call -------------------------- */
-  private callexpr(node: Sym): AST {
-    this.eat(TOKEN.LEFT_PAREN, "Expected ‘(’", "call-expression");
-    let params: AST[] = [];
+
+  private callexpr(name: string): ASTNode {
+    this.eat(TOKEN.LEFT_PAREN, this.expected("("));
+    let params: ASTNode[] = [];
     if (!this.check(TOKEN.RIGHT_PAREN)) {
       do {
         params.push(this.expression());
       } while (this.match([TOKEN.COMMA]));
-      this.eat(TOKEN.RIGHT_PAREN, "Expected ‘)’", "call-expression");
-    } else this.eat(TOKEN.RIGHT_PAREN, "Expected ‘)’", "call-expression");
-    let cat: REF = this.isCoreFunction(node.value) ? "core" : "user";
-    return Expr.functionCall(node.value, params, cat);
+      this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
+    } else this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
+    return this.unaryExpression(name, params);
+  }
+
+  private expected(s: string) {
+    return `Expected ${s}`;
   }
 
   /* ------------------------ Parse: Braced Expression ------------------------ */
-  private braced(): AST {
-    this.eat(TOKEN.LEFT_BRACE, error.expected.leftBrace, "braced-expression");
+  private braced(): ASTNode {
+    this.eat(TOKEN.LEFT_BRACE, this.expected("{"));
     let expr = this.expression();
     if (this.match([TOKEN.COMMA])) {
       let elements = [expr];
       do {
         elements.push(this.expression());
       } while (this.match([TOKEN.COMMA]));
-      this.eat(
-        TOKEN.RIGHT_BRACE,
-        error.expected.rightBrace,
-        "braced-expression",
-      );
-      return Expr.functionCall("set", elements, "set");
-    } else {this.eat(
-        TOKEN.RIGHT_BRACE,
-        error.expected.rightBrace,
-        "braced-expression",
-      );}
-    return new Subtree([expr]);
+      this.eat(TOKEN.RIGHT_BRACE, this.expected("{"));
+      return ast.unex("set", elements, EXPR.ALGEBRAIC);
+    } else this.eat(TOKEN.RIGHT_BRACE, this.expected("{"));
+    return ast.block([expr]);
   }
 
   /* --------------------- Parse: Parenthesized Expression -------------------- */
-  private parend(): AST {
-    this.eat(
-      TOKEN.LEFT_PAREN,
-      error.expected.leftParen,
-      "parenthesized-expression",
-    );
+  private parend(): ASTNode {
+    this.eat(TOKEN.LEFT_PAREN, this.expected("("));
     let expr = this.expression();
     if (this.match([TOKEN.COMMA])) {
       let elements = [expr];
       do {
         elements.push(this.expression());
       } while (this.match([TOKEN.COMMA]));
-      this.eat(TOKEN.RIGHT_PAREN, "Expected ‘)’", "parenthesized-expression");
-      return Expr.functionCall("list", elements, "list");
-    } else {this.eat(
-        TOKEN.RIGHT_PAREN,
-        "Expected ‘)’",
-        "parenthesized-expression",
-      );}
+      this.eat(TOKEN.RIGHT_PAREN, this.expected("("));
+      return ast.unex("list", elements, EXPR.ALGEBRAIC);
+    } else this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
     return expr;
   }
 
-  /* ------------------------------ Parse: Array ------------------------------ */
+  /* § Parse Array ------------------------------------------------------------ */
   private array() {
-    let elements: AST[] = [];
-    let cat: REF = "array";
-    this.eat(TOKEN.LEFT_BRACKET, "Expected ‘[’", "bracketed-expression");
-    let elem = this.expression();
+    let builder: "matrix" | "vector" = "vector";
+    let elements: (ASTNode[]) = [];
+    this.eat(TOKEN.LEFT_BRACKET, this.expected("["));
+    let element = this.expression();
     let rows = 0;
     let cols = 0;
-    if (elem instanceof UnaryExpr) {
-      cols = elem.arglen;
+    if (element instanceof Vector) {
+      cols = element.len;
       rows += 1;
-    }
-    elements.push(elem);
+      builder = "matrix";
+    } 
+    elements.push(element);
     while (this.match([TOKEN.COMMA])) {
       let expr = this.expression();
-      if (expr instanceof UnaryExpr) {
-        cat = "matrix";
+      if (builder === 'matrix' && (!expr.isVector())) {
+        throw new Error('Matrices must only have vector elements.')
+      }
+      if (expr instanceof Vector) {
+        builder = "matrix";
         rows += 1;
-        if (cols !== expr.arglen) {
-          this.croak("No jagged arrays permitted", "array");
-        }
+        if (cols !== expr.len) this.croak("No jagged arrays permitted");
       }
       elements.push(expr);
     }
-    this.eat(TOKEN.RIGHT_BRACKET, "Expected ‘]’", "bracketed-expression");
-    return Expr.functionCall("list", elements, cat);
+    this.eat(TOKEN.RIGHT_BRACKET, this.expected("]"));
+    return builder === "matrix"
+      ? ast.matrix(elements as Vector[], rows, cols)
+      : ast.vector(elements);
   }
 
-  /* ----------------------------- Parse: Lit ----------------------------- */
+  private eatNumber(tokenType: TOKEN) {
+    return this.eat(tokenType, "Expected number");
+  }
+
+  /* § Parse Literal ---------------------------------------------------------- */
   private literal() {
     let lexeme = "";
     switch (this.peek.type) {
       case TOKEN.INTEGER:
-        lexeme = this.eat(TOKEN.INTEGER, error.expected.number, "integer");
-        return Lit.integer(lexeme);
-
+        lexeme = this.eatNumber(TOKEN.INTEGER);
+        return ast.int(lexeme);
       case TOKEN.FLOAT:
-        lexeme = this.eat(TOKEN.FLOAT, error.expected.number, "float");
-        return Lit.float(lexeme);
-
+        lexeme = this.eatNumber(TOKEN.FLOAT);
+        return ast.float(lexeme);
       case TOKEN.COMPLEX_NUMBER:
-        lexeme = this.eat(
-          TOKEN.COMPLEX_NUMBER,
-          error.expected.number,
-          "complex-number",
-        );
-        return Lit.complex(lexeme);
-
+        lexeme = this.eatNumber(TOKEN.COMPLEX_NUMBER);
+        return ast.complex(lexeme);
       case TOKEN.OCTAL_NUMBER:
-        lexeme = this.eat(
-          TOKEN.OCTAL_NUMBER,
-          error.expected.number,
-          "octal-number",
-        );
-        return Lit.integer(Number.parseInt(lexeme, 8));
-
+        lexeme = this.eatNumber(TOKEN.OCTAL_NUMBER);
+        return ast.int(lexeme, 8);
       case TOKEN.HEX_NUMBER:
-        lexeme = this.eat(
-          TOKEN.HEX_NUMBER,
-          error.expected.number,
-          "hex-number",
-        );
-        return Lit.integer(Number.parseInt(lexeme, 16));
-
+        lexeme = this.eatNumber(TOKEN.HEX_NUMBER);
+        return ast.int(lexeme, 16);
       case TOKEN.BINARY_NUMBER:
-        lexeme = this.eat(
-          TOKEN.BINARY_NUMBER,
-          error.expected.number,
-          "binary-number",
-        );
-        return Lit.integer(Number.parseInt(lexeme, 2));
-
-      case TOKEN.STRING:
-        lexeme = this.eat(TOKEN.STRING, error.expected.string, "string");
-        return Lit.string(lexeme);
-
+        lexeme = this.eatNumber(TOKEN.BINARY_NUMBER);
+        return ast.int(lexeme, 2);
       case TOKEN.TRUE:
-        lexeme = this.eat(TOKEN.TRUE, error.expected.true, "true");
-        return Lit.integer(1);
-
+        lexeme = this.eatNumber(TOKEN.TRUE);
+        return ast.bool(true);
       case TOKEN.FALSE:
-        lexeme = this.eat(TOKEN.FALSE, error.expected.false, "false");
-        return Lit.integer(0);
-
-      case TOKEN.NULL:
-        lexeme = this.eat(TOKEN.NULL, error.expected.null, "null");
-        return Lit.nil();
-
+        lexeme = this.eatNumber(TOKEN.FALSE);
+        return ast.bool(false);
       case TOKEN.FRACTION:
-        lexeme = this.eat(TOKEN.FRACTION, error.expected.number, "fraction");
-        return Lit.fraction(lexeme);
-
+        lexeme = this.eatNumber(TOKEN.FRACTION);
+        return ast.fraction(lexeme);
       case TOKEN.SCIENTIFIC_NUMBER:
-        lexeme = this.eat(
-          TOKEN.SCIENTIFIC_NUMBER,
-          error.expected.number,
-          "scientific-number",
-        );
-        return this.expand(lexeme, "^");
-
+        lexeme = this.eatNumber(TOKEN.SCIENTIFIC_NUMBER);
+        return this.expand(lexeme);
+      case TOKEN.STRING:
+        lexeme = this.eat(TOKEN.STRING, this.expected("string"));
+        return ast.string(lexeme);
+      case TOKEN.NULL:
+        lexeme = this.eat(TOKEN.NULL, this.expected("null"));
+        return ast.nil;
       default:
-        return this.croak(`Invalid syntax.`, "literal");
+        return ast.nil;
     }
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                               UTILITY METHODS                              */
-  /* -------------------------------------------------------------------------- */
+  /* § Utility Methods -------------------------------------------------------- */
 
-  croak(message: string, source: string) {
-    message =
-      `Line[${this.peek.line}]: ${message} | During: ${source} parsing.`;
-    this.error = new Err(message);
-    return this.error;
+  croak(message: string) {
+    message = `Line[${this.peek.line}]: ${message}`;
+    this.error = message;
   }
 
   /**
@@ -963,22 +977,11 @@ export class Parser {
    * these numbers into a compound expression `a^b`,
    * where `a` is a `float` or `integer`.
    */
-  private expand(lexeme: string, op: "/" | "^") {
-    const splitter = op === "/" ? /\// : /[eE]/;
-    const parts = lexeme.split(splitter);
-    if (parts.length !== 2) {
-      const numtype = op === "/" ? "fraction" : "scientific-number";
-      const message = `[literal]: Invalid ${numtype} encountered.`;
-      return this.croak(message, "expand scientific-number");
-    }
-    const LEFT = parts[0];
-    const RIGHT = parts[1];
-    const float = /^[-+]?(0|[1-9]\d*)(\.\d+)/;
-    const typeLEFT: ATOM = float.test(LEFT) ? ATOM.FLOAT : ATOM.INT;
-    const typeRIGHT: ATOM = float.test(RIGHT) ? ATOM.FLOAT : ATOM.INT;
-    const left = new Atom(LEFT, typeLEFT);
-    const right = new Atom(RIGHT, typeRIGHT);
-    return Expr.arithmeticBinary(left, op, right);
+  private expand(lexeme: string) {
+    const [a, b] = math.split(lexeme, "e");
+    const left = math.is.integer(a) ? ast.int(a) : ast.float(a);
+    const right = math.is.integer(b) ? ast.int(b) : ast.float(b);
+    return this.binaryExpression(left, "^", right);
   }
 
   /**
@@ -1014,61 +1017,62 @@ export class Parser {
     this.idx = this.scanner.current;
     return this.previous;
   }
-  private eat(tokenType: TOKEN, message: string, source: string) {
+  private eat(tokenType: TOKEN, message: string) {
     const token = this.peek;
     if (token.type === TOKEN.EOF) {
-      this.croak(`${message} at end.`, source);
+      this.croak(`${message} at end.`);
     }
     if (token.type === TOKEN.ERROR || token.type !== tokenType) {
-      this.croak(`${message}, got ${token.lexeme}`, source);
+      this.croak(`${message}, got ${token.lexeme}`);
     }
     this.advance();
     return token.lexeme;
   }
-  private parseExpression({ left, ops, right, node }: Rule): AST {
-    let LEFT: AST = this[left]();
+  private parseExpression({ left, ops, right, astnode }: Rule): ASTNode {
+    let LEFT: ASTNode = this[left]();
     while (this.match(ops)) {
-      const OP = this.previous.lexeme as OPERATOR;
+      const OP = this.previous.lexeme;
       const RIGHT = this[right]();
-      LEFT = node(LEFT, OP, RIGHT);
+      LEFT = astnode(LEFT, OP, RIGHT);
     }
     return LEFT;
-  }
-  private isAlgebraic(...nodes: AST[]) {
-    for (let i = 0; i < nodes.length; i++) {
-      if (nodes[i].isSymbol() || nodes[i].isAlgebraic()) {
-        return true;
-      }
-    }
-    return false;
   }
   private get hasTokens() {
     return this.peek.type !== TOKEN.EOF;
   }
-  build(op:string, params:string[]) {
+  build(op: string, params: string[]) {
     const input = Parser.make(op, params);
     return this.parse(input);
   }
-  static make(op:string, params:string[]) {
-    let input = '';
-    let args = params.map(s=> s.length > 0 ? `(${s})` : s);
+  static make(op: string, params: string[]) {
+    let input = "";
+    let args = params.map((s) => s.length > 0 ? `(${s})` : s);
     if (/^[a-zA-Z]/.test(op)) {
-      input = `${op}(${args.join(', ')})`;
+      input = `${op}(${args.join(", ")})`;
     }
     input = args.join(` ${op} `);
     return input;
   }
-  eval(src:string) {
-    const parsing = this.parse(src);
-    return parsing.eval();
+  eval() {
+    const n = new Interpreter(this.environment);
+    const out = this.result.accept(n);
+    return n.stringify(out);
+  }
+  toString(out: ASTNode = this.result) {
+    const s = new ToString();
+    return out.accept(s);
   }
 }
 
-
-
-// const parser = new Parser();
-// const tree = parser.parse(`[1,2,3]`);
-// const tree = parser.eval('[[1,2,3]]');
-// const tree = parser.parse(expr).eval();
-// log(tree);
-// log(str(tree))
+const parser = new Parser();
+const tree1 = parser.parse(`
+[[1.2,2,3], [3,4,16], [22,8,1/2]]
++
+[[9,1/8,3/4], [2,9,5], [3,1,8]]
+`);
+// log(tree1.toString());
+// log(tree1.string);
+const result1 = tree1.eval();
+log(result1);
+// log(tree1.toString())
+// log(tree1.string);
