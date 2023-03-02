@@ -1,6 +1,4 @@
-import { log } from "./dev";
-import { ASTNode } from "./node";
-import { ast } from "./node";
+import { ast, ASTNode } from "./index.js";
 
 export class LRU<K, V> {
   capacity: number;
@@ -318,7 +316,7 @@ const linear1: RuleSet = {
       return null;
     }),
     algx(`_ - 0`).then((d) => ast.symbol(d[0])),
-    algx(`0 - _`).then((d) => ast.algebra1("-", [ast.symbol(d[2])])),
+    algx(`0 - _`).then((d) => ast.algebra1("-", ast.symbol(d[2]))),
     algx(`_ - _`).then((d) => {
       if (d[0] === d[2]) return ast.integer(0);
       return null;
@@ -349,6 +347,3 @@ function simp(ruleset: RuleSet, input: string) {
   }
   return null;
 }
-
-log(simp(linear1, "x * x"));
-

@@ -1,4 +1,3 @@
-import { log } from "./dev";
 type Alphabet = (string|null)[];
 
 class Trienode {
@@ -31,6 +30,5 @@ class Trie {
   }
 }
 
-const t = new Trie();
-log(t.alphabet[t.idx('J')])
+
 
