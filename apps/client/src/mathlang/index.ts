@@ -1,4 +1,12 @@
-import { Queue } from "./queue.js";
+import {
+  Keyword,
+  keywords,
+  LEXEME,
+  NUM_TOKEN,
+  TOKEN,
+  Token,
+  TokenStream,
+} from "./token.js";
 const { log } = console;
 
 /* -------------------------------------------------------------------------- */
@@ -1050,213 +1058,6 @@ export class Interpreter implements Visitor<ASTNode> {
 }
 
 /* -------------------------------------------------------------------------- */
-/* § Token Definitions                                                        */
-/* -------------------------------------------------------------------------- */
-
-export interface Token {
-  type: TOKEN;
-  lexeme: string;
-  line: number;
-}
-export class Token {
-  constructor(type: TOKEN, lexeme: string, line: number) {
-    this.type = type;
-    this.lexeme = lexeme;
-    this.line = line;
-  }
-}
-
-export enum TOKEN {
-  // utility
-  EOF,
-  ERROR,
-  NIL,
-
-  // delimiters
-  COMMA,
-  LEFT_PAREN,
-  RIGHT_PAREN,
-  LEFT_BRACKET,
-  RIGHT_BRACKET,
-  LEFT_BRACE,
-  RIGHT_BRACE,
-  DOUBLE_QUOTE,
-  SEMICOLON,
-  COLON,
-  DOT,
-
-  // math-operators
-  PLUS,
-  MINUS,
-  STAR,
-  SLASH,
-  PERCENT,
-  CARET,
-  BANG,
-  MOD,
-  DIV,
-  REM,
-  TO,
-
-  // list-operators
-  DOT_PLUS,
-  DOT_MINUS,
-  DOT_STAR,
-  DOT_SLASH,
-  DOT_PERCENT,
-  DOT_CARET,
-  DOT_MOD,
-  DOT_DIV,
-  DOT_REM,
-
-  // relational-operators
-  DEQUAL,
-  NEQ,
-  LT,
-  GT,
-  GTE,
-  LTE,
-  EQUAL,
-  TILDE,
-
-  // definition
-  ASSIGN,
-
-  // bitwise operators
-  AMP,
-  VBAR,
-  CARET_VBAR,
-  LSHIFT,
-  RSHIFT,
-  LOG_SHIFT,
-
-  // logical-operators
-  EROTEME,
-  NOR,
-  NOT,
-  OR,
-  XOR,
-  XNOR,
-  AND,
-  SINGLE_QUOTE,
-  NAND,
-
-  // keywords
-  CLASS,
-  THROW,
-  ELSE,
-  FOR,
-  FUNCTION,
-  FN,
-  IF,
-  RETURN,
-  SUPER,
-  THIS,
-  THAT,
-  WHILE,
-  DO,
-  LET,
-  VAR,
-  CONST,
-
-  // constants
-  FALSE,
-  TRUE,
-  INF,
-  NAN,
-  NULL,
-  SYMBOL,
-  STRING,
-
-  // number data types
-  INTEGER,
-  FLOAT,
-  FRACTION,
-  COMPLEX_NUMBER,
-  OCTAL_NUMBER,
-  HEX_NUMBER,
-  BINARY_NUMBER,
-  SCIENTIFIC_NUMBER,
-}
-
-export type NUM_TOKEN =
-  | TOKEN.INTEGER
-  | TOKEN.FRACTION
-  | TOKEN.FLOAT
-  | TOKEN.COMPLEX_NUMBER
-  | TOKEN.OCTAL_NUMBER
-  | TOKEN.HEX_NUMBER
-  | TOKEN.BINARY_NUMBER
-  | TOKEN.SCIENTIFIC_NUMBER;
-
-export class TokenStream {
-  tokens: Token[];
-  length: number;
-  constructor(tokens: Token[]) {
-    this.tokens = tokens;
-    this.length = tokens.length;
-  }
-  toString() {
-    function buildTokenString(token: Token) {
-      const lex = ` ${token.lexeme}`.padEnd(12);
-      const line = ` ${token.line}`.padEnd(8);
-      const type = ` ${TOKEN[token.type]}`.padEnd(25);
-      return `|${lex}|${line}|${type}|`;
-    }
-    const lex = ` Token`.padEnd(12);
-    const line = ` Line`.padEnd(8);
-    const type = ` Type`.padEnd(25);
-    const _lex = `------------`;
-    const _line = `--------`;
-    const _type = `-------------------------`;
-    const header = `|${lex}|${line}|${type}|\n`;
-    const _header = `|${_lex}|${_line}|${_type}|\n`;
-    let str = header + _header;
-    for (let i = 0; i < this.length; i++) {
-      str += buildTokenString(this.tokens[i]) + `\n`;
-    }
-    return str;
-  }
-}
-
-const keywords = {
-  [`and`]: TOKEN.AND,
-  [`nand`]: TOKEN.NAND,
-  [`class`]: TOKEN.CLASS,
-  [`throw`]: TOKEN.THROW,
-  [`div`]: TOKEN.DIV,
-  [`else`]: TOKEN.ELSE,
-  [`for`]: TOKEN.FOR,
-  [`function`]: TOKEN.FUNCTION,
-  [`fn`]: TOKEN.FN,
-  [`if`]: TOKEN.IF,
-  [`return`]: TOKEN.RETURN,
-  [`super`]: TOKEN.SUPER,
-  [`this`]: TOKEN.THIS,
-  [`that`]: TOKEN.THAT,
-  [`while`]: TOKEN.WHILE,
-  [`do`]: TOKEN.DO,
-  [`Inf`]: TOKEN.INF,
-  [`mod`]: TOKEN.MOD,
-  [`nor`]: TOKEN.NOR,
-  [`NaN`]: TOKEN.NAN,
-  [`not`]: TOKEN.NOT,
-  [`null`]: TOKEN.NULL,
-  [`or`]: TOKEN.OR,
-  [`rem`]: TOKEN.REM,
-  [`to`]: TOKEN.TO,
-  [`true`]: TOKEN.TRUE,
-  [`false`]: TOKEN.FALSE,
-  [`xor`]: TOKEN.XOR,
-  [`xnor`]: TOKEN.XNOR,
-  [`let`]: TOKEN.LET,
-  [`var`]: TOKEN.VAR,
-  [`const`]: TOKEN.CONST,
-};
-type Keyword = keyof typeof keywords;
-type LEXEME = Lexeme | Keyword;
-
-/* -------------------------------------------------------------------------- */
 /* § Lexer                                                                    */
 /* -------------------------------------------------------------------------- */
 
@@ -1376,7 +1177,7 @@ export class Lexer {
       case ".":
         return this.token(TOKEN.DOT);
       case "^":
-        return this.token(this.match("|") ? TOKEN.CARET_VBAR : TOKEN.CARET);
+        return this.token(TOKEN.CARET);
       case "!":
         return this.token(this.match("=") ? TOKEN.NEQ : TOKEN.BANG);
       case "=":
@@ -2388,7 +2189,10 @@ export class Parser {
 
     const grow: Grower = (key, root, last, prevStates, cb) => {
       if (root instanceof ASTNode) {
-        root.kind = `[${NODE[root.kind]}]`.toLowerCase().replace('_', '-') as any;
+        root.kind = `[${NODE[root.kind]}]`.toLowerCase().replace(
+          "_",
+          "-",
+        ) as any;
       }
       if (ast.isCallExpr(root) || ast.isUnex(root) || ast.isBinex(root)) {
         const type: any = root.type === EXPR.ALGEBRAIC
@@ -2434,8 +2238,15 @@ export class Parser {
 /* -------------------------------------------------------------------------- */
 
 const parser = new Parser();
-const tree1 = parser.parse(`cos(0) + 1`);
-log(tree1.tree);
+const expression = `
+  if (x < 2) {
+    x := x + 1;
+  }
+`;
+const tokens = parser.tokenize(expression).toString();
+log(tokens);
+// const tree1 = parser.parse(`cos(0) + 1`);
+// log(tree1.tree);
 // log(tree1.result);
 // const result1 = tree1.eval();
 // log(result1);
