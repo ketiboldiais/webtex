@@ -1,5 +1,5 @@
 import { Queue } from "./queue.js";
-const {log} = console;
+const { log } = console;
 
 /* -------------------------------------------------------------------------- */
 /* § Module: Math                                                             */
@@ -652,11 +652,17 @@ export class Float {
 /* -------------------------------------------------------------------------- */
 /* § ASTNode: Sym                                                             */
 /* -------------------------------------------------------------------------- */
+enum SYMBOL {
+  CONSTANT,
+  VARIABLE,
+}
 export class Sym extends ASTNode {
   value: string;
-  constructor(value: string) {
+  type: SYMBOL;
+  constructor(value: string, type: SYMBOL) {
     super(NODE.SYMBOL);
     this.value = value;
+    this.type = type;
   }
   accept<T>(v: Visitor<T>) {
     return v.sym(this);
@@ -698,9 +704,9 @@ export class Definition extends ASTNode {
 /* -------------------------------------------------------------------------- */
 /* § enum: EXPR                                                               */
 /* -------------------------------------------------------------------------- */
-export enum EXPR {
-  APPLY = "application",
-  ALGEBRAIC = "algebraic",
+enum EXPR {
+  APPLY,
+  ALGEBRAIC,
 }
 
 /* -------------------------------------------------------------------------- */
@@ -793,14 +799,12 @@ export class ast {
   static decimal(n: number) {
     return new Num(n.toString(), NUM.FLOAT);
   }
-
   static string(s: string) {
     return new Chars(s);
   }
   static nil = new Null();
-
-  static symbol(s: string) {
-    return new Sym(s);
+  static symbol(s: string, type: SYMBOL) {
+    return new Sym(s, type);
   }
   static algebra2(left: ASTNode, op: string, right: ASTNode) {
     return new BinaryExpr(left, op, right, EXPR.ALGEBRAIC);
@@ -842,89 +846,17 @@ export class ast {
       ? new Root([new Chars(elements)])
       : new Root(elements);
   }
-}
-
-/* -------------------------------------------------------------------------- */
-/* § Utility Function: Print                                                  */
-/* -------------------------------------------------------------------------- */
-export function print(OBJ: Object) {
-  function makePrefix(key: string, last: boolean) {
-    var str = last ? "└" : "├";
-    if (key) {
-      str += "─ ";
-    } else {
-      str += "──┐";
-    }
-    return str;
+  static isCallExpr(node: any): node is CallExpr {
+    return node instanceof CallExpr;
   }
 
-  function filterKeys(obj: Object) {
-    var keys = [];
-    for (var branch in obj) {
-      if (!obj.hasOwnProperty(branch)) {
-        continue;
-      }
-      keys.push(branch);
-    }
-    return keys;
+  static isUnex(node: any): node is UnaryExpr {
+    return node instanceof UnaryExpr;
   }
 
-  function growBranch(
-    key: string,
-    root: any,
-    last: boolean,
-    lastStates: ([string, boolean])[],
-    showValues = true,
-    hideFunctions = true,
-    callback: (str: string) => any,
-  ) {
-    if (root instanceof ASTNode) {
-      root.kind = `${NODE[root.kind]}`.toLowerCase() as any;
-    }
-    let line = "";
-    let index = 0;
-    let lastKey = false;
-    let circular = false;
-    let lastStatesCopy = lastStates.slice(0);
-    if (lastStatesCopy.push([root, last]) && lastStates.length > 0) {
-      lastStates.forEach(function (lastState, idx) {
-        if (idx > 0) {
-          line += (lastState[1] ? " " : "│") + "  ";
-        }
-        if (!circular && lastState[0] === root) {
-          circular = true;
-        }
-      });
-      line += makePrefix(key, last) + key;
-      if (showValues && (typeof root !== "object" || root instanceof Date)) {
-        line += ": " + root;
-      }
-      circular && (line += " (circular ref.)");
-      callback(line);
-    }
-    if (!circular && typeof root === "object") {
-      var keys = filterKeys(root);
-      keys.forEach(function (branch) {
-        lastKey = ++index === keys.length;
-        growBranch(
-          branch,
-          root[branch],
-          lastKey,
-          lastStatesCopy,
-          showValues,
-          hideFunctions,
-          callback,
-        );
-      });
-    }
+  static isBinex(node: any): node is BinaryExpr {
+    return node instanceof BinaryExpr;
   }
-  let tree = "";
-  const obj = Object.assign({}, OBJ);
-  (obj as Root).kind = "AST" as any;
-  growBranch(".", obj, false, [], true, true, function (line: string) {
-    tree += line + "\n";
-  });
-  return tree;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1028,16 +960,15 @@ export class Interpreter implements Visitor<ASTNode> {
   callExpr(node: CallExpr): ASTNode {
     if (node.shouldApply) {
       const fn = this.environment.getLibFn(node.functionName);
-      const arity = fn.arity;
-      const args = node.args;
+      const nodeargs = node.args;
       if (fn.argtype === NODE.NUMBER) {
-        let ARG: number[] = [];
-        args.forEach((n, i) => {
+        let args: number[] = [];
+        nodeargs.forEach((n, i) => {
           const val = this.evaluate(n);
-          if (val.isNum() && i < arity) ARG.push(val.raw);
+          val.isNum() && args.push(val.raw);
         });
-        const result = `${fn.fn.apply(null, ARG)}`;
-        let type = math.match.int(result) ? NUM.INT : NUM.FLOAT;
+        const result = Library.execute({ fn, args });
+        const type = math.match.int(result) ? NUM.INT : NUM.FLOAT;
         return new Num(result, type);
       }
     }
@@ -1062,7 +993,7 @@ export class Interpreter implements Visitor<ASTNode> {
     return n;
   }
   sym(n: Sym): ASTNode {
-    const res = this.environment.lookup(n.value);
+    const res = this.environment.getVariable(n.value);
     if (res) return this.evaluate(res);
     return new Chars(n.value);
   }
@@ -1137,55 +1068,115 @@ export class Token {
 
 export enum TOKEN {
   // utility
-  EOF, ERROR, NIL,
+  EOF,
+  ERROR,
+  NIL,
 
   // delimiters
-  COMMA, LEFT_PAREN, RIGHT_PAREN, LEFT_BRACKET,
-  RIGHT_BRACKET, LEFT_BRACE, RIGHT_BRACE, DOUBLE_QUOTE,
-  SEMICOLON, COLON, DOT,
+  COMMA,
+  LEFT_PAREN,
+  RIGHT_PAREN,
+  LEFT_BRACKET,
+  RIGHT_BRACKET,
+  LEFT_BRACE,
+  RIGHT_BRACE,
+  DOUBLE_QUOTE,
+  SEMICOLON,
+  COLON,
+  DOT,
 
   // math-operators
-  PLUS, MINUS, STAR,
-  SLASH, PERCENT, CARET, BANG,
-  MOD, DIV, REM, TO,
+  PLUS,
+  MINUS,
+  STAR,
+  SLASH,
+  PERCENT,
+  CARET,
+  BANG,
+  MOD,
+  DIV,
+  REM,
+  TO,
 
   // list-operators
-  DOT_PLUS, DOT_MINUS, DOT_STAR, DOT_SLASH,
-  DOT_PERCENT, DOT_CARET, DOT_MOD, DOT_DIV,
+  DOT_PLUS,
+  DOT_MINUS,
+  DOT_STAR,
+  DOT_SLASH,
+  DOT_PERCENT,
+  DOT_CARET,
+  DOT_MOD,
+  DOT_DIV,
   DOT_REM,
 
   // relational-operators
-  DEQUAL, NEQ, LT,
-  GT, GTE, LTE, EQUAL,
+  DEQUAL,
+  NEQ,
+  LT,
+  GT,
+  GTE,
+  LTE,
+  EQUAL,
   TILDE,
 
   // definition
   ASSIGN,
 
   // bitwise operators
-  AMP, VBAR, CARET_VBAR, LSHIFT,
-  RSHIFT, LOG_SHIFT,
+  AMP,
+  VBAR,
+  CARET_VBAR,
+  LSHIFT,
+  RSHIFT,
+  LOG_SHIFT,
 
   // logical-operators
-  EROTEME, NOR, NOT, OR,
-  XOR, XNOR, AND, SINGLE_QUOTE,
+  EROTEME,
+  NOR,
+  NOT,
+  OR,
+  XOR,
+  XNOR,
+  AND,
+  SINGLE_QUOTE,
   NAND,
 
   // keywords
-  CLASS, THROW, ELSE,
-  FOR, FUNCTION, FN, IF,
-  RETURN, SUPER, THIS, THAT,
-  WHILE, DO, LET, VAR,
+  CLASS,
+  THROW,
+  ELSE,
+  FOR,
+  FUNCTION,
+  FN,
+  IF,
+  RETURN,
+  SUPER,
+  THIS,
+  THAT,
+  WHILE,
+  DO,
+  LET,
+  VAR,
   CONST,
 
   // constants
-  FALSE, TRUE, INF, NAN,
-  NULL, SYMBOL, STRING,
+  FALSE,
+  TRUE,
+  INF,
+  NAN,
+  NULL,
+  SYMBOL,
+  STRING,
 
   // number data types
-  INTEGER, FLOAT, FRACTION,
-  COMPLEX_NUMBER, OCTAL_NUMBER, HEX_NUMBER,
-  BINARY_NUMBER, SCIENTIFIC_NUMBER,
+  INTEGER,
+  FLOAT,
+  FRACTION,
+  COMPLEX_NUMBER,
+  OCTAL_NUMBER,
+  HEX_NUMBER,
+  BINARY_NUMBER,
+  SCIENTIFIC_NUMBER,
 }
 
 export type NUM_TOKEN =
@@ -1523,27 +1514,117 @@ class Environment {
   constants: Map<string, ASTNode>;
   functions: Map<string, { params: ASTNode[]; body: ASTNode }>;
   parent?: Environment;
-  lib: LIB;
-  constructor(lib: LIB, parent?: Environment) {
+  lib: Library;
+  constructor(lib: Library, parent?: Environment) {
     this.variables = new Map();
     this.constants = new Map();
     this.functions = new Map();
     this.lib = lib;
     this.parent = parent;
   }
-  getLibConstant(name:string) {
-    const constant = this.lib.constants[name];
+  hasName(name: string) {
+    return this.hasFunction(name) || this.hasNamedValue(name);
+  }
+  /**
+   * Returns true if the name provided
+   * maps to a user-defined function
+   * or a native function.
+   */
+  hasFunction(name: string) {
+    return this.hasUserFunction(name) || this.hasNativeFunction(name);
+  }
+  /**
+   * Returns true if the name
+   * provided is a user-defined
+   * function, false otherwise.
+   */
+  hasUserFunction(name: string) {
+    return this.functions.has(name);
+  }
+  /**
+   * Returns true if the name
+   * provided is a function
+   * provided by Mathlang, false
+   * otherwise.
+   */
+  hasNativeFunction(name: string) {
+    return this.lib.hasFunction(name);
+  }
+
+  /**
+   * Returns true if the name
+   * provided maps to an existing
+   * variable or constant.
+   */
+  hasNamedValue(name: string) {
+    return this.hasVariable(name) || this.hasConstant(name);
+  }
+
+  /**
+   * Returns true if the name
+   * provided maps to an existing user-defined
+   * variable, false otherwise.
+   */
+  hasVariable(name: string) {
+    return this.variables.has(name);
+  }
+
+  /**
+   * Returns true if the name
+   * provided maps to user-defined
+   * constant or native constant.
+   */
+  hasConstant(name: string) {
+    return this.hasUserConstant(name) || this.hasNumericConstant(name);
+  }
+
+  /**
+   * Returns true if the name
+   * provided is a user-defined
+   * constant, false otherwise.
+   */
+  hasUserConstant(name: string) {
+    return this.constants.has(name);
+  }
+
+  /**
+   * Returns true if the name
+   * provided is a constant
+   * provided by Mathlang,
+   * false otherwise.
+   */
+  hasNumericConstant(name: string) {
+    return this.lib.hasNumericConstant(name);
+  }
+  /**
+   * Returns the native constant
+   * mapped to the name provided,
+   * throws otherwise.
+   */
+  getLibNumericConstant(name: string) {
+    const constant = this.lib.hasNumericConstant(name);
     if (constant) return constant;
-    throw new Error(`Constant ${name} does not exist in global library.`)
+    throw new Error(`Constant ${name} does not exist in global library.`);
   }
-  getLibFn(name:string) {
-    const fn = this.lib.functions[name];
-    if (fn) return fn;
-    throw new Error(`Function ${name} does not exist in global library.`)
+  /**
+   * Returns the native function
+   * mapped to the name provided,
+   * throws otherwise.
+   */
+  getLibFn(name: string) {
+    return this.lib.getFunction(name);
   }
+  /**
+   * Adds a new function to the
+   * environment's function record.
+   */
   declareFunction(name: string, params: ASTNode[], body: ASTNode) {
     this.functions.set(name, { params, body });
   }
+  /**
+   * Adds a new variable to the environment's
+   * variable record.
+   */
   declareVariable(name: string, value: ASTNode): ASTNode | null {
     if (this.variables.has(name)) {
       return null;
@@ -1551,7 +1632,12 @@ class Environment {
     this.variables.set(name, value);
     return value;
   }
-  resolve(name: string): Environment | null {
+  /**
+   * Traverses the environment's
+   * scope chain to try and find the
+   * name provided.
+   */
+  private resolve(name: string): Environment | null {
     if (this.variables.has(name)) {
       return this;
     }
@@ -1560,10 +1646,15 @@ class Environment {
     }
     return this.parent.resolve(name);
   }
-  lookup(name: string) {
+
+  /**
+   * Returns the node mapped to the
+   * name provided.
+   */
+  getVariable(name: string) {
     const env = this.resolve(name);
     if (env === null) return null;
-    return env?.variables.get(name);
+    return env.variables.get(name)!;
   }
 }
 
@@ -1628,179 +1719,126 @@ export interface Parser {
   parse(source: string): this;
 }
 
-type PrecRule = { prec: number; arity: number; assoc: "left" | "right" };
-type RuleSet = Record<string, PrecRule>;
-
-type LIB = {
-  constants: { [key: string]: number };
-  functions: {
-    [key: string]: {
-      fn: Function;
-      arity: number;
-      argtype: NODE;
-    };
-  };
-};
-
-export const GLOBAL: LIB = {
-  constants: {
-    e: Math.E,
-    PI: Math.PI,
-    LN2: Math.LN2,
-    LN10: Math.LN10,
-    LOG2E: Math.LOG2E,
-    LOG10E: Math.LOG10E,
-    SQRT1_2: Math.SQRT1_2,
-    SQRT2: Math.SQRT2,
-  },
-  functions: {
-    abs: { fn: Math.abs, arity: 1, argtype: NODE.NUMBER },
-    acos: { fn: Math.acos, arity: 1, argtype: NODE.NUMBER },
-    acosh: { fn: Math.acosh, arity: 1, argtype: NODE.NUMBER },
-    asin: { fn: Math.asin, arity: 1, argtype: NODE.NUMBER },
-    asinh: { fn: Math.asinh, arity: 1, argtype: NODE.NUMBER },
-    atan: { fn: Math.atan, arity: 1, argtype: NODE.NUMBER },
-    atanh: { fn: Math.atanh, arity: 1, argtype: NODE.NUMBER },
-    atan2: { fn: Math.atan2, arity: 1, argtype: NODE.NUMBER },
-    cbrt: { fn: Math.cbrt, arity: 1, argtype: NODE.NUMBER },
-    ceil: { fn: Math.ceil, arity: 1, argtype: NODE.NUMBER },
-    clz32: { fn: Math.clz32, arity: 1, argtype: NODE.NUMBER },
-    cos: { fn: Math.cos, arity: 1, argtype: NODE.NUMBER },
-    cosh: { fn: Math.cosh, arity: 1, argtype: NODE.NUMBER },
-    exp: { fn: Math.exp, arity: 1, argtype: NODE.NUMBER },
-    expm1: { fn: Math.expm1, arity: 1, argtype: NODE.NUMBER },
-    floor: { fn: Math.floor, arity: 1, argtype: NODE.NUMBER },
-    fround: { fn: Math.fround, arity: 1, argtype: NODE.NUMBER },
-    gcd: { fn: math.GCD, arity: 2, argtype: NODE.NUMBER },
-    hypot: { fn: Math.hypot, arity: 150, argtype: NODE.NUMBER },
-    imul: { fn: Math.imul, arity: 2, argtype: NODE.NUMBER },
-    log: { fn: Math.log, arity: 1, argtype: NODE.NUMBER },
-    ln: { fn: Math.log, arity: 1, argtype: NODE.NUMBER },
-    log1p: { fn: Math.log1p, arity: 1, argtype: NODE.NUMBER },
-    log10: { fn: Math.log10, arity: 1, argtype: NODE.NUMBER },
-    log2: { fn: Math.log2, arity: 1, argtype: NODE.NUMBER },
-    lg: { fn: Math.log2, arity: 1, argtype: NODE.NUMBER },
-    max: { fn: Math.max, arity: 150, argtype: NODE.NUMBER },
-    min: { fn: Math.min, arity: 150, argtype: NODE.NUMBER },
-    pow: { fn: Math.pow, arity: 2, argtype: NODE.NUMBER },
-    random: { fn: Math.random, arity: 0, argtype: NODE.NUMBER },
-    round: { fn: Math.round, arity: 1, argtype: NODE.NUMBER },
-    sign: { fn: Math.sign, arity: 1, argtype: NODE.NUMBER },
-    sin: { fn: Math.sin, arity: 1, argtype: NODE.NUMBER },
-    sinh: { fn: Math.sinh, arity: 1, argtype: NODE.NUMBER },
-    sqrt: { fn: Math.sqrt, arity: 1, argtype: NODE.NUMBER },
-    tan: { fn: Math.tan, arity: 1, argtype: NODE.NUMBER },
-    tanh: { fn: Math.tanh, arity: 1, argtype: NODE.NUMBER },
-    trunc: { fn: Math.trunc, arity: 1, argtype: NODE.NUMBER },
-  },
-};
+/* -------------------------------------------------------------------------- */
+/* § Library                                                                  */
+/* -------------------------------------------------------------------------- */
+interface FunctionEntry {
+  fn: Function;
+  arity: number;
+  argtype: NODE;
+}
+interface LibraryArgs {
+  numericConstants: [string, number][];
+  functions: [string, FunctionEntry][];
+}
+interface ExecuteArgs<T> {
+  fn: FunctionEntry;
+  args: T[];
+}
+class Library {
+  numericConstants: Map<string, number>;
+  functions: Map<string, FunctionEntry>;
+  constructor({ numericConstants, functions }: LibraryArgs) {
+    this.numericConstants = new Map(numericConstants);
+    this.functions = new Map(functions);
+  }
+  getFunction(name: string) {
+    const result = this.functions.get(name);
+    if (result === undefined) {
+      throw new Error(`[Library]: No function named ${name}.`);
+    }
+    return result;
+  }
+  getNumericConstant(name: string) {
+    const result = this.numericConstants.get(name);
+    if (result === undefined) {
+      throw new Error(`[Library]: No constant named ${name}.`);
+    }
+    return result;
+  }
+  hasFunction(name: string) {
+    return this.functions.has(name);
+  }
+  hasNumericConstant(name: string) {
+    return this.functions.has(name);
+  }
+  static execute<T>({ fn, args }: ExecuteArgs<T>): string {
+    const result = fn.fn.apply(null, args);
+    return `${result}`;
+  }
+  addFunction(name: string, def: FunctionEntry) {
+    this.functions.set(name, def);
+    return this;
+  }
+}
 
 export class Parser {
   private previous: Token;
   private scanner: Lexer;
   private peek: Token;
-  private rules: RuleSet;
-  private queue: Queue<Token>;
-  private opStack: Token[];
-  private environment: Environment;
+  private Env: Environment;
   private idx: number;
-  constructor(rules?: RuleSet) {
+  constructor(
+    nativeMethods: Library = new Library({
+      numericConstants: [
+        ["e", Math.E],
+        ["PI", Math.PI],
+        ["LN2", Math.LN2],
+        ["LN10", Math.LN10],
+        ["LOG2E", Math.LOG2E],
+        ["LOG10E", Math.LOG10E],
+        ["SQRT1_2", Math.SQRT1_2],
+        ["SQRT2", Math.SQRT2],
+      ],
+      functions: [
+        ["abs", { fn: Math.abs, arity: 1, argtype: NODE.NUMBER }],
+        ["acos", { fn: Math.acos, arity: 1, argtype: NODE.NUMBER }],
+        ["acosh", { fn: Math.acosh, arity: 1, argtype: NODE.NUMBER }],
+        ["asin", { fn: Math.asin, arity: 1, argtype: NODE.NUMBER }],
+        ["asinh", { fn: Math.asinh, arity: 1, argtype: NODE.NUMBER }],
+        ["atan", { fn: Math.atan, arity: 1, argtype: NODE.NUMBER }],
+        ["atanh", { fn: Math.atanh, arity: 1, argtype: NODE.NUMBER }],
+        ["atan2", { fn: Math.atan2, arity: 1, argtype: NODE.NUMBER }],
+        ["cbrt", { fn: Math.cbrt, arity: 1, argtype: NODE.NUMBER }],
+        ["ceil", { fn: Math.ceil, arity: 1, argtype: NODE.NUMBER }],
+        ["clz32", { fn: Math.clz32, arity: 1, argtype: NODE.NUMBER }],
+        ["cos", { fn: Math.cos, arity: 1, argtype: NODE.NUMBER }],
+        ["cosh", { fn: Math.cosh, arity: 1, argtype: NODE.NUMBER }],
+        ["exp", { fn: Math.exp, arity: 1, argtype: NODE.NUMBER }],
+        ["expm1", { fn: Math.expm1, arity: 1, argtype: NODE.NUMBER }],
+        ["floor", { fn: Math.floor, arity: 1, argtype: NODE.NUMBER }],
+        ["fround", { fn: Math.fround, arity: 1, argtype: NODE.NUMBER }],
+        ["gcd", { fn: math.GCD, arity: 2, argtype: NODE.NUMBER }],
+        ["hypot", { fn: Math.hypot, arity: 150, argtype: NODE.NUMBER }],
+        ["imul", { fn: Math.imul, arity: 2, argtype: NODE.NUMBER }],
+        ["log", { fn: Math.log, arity: 1, argtype: NODE.NUMBER }],
+        ["ln", { fn: Math.log, arity: 1, argtype: NODE.NUMBER }],
+        ["log1p", { fn: Math.log1p, arity: 1, argtype: NODE.NUMBER }],
+        ["log10", { fn: Math.log10, arity: 1, argtype: NODE.NUMBER }],
+        ["log2", { fn: Math.log2, arity: 1, argtype: NODE.NUMBER }],
+        ["lg", { fn: Math.log2, arity: 1, argtype: NODE.NUMBER }],
+        ["max", { fn: Math.max, arity: 150, argtype: NODE.NUMBER }],
+        ["min", { fn: Math.min, arity: 150, argtype: NODE.NUMBER }],
+        ["pow", { fn: Math.pow, arity: 2, argtype: NODE.NUMBER }],
+        ["random", { fn: Math.random, arity: 0, argtype: NODE.NUMBER }],
+        ["round", { fn: Math.round, arity: 1, argtype: NODE.NUMBER }],
+        ["sign", { fn: Math.sign, arity: 1, argtype: NODE.NUMBER }],
+        ["sin", { fn: Math.sin, arity: 1, argtype: NODE.NUMBER }],
+        ["sinh", { fn: Math.sinh, arity: 1, argtype: NODE.NUMBER }],
+        ["sqrt", { fn: Math.sqrt, arity: 1, argtype: NODE.NUMBER }],
+        ["tan", { fn: Math.tan, arity: 1, argtype: NODE.NUMBER }],
+        ["tanh", { fn: Math.tanh, arity: 1, argtype: NODE.NUMBER }],
+        ["trunc", { fn: Math.trunc, arity: 1, argtype: NODE.NUMBER }],
+      ],
+    }),
+  ) {
     this.idx = 0;
-    this.environment = new Environment(GLOBAL);
+    this.Env = new Environment(nativeMethods);
     this.source = "";
     this.error = null;
-    this.queue = new Queue();
-    this.opStack = [];
     this.scanner = new Lexer();
     this.previous = new Token(TOKEN.NIL, "", 0);
     this.peek = new Token(TOKEN.NIL, "", 0);
-    this.rules = rules || {
-      ["+"]: { prec: 0, arity: 2, assoc: "left" },
-      ["-"]: { prec: 0, arity: 2, assoc: "left" },
-      ["*"]: { prec: 1, arity: 2, assoc: "left" },
-      ["/"]: { prec: 1, arity: 2, assoc: "left" },
-      ["^"]: { prec: 2, arity: 2, assoc: "right" },
-      ["!"]: { prec: 3, arity: 2, assoc: "right" },
-    };
-  }
-  private isFunction(s: string) {
-    return this.isCoreFunction(s) ||
-      this.environment.functions.has(s);
-  }
-  private isUserFunction(s: string) {
-    return this.environment.functions.has(s);
-  }
-  private isCoreFunction(s: string) {
-    return this.environment.lib.functions.hasOwnProperty(s);
-  }
-
-  get string() {
-    return print(this.result);
-  }
-
-  /* § Shunting Yard ---------------------------------------------------------- */
-
-  private isOp(token: Token) {
-    return this.rules.hasOwnProperty(token.lexeme);
-  }
-  private get stackHasOperator() {
-    if (this.opStack.length === 0) return false;
-    return this.ruleIsDefined(this.opStack[this.opStack.length - 1]);
-  }
-  private ruleIsDefined(token: Token) {
-    return this.rules.hasOwnProperty(token.lexeme);
-  }
-  private precedenceOf(token: Token) {
-    if (!this.ruleIsDefined(token)) return -Infinity;
-    const r = this.rules[token.lexeme];
-    return r.prec;
-  }
-  private get topOfStack() {
-    return this.opStack[this.opStack.length - 1];
-  }
-
-  private associates(token: Token, dir: "left" | "right") {
-    if (this.ruleIsDefined(token)) {
-      return this.rules[token.lexeme].assoc === dir;
-    }
-    return false;
-  }
-  private get bindsLeft() {
-    return (this.associates(this.peek, "left") &&
-      this.precedenceOf(this.peek) <= this.precedenceOf(this.topOfStack));
-  }
-  private get bindsRight() {
-    return (this.associates(this.peek, "right") &&
-      this.precedenceOf(this.peek) < this.precedenceOf(this.topOfStack));
-  }
-  shunt(src: string) {
-    this.init(src);
-    while (this.hasTokens) {
-      if (this.isOp(this.peek)) {
-        while (this.stackHasOperator && (this.bindsLeft) || (this.bindsRight)) {
-          const op = this.opStack.pop();
-          this.queue.enqueue(op);
-        }
-        this.opStack.push(this.peek);
-      } else if (this.peek.type === TOKEN.LEFT_PAREN) {
-        this.opStack.push(this.peek);
-      } else if (this.peek.type === TOKEN.RIGHT_PAREN) {
-        while (this.opStack.length) {
-          const out = this.opStack.pop();
-          if (out?.type !== TOKEN.LEFT_PAREN) this.queue.enqueue(out);
-          if (this.topOfStack.type === TOKEN.LEFT_PAREN) {
-            this.opStack.pop();
-            break;
-          }
-        }
-      } else this.queue.enqueue(this.peek);
-      this.advance();
-    }
-    while (this.opStack.length !== 0) {
-      const out = this.opStack.pop();
-      if (out !== undefined) this.queue.enqueue(out);
-    }
-    return this.queue.array;
   }
 
   /* -------------------------------------------------------------------------- */
@@ -1852,12 +1890,13 @@ export class Parser {
     return statements;
   }
 
-  /* § Parse Variable Declaration --------------------------------------------- */
   private stmnt() {
     return this.variableDeclaration();
   }
 
-  /* ----------------------- Parse: Variable Declaration ---------------------- */
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Variable Declaration                                               */
+  /* -------------------------------------------------------------------------- */
   private variableDeclaration() {
     if (this.match([TOKEN.LET])) {
       const name = this.eat(
@@ -1870,7 +1909,7 @@ export class Parser {
       }
       if (this.match([TOKEN.ASSIGN])) init = this.expression();
       this.eat(TOKEN.SEMICOLON, this.expected(";"));
-      this.environment.declareVariable(name, init);
+      this.Env.declareVariable(name, init);
       return ast.def(name, [], init);
     }
     return this.exprStmt();
@@ -1885,21 +1924,19 @@ export class Parser {
     } else this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
     this.eat(TOKEN.ASSIGN, this.expected(":="));
     const body = this.expression();
-    this.environment.declareFunction(name, params, body);
+    this.Env.declareFunction(name, params, body);
     return ast.def(name, params, body);
   }
 
   private unaryExpression(op: string, args: ASTNode) {
-    return !this.nameIsDefined(op)
-      ? ast.algebra1(op, args)
-      : ast.unex(op, args);
+    return !this.Env.hasName(op) ? ast.algebra1(op, args) : ast.unex(op, args);
   }
 
   private binaryExpression(left: ASTNode, op: string, right: ASTNode) {
     let type = EXPR.APPLY;
     if (
-      left.isSymbol() && !this.nameIsDefined(left.value) ||
-      (right.isSymbol() && !this.nameIsDefined(right.value)) ||
+      left.isSymbol() && !this.Env.hasName(left.value) ||
+      (right.isSymbol() && !this.Env.hasName(right.value)) ||
       (left.isBinaryExpr()) && left.type === EXPR.ALGEBRAIC ||
       (right.isBinaryExpr()) && right.type === EXPR.ALGEBRAIC ||
       (left.isUnaryExpr()) && left.type === EXPR.ALGEBRAIC ||
@@ -1911,7 +1948,7 @@ export class Parser {
   }
 
   /* -------------------------------------------------------------------------- */
-  /* § Parse: Expression Statement                                              */
+  /* § Parse Expression Statement                                               */
   /* -------------------------------------------------------------------------- */
   private exprStmt() {
     const expr = this.expression();
@@ -1921,12 +1958,16 @@ export class Parser {
     return expr;
   }
 
-  /* ---------------------------- Parse: Expression --------------------------- */
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Expression                                                         */
+  /* -------------------------------------------------------------------------- */
   private expression() {
     return this.relation();
   }
 
-  /* ----------------------------- Parse: Relation ---------------------------- */
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Relation                                                           */
+  /* -------------------------------------------------------------------------- */
   private relation() {
     return this.parseExpression({
       left: "term",
@@ -1936,7 +1977,9 @@ export class Parser {
     });
   }
 
-  /* ------------------------------- Parse: Term ------------------------------ */
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Addition                                                           */
+  /* -------------------------------------------------------------------------- */
   private term() {
     return this.parseExpression({
       left: "factor",
@@ -1946,7 +1989,9 @@ export class Parser {
     });
   }
 
-  /* ------------------------------ Parse: Factor ----------------------------- */
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Multiplication                                                     */
+  /* -------------------------------------------------------------------------- */
   private factor() {
     return this.parseExpression({
       left: "imul",
@@ -1956,24 +2001,16 @@ export class Parser {
     });
   }
 
-  /* --------------------- Parse: Implicit Multiplication --------------------- */
-
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Implict Multiplication                                             */
+  /* -------------------------------------------------------------------------- */
   private imul() {
     let node = this.quotient();
     let prev = node;
     while (
-      this.sees(
-        TOKEN.SYMBOL,
-        TOKEN.LEFT_PAREN,
-        TOKEN.INTEGER,
-        TOKEN.FRACTION,
-        TOKEN.FLOAT,
-        TOKEN.COMPLEX_NUMBER,
-        TOKEN.OCTAL_NUMBER,
-        TOKEN.HEX_NUMBER,
-        TOKEN.BINARY_NUMBER,
-        TOKEN.SCIENTIFIC_NUMBER,
-      )
+      this.sees(TOKEN.LEFT_PAREN) ||
+      (node.isSymbol() && !this.Env.hasFunction(node.value)) ||
+      this.seesNumber()
     ) {
       prev = this.quotient();
       node = this.binaryExpression(node, "*", prev);
@@ -1981,8 +2018,9 @@ export class Parser {
     return node;
   }
 
-  /* ----------------------------- Parse: Quotient ---------------------------- */
-
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Quotient                                                           */
+  /* -------------------------------------------------------------------------- */
   private quotient() {
     return this.parseExpression({
       left: "unaryPrefix",
@@ -1992,8 +2030,9 @@ export class Parser {
     });
   }
 
-  /* --------------------------- Parse: Unary Prefix -------------------------- */
-
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Unary Prefix                                                       */
+  /* -------------------------------------------------------------------------- */
   private unaryPrefix() {
     if (this.match([TOKEN.NOT, TOKEN.TILDE])) {
       const op = this.previous.lexeme;
@@ -2003,8 +2042,9 @@ export class Parser {
     return this.power();
   }
 
-  /* ------------------------------ Parse: Power ------------------------------ */
-
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Power                                                              */
+  /* -------------------------------------------------------------------------- */
   private power(): ASTNode {
     let node: ASTNode = this.primary();
     while (this.match([TOKEN.CARET])) {
@@ -2015,8 +2055,9 @@ export class Parser {
     return node;
   }
 
-  /* ----------------------------- Parse: Primary ----------------------------- */
-
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Primary                                                            */
+  /* -------------------------------------------------------------------------- */
   private primary() {
     switch (this.peek.type) {
       case TOKEN.LEFT_PAREN:
@@ -2032,19 +2073,21 @@ export class Parser {
     }
   }
 
-  /* ----------------------------- Parse: Variable ---------------------------- */
-
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Variable                                                           */
+  /* -------------------------------------------------------------------------- */
   private id(): ASTNode {
     const name = this.eat(TOKEN.SYMBOL, this.expected("id"));
-    let node = ast.symbol(name);
-    if (this.check(TOKEN.LEFT_PAREN) && this.isFunction(name)) {
+    let node = ast.symbol(name, SYMBOL.VARIABLE);
+    if (this.check(TOKEN.LEFT_PAREN) && this.Env.hasFunction(name)) {
       return this.callexpr(name);
     }
     return node;
   }
 
-  /* -------------------------- Parse: Function Call -------------------------- */
-
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Call Expression                                                    */
+  /* -------------------------------------------------------------------------- */
   private callexpr(name: string): ASTNode {
     this.eat(TOKEN.LEFT_PAREN, this.expected("("));
     let type = EXPR.APPLY;
@@ -2052,7 +2095,7 @@ export class Parser {
     if (!this.check(TOKEN.RIGHT_PAREN)) {
       do {
         let param = this.expression();
-        if (param.isSymbol() && !this.nameIsDefined(param.value)) {
+        if (param.isSymbol() && !this.Env.hasName(param.value)) {
           type = EXPR.ALGEBRAIC;
         }
         params.push(param);
@@ -2062,11 +2105,9 @@ export class Parser {
     return ast.callExpr(name, params, type);
   }
 
-  private expected(s: string) {
-    return `Expected ${s}`;
-  }
-
-  /* § Parse: Braced Expression ----------------------------------------------- */
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Braced Expression                                                  */
+  /* -------------------------------------------------------------------------- */
   private braced(): ASTNode {
     this.eat(TOKEN.LEFT_BRACE, this.expected("{"));
     let expr = this.expression();
@@ -2081,7 +2122,9 @@ export class Parser {
     return ast.block([expr]);
   }
 
-  /* § Parse: Parenthesized Expression ---------------------------------------- */
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Parenthesized Expression                                           */
+  /* -------------------------------------------------------------------------- */
   private parend(): ASTNode {
     this.eat(TOKEN.LEFT_PAREN, this.expected("("));
     let expr = this.expression();
@@ -2096,7 +2139,9 @@ export class Parser {
     return expr;
   }
 
-  /* § Parse: Array ----------------------------------------------------------- */
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Array                                                              */
+  /* -------------------------------------------------------------------------- */
   private array() {
     let builder: "matrix" | "vector" = "vector";
     let elements: ASTNode[] = [];
@@ -2128,7 +2173,9 @@ export class Parser {
       : ast.vector(elements);
   }
 
-  /* § Parse Literal ---------------------------------------------------------- */
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Literal                                                            */
+  /* -------------------------------------------------------------------------- */
   private literal() {
     let lexeme = "";
     switch (this.peek.type) {
@@ -2173,13 +2220,25 @@ export class Parser {
     }
   }
 
-  /* § Utility Methods -------------------------------------------------------- */
-
+  /* -------------------------------------------------------------------------- */
+  /* § Parser Utility Methods                                                   */
+  /* -------------------------------------------------------------------------- */
+  /**
+   * Sets the parser's error property.
+   * If the error property is set, then the parser
+   * will return an error node.
+   */
   private croak(message: string) {
     message = `Line[${this.peek.line}]: ${message}`;
     this.error = message;
   }
 
+  /**
+   * Returns an expected error string.
+   */
+  private expected(s: string) {
+    return `Expected ${s}`;
+  }
   /**
    * Special handling for scientific numbers.
    * To simplify the type system, we convert
@@ -2272,7 +2331,7 @@ export class Parser {
   }
 
   eval() {
-    const n = new Interpreter(this.environment);
+    const n = new Interpreter(this.Env);
     const out = this.result.accept(n);
     return n.stringify(out);
   }
@@ -2282,16 +2341,92 @@ export class Parser {
     return out.accept(s);
   }
 
-  private nameIsDefined(n: string) {
-    return this.environment.variables.has(n) ||
-      this.environment.functions.has(n);
-  }
-
   private eatNumber(tokenType: TOKEN) {
     return this.eat(tokenType, "Expected number");
   }
 
+  /**
+   * Returns true if the next
+   * token is any number token,
+   * false otherwise.
+   */
+  private seesNumber() {
+    return this.sees(
+      TOKEN.INTEGER,
+      TOKEN.FRACTION,
+      TOKEN.FLOAT,
+      TOKEN.COMPLEX_NUMBER,
+      TOKEN.OCTAL_NUMBER,
+      TOKEN.HEX_NUMBER,
+      TOKEN.BINARY_NUMBER,
+      TOKEN.SCIENTIFIC_NUMBER,
+    );
+  }
+  get tree() {
+    const prefix = (key: string, last: boolean) => {
+      let str = last ? "└" : "├";
+      if (key) str += "─ ";
+      else str += "──┐";
+      return str;
+    };
+    const getKeys = (obj: ASTNode) => {
+      const keys = [];
+      for (const branch in obj) {
+        if (!obj.hasOwnProperty(branch)) continue;
+        keys.push(branch);
+      }
+      return keys;
+    };
 
+    type Grower = (
+      key: string,
+      root: ASTNode,
+      last: boolean,
+      prevStates: ([ASTNode, boolean])[],
+      cb: (str: string) => any,
+    ) => void;
+
+    const grow: Grower = (key, root, last, prevStates, cb) => {
+      if (root instanceof ASTNode) {
+        root.kind = `[${NODE[root.kind]}]`.toLowerCase().replace('_', '-') as any;
+      }
+      if (ast.isCallExpr(root) || ast.isUnex(root) || ast.isBinex(root)) {
+        const type: any = root.type === EXPR.ALGEBRAIC
+          ? "[algebraic-expression]"
+          : "[applicative-expression]";
+        root.type = type;
+      }
+      let line = "";
+      let index = 0;
+      let lastKey = false;
+      let circular = false;
+      let statesCopy = prevStates.slice(0);
+      if (statesCopy.push([root, last]) && prevStates.length > 0) {
+        prevStates.forEach(function (lastState, idx) {
+          if (idx > 0) line += (lastState[1] ? " " : "│") + "  ";
+          if (!circular && lastState[0] === root) circular = true;
+        });
+        line += prefix(key, last) + key;
+        if (typeof root !== "object") line += ": " + root;
+        circular && (line += " (circular ref.)");
+        cb(line);
+      }
+      if (!circular && typeof root === "object") {
+        const keys = getKeys(root);
+        keys.forEach((branch) => {
+          lastKey = ++index === keys.length;
+          const r: any = root[branch as keyof ASTNode];
+          grow(branch, r, lastKey, statesCopy, cb);
+        });
+      }
+    };
+
+    let outputTree = "";
+    const obj = Object.assign({}, this.result);
+    obj.kind = "[AST-root]" as any;
+    grow(".", obj, false, [], (line: string) => (outputTree += line + "\n"));
+    return outputTree;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2299,6 +2434,8 @@ export class Parser {
 /* -------------------------------------------------------------------------- */
 
 const parser = new Parser();
-const tree1 = parser.parse(`gcd(30,36)`);
-const result1 = tree1.eval();
-log(result1);
+const tree1 = parser.parse(`cos(0) + 1`);
+log(tree1.tree);
+// log(tree1.result);
+// const result1 = tree1.eval();
+// log(result1);
