@@ -76,6 +76,7 @@ export namespace math {
     }
     return a;
   }
+
   export function abs(n: number) {
     return Math.abs(n);
   }
@@ -157,14 +158,16 @@ export enum NODE {
   BLOCK,
   TUPLE,
   VECTOR,
-  SET,
   MATRIX,
+  COND,
   NULL,
   BOOL,
   NUMBER,
   SYMBOL,
   CHARS,
-  DEFINITION,
+  VARIABLE_DECLARATION,
+  FUNCTION_DECLARATION,
+  ASSIGNMENT,
   UNARY_EXPRESSION,
   BINARY_EXPRESSION,
   CALL_EXPRESSION,
@@ -187,9 +190,11 @@ interface Visitor<T> {
   unaryExpr(n: UnaryExpr): T;
   callExpr(n: CallExpr): T;
   binaryExpr(n: BinaryExpr): T;
-  definition(n: Definition): T;
-  set(n: SetNode): T;
+  varDeclaration(n: VarDeclaration): T;
+  funDeclaration(n: FunDeclaration): T;
   root(n: Root): T;
+  cond(n: CondExpr): T;
+  assign(n: Assignment): T;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -203,9 +208,6 @@ export abstract class ASTNode {
   abstract accept<T>(n: Visitor<T>): T;
   isBlock(): this is Block {
     return this.kind === NODE.BLOCK;
-  }
-  isSet(): this is SetNode {
-    return this.kind === NODE.SET;
   }
   isCallExpr() {
     return this.kind === NODE.CALL_EXPRESSION;
@@ -238,13 +240,16 @@ export abstract class ASTNode {
     return this.kind === NODE.CHARS;
   }
 
-  isDefinition(): this is Definition {
-    return this.kind === NODE.DEFINITION;
+  isVarDeclaration(): this is VarDeclaration {
+    return this.kind === NODE.VARIABLE_DECLARATION;
+  }
+  isFunDeclaration(): this is FunDeclaration {
+    return this.kind === NODE.FUNCTION_DECLARATION;
   }
   isUnaryExpr(): this is UnaryExpr {
     return this.kind === NODE.UNARY_EXPRESSION;
   }
-  isBinaryExpr(): this is BinaryExpr {
+  isBinex(): this is BinaryExpr {
     return this.kind === NODE.BINARY_EXPRESSION;
   }
   isRoot(): this is Root {
@@ -265,13 +270,28 @@ export class Root extends ASTNode {
   }
 }
 /* -------------------------------------------------------------------------- */
+/* § ASTNode: Assignment                                                      */
+/* -------------------------------------------------------------------------- */
+export class Assignment extends ASTNode {
+  name: string;
+  value: ASTNode;
+  constructor(name: string, value: ASTNode) {
+    super(NODE.ASSIGNMENT);
+    this.name = name;
+    this.value = value;
+  }
+  accept<T>(n: Visitor<T>): T {
+    return n.assign(this);
+  }
+}
+/* -------------------------------------------------------------------------- */
 /* § ASTNode: Block                                                           */
 /* -------------------------------------------------------------------------- */
 export class Block extends ASTNode {
-  elements: ASTNode[];
-  constructor(elements: ASTNode[]) {
+  body: ASTNode[];
+  constructor(body: ASTNode[]) {
     super(NODE.BLOCK);
-    this.elements = elements;
+    this.body = body;
   }
   accept<T>(n: Visitor<T>): T {
     return n.block(this);
@@ -290,19 +310,7 @@ export class Tuple extends ASTNode {
     return n.tuple(this);
   }
 }
-/* -------------------------------------------------------------------------- */
-/* § ASTNode: Set                                                             */
-/* -------------------------------------------------------------------------- */
-export class SetNode extends ASTNode {
-  elements: ASTNode[];
-  constructor(elements: ASTNode[]) {
-    super(NODE.SET);
-    this.elements = elements;
-  }
-  accept<T>(n: Visitor<T>): T {
-    return n.set(this);
-  }
-}
+
 /* -------------------------------------------------------------------------- */
 /* § ASTNode: Matrix                                                          */
 /* -------------------------------------------------------------------------- */
@@ -491,6 +499,21 @@ export class Num extends ASTNode {
     const result = a ** b;
     return new Num(result, this.type(result));
   }
+  mod(x: Num) {
+    const a = math.integer(this.value).N;
+    const b = math.integer(x.value).N;
+    return ast.integer(((a % b) + b) % b);
+  }
+  rem(x: Num) {
+    const a = math.integer(this.value).N;
+    const b = math.integer(x.value).N;
+    return ast.integer(a % b);
+  }
+  div(x: Num) {
+    const a = math.integer(this.value).N;
+    const b = math.integer(x.value).N;
+    return ast.integer(Math.floor(a / b));
+  }
   hasFrac(x: Num) {
     return this.isFraction || x.isFraction;
   }
@@ -658,6 +681,23 @@ export class Float {
 }
 
 /* -------------------------------------------------------------------------- */
+/* § ASTNode: Conditional                                                     */
+/* -------------------------------------------------------------------------- */
+export class CondExpr extends ASTNode {
+  condition: ASTNode;
+  consequent: ASTNode;
+  alternate: ASTNode;
+  constructor(condition: ASTNode, consequent: ASTNode, alternate: ASTNode) {
+    super(NODE.COND);
+    this.condition = condition;
+    this.consequent = consequent;
+    this.alternate = alternate;
+  }
+  accept<T>(v: Visitor<T>) {
+    return v.cond(this);
+  }
+}
+/* -------------------------------------------------------------------------- */
 /* § ASTNode: Sym                                                             */
 /* -------------------------------------------------------------------------- */
 enum SYMBOL {
@@ -692,29 +732,36 @@ export class Chars extends ASTNode {
 }
 
 /* -------------------------------------------------------------------------- */
-/* § ASTNode: Definition                                                      */
+/* § ASTNode: Function Declaration                                            */
 /* -------------------------------------------------------------------------- */
-export class Definition extends ASTNode {
-  op: string;
-  params: ASTNode[];
+export class FunDeclaration extends ASTNode {
+  name: string;
+  params: Sym[];
   body: ASTNode;
-  constructor(op: string, params: ASTNode[], body: ASTNode) {
-    super(NODE.DEFINITION);
-    this.op = op;
+  constructor(name: string, params: Sym[], body: ASTNode) {
+    super(NODE.FUNCTION_DECLARATION);
+    this.name = name;
     this.params = params;
     this.body = body;
   }
   accept<T>(n: Visitor<T>): T {
-    return n.definition(this);
+    return n.funDeclaration(this);
   }
 }
-
 /* -------------------------------------------------------------------------- */
-/* § enum: EXPR                                                               */
+/* § ASTNode: Variable Declaration                                            */
 /* -------------------------------------------------------------------------- */
-enum EXPR {
-  APPLY,
-  ALGEBRAIC,
+export class VarDeclaration extends ASTNode {
+  name: string;
+  value: ASTNode;
+  constructor(op: string, value: ASTNode) {
+    super(NODE.VARIABLE_DECLARATION);
+    this.name = op;
+    this.value = value;
+  }
+  accept<T>(n: Visitor<T>): T {
+    return n.varDeclaration(this);
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -723,20 +770,17 @@ enum EXPR {
 export class CallExpr extends ASTNode {
   functionName: string;
   args: ASTNode[];
-  type: EXPR;
   length: number;
-  constructor(functionName: string, args: ASTNode[], type: EXPR) {
+  native?: FunctionEntry;
+  constructor(functionName: string, args: ASTNode[], native?: FunctionEntry) {
     super(NODE.CALL_EXPRESSION);
     this.functionName = functionName;
     this.args = args;
-    this.type = type;
     this.length = args.length;
+    this.native = native;
   }
   accept<T>(n: Visitor<T>): T {
     return n.callExpr(this);
-  }
-  get shouldApply() {
-    return this.type === EXPR.APPLY;
   }
 }
 
@@ -746,12 +790,10 @@ export class CallExpr extends ASTNode {
 export class UnaryExpr extends ASTNode {
   op: string;
   arg: ASTNode;
-  type: EXPR;
-  constructor(op: string, arg: ASTNode, type: EXPR) {
+  constructor(op: string, arg: ASTNode) {
     super(NODE.UNARY_EXPRESSION);
     this.op = op;
     this.arg = arg;
-    this.type = type;
   }
   accept<T>(n: Visitor<T>): T {
     return n.unaryExpr(this);
@@ -765,13 +807,11 @@ export class BinaryExpr extends ASTNode {
   left: ASTNode;
   op: string;
   right: ASTNode;
-  type: EXPR;
-  constructor(left: ASTNode, op: string, right: ASTNode, type: EXPR) {
+  constructor(left: ASTNode, op: string, right: ASTNode) {
     super(NODE.BINARY_EXPRESSION);
     this.left = left;
     this.op = op;
     this.right = right;
-    this.type = type;
   }
   accept<T>(n: Visitor<T>): T {
     return n.binaryExpr(this);
@@ -788,14 +828,20 @@ export class ast {
   static float(v: string) {
     return new Num(v, NUM.FLOAT);
   }
-  static callExpr(fn: string, args: ASTNode[], type: EXPR) {
-    return new CallExpr(fn, args, type);
+  static callExpr(fn: string, args: ASTNode[], native?: FunctionEntry) {
+    return new CallExpr(fn, args, native);
+  }
+  static assign(name: string, value: ASTNode) {
+    return new Assignment(name, value);
   }
   static complex(v: string) {
     return new Num(v, NUM.COMPLEX);
   }
   static bool(v: boolean) {
     return new Bool(v);
+  }
+  static cond(test: ASTNode, consequent: ASTNode, alternate: ASTNode) {
+    return new CondExpr(test, consequent, alternate);
   }
   static fraction(s: string) {
     const [a, b] = math.getFrac(s);
@@ -815,7 +861,7 @@ export class ast {
     return new Sym(s, type);
   }
   static algebra2(left: ASTNode, op: string, right: ASTNode) {
-    return new BinaryExpr(left, op, right, EXPR.ALGEBRAIC);
+    return new BinaryExpr(left, op, right);
   }
   static matrix(matrix: Vector[], rows: number, columns: number) {
     return new Matrix(matrix, rows, columns);
@@ -823,22 +869,14 @@ export class ast {
   static vector(elements: ASTNode[]) {
     return new Vector(elements);
   }
-  static binex(
-    left: ASTNode,
-    op: string,
-    right: ASTNode,
-    type = EXPR.APPLY,
-  ) {
-    return new BinaryExpr(left, op, right, type);
+  static binex(left: ASTNode, op: string, right: ASTNode) {
+    return new BinaryExpr(left, op, right);
   }
   static algebra1(op: string, arg: ASTNode) {
-    return new UnaryExpr(op, arg, EXPR.ALGEBRAIC);
+    return new UnaryExpr(op, arg);
   }
-  static unex(op: string, arg: ASTNode, type = EXPR.APPLY) {
-    return new UnaryExpr(op, arg, type);
-  }
-  static set(elements: ASTNode[]) {
-    return new SetNode(elements);
+  static unex(op: string, arg: ASTNode) {
+    return new UnaryExpr(op, arg);
   }
   static tuple(elements: ASTNode[]) {
     return new Tuple(elements);
@@ -846,8 +884,11 @@ export class ast {
   static block(elements: ASTNode[]) {
     return new Block(elements);
   }
-  static def(op: string, params: ASTNode[], body: ASTNode) {
-    return new Definition(op, params, body);
+  static varDeclaration(name: string, value: ASTNode) {
+    return new VarDeclaration(name, value);
+  }
+  static funDeclaration(name: string, params: Sym[], body: ASTNode) {
+    return new FunDeclaration(name, params, body);
   }
   static root(elements: ASTNode[] | string) {
     return typeof elements === "string"
@@ -868,14 +909,120 @@ export class ast {
 }
 
 /* -------------------------------------------------------------------------- */
+/* § Visitor: ToPrefix                                                        */
+/* -------------------------------------------------------------------------- */
+export class ToPrefix implements Visitor<string> {
+  bool(n: Bool): string {
+    return `${n.value}`;
+  }
+  cond(n: CondExpr) {
+    const test: string = this.toPrefix(n.condition) + "\n";
+    const consequent: string = "\t" + this.toPrefix(n.consequent) + "\n";
+    const alternate: string = "\t" + " else " + this.toPrefix(n.alternate);
+    return `(cond ${test} ${consequent} ${alternate})`;
+  }
+  assign(n: Assignment): string {
+    const name = n.name;
+    const value = this.toPrefix(n.value);
+    return `(assign ${name} ${value})`;
+  }
+  chars(n: Chars): string {
+    return `"` + n.value + `"`;
+  }
+  null(n: Null): string {
+    return "null";
+  }
+  num(n: Num): string {
+    return n.value;
+  }
+  sym(n: Sym): string {
+    return n.value;
+  }
+  tuple(n: Tuple): string {
+    return this.stringify(n.elements);
+  }
+  block(n: Block): string {
+    let result = "(";
+    for (let i = 0; i < n.body.length; i++) {
+      result += this.toPrefix(n.body[i]);
+    }
+    return result + ")";
+  }
+  vector(n: Vector): string {
+    return this.stringify(n.elements);
+  }
+  unaryExpr(n: UnaryExpr): string {
+    let op = n.op;
+    let result = this.toPrefix(n.arg);
+    const out = `(` + op + result + `)`;
+    return out;
+  }
+  binaryExpr(n: BinaryExpr): string {
+    let left = this.toPrefix(n.left);
+    let right = this.toPrefix(n.right);
+    return `(` + n.op + " " + left + " " + right + `)`;
+  }
+  varDeclaration(n: VarDeclaration): string {
+    const name = n.name;
+    return `(define ` + name + " " + this.toPrefix(n.value) + `)`;
+  }
+  root(n: Root): string {
+    let result: string[] = [];
+    n.root.forEach((n) => result.push(this.toPrefix(n)));
+    const out = result.join("\n");
+    return `(` + out + `)`;
+  }
+  funDeclaration(node: FunDeclaration): string {
+    const name = node.name;
+    const params = this.stringify(node.params);
+    const body = this.toPrefix(node.body);
+    return `(fun ${name} ${params} ${body})`;
+  }
+  matrix(n: Matrix): string {
+    let elements: string[] = [];
+    n.vectors.forEach((v) => elements.push("\t" + this.toPrefix(v)));
+    const Es = "(\n" + elements.join("\n") + "\n)";
+    return Es;
+  }
+  callExpr(n: CallExpr): string {
+    let fn = n.functionName;
+    let arglist = this.stringify(n.args);
+    return fn + arglist;
+  }
+  stringify(
+    nodes: ASTNode[],
+    separator = " ",
+    delims = ["(", ")"],
+    prefix = "",
+    postfix = "",
+  ) {
+    let out: string[] = [];
+    nodes.forEach((n) => prefix + out.push(this.toPrefix(n)) + postfix);
+    const [leftDelim, rightDelim] = delims;
+    return leftDelim + out.join(separator) + rightDelim;
+  }
+  toPrefix(n: ASTNode) {
+    return n.accept(this);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /* § Visitor: ToString                                                        */
 /* -------------------------------------------------------------------------- */
 export class ToString implements Visitor<string> {
   bool(n: Bool): string {
     return `${n.value}`;
   }
-  set(n: SetNode) {
-    return this.stringify(n.elements, ", ", ["{ ", " }"]);
+  cond(n: CondExpr) {
+    const test: string = this.toString(n.condition);
+    const consequent: string = this.toString(n.consequent);
+    const alternate: string = this.toString(n.alternate);
+    return `if (${test}) {${consequent}} else {${alternate}}`;
+  }
+  assign(n: Assignment): string {
+    const name = n.name;
+    const value = this.toString(n.value);
+    return `${name} := ${value}`;
   }
   chars(n: Chars): string {
     return n.value;
@@ -894,8 +1041,8 @@ export class ToString implements Visitor<string> {
   }
   block(n: Block): string {
     let result = "";
-    for (let i = 0; i < n.elements.length; i++) {
-      result += this.toString(n.elements[i]) + "\n";
+    for (let i = 0; i < n.body.length; i++) {
+      result += this.toString(n.body[i]) + "\n";
     }
     return result;
   }
@@ -909,18 +1056,28 @@ export class ToString implements Visitor<string> {
     return out;
   }
   binaryExpr(n: BinaryExpr): string {
+    if (n.op === "*" && n.left.isNum() && n.right.isSymbol()) {
+      return n.left.value + n.right.value;
+    }
     let left = this.toString(n.left);
     let right = this.toString(n.right);
-    return left + n.op + right;
+    const op = (n.op !== "^" && n.op !== "/") ? ` ${n.op} ` : n.op;
+    return left + op + right;
   }
-  definition(n: Definition): string {
-    return this.toString(n.body);
+  varDeclaration(n: VarDeclaration): string {
+    return this.toString(n.value);
   }
   root(n: Root): string {
     let result: string[] = [];
     n.root.forEach((n) => result.push(this.toString(n)));
     const out = result.join("");
     return out;
+  }
+  funDeclaration(node: FunDeclaration): string {
+    const name = node.name;
+    const params = this.stringify(node.params, ", ", ["(", ")"]);
+    const body = this.toString(node.body);
+    return name + params + "{" + body + "}";
   }
   matrix(n: Matrix): string {
     let elements: string[] = [];
@@ -951,72 +1108,156 @@ export class ToString implements Visitor<string> {
 }
 
 /* -------------------------------------------------------------------------- */
-/* § Visitor: Interpreter                                                     */
+/* § VISITOR: INTERPRETER                                                     */
 /* -------------------------------------------------------------------------- */
 export class Interpreter implements Visitor<ASTNode> {
   environment: Environment;
   str: ToString;
-  constructor(env: Environment) {
-    this.environment = env;
+  constructor(environment = new Environment()) {
+    this.environment = environment;
     this.str = new ToString();
   }
-  set(n: SetNode): ASTNode {
-    let elems: ASTNode[] = [];
-    n.elements.forEach((n) => elems.push(this.evaluate(n)));
-    return new SetNode(elems);
-  }
-  callExpr(node: CallExpr): ASTNode {
-    if (node.shouldApply) {
-      const fn = this.environment.getLibFn(node.functionName);
-      const nodeargs = node.args;
-      if (fn.argtype === NODE.NUMBER) {
-        let args: number[] = [];
-        nodeargs.forEach((n, i) => {
-          const val = this.evaluate(n);
-          val.isNum() && args.push(val.raw);
-        });
-        const result = Library.execute({ fn, args });
-        const type = math.match.int(result) ? NUM.INT : NUM.FLOAT;
-        return new Num(result, type);
-      }
-    }
-    return ast.nil;
-  }
-  matrix(n: Matrix): ASTNode {
-    return n;
+  private evalNativeMathFn(nodeargs: ASTNode[], native: FunctionEntry) {
+    let args: number[] = [];
+    nodeargs.forEach((node) => {
+      const num = this.evaluate(node);
+      num.isNum() && args.push(num.raw);
+    });
+    const result = Library.execute({ fn: native, args });
+    const type = math.match.int(result) ? NUM.INT : NUM.FLOAT;
+    return new Num(result, type);
   }
   stringify(n: ASTNode) {
     return n.accept(this.str);
   }
+  /* -------------------------------------------------------------------------- */
+  /* § Interpret Call Expression                                                */
+  /* -------------------------------------------------------------------------- */
+  callExpr(node: CallExpr): ASTNode {
+    const { native } = node;
+    if (native && native.argtype === NODE.NUMBER) {
+      return this.evalNativeMathFn(node.args, native);
+    } else {
+      const { functionName, args } = node;
+      const callee = this.environment.lookup(functionName);
+      if (callee.isFunDeclaration()) {
+        const { params, body } = callee;
+        const env = new Environment(this.environment);
+        params.forEach((n, i) => env.declare(n.value, args[i]));
+        const ip = new Interpreter(env);
+        const result = body.accept(ip);
+        return result;
+      }
+      return ast.nil;
+    }
+  }
+  /* -------------------------------------------------------------------------- */
+  /* § Interpret Assignment                                                     */
+  /* -------------------------------------------------------------------------- */
+  assign(n: Assignment): ASTNode {
+    const value = this.evaluate(n.value);
+    this.environment.assign(n.name, value);
+    return value;
+  }
+  /* -------------------------------------------------------------------------- */
+  /* § Interpret Matrix                                                         */
+  /* -------------------------------------------------------------------------- */
+  matrix(n: Matrix): ASTNode {
+    return n;
+  }
+  /* -------------------------------------------------------------------------- */
+  /* § Interpret Boolean                                                        */
+  /* -------------------------------------------------------------------------- */
   bool(n: Bool): ASTNode {
     return n;
   }
+  /* -------------------------------------------------------------------------- */
+  /* § Interpret Chars (string)                                                 */
+  /* -------------------------------------------------------------------------- */
   chars(n: Chars): ASTNode {
     return n;
   }
+  /* -------------------------------------------------------------------------- */
+  /* § Intepret Null                                                            */
+  /* -------------------------------------------------------------------------- */
   null(n: Null): ASTNode {
     return n;
   }
+  /* -------------------------------------------------------------------------- */
+  /* § Interpret Number                                                         */
+  /* -------------------------------------------------------------------------- */
   num(n: Num): ASTNode {
     return n;
   }
-  sym(n: Sym): ASTNode {
-    const res = this.environment.getVariable(n.value);
-    if (res) return this.evaluate(res);
-    return new Chars(n.value);
+  /* -------------------------------------------------------------------------- */
+  /* § Interpret Symbol                                                         */
+  /* -------------------------------------------------------------------------- */
+  sym(node: Sym): ASTNode {
+    const v = this.environment.lookup(node.value);
+    if (v === null) return node;
+    return v;
   }
+  /* -------------------------------------------------------------------------- */
+  /* § Interpret Conditional                                                    */
+  /* -------------------------------------------------------------------------- */
+  cond(n: CondExpr): ASTNode {
+    const test = this.evaluate(n.condition);
+    if (test.isBool() && test.value) {
+      return this.evaluate(n.consequent);
+    }
+    return this.evaluate(n.alternate);
+  }
+  /* -------------------------------------------------------------------------- */
+  /* § Interpret Function Declaration                                           */
+  /* -------------------------------------------------------------------------- */
+  funDeclaration(node: FunDeclaration): ASTNode {
+    const { name } = node;
+    this.environment.declare(name, node);
+    return ast.nil;
+  }
+  /* -------------------------------------------------------------------------- */
+  /* § Interpret Tuple                                                          */
+  /* -------------------------------------------------------------------------- */
   tuple(n: Tuple): ASTNode {
     return n;
   }
-  block(n: Block): ASTNode {
-    return n;
+  /* -------------------------------------------------------------------------- */
+  /* § Interpret Block                                                          */
+  /* -------------------------------------------------------------------------- */
+  block(node: Block): ASTNode {
+    return this.executeBlock(node.body, new Environment(this.environment));
   }
+  private executeBlock(statements: ASTNode[], environment: Environment) {
+    const previous = this.environment;
+    this.environment = environment;
+    let result: ASTNode = ast.nil;
+    for (let i = 0; i < statements.length; i++) {
+      result = this.evaluate(statements[i]);
+    }
+    this.environment = previous;
+    return result;
+  }
+  /* -------------------------------------------------------------------------- */
+  /* § Interpret Vector                                                         */
+  /* -------------------------------------------------------------------------- */
   vector(n: Vector): ASTNode {
     return n;
   }
+  /* -------------------------------------------------------------------------- */
+  /* § Interpret Unary Expression                                               */
+  /* -------------------------------------------------------------------------- */
   unaryExpr(n: UnaryExpr): ASTNode {
     return n;
   }
+  private isSymFrac(n: ASTNode) {
+    return n.isBinex() &&
+      n.op === "/" &&
+      n.left.isSymbol() &&
+      n.right.isSymbol();
+  }
+  /* -------------------------------------------------------------------------- */
+  /* § Interpret Binary Expression                                              */
+  /* -------------------------------------------------------------------------- */
   binaryExpr(n: BinaryExpr): ASTNode {
     const left = this.evaluate(n.left);
     const right = this.evaluate(n.right);
@@ -1025,6 +1266,13 @@ export class Interpreter implements Visitor<ASTNode> {
         case "+":
           return left.add(right);
       }
+    }
+    if (n.op === "to") {
+      const prefix1Right = this.isSymFrac(right) || right.isSymbol();
+      let L = this.stringify(left);
+      let R = this.stringify(right);
+      if (prefix1Right) R = "1" + R;
+      log([L, R]);
     }
     if (left.isNum() && right.isNum()) {
       switch (n.op) {
@@ -1038,13 +1286,28 @@ export class Interpreter implements Visitor<ASTNode> {
           return left.divide(right);
         case "^":
           return left.pow(right);
+        case "%":
+        case "rem":
+          return left.rem(right);
+        case "div":
+          return left.div(right);
+        case "mod":
+          return left.mod(right);
       }
     }
-    return ast.binex(left, n.op, right, n.type);
+    return ast.binex(left, n.op, right);
   }
-  definition(n: Definition): ASTNode {
-    throw new Error("Method not implemented.");
+  /* -------------------------------------------------------------------------- */
+  /* § Interpret Variable Declaration                                           */
+  /* -------------------------------------------------------------------------- */
+  varDeclaration(node: VarDeclaration): ASTNode {
+    const value = this.evaluate(node.value);
+    this.environment.declare(node.name, value);
+    return value;
   }
+  /* -------------------------------------------------------------------------- */
+  /* § Interpret Root                                                           */
+  /* -------------------------------------------------------------------------- */
   root(n: Root): ASTNode {
     let result: ASTNode = new Null();
     for (let i = 0; i < n.root.length; i++) {
@@ -1308,165 +1571,106 @@ export class Lexer {
 }
 
 /* -------------------------------------------------------------------------- */
-/* § Environment                                                              */
+/* § ENVIRONMENT                                                              */
 /* -------------------------------------------------------------------------- */
 class Environment {
-  variables: Map<string, ASTNode>;
-  constants: Map<string, ASTNode>;
-  functions: Map<string, { params: ASTNode[]; body: ASTNode }>;
+  values: Map<string, ASTNode>;
   parent?: Environment;
-  lib: Library;
-  constructor(lib: Library, parent?: Environment) {
-    this.variables = new Map();
-    this.constants = new Map();
-    this.functions = new Map();
-    this.lib = lib;
+  constructor(parent?: Environment) {
+    this.values = new Map();
     this.parent = parent;
   }
-  hasName(name: string) {
-    return this.hasFunction(name) || this.hasNamedValue(name);
+  private throwError(message: string) {
+    throw new Error(`[Runtime Error]: ${message}.`);
   }
-  /**
-   * Returns true if the name provided
-   * maps to a user-defined function
-   * or a native function.
-   */
-  hasFunction(name: string) {
-    return this.hasUserFunction(name) || this.hasNativeFunction(name);
-  }
-  /**
-   * Returns true if the name
-   * provided is a user-defined
-   * function, false otherwise.
-   */
-  hasUserFunction(name: string) {
-    return this.functions.has(name);
-  }
-  /**
-   * Returns true if the name
-   * provided is a function
-   * provided by Mathlang, false
-   * otherwise.
-   */
-  hasNativeFunction(name: string) {
-    return this.lib.hasFunction(name);
-  }
-
-  /**
-   * Returns true if the name
-   * provided maps to an existing
-   * variable or constant.
-   */
-  hasNamedValue(name: string) {
-    return this.hasVariable(name) || this.hasConstant(name);
-  }
-
-  /**
-   * Returns true if the name
-   * provided maps to an existing user-defined
-   * variable, false otherwise.
-   */
-  hasVariable(name: string) {
-    return this.variables.has(name);
-  }
-
-  /**
-   * Returns true if the name
-   * provided maps to user-defined
-   * constant or native constant.
-   */
-  hasConstant(name: string) {
-    return this.hasUserConstant(name) || this.hasNumericConstant(name);
-  }
-
-  /**
-   * Returns true if the name
-   * provided is a user-defined
-   * constant, false otherwise.
-   */
-  hasUserConstant(name: string) {
-    return this.constants.has(name);
-  }
-
-  /**
-   * Returns true if the name
-   * provided is a constant
-   * provided by Mathlang,
-   * false otherwise.
-   */
-  hasNumericConstant(name: string) {
-    return this.lib.hasNumericConstant(name);
-  }
-  /**
-   * Returns the native constant
-   * mapped to the name provided,
-   * throws otherwise.
-   */
-  getLibNumericConstant(name: string) {
-    const constant = this.lib.hasNumericConstant(name);
-    if (constant) return constant;
-    throw new Error(`Constant ${name} does not exist in global library.`);
-  }
-  /**
-   * Returns the native function
-   * mapped to the name provided,
-   * throws otherwise.
-   */
-  getLibFn(name: string) {
-    return this.lib.getFunction(name);
-  }
-  /**
-   * Adds a new function to the
-   * environment's function record.
-   */
-  declareFunction(name: string, params: ASTNode[], body: ASTNode) {
-    this.functions.set(name, { params, body });
+  assign(name: string, value: ASTNode) {
+    if (this.values.has(name)) {
+      this.values.set(name, value);
+    }
+    if (this.parent === undefined) {
+      this.throwError(`Cannot assign to nonexistent variable ${name}.`);
+    }
+    this.parent!.assign(name, value);
   }
   /**
    * Adds a new variable to the environment's
    * variable record.
    */
-  declareVariable(name: string, value: ASTNode): ASTNode | null {
-    if (this.variables.has(name)) {
-      return null;
+  declare(name: string, value: ASTNode): ASTNode {
+    if (this.values.has(name)) {
+      this.throwError(`Variable ${name} has been declared.`);
     }
-    this.variables.set(name, value);
+    this.values.set(name, value);
     return value;
   }
-  /**
-   * Traverses the environment's
-   * scope chain to try and find the
-   * name provided.
-   */
-  private resolve(name: string): Environment | null {
-    if (this.variables.has(name)) {
-      return this;
+  lookup(name: string): ASTNode {
+    if (this.values.has(name)) {
+      return this.values.get(name)!;
     }
     if (this.parent === undefined) {
-      return null;
+      return ast.nil;
     }
-    return this.parent.resolve(name);
-  }
-
-  /**
-   * Returns the node mapped to the
-   * name provided.
-   */
-  getVariable(name: string) {
-    const env = this.resolve(name);
-    if (env === null) return null;
-    return env.variables.get(name)!;
+    return this.parent!.lookup(name);
   }
 }
 
 /* -------------------------------------------------------------------------- */
-/* § Parser                                                                   */
+/* § Library                                                                  */
+/* -------------------------------------------------------------------------- */
+interface FunctionEntry {
+  fn: Function;
+  arity: number;
+  argtype: NODE;
+}
+interface LibraryArgs {
+  numericConstants: [string, number][];
+  functions: [string, FunctionEntry][];
+}
+interface ExecuteArgs<T> {
+  fn: FunctionEntry;
+  args: T[];
+}
+class Library {
+  numericConstants: Map<string, number>;
+  functions: Map<string, FunctionEntry>;
+  constructor({ numericConstants, functions }: LibraryArgs) {
+    this.numericConstants = new Map(numericConstants);
+    this.functions = new Map(functions);
+  }
+  getFunction(name: string) {
+    return this.functions.get(name);
+  }
+  getNumericConstant(name: string) {
+    const result = this.numericConstants.get(name);
+    if (result === undefined) {
+      throw new Error(`[Library]: No constant named ${name}.`);
+    }
+    return result;
+  }
+  hasFunction(name: string) {
+    return this.functions.has(name);
+  }
+  hasNumericConstant(name: string) {
+    return this.functions.has(name);
+  }
+  static execute<T>({ fn, args }: ExecuteArgs<T>): string {
+    const result = fn.fn.apply(null, args);
+    return `${result}`;
+  }
+  addFunction(name: string, def: FunctionEntry) {
+    this.functions.set(name, def);
+    return this;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* § PARSER                                                                   */
 /* -------------------------------------------------------------------------- */
 
 interface Rule {
-  left: "term" | "factor" | "quotient" | "unaryPrefix" | "imul";
+  left: "term" | "factor" | "quotient" | "unaryPrefix" | "imul" | "convert";
   ops: TOKEN[];
-  right: "term" | "factor" | "quotient" | "unaryPrefix" | "imul";
+  right: "term" | "factor" | "quotient" | "unaryPrefix" | "imul" | "convert";
   astnode: (left: ASTNode, operator: string, right: ASTNode) => ASTNode;
 }
 
@@ -1520,67 +1724,16 @@ export interface Parser {
   parse(source: string): this;
 }
 
-/* -------------------------------------------------------------------------- */
-/* § Library                                                                  */
-/* -------------------------------------------------------------------------- */
-interface FunctionEntry {
-  fn: Function;
-  arity: number;
-  argtype: NODE;
-}
-interface LibraryArgs {
-  numericConstants: [string, number][];
-  functions: [string, FunctionEntry][];
-}
-interface ExecuteArgs<T> {
-  fn: FunctionEntry;
-  args: T[];
-}
-class Library {
-  numericConstants: Map<string, number>;
-  functions: Map<string, FunctionEntry>;
-  constructor({ numericConstants, functions }: LibraryArgs) {
-    this.numericConstants = new Map(numericConstants);
-    this.functions = new Map(functions);
-  }
-  getFunction(name: string) {
-    const result = this.functions.get(name);
-    if (result === undefined) {
-      throw new Error(`[Library]: No function named ${name}.`);
-    }
-    return result;
-  }
-  getNumericConstant(name: string) {
-    const result = this.numericConstants.get(name);
-    if (result === undefined) {
-      throw new Error(`[Library]: No constant named ${name}.`);
-    }
-    return result;
-  }
-  hasFunction(name: string) {
-    return this.functions.has(name);
-  }
-  hasNumericConstant(name: string) {
-    return this.functions.has(name);
-  }
-  static execute<T>({ fn, args }: ExecuteArgs<T>): string {
-    const result = fn.fn.apply(null, args);
-    return `${result}`;
-  }
-  addFunction(name: string, def: FunctionEntry) {
-    this.functions.set(name, def);
-    return this;
-  }
-}
-
 export class Parser {
   private previous: Token;
   private scanner: Lexer;
   private peek: Token;
-  private Env: Environment;
   private idx: number;
-  constructor(
-    nativeMethods: Library = new Library({
+  private lib: Library;
+  private funcNames: Set<string>;
+  constructor() {
+    this.funcNames = new Set();
+    this.lib = new Library({
       numericConstants: [
         ["e", Math.E],
         ["PI", Math.PI],
@@ -1631,10 +1784,8 @@ export class Parser {
         ["tanh", { fn: Math.tanh, arity: 1, argtype: NODE.NUMBER }],
         ["trunc", { fn: Math.trunc, arity: 1, argtype: NODE.NUMBER }],
       ],
-    }),
-  ) {
+    });
     this.idx = 0;
-    this.Env = new Environment(nativeMethods);
     this.source = "";
     this.error = null;
     this.scanner = new Lexer();
@@ -1674,8 +1825,9 @@ export class Parser {
     const result = this.stmntList();
     if (this.error !== null) {
       this.result = ast.root(this.error);
+    } else {
+      this.result = ast.root(result);
     }
-    this.result = ast.root(result);
     return this;
   }
 
@@ -1687,65 +1839,82 @@ export class Parser {
    */
   private stmntList() {
     const statements: ASTNode[] = [this.stmnt()];
-    while (this.peek.type !== TOKEN.EOF) statements.push(this.stmnt());
+    while (this.hasTokens) {
+      statements.push(this.stmnt());
+    }
     return statements;
   }
 
   private stmnt() {
-    return this.variableDeclaration();
+    switch (true) {
+      case this.match([TOKEN.IF]):
+        return this.parseCond();
+      case this.match([TOKEN.LET]):
+        return this.variableDeclaration();
+      case this.match([TOKEN.LEFT_BRACE]):
+        return this.block();
+      default:
+        return this.exprStmt();
+    }
+  }
+
+  private parseCond() {
+    this.eat(TOKEN.LEFT_PAREN, this.expected("("));
+    const test = this.expression();
+    this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
+    const consequent: ASTNode = this.stmnt();
+    const alternate: ASTNode = this.match([TOKEN.ELSE])
+      ? this.stmnt()
+      : ast.nil;
+    return ast.cond(test, consequent, alternate);
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Block                                                              */
+  /* -------------------------------------------------------------------------- */
+  private block() {
+    const statements: ASTNode[] = [];
+    while (!this.sees(TOKEN.RIGHT_BRACE) && this.hasTokens) {
+      statements.push(this.stmnt());
+    }
+    this.eat(TOKEN.RIGHT_BRACE, this.expected("}"));
+    return ast.block(statements);
   }
 
   /* -------------------------------------------------------------------------- */
   /* § Parse Variable Declaration                                               */
   /* -------------------------------------------------------------------------- */
   private variableDeclaration() {
-    if (this.match([TOKEN.LET])) {
-      const name = this.eat(
-        TOKEN.SYMBOL,
-        this.expected("variable-name"),
-      );
-      let init: ASTNode = ast.nil;
-      if (this.match([TOKEN.LEFT_PAREN])) {
-        return this.functionDeclaration(name);
-      }
-      if (this.match([TOKEN.ASSIGN])) init = this.expression();
-      this.eat(TOKEN.SEMICOLON, this.expected(";"));
-      this.Env.declareVariable(name, init);
-      return ast.def(name, [], init);
+    const name = this.eat(
+      TOKEN.SYMBOL,
+      this.expected("variable-name"),
+    );
+    let init: ASTNode = ast.nil;
+    if (this.match([TOKEN.LEFT_PAREN])) {
+      return this.functionDeclaration(name);
     }
-    return this.exprStmt();
+    if (this.match([TOKEN.ASSIGN])) init = this.expression();
+    this.eat(TOKEN.SEMICOLON, this.expected(";"));
+    return ast.varDeclaration(name, init);
   }
+
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Function Declaration                                               */
+  /* -------------------------------------------------------------------------- */
   private functionDeclaration(name: string) {
-    let params: ASTNode[] = [];
+    let params: Sym[] = [];
     if (!this.check(TOKEN.RIGHT_PAREN)) {
       do {
-        params.push(this.expression());
+        const n = this.eat(TOKEN.SYMBOL, "Expected symbol.");
+        params.push(ast.symbol(n, SYMBOL.VARIABLE));
       } while (this.match([TOKEN.COMMA]));
       this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
     } else this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
     this.eat(TOKEN.ASSIGN, this.expected(":="));
-    const body = this.expression();
-    this.Env.declareFunction(name, params, body);
-    return ast.def(name, params, body);
-  }
-
-  private unaryExpression(op: string, args: ASTNode) {
-    return !this.Env.hasName(op) ? ast.algebra1(op, args) : ast.unex(op, args);
-  }
-
-  private binaryExpression(left: ASTNode, op: string, right: ASTNode) {
-    let type = EXPR.APPLY;
-    if (
-      left.isSymbol() && !this.Env.hasName(left.value) ||
-      (right.isSymbol() && !this.Env.hasName(right.value)) ||
-      (left.isBinaryExpr()) && left.type === EXPR.ALGEBRAIC ||
-      (right.isBinaryExpr()) && right.type === EXPR.ALGEBRAIC ||
-      (left.isUnaryExpr()) && left.type === EXPR.ALGEBRAIC ||
-      (right.isUnaryExpr()) && right.type === EXPR.ALGEBRAIC
-    ) {
-      type = EXPR.ALGEBRAIC;
-    }
-    return ast.binex(left, op, right, type);
+    const body: ASTNode = this.match([TOKEN.LEFT_BRACE])
+      ? this.stmnt()
+      : this.exprStmt();
+    return ast.funDeclaration(name, params, body);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -1771,8 +1940,17 @@ export class Parser {
   /* -------------------------------------------------------------------------- */
   private relation() {
     return this.parseExpression({
-      left: "term",
+      left: "convert",
       ops: [TOKEN.NEQ, TOKEN.EQUAL, TOKEN.LTE, TOKEN.GTE, TOKEN.LT, TOKEN.GT],
+      right: "convert",
+      astnode: (left, op, right) => this.binaryExpression(left, op, right),
+    });
+  }
+
+  private convert() {
+    return this.parseExpression({
+      left: "term",
+      ops: [TOKEN.TO],
       right: "term",
       astnode: (left, op, right) => this.binaryExpression(left, op, right),
     });
@@ -1807,14 +1985,14 @@ export class Parser {
   /* -------------------------------------------------------------------------- */
   private imul() {
     let node = this.quotient();
-    let prev = node;
+    let last = node;
     while (
-      this.sees(TOKEN.LEFT_PAREN) ||
-      (node.isSymbol() && !this.Env.hasFunction(node.value)) ||
-      this.seesNumber()
+      (this.check(TOKEN.SYMBOL)) ||
+      (this.isNumeric(this.peek) && last.isSymbol() && !this.funcNames.has(last.value)) ||
+      (this.check(TOKEN.LEFT_PAREN))
     ) {
-      prev = this.quotient();
-      node = this.binaryExpression(node, "*", prev);
+      last = this.quotient();
+      node = ast.binex(node, "*", last);
     }
     return node;
   }
@@ -1867,8 +2045,6 @@ export class Parser {
         return this.id();
       case TOKEN.LEFT_BRACKET:
         return this.array();
-      case TOKEN.LEFT_BRACE:
-        return this.braced();
       default:
         return this.literal();
     }
@@ -1880,8 +2056,12 @@ export class Parser {
   private id(): ASTNode {
     const name = this.eat(TOKEN.SYMBOL, this.expected("id"));
     let node = ast.symbol(name, SYMBOL.VARIABLE);
-    if (this.check(TOKEN.LEFT_PAREN) && this.Env.hasFunction(name)) {
+    if (this.check(TOKEN.LEFT_PAREN)) {
       return this.callexpr(name);
+    }
+    if (this.match([TOKEN.ASSIGN])) {
+      const value = this.expression();
+      return ast.assign(name, value);
     }
     return node;
   }
@@ -1890,37 +2070,17 @@ export class Parser {
   /* § Parse Call Expression                                                    */
   /* -------------------------------------------------------------------------- */
   private callexpr(name: string): ASTNode {
+    this.funcNames.add(name);
     this.eat(TOKEN.LEFT_PAREN, this.expected("("));
-    let type = EXPR.APPLY;
     let params: ASTNode[] = [];
     if (!this.check(TOKEN.RIGHT_PAREN)) {
       do {
         let param = this.expression();
-        if (param.isSymbol() && !this.Env.hasName(param.value)) {
-          type = EXPR.ALGEBRAIC;
-        }
         params.push(param);
       } while (this.match([TOKEN.COMMA]));
       this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
     } else this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
-    return ast.callExpr(name, params, type);
-  }
-
-  /* -------------------------------------------------------------------------- */
-  /* § Parse Braced Expression                                                  */
-  /* -------------------------------------------------------------------------- */
-  private braced(): ASTNode {
-    this.eat(TOKEN.LEFT_BRACE, this.expected("{"));
-    let expr = this.expression();
-    if (this.match([TOKEN.COMMA])) {
-      let elements = [expr];
-      do {
-        elements.push(this.expression());
-      } while (this.match([TOKEN.COMMA]));
-      this.eat(TOKEN.RIGHT_BRACE, this.expected("{"));
-      return ast.set(elements);
-    } else this.eat(TOKEN.RIGHT_BRACE, this.expected("{"));
-    return ast.block([expr]);
+    return ast.callExpr(name, params, this.lib.getFunction(name));
   }
 
   /* -------------------------------------------------------------------------- */
@@ -2017,6 +2177,7 @@ export class Parser {
         lexeme = this.eat(TOKEN.NULL, this.expected("null"));
         return ast.nil;
       default:
+        log(this.peek);
         return ast.nil;
     }
   }
@@ -2132,7 +2293,7 @@ export class Parser {
   }
 
   eval() {
-    const n = new Interpreter(this.Env);
+    const n = new Interpreter();
     const out = this.result.accept(n);
     return n.stringify(out);
   }
@@ -2151,29 +2312,33 @@ export class Parser {
    * token is any number token,
    * false otherwise.
    */
-  private seesNumber() {
-    return this.sees(
-      TOKEN.INTEGER,
-      TOKEN.FRACTION,
-      TOKEN.FLOAT,
-      TOKEN.COMPLEX_NUMBER,
-      TOKEN.OCTAL_NUMBER,
-      TOKEN.HEX_NUMBER,
-      TOKEN.BINARY_NUMBER,
-      TOKEN.SCIENTIFIC_NUMBER,
-    );
+  private isNumeric(token: Token) {
+    return (token.type === TOKEN.INTEGER ||
+      token.type === TOKEN.FRACTION ||
+      token.type === TOKEN.FLOAT ||
+      token.type === TOKEN.COMPLEX_NUMBER ||
+      token.type === TOKEN.OCTAL_NUMBER ||
+      token.type === TOKEN.HEX_NUMBER ||
+      token.type === TOKEN.BINARY_NUMBER ||
+      token.type === TOKEN.SCIENTIFIC_NUMBER);
   }
-  get tree() {
+  tree(format: "ast" | "s-expression" = "ast") {
+    if (format === "s-expression") {
+      const prefix = new ToPrefix();
+      return this.result.accept(prefix);
+    }
     const prefix = (key: string, last: boolean) => {
       let str = last ? "└" : "├";
       if (key) str += "─ ";
       else str += "──┐";
       return str;
     };
-    const getKeys = (obj: ASTNode) => {
+    const getKeys = (obj: any) => {
       const keys = [];
       for (const branch in obj) {
-        if (!obj.hasOwnProperty(branch)) continue;
+        if (
+          !obj.hasOwnProperty(branch) || typeof (obj[branch]) === "function"
+        ) continue;
         keys.push(branch);
       }
       return keys;
@@ -2193,12 +2358,6 @@ export class Parser {
           "_",
           "-",
         ) as any;
-      }
-      if (ast.isCallExpr(root) || ast.isUnex(root) || ast.isBinex(root)) {
-        const type: any = root.type === EXPR.ALGEBRAIC
-          ? "[algebraic-expression]"
-          : "[applicative-expression]";
-        root.type = type;
       }
       let line = "";
       let index = 0;
@@ -2231,6 +2390,15 @@ export class Parser {
     grow(".", obj, false, [], (line: string) => (outputTree += line + "\n"));
     return outputTree;
   }
+
+  private unaryExpression(op: string, args: ASTNode) {
+    // return !this.Env.hasName(op) ? ast.algebra1(op, args) : ast.unex(op, args);
+    return ast.unex(op, args);
+  }
+
+  private binaryExpression(left: ASTNode, op: string, right: ASTNode) {
+    return ast.binex(left, op, right);
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2238,15 +2406,14 @@ export class Parser {
 /* -------------------------------------------------------------------------- */
 
 const parser = new Parser();
-const expression = `
-  if (x < 2) {
-    x := x + 1;
-  }
+const expr1 = `
+let f(x) := (x - 1)(x + 2);
+let y := f(4);
 `;
-const tokens = parser.tokenize(expression).toString();
-log(tokens);
-// const tree1 = parser.parse(`cos(0) + 1`);
-// log(tree1.tree);
-// log(tree1.result);
-// const result1 = tree1.eval();
-// log(result1);
+const parsing = parser.parse(expr1);
+// const tokens = parser.tokenize(reassign).toString()
+// log(tokens)
+const result = parsing.eval();
+log(result);
+const tree = parsing.tree("ast");
+log(tree);
