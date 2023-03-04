@@ -1,4 +1,4 @@
-import { Queue } from "./structs/queue.js";
+import { List } from "./structs/list.js";
 import { Stack } from "./structs/stack.js";
 import {
   Keyword,
@@ -1629,6 +1629,9 @@ export class Lexer {
     this.current += 1;
     return true;
   }
+  get nextToken() {
+    return this.source[this.current];
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1760,126 +1763,16 @@ interface Rule {
     | "nand";
   astnode: (left: ASTNode, operator: string, right: ASTNode) => ASTNode;
 }
-type OP_RULE = { precedence: number; arity: number; assoc: "left" | "right" };
-type OP_RULE_SET = { [key: string]: OP_RULE };
-const rules: OP_RULE_SET = {
-  ["+"]: { precedence: 1, arity: 2, assoc: "left" },
-  ["-"]: { precedence: 1, arity: 2, assoc: "left" },
-  ["*"]: { precedence: 2, arity: 2, assoc: "left" },
-  ["/"]: { precedence: 2, arity: 2, assoc: "left" },
-  ["^"]: { precedence: 3, arity: 2, assoc: "right" },
-  ["!"]: { precedence: 4, arity: 2, assoc: "right" },
-};
-const isOp = (token: Token) => rules.hasOwnProperty(token.lexeme);
-const associates = {
-  left: (token: Token) => rules[token.lexeme].assoc === "left",
-  right: (token: Token) => rules[token.lexeme].assoc === "right",
-};
-const precOf = (token: Token) => rules[token.lexeme].precedence;
-const isLeftParen = (token: Token) => token.type === TOKEN.LEFT_PAREN;
-const isRightParen = (token: Token) => token.type === TOKEN.RIGHT_PAREN;
 
-class Parsetree {
-  queue: Queue<Token>;
-  nodesQueue: Queue<Object>;
-  stack: Stack<Token>;
-  lexer: Lexer;
-  token: Token;
-  constructor() {
-    this.nodesQueue = new Queue();
-    this.queue = new Queue();
-    this.lexer = new Lexer();
-    this.token = new Token(TOKEN.NIL, "", -1);
-    this.stack = new Stack();
-  }
-  parse(src: string) {
-    this.lexer.init(src);
-    this.readToken();
-    while (this.hasTokens) {
-      if (isOp(this.token)) {
-        const op1 = this.token;
-        while (this.stack.isNotEmpty) {
-          const op2 = this.stack.top;
-          if (isOp(op2) && ((associates.left(op1) && precOf(op1) <= precOf(op2)) || (associates.right(op1) && precOf(op1) < precOf(op2)))) {
-            const op = this.stack.pop();
-            this.queue.enqueue(op);
-          } else break;
-        }
-        this.stack.push(op1);
-      } else if (isLeftParen(this.token)) {
-        this.stack.push(this.token);
-      } else if (isRightParen(this.token)) {
-        while (this.stack.isNotEmpty) {
-          const out = this.stack.pop();
-          if (out && !isLeftParen(out)) this.queue.enqueue(out);
-          if (out && isLeftParen(out)) {
-            break;
-          }
-        }
-      } else {
-        this.queue.enqueue(this.token);
-      }
-      this.readToken();
-    }
-    while (this.stack.isNotEmpty) {
-      const c = this.stack.pop()!;
-      if (isLeftParen(c) || isRightParen(c)) {
-        throw new Error(`Paren mismatched.`);
-      }
-      this.addToOutput(c);
-    }
-    return this.queue.array;
-  }
-  addToOutput(token: Token) {
-    this.queue.enqueue(token);
-    this.readToken();
-  }
-  isNumber(token: Token) {
-    const type = token.type;
-    return (
-      type === TOKEN.INTEGER ||
-      type === TOKEN.FLOAT ||
-      type === TOKEN.FRACTION ||
-      type === TOKEN.COMPLEX_NUMBER ||
-      type === TOKEN.OCTAL_NUMBER ||
-      type === TOKEN.HEX_NUMBER ||
-      type === TOKEN.BINARY_NUMBER ||
-      type === TOKEN.SCIENTIFIC_NUMBER
-    );
-  }
-  readToken() {
-    this.token = this.lexer.getToken();
-  }
-  get hasTokens() {
-    return this.token.type !== TOKEN.EOF;
-  }
-  static of(src: string) {
-    const p = new Parsetree();
-    return p.parse(src);
-  }
-}
 
-const p = Parsetree.of("A * B^C + D");
-log(p);
+/* -------------------------------------------------------------------------- */
+/* § ABSTRACT: CALC                                                           */
+/* -------------------------------------------------------------------------- */
 
-export interface Parser {
-  /** The input to parse. */
-  source: string;
-  /**
-   * An error message indicating an
-   * error during the parse. If
-   * no error occurred, the field
-   * is the empty string.
-   */
-  error: string | null;
-  /**
-   * The result of the parsing
-   * is an array of ASTs.
-   * If only one statement (an expression
-   * terminated by a semicolon) is entered,
-   * the result will have a length of 1.
-   */
-  result: Root;
+abstract class Calc {
+  /* -------------------------------------------------------------------------- */
+  /* § Tokenize                                                                 */
+  /* -------------------------------------------------------------------------- */
   /**
    * Generates an array of tokens from
    * the input source. This method isn't
@@ -1900,7 +1793,258 @@ export interface Parser {
    * ~~~
    * where [error-message] is a string.
    */
-  tokenize(source: string): TokenStream;
+  static tokenize(source: string): TokenStream {
+    let out: Token[] = [];
+    const lexer = new Lexer();
+    lexer.init(source);
+    while (true) {
+      const token = lexer.getToken();
+      out.push(token);
+      if (token.type === TOKEN.EOF) break;
+    }
+    return new TokenStream(out);
+  }
+  static treeString<T extends Object>(
+    myObject: T,
+    callback?: (node: any) => void,
+  ) {
+    const prefix = (key: keyof T, last: boolean) => {
+      let str = last ? "└" : "├";
+      if (key) str += "─ ";
+      else str += "──┐";
+      return str;
+    };
+    const getKeys = (obj: T) => {
+      const keys: (keyof T)[] = [];
+      for (const branch in obj) {
+        if (
+          !obj.hasOwnProperty(branch) || typeof (obj[branch]) === "function"
+        ) continue;
+        keys.push(branch);
+      }
+      return keys;
+    };
+
+    const grow = (
+      key: keyof T,
+      root: any,
+      last: boolean,
+      prevStates: ([T, boolean])[],
+      cb: (str: string) => any,
+    ) => {
+      callback && callback(root);
+      let line = "";
+      let index = 0;
+      let lastKey = false;
+      let circular = false;
+      let statesCopy = prevStates.slice(0);
+      if (statesCopy.push([root, last]) && prevStates.length > 0) {
+        prevStates.forEach(function (lastState, idx) {
+          if (idx > 0) line += (lastState[1] ? " " : "│") + "  ";
+          if (!circular && lastState[0] === root) circular = true;
+        });
+        line += prefix(key, last) + key.toString();
+        if (typeof root !== "object") line += ": " + root;
+        circular && (line += " (circular ref.)");
+        cb(line);
+      }
+      if (!circular && typeof root === "object") {
+        const keys = getKeys(root);
+        keys.forEach((branch) => {
+          lastKey = ++index === keys.length;
+          grow(branch, root[branch], lastKey, statesCopy, cb);
+        });
+      }
+    };
+
+    let outputTree = "";
+    const obj = Object.assign({}, myObject);
+    grow(
+      "." as keyof T,
+      obj,
+      false,
+      [],
+      (line: string) => (outputTree += line + "\n"),
+    );
+    return outputTree;
+  }
+}
+
+
+type OP_RULE = { precedence: number; arity: number; assoc: "left" | "right" };
+
+type OP_RULE_SET = { [key: string]: OP_RULE };
+
+const rules: OP_RULE_SET = {
+  ["+"]: { precedence: 1, arity: 2, assoc: "left" },
+  ["-"]: { precedence: 1, arity: 2, assoc: "left" },
+  ["*"]: { precedence: 2, arity: 2, assoc: "left" },
+  ["/"]: { precedence: 2, arity: 2, assoc: "left" },
+  ["^"]: { precedence: 3, arity: 2, assoc: "right" },
+  ["!"]: { precedence: 4, arity: 2, assoc: "right" },
+};
+const isOp = (token: Token) => rules.hasOwnProperty(token.lexeme);
+
+const associates = {
+  left: (token: Token) => rules[token.lexeme].assoc === "left",
+  right: (token: Token) => rules[token.lexeme].assoc === "right",
+};
+
+const precOf = (token: Token) => rules[token.lexeme].precedence;
+
+// const integer = (token: Token) => ({ value: token.lexeme, kind: "integer" });
+// const variable = (token: Token) => ({ value: token.lexeme, kind: "variable" });
+// const float = (token: Token) => ({ value: token.lexeme, kind: "float" });
+// const fraction = (token: Token) => ({ value: token.lexeme, kind: "fraction" });
+
+// const binex = (left: Object | null, op: string, right: Object | null) => ({
+  // left,
+  // op,
+  // right,
+// });
+
+
+class Parsetree extends Calc {
+  queue: List<Token>;
+  nodesQueue: List<ASTNode>;
+  stack: Stack<Token>;
+  lexer: Lexer;
+  token: Token;
+  previousToken: Token;
+  error: string;
+  result: ASTNode;
+  constructor() {
+    super();
+    this.nodesQueue = new List();
+    this.queue = new List();
+    this.lexer = new Lexer();
+    this.token = Token.nil;
+    this.previousToken = Token.nil;
+    this.stack = new Stack();
+    this.error = '';
+    this.result = ast.nil;
+  }
+  isLeftOf(op2: Token) {
+    return (associates.left(this.token) && precOf(this.token) <= precOf(op2));
+  }
+  isRightOf(op2: Token) {
+    return (associates.right(this.token) && precOf(this.token) < precOf(op2));
+  }
+  addToOutput(token: Token) {
+    this.queue.enqueue(token);
+  }
+  addNode(o:ASTNode) {
+    this.nodesQueue.enqueue(o);
+  }
+  outputLeaf(token: Token) {
+    this.queue.enqueue(token);
+    switch (token.type) {
+      case TOKEN.INTEGER:
+        this.addNode(ast.int(token.lexeme, 10));
+        break;
+      case TOKEN.SYMBOL:
+        this.addNode(ast.symbol(token.lexeme, SYMBOL.VARIABLE));
+        break;
+    }
+  }
+  popBinop() {
+    const left = this.nodesQueue.popLast()!;
+    const right = this.nodesQueue.popLast()!;
+    return [right, left];
+  }
+  popOperator() {
+    const op = this.stack.pop()!;
+    switch (true) {
+      case op.isBinop: {
+        const [left, right] = this.popBinop();
+        this.addNode(ast.binex(left, op.lexeme, right));
+        // this.addNode(binex(left, op.lexeme, right));
+      }
+    }
+    return op;
+  }
+  parse(src: string) {
+    this.lexer.init(src);
+    this.readToken();
+    while (this.hasTokens && !this.error) {
+      if (isOp(this.token)) {
+        while (this.stack.isNotEmpty) {
+          const op2 = this.stack.top;
+          if (isOp(op2) && (this.isLeftOf(op2) || this.isRightOf(op2))) {
+            this.addToOutput(this.popOperator());
+          } else break;
+        }
+        this.stack.push(this.token);
+      } else if (this.token.isLeftParen) {
+        this.stack.push(this.token);
+      } else if (this.token.isRightParen) {
+        while (this.stack.isNotEmpty) {
+          const out = this.popOperator();
+          if (out && out.isLeftParen) break;
+          else this.addToOutput(out!);
+        }
+      } else this.outputLeaf(this.token);
+      this.readToken();
+    }
+    while (this.stack.isNotEmpty) {
+      const op = this.popOperator()!;
+      if (op.isLeftParen || op.isRightParen) {
+        this.err("paren mismatched");
+        this.result = ast.string(this.error);
+        return this.result;
+      }
+      this.addToOutput(op);
+    }
+    this.stack.clear();
+    this.result = this.nodesQueue.array[0];
+    return this;
+  }
+  err(message: string) {
+    this.error = message;
+  }
+  readToken() {
+    if (this.token.isNumber && this.lexer.nextToken==='(') {
+      this.token = new Token(TOKEN.STAR, '*', this.previousToken.line);
+      return;
+    }
+    this.token = this.lexer.getToken();
+  }
+  get hasTokens() {
+    return this.token.type !== TOKEN.EOF;
+  }
+  static of(src: string) {
+    const p = new Parsetree()
+    p.parse(src);
+    return p;
+  }
+  static tokenize(src: string) {
+    return Calc.tokenize(src);
+  }
+}
+
+// const p = Parsetree.of('2(x - 1)')
+// log(p.result)
+
+
+export interface Parser {
+  /** The input to parse. */
+  source: string;
+  /**
+   * An error message indicating an
+   * error during the parse. If
+   * no error occurred, the field
+   * is the empty string.
+   */
+  error: string | null;
+  /**
+   * The result of the parsing
+   * is an array of ASTs.
+   * If only one statement (an expression
+   * terminated by a semicolon) is entered,
+   * the result will have a length of 1.
+   */
+  result: Root;
+
   /**
    * Parses the input source, returning
    * an ASTNode. The parse result
@@ -1912,7 +2056,7 @@ export interface Parser {
   parse(source: string): this;
 }
 
-export class Parser {
+export class Parser extends Calc {
   private previous: Token;
   private scanner: Lexer;
   private peek: Token;
@@ -1920,6 +2064,7 @@ export class Parser {
   private lib: Library;
   private funcNames: Set<string>;
   constructor() {
+    super();
     this.funcNames = new Set();
     this.lib = new Library({
       numericConstants: [
@@ -1982,20 +2127,12 @@ export class Parser {
     this.previous = new Token(TOKEN.NIL, "", 0);
     this.peek = new Token(TOKEN.NIL, "", 0);
   }
-
+  
   /* -------------------------------------------------------------------------- */
-  /* § Tokenize                                                                 */
+  /* § Parse Expression                                                         */
   /* -------------------------------------------------------------------------- */
-  public tokenize(src: string) {
-    let out: Token[] = [];
-    this.scanner.init(src);
-    while (true) {
-      const token = this.scanner.getToken();
-      out.push(token);
-      if (token.type === TOKEN.EOF) break;
-    }
-    return new TokenStream(out);
-  }
+  
+  
 
   /* -------------------------------------------------------------------------- */
   /* § Parse                                                                    */
@@ -2582,73 +2719,20 @@ export class Parser {
       token.type === TOKEN.BINARY_NUMBER ||
       token.type === TOKEN.SCIENTIFIC_NUMBER);
   }
+
   tree(format: "ast" | "s-expression" = "ast") {
     if (format === "s-expression") {
       const prefix = new ToPrefix();
       return this.result.accept(prefix);
     }
-    const prefix = (key: string, last: boolean) => {
-      let str = last ? "└" : "├";
-      if (key) str += "─ ";
-      else str += "──┐";
-      return str;
-    };
-    const getKeys = (obj: any) => {
-      const keys = [];
-      for (const branch in obj) {
-        if (
-          !obj.hasOwnProperty(branch) || typeof (obj[branch]) === "function"
-        ) continue;
-        keys.push(branch);
-      }
-      return keys;
-    };
-
-    type Grower = (
-      key: string,
-      root: ASTNode,
-      last: boolean,
-      prevStates: ([ASTNode, boolean])[],
-      cb: (str: string) => any,
-    ) => void;
-
-    const grow: Grower = (key, root, last, prevStates, cb) => {
-      if (root instanceof ASTNode) {
-        root.kind = `[${NODE[root.kind]}]`.toLowerCase().replace(
+    return Calc.treeString(this.result, (node) => {
+      if (node instanceof ASTNode) {
+        node.kind = `[${NODE[node.kind]}]`.toLowerCase().replace(
           "_",
           "-",
         ) as any;
       }
-      let line = "";
-      let index = 0;
-      let lastKey = false;
-      let circular = false;
-      let statesCopy = prevStates.slice(0);
-      if (statesCopy.push([root, last]) && prevStates.length > 0) {
-        prevStates.forEach(function (lastState, idx) {
-          if (idx > 0) line += (lastState[1] ? " " : "│") + "  ";
-          if (!circular && lastState[0] === root) circular = true;
-        });
-        line += prefix(key, last) + key;
-        if (typeof root !== "object") line += ": " + root;
-        circular && (line += " (circular ref.)");
-        cb(line);
-      }
-      if (!circular && typeof root === "object") {
-        const keys = getKeys(root);
-        keys.forEach((branch) => {
-          lastKey = ++index === keys.length;
-          const r: any = root[branch as keyof ASTNode];
-          grow(branch, r, lastKey, statesCopy, cb);
-        });
-      }
-    };
-
-    let outputTree = "";
-    const obj = Object.assign({}, this.result);
-    obj.kind = "[AST-root]" as any;
-    grow(".", obj, false, [], (line: string) => (outputTree += line + "\n"));
-    return outputTree;
+    });
   }
 }
 
