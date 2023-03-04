@@ -1,3 +1,5 @@
+import { Queue } from "./structs/queue.js";
+import { Stack } from "./structs/stack.js";
 import {
   Keyword,
   keywords,
@@ -76,7 +78,6 @@ export namespace math {
     }
     return a;
   }
-
   export function abs(n: number) {
     return Math.abs(n);
   }
@@ -149,6 +150,12 @@ export namespace math {
     const y = toInt(b);
     return [x, y];
   }
+  export function even(n: number) {
+    return n % 2 === 0 ? 1 : 0;
+  }
+  export function odd(n: number) {
+    return n % 2 !== 0 ? 1 : 0;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -168,6 +175,7 @@ export enum NODE {
   VARIABLE_DECLARATION,
   FUNCTION_DECLARATION,
   ASSIGNMENT,
+  ALGEBRAIC_EXPRESSION,
   UNARY_EXPRESSION,
   BINARY_EXPRESSION,
   CALL_EXPRESSION,
@@ -178,7 +186,6 @@ export enum NODE {
 /* § Interface: Visitor                                                       */
 /* -------------------------------------------------------------------------- */
 interface Visitor<T> {
-  bool(n: Bool): T;
   chars(n: Chars): T;
   null(n: Null): T;
   num(n: Num): T;
@@ -187,6 +194,7 @@ interface Visitor<T> {
   block(n: Block): T;
   vector(n: Vector): T;
   matrix(n: Matrix): T;
+  exp(n: Exp): T;
   unaryExpr(n: UnaryExpr): T;
   callExpr(n: CallExpr): T;
   binaryExpr(n: BinaryExpr): T;
@@ -224,22 +232,15 @@ export abstract class ASTNode {
   isNull(): this is Tuple {
     return this.kind === NODE.TUPLE;
   }
-  isBool(): this is Bool {
-    return this.kind === NODE.BOOL;
-  }
-
   isNum(): this is Num {
     return this.kind === NODE.NUMBER;
   }
-
   isSymbol(): this is Sym {
     return this.kind === NODE.SYMBOL;
   }
-
   isChars(): this is Chars {
     return this.kind === NODE.CHARS;
   }
-
   isVarDeclaration(): this is VarDeclaration {
     return this.kind === NODE.VARIABLE_DECLARATION;
   }
@@ -267,6 +268,20 @@ export class Root extends ASTNode {
   }
   accept<T>(n: Visitor<T>): T {
     return n.root(this);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* § ASTNode: Exp                                                             */
+/* -------------------------------------------------------------------------- */
+export class Exp extends ASTNode {
+  value: ASTNode;
+  constructor(value: ASTNode) {
+    super(NODE.ALGEBRAIC_EXPRESSION);
+    this.value = value;
+  }
+  accept<T>(n: Visitor<T>): T {
+    return n.exp(this);
   }
 }
 /* -------------------------------------------------------------------------- */
@@ -402,20 +417,6 @@ export class Null extends ASTNode {
 }
 
 /* -------------------------------------------------------------------------- */
-/* § ASTNode: Bool                                                            */
-/* -------------------------------------------------------------------------- */
-export class Bool extends ASTNode {
-  value: boolean;
-  constructor(value: boolean) {
-    super(NODE.BOOL);
-    this.value = value;
-  }
-  accept<T>(v: Visitor<T>) {
-    return v.bool(this);
-  }
-}
-
-/* -------------------------------------------------------------------------- */
 /* § ASTNode: Num                                                             */
 /* -------------------------------------------------------------------------- */
 type NUMBER = Int | Float | Fraction;
@@ -446,6 +447,30 @@ export class Num extends ASTNode {
         return n / d;
     }
     return NaN;
+  }
+  get isTrue() {
+    return this.raw > 0;
+  }
+  get isFalse() {
+    return this.raw <= 0;
+  }
+  and(n: Num) {
+    return this.isTrue && n.isTrue ? ast.TRUE : ast.FALSE;
+  }
+  or(n: Num) {
+    return this.isTrue || n.isTrue ? ast.TRUE : ast.FALSE;
+  }
+  nor(n: Num) {
+    return this.or(n).isTrue ? ast.FALSE : ast.TRUE;
+  }
+  xor(n: Num) {
+    return this.raw !== n.raw ? ast.TRUE : ast.FALSE;
+  }
+  xnor(n: Num) {
+    return this.xor(n).isTrue ? ast.FALSE : ast.TRUE;
+  }
+  nand(n: Num) {
+    return this.and(n).isTrue ? ast.FALSE : ast.TRUE;
   }
   accept<T>(v: Visitor<T>) {
     return v.num(this);
@@ -819,12 +844,17 @@ export class BinaryExpr extends ASTNode {
 }
 
 /* -------------------------------------------------------------------------- */
-/* § Builder: ast                                                             */
+/* § BUILDER: AST                                                             */
 /* -------------------------------------------------------------------------- */
 export class ast {
   static int(v: string, base = 10) {
     return new Num(math.toInt(v, base).toString(), NUM.INT);
   }
+  static exp(v: ASTNode) {
+    return new Exp(v);
+  }
+  static TRUE = new Num(1, NUM.INT);
+  static FALSE = new Num(0, NUM.INT);
   static float(v: string) {
     return new Num(v, NUM.FLOAT);
   }
@@ -836,9 +866,6 @@ export class ast {
   }
   static complex(v: string) {
     return new Num(v, NUM.COMPLEX);
-  }
-  static bool(v: boolean) {
-    return new Bool(v);
   }
   static cond(test: ASTNode, consequent: ASTNode, alternate: ASTNode) {
     return new CondExpr(test, consequent, alternate);
@@ -912,14 +939,14 @@ export class ast {
 /* § Visitor: ToPrefix                                                        */
 /* -------------------------------------------------------------------------- */
 export class ToPrefix implements Visitor<string> {
-  bool(n: Bool): string {
-    return `${n.value}`;
-  }
   cond(n: CondExpr) {
     const test: string = this.toPrefix(n.condition) + "\n";
     const consequent: string = "\t" + this.toPrefix(n.consequent) + "\n";
     const alternate: string = "\t" + " else " + this.toPrefix(n.alternate);
     return `(cond ${test} ${consequent} ${alternate})`;
+  }
+  exp(n: Exp): string {
+    return `(${n.value})`;
   }
   assign(n: Assignment): string {
     const name = n.name;
@@ -1010,14 +1037,14 @@ export class ToPrefix implements Visitor<string> {
 /* § Visitor: ToString                                                        */
 /* -------------------------------------------------------------------------- */
 export class ToString implements Visitor<string> {
-  bool(n: Bool): string {
-    return `${n.value}`;
-  }
   cond(n: CondExpr) {
     const test: string = this.toString(n.condition);
     const consequent: string = this.toString(n.consequent);
     const alternate: string = this.toString(n.alternate);
     return `if (${test}) {${consequent}} else {${alternate}}`;
+  }
+  exp(n: Exp): string {
+    return this.toString(n.value);
   }
   assign(n: Assignment): string {
     const name = n.name;
@@ -1108,7 +1135,7 @@ export class ToString implements Visitor<string> {
 }
 
 /* -------------------------------------------------------------------------- */
-/* § VISITOR: INTERPRETER                                                     */
+/* § INTERPRETER                                                              */
 /* -------------------------------------------------------------------------- */
 export class Interpreter implements Visitor<ASTNode> {
   environment: Environment;
@@ -1117,26 +1144,42 @@ export class Interpreter implements Visitor<ASTNode> {
     this.environment = environment;
     this.str = new ToString();
   }
-  private evalNativeMathFn(nodeargs: ASTNode[], native: FunctionEntry) {
+  private evalMath(nodeargs: ASTNode[], native: FunctionEntry) {
     let args: number[] = [];
     nodeargs.forEach((node) => {
       const num = this.evaluate(node);
       num.isNum() && args.push(num.raw);
     });
     const result = Library.execute({ fn: native, args });
-    const type = math.match.int(result) ? NUM.INT : NUM.FLOAT;
-    return new Num(result, type);
+    switch (typeof result) {
+      case "number":
+        const build = math.match.int(`${result}`) ? ast.int : ast.float;
+        return build(`${result}`);
+      default:
+        return ast.nil;
+    }
   }
   stringify(n: ASTNode) {
     return n.accept(this.str);
+  }
+  /* -------------------------------------------------------------------------- */
+  /* § Interpret Algebraic Expression                                           */
+  /* -------------------------------------------------------------------------- */
+  exp(n: Exp): ASTNode {
+    return ast.string(this.stringify(n));
   }
   /* -------------------------------------------------------------------------- */
   /* § Interpret Call Expression                                                */
   /* -------------------------------------------------------------------------- */
   callExpr(node: CallExpr): ASTNode {
     const { native } = node;
-    if (native && native.argtype === NODE.NUMBER) {
-      return this.evalNativeMathFn(node.args, native);
+    if (native) {
+      switch (native.argtype) {
+        case NODE.NUMBER:
+          return this.evalMath(node.args, native);
+        default:
+          throw new Error("Unhandled argtype in native.");
+      }
     } else {
       const { functionName, args } = node;
       const callee = this.environment.lookup(functionName);
@@ -1163,12 +1206,6 @@ export class Interpreter implements Visitor<ASTNode> {
   /* § Interpret Matrix                                                         */
   /* -------------------------------------------------------------------------- */
   matrix(n: Matrix): ASTNode {
-    return n;
-  }
-  /* -------------------------------------------------------------------------- */
-  /* § Interpret Boolean                                                        */
-  /* -------------------------------------------------------------------------- */
-  bool(n: Bool): ASTNode {
     return n;
   }
   /* -------------------------------------------------------------------------- */
@@ -1202,7 +1239,7 @@ export class Interpreter implements Visitor<ASTNode> {
   /* -------------------------------------------------------------------------- */
   cond(n: CondExpr): ASTNode {
     const test = this.evaluate(n.condition);
-    if (test.isBool() && test.value) {
+    if (test.isNum() && test.raw > 0) {
       return this.evaluate(n.consequent);
     }
     return this.evaluate(n.alternate);
@@ -1289,10 +1326,34 @@ export class Interpreter implements Visitor<ASTNode> {
         case "%":
         case "rem":
           return left.rem(right);
-        case "div":
+        case "//":
           return left.div(right);
         case "mod":
           return left.mod(right);
+        case "and":
+          return left.and(right);
+        case ">":
+          return left.gt(right);
+        case ">=":
+          return left.gte(right);
+        case "<":
+          return left.lt(right);
+        case "<=":
+          return left.lte(right);
+        case "=":
+          return left.equals(right);
+        case "and":
+          return left.and(right);
+        case "or":
+          return left.or(right);
+        case "nor":
+          return left.nor(right);
+        case "xor":
+          return left.xor(right);
+        case "xnor":
+          return left.xnor(right);
+        case "nand":
+          return left.nand(right);
       }
     }
     return ast.binex(left, n.op, right);
@@ -1321,7 +1382,7 @@ export class Interpreter implements Visitor<ASTNode> {
 }
 
 /* -------------------------------------------------------------------------- */
-/* § Lexer                                                                    */
+/* § LEXER                                                                    */
 /* -------------------------------------------------------------------------- */
 
 export interface Lexer {
@@ -1430,7 +1491,7 @@ export class Lexer {
       case "*":
         return this.token(TOKEN.STAR);
       case "/":
-        return this.token(TOKEN.SLASH);
+        return this.token(this.match("/") ? TOKEN.DIV : TOKEN.SLASH);
       case "%":
         return this.token(TOKEN.PERCENT);
       case "~":
@@ -1615,7 +1676,7 @@ class Environment {
 }
 
 /* -------------------------------------------------------------------------- */
-/* § Library                                                                  */
+/* § LIBRARY                                                                  */
 /* -------------------------------------------------------------------------- */
 interface FunctionEntry {
   fn: Function;
@@ -1653,9 +1714,9 @@ class Library {
   hasNumericConstant(name: string) {
     return this.functions.has(name);
   }
-  static execute<T>({ fn, args }: ExecuteArgs<T>): string {
+  static execute<T>({ fn, args }: ExecuteArgs<T>) {
     const result = fn.fn.apply(null, args);
-    return `${result}`;
+    return result;
   }
   addFunction(name: string, def: FunctionEntry) {
     this.functions.set(name, def);
@@ -1668,11 +1729,138 @@ class Library {
 /* -------------------------------------------------------------------------- */
 
 interface Rule {
-  left: "term" | "factor" | "quotient" | "unaryPrefix" | "imul" | "convert";
+  left:
+    | "term"
+    | "factor"
+    | "quotient"
+    | "relation"
+    | "unaryPrefix"
+    | "imul"
+    | "convert"
+    | "or"
+    | "nor"
+    | "xor"
+    | "xnor"
+    | "and"
+    | "nand";
   ops: TOKEN[];
-  right: "term" | "factor" | "quotient" | "unaryPrefix" | "imul" | "convert";
+  right:
+    | "term"
+    | "factor"
+    | "quotient"
+    | "relation"
+    | "unaryPrefix"
+    | "imul"
+    | "convert"
+    | "or"
+    | "nor"
+    | "xor"
+    | "xnor"
+    | "and"
+    | "nand";
   astnode: (left: ASTNode, operator: string, right: ASTNode) => ASTNode;
 }
+type OP_RULE = { precedence: number; arity: number; assoc: "left" | "right" };
+type OP_RULE_SET = { [key: string]: OP_RULE };
+const rules: OP_RULE_SET = {
+  ["+"]: { precedence: 1, arity: 2, assoc: "left" },
+  ["-"]: { precedence: 1, arity: 2, assoc: "left" },
+  ["*"]: { precedence: 2, arity: 2, assoc: "left" },
+  ["/"]: { precedence: 2, arity: 2, assoc: "left" },
+  ["^"]: { precedence: 3, arity: 2, assoc: "right" },
+  ["!"]: { precedence: 4, arity: 2, assoc: "right" },
+};
+const isOp = (token: Token) => rules.hasOwnProperty(token.lexeme);
+const associates = {
+  left: (token: Token) => rules[token.lexeme].assoc === "left",
+  right: (token: Token) => rules[token.lexeme].assoc === "right",
+};
+const precOf = (token: Token) => rules[token.lexeme].precedence;
+const isLeftParen = (token: Token) => token.type === TOKEN.LEFT_PAREN;
+const isRightParen = (token: Token) => token.type === TOKEN.RIGHT_PAREN;
+
+class Parsetree {
+  queue: Queue<Token>;
+  nodesQueue: Queue<Object>;
+  stack: Stack<Token>;
+  lexer: Lexer;
+  token: Token;
+  constructor() {
+    this.nodesQueue = new Queue();
+    this.queue = new Queue();
+    this.lexer = new Lexer();
+    this.token = new Token(TOKEN.NIL, "", -1);
+    this.stack = new Stack();
+  }
+  parse(src: string) {
+    this.lexer.init(src);
+    this.readToken();
+    while (this.hasTokens) {
+      if (isOp(this.token)) {
+        const op1 = this.token;
+        while (this.stack.isNotEmpty) {
+          const op2 = this.stack.top;
+          if (isOp(op2) && ((associates.left(op1) && precOf(op1) <= precOf(op2)) || (associates.right(op1) && precOf(op1) < precOf(op2)))) {
+            const op = this.stack.pop();
+            this.queue.enqueue(op);
+          } else break;
+        }
+        this.stack.push(op1);
+      } else if (isLeftParen(this.token)) {
+        this.stack.push(this.token);
+      } else if (isRightParen(this.token)) {
+        while (this.stack.isNotEmpty) {
+          const out = this.stack.pop();
+          if (out && !isLeftParen(out)) this.queue.enqueue(out);
+          if (out && isLeftParen(out)) {
+            break;
+          }
+        }
+      } else {
+        this.queue.enqueue(this.token);
+      }
+      this.readToken();
+    }
+    while (this.stack.isNotEmpty) {
+      const c = this.stack.pop()!;
+      if (isLeftParen(c) || isRightParen(c)) {
+        throw new Error(`Paren mismatched.`);
+      }
+      this.addToOutput(c);
+    }
+    return this.queue.array;
+  }
+  addToOutput(token: Token) {
+    this.queue.enqueue(token);
+    this.readToken();
+  }
+  isNumber(token: Token) {
+    const type = token.type;
+    return (
+      type === TOKEN.INTEGER ||
+      type === TOKEN.FLOAT ||
+      type === TOKEN.FRACTION ||
+      type === TOKEN.COMPLEX_NUMBER ||
+      type === TOKEN.OCTAL_NUMBER ||
+      type === TOKEN.HEX_NUMBER ||
+      type === TOKEN.BINARY_NUMBER ||
+      type === TOKEN.SCIENTIFIC_NUMBER
+    );
+  }
+  readToken() {
+    this.token = this.lexer.getToken();
+  }
+  get hasTokens() {
+    return this.token.type !== TOKEN.EOF;
+  }
+  static of(src: string) {
+    const p = new Parsetree();
+    return p.parse(src);
+  }
+}
+
+const p = Parsetree.of("A * B^C + D");
+log(p);
 
 export interface Parser {
   /** The input to parse. */
@@ -1783,6 +1971,8 @@ export class Parser {
         ["tan", { fn: Math.tan, arity: 1, argtype: NODE.NUMBER }],
         ["tanh", { fn: Math.tanh, arity: 1, argtype: NODE.NUMBER }],
         ["trunc", { fn: Math.trunc, arity: 1, argtype: NODE.NUMBER }],
+        ["even", { fn: math.even, arity: 1, argtype: NODE.NUMBER }],
+        ["odd", { fn: math.odd, arity: 1, argtype: NODE.NUMBER }],
       ],
     });
     this.idx = 0;
@@ -1848,7 +2038,7 @@ export class Parser {
   private stmnt() {
     switch (true) {
       case this.match([TOKEN.IF]):
-        return this.parseCond();
+        return this.conditional();
       case this.match([TOKEN.LET]):
         return this.variableDeclaration();
       case this.match([TOKEN.LEFT_BRACE]):
@@ -1858,7 +2048,19 @@ export class Parser {
     }
   }
 
-  private parseCond() {
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Algebraic Expression                                               */
+  /* -------------------------------------------------------------------------- */
+
+  evaluate(n: ASTNode) {
+    const i = new Interpreter();
+    return n.accept(i);
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /* § Parse Conditional                                                        */
+  /* -------------------------------------------------------------------------- */
+  private conditional() {
     this.eat(TOKEN.LEFT_PAREN, this.expected("("));
     const test = this.expression();
     this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
@@ -1932,7 +2134,56 @@ export class Parser {
   /* § Parse Expression                                                         */
   /* -------------------------------------------------------------------------- */
   private expression() {
-    return this.relation();
+    return this.or();
+  }
+
+  private or() {
+    return this.parseExpression({
+      left: "nor",
+      ops: [TOKEN.OR],
+      right: "nor",
+      astnode: (left, op, right) => ast.binex(left, op, right),
+    });
+  }
+  private nor() {
+    return this.parseExpression({
+      left: "xor",
+      ops: [TOKEN.NOR],
+      right: "xor",
+      astnode: (left, op, right) => ast.binex(left, op, right),
+    });
+  }
+  private xor() {
+    return this.parseExpression({
+      left: "xnor",
+      ops: [TOKEN.XOR],
+      right: "xnor",
+      astnode: (left, op, right) => ast.binex(left, op, right),
+    });
+  }
+  private xnor() {
+    return this.parseExpression({
+      left: "and",
+      ops: [TOKEN.XNOR],
+      right: "and",
+      astnode: (left, op, right) => ast.binex(left, op, right),
+    });
+  }
+  private and() {
+    return this.parseExpression({
+      left: "nand",
+      ops: [TOKEN.AND],
+      right: "nand",
+      astnode: (left, op, right) => ast.binex(left, op, right),
+    });
+  }
+  private nand() {
+    return this.parseExpression({
+      left: "relation",
+      ops: [TOKEN.NAND],
+      right: "relation",
+      astnode: (left, op, right) => ast.binex(left, op, right),
+    });
   }
 
   /* -------------------------------------------------------------------------- */
@@ -1943,7 +2194,7 @@ export class Parser {
       left: "convert",
       ops: [TOKEN.NEQ, TOKEN.EQUAL, TOKEN.LTE, TOKEN.GTE, TOKEN.LT, TOKEN.GT],
       right: "convert",
-      astnode: (left, op, right) => this.binaryExpression(left, op, right),
+      astnode: (left, op, right) => ast.binex(left, op, right),
     });
   }
 
@@ -1952,7 +2203,7 @@ export class Parser {
       left: "term",
       ops: [TOKEN.TO],
       right: "term",
-      astnode: (left, op, right) => this.binaryExpression(left, op, right),
+      astnode: (left, op, right) => ast.binex(left, op, right),
     });
   }
 
@@ -1964,7 +2215,7 @@ export class Parser {
       left: "factor",
       ops: [TOKEN.MINUS, TOKEN.PLUS],
       right: "factor",
-      astnode: (left, op, right) => this.binaryExpression(left, op, right),
+      astnode: (left, op, right) => ast.binex(left, op, right),
     });
   }
 
@@ -1976,7 +2227,7 @@ export class Parser {
       left: "imul",
       ops: [TOKEN.STAR, TOKEN.SLASH],
       right: "imul",
-      astnode: (left, op, right) => this.binaryExpression(left, op, right),
+      astnode: (left, op, right) => ast.binex(left, op, right),
     });
   }
 
@@ -1988,7 +2239,8 @@ export class Parser {
     let last = node;
     while (
       (this.check(TOKEN.SYMBOL)) ||
-      (this.isNumeric(this.peek) && last.isSymbol() && !this.funcNames.has(last.value)) ||
+      (this.isNumeric(this.peek) && last.isSymbol() &&
+        !this.funcNames.has(last.value)) ||
       (this.check(TOKEN.LEFT_PAREN))
     ) {
       last = this.quotient();
@@ -2005,7 +2257,7 @@ export class Parser {
       left: "unaryPrefix",
       ops: [TOKEN.PERCENT, TOKEN.MOD, TOKEN.REM, TOKEN.DIV],
       right: "unaryPrefix",
-      astnode: (left, op, right) => this.binaryExpression(left, op, right),
+      astnode: (left, op, right) => ast.binex(left, op, right),
     });
   }
 
@@ -2016,7 +2268,7 @@ export class Parser {
     if (this.match([TOKEN.NOT, TOKEN.TILDE])) {
       const op = this.previous.lexeme;
       const arg = this.power();
-      return this.unaryExpression(op, arg);
+      return ast.unex(op, arg);
     }
     return this.power();
   }
@@ -2029,7 +2281,7 @@ export class Parser {
     while (this.match([TOKEN.CARET])) {
       const op = this.previous.lexeme;
       const arg: ASTNode = this.unaryPrefix();
-      node = this.binaryExpression(node, op, arg);
+      node = ast.binex(node, op, arg);
     }
     return node;
   }
@@ -2140,6 +2392,9 @@ export class Parser {
   private literal() {
     let lexeme = "";
     switch (this.peek.type) {
+      case TOKEN.EXP:
+        lexeme = this.eat(TOKEN.EXP, "Expected exp");
+        return this.algExpr();
       case TOKEN.INTEGER:
         lexeme = this.eatNumber(TOKEN.INTEGER);
         return ast.int(lexeme);
@@ -2160,10 +2415,10 @@ export class Parser {
         return ast.int(lexeme, 2);
       case TOKEN.TRUE:
         lexeme = this.eatNumber(TOKEN.TRUE);
-        return ast.bool(true);
+        return ast.integer(1);
       case TOKEN.FALSE:
         lexeme = this.eatNumber(TOKEN.FALSE);
-        return ast.bool(false);
+        return ast.integer(0);
       case TOKEN.FRACTION:
         lexeme = this.eatNumber(TOKEN.FRACTION);
         return ast.fraction(lexeme);
@@ -2177,9 +2432,15 @@ export class Parser {
         lexeme = this.eat(TOKEN.NULL, this.expected("null"));
         return ast.nil;
       default:
-        log(this.peek);
         return ast.nil;
     }
+  }
+
+  private algExpr() {
+    this.eat(TOKEN.LEFT_PAREN, this.expected("("));
+    const expr = this.expression();
+    this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
+    return ast.exp(expr);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -2195,9 +2456,7 @@ export class Parser {
     this.error = message;
   }
 
-  /**
-   * Returns an expected error string.
-   */
+  /** Returns an expected error string. */
   private expected(s: string) {
     return `Expected ${s}`;
   }
@@ -2211,7 +2470,7 @@ export class Parser {
     const [a, b] = math.split(lexeme, "e");
     const left = math.is.integer(a) ? ast.int(a) : ast.float(a);
     const right = math.is.integer(b) ? ast.int(b) : ast.float(b);
-    return this.binaryExpression(left, "^", right);
+    return ast.binex(left, "^", right);
   }
 
   /**
@@ -2277,9 +2536,10 @@ export class Parser {
     return this.peek.type !== TOKEN.EOF;
   }
 
-  build(op: string, params: string[]) {
+  static build(op: string, params: string[]) {
     const input = Parser.make(op, params);
-    return this.parse(input);
+    const p = new Parser();
+    return p.parse(input);
   }
 
   static make(op: string, params: string[]) {
@@ -2390,15 +2650,6 @@ export class Parser {
     grow(".", obj, false, [], (line: string) => (outputTree += line + "\n"));
     return outputTree;
   }
-
-  private unaryExpression(op: string, args: ASTNode) {
-    // return !this.Env.hasName(op) ? ast.algebra1(op, args) : ast.unex(op, args);
-    return ast.unex(op, args);
-  }
-
-  private binaryExpression(left: ASTNode, op: string, right: ASTNode) {
-    return ast.binex(left, op, right);
-  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2407,11 +2658,10 @@ export class Parser {
 
 const parser = new Parser();
 const expr1 = `
-let f(x) := (x - 1)(x + 2);
-let y := f(4);
+17 // 2
 `;
 const parsing = parser.parse(expr1);
-// const tokens = parser.tokenize(reassign).toString()
+// const tokens = parser.tokenize(expr1).toString()
 // log(tokens)
 const result = parsing.eval();
 log(result);

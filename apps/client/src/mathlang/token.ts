@@ -98,7 +98,7 @@ export enum TOKEN {
   /** Lexeme: `mod` */
   MOD,
 
-  /** Lexeme: `div` */
+  /** Lexeme: `//` */
   DIV,
 
   /** Lexeme: `rem` */
@@ -176,7 +176,9 @@ export enum TOKEN {
   /** Lexeme: `>>>` */
   LOG_SHIFT,
 
-  // logical-operators
+  /* -------------------------------------------------------------------------- */
+  /* § Logical Operator Tokens                                                  */
+  /* -------------------------------------------------------------------------- */
   /** Lexeme: `nor` */
   NOR,
 
@@ -201,6 +203,9 @@ export enum TOKEN {
   /* -------------------------------------------------------------------------- */
   /* § Keyword Tokens                                                           */
   /* -------------------------------------------------------------------------- */
+  /** Lexeme: `exp` */
+  EXP,
+
   /** Lexeme: `class` */
   CLASS,
 
@@ -329,7 +334,6 @@ export const keywords = {
   [`nand`]: TOKEN.NAND,
   [`class`]: TOKEN.CLASS,
   [`throw`]: TOKEN.THROW,
-  [`div`]: TOKEN.DIV,
   [`else`]: TOKEN.ELSE,
   [`for`]: TOKEN.FOR,
   [`function`]: TOKEN.FUNCTION,
@@ -357,6 +361,7 @@ export const keywords = {
   [`let`]: TOKEN.LET,
   [`var`]: TOKEN.VAR,
   [`const`]: TOKEN.CONST,
+  [`exp`]: TOKEN.EXP,
 };
 export type Keyword = keyof typeof keywords;
 export type LEXEME = Lexeme | Keyword;
