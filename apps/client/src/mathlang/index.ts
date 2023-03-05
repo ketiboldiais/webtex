@@ -5,6 +5,7 @@ import {
   keywords,
   LEXEME,
   NUM_TOKEN,
+  PREC,
   TOKEN,
   Token,
   TokenStream,
@@ -1461,7 +1462,6 @@ export class Lexer {
       this.numtype = TOKEN.INTEGER;
       return this.number();
     }
-
     switch (c) {
       case `,`:
         return this.token(TOKEN.COMMA);
@@ -1528,10 +1528,10 @@ export class Lexer {
       case ">":
         return this.token(
           this.match("=")
-            ? TOKEN.GTE
+            ? TOKEN.LTE
             : this.match(">")
-            ? this.match(">") ? TOKEN.LOG_SHIFT : TOKEN.GTE
-            : TOKEN.GT,
+            ? TOKEN.RSHIFT
+            : TOKEN.LT,
         );
       case `"`:
         return this.string;
@@ -1570,29 +1570,32 @@ export class Lexer {
       (!this.isAlpha(this.peekNext()))
     ) {
       this.advance();
-      this.numtype = TOKEN.COMPLEX_NUMBER;
+      this.numtype = TOKEN.COMPLEX;
     }
+    return this.numberToken;
+  }
+  get numberToken() {
     return this.token(this.numtype);
   }
   private get scientific() {
     this.advance();
     this.number();
-    this.numtype = TOKEN.SCIENTIFIC_NUMBER;
-    return this.token(this.numtype);
+    this.numtype = TOKEN.SCINUM;
+    return this.numberToken;
   }
   private get binary() {
     while (this.peek === "0" || this.peek === "1") {
       this.advance();
     }
-    this.numtype = TOKEN.BINARY_NUMBER;
-    return this.token(this.numtype);
+    this.numtype = TOKEN.BINARY;
+    return this.numberToken;
   }
   private get octal() {
     while ("0" <= this.peek && this.peek <= "7") {
       this.advance();
     }
-    this.numtype = TOKEN.OCTAL_NUMBER;
-    return this.token(this.numtype);
+    this.numtype = TOKEN.OCTAL;
+    return this.numberToken;
   }
   private get prev() {
     return this.source[this.current - 1];
@@ -1605,8 +1608,8 @@ export class Lexer {
     ) {
       this.advance();
     }
-    this.numtype = TOKEN.HEX_NUMBER;
-    return this.token(this.numtype);
+    this.numtype = TOKEN.HEX;
+    return this.numberToken;
   }
   private isDigit(c: string) {
     return c >= "0" && c <= "9";
@@ -1616,14 +1619,12 @@ export class Lexer {
   }
   private identifier() {
     while (this.isAlpha(this.peek) || this.isDigit(this.peek)) this.advance();
-    return this.token(this.identifierType());
-  }
-  private identifierType(): TOKEN {
     const remaining = this.source.substring(this.start, this.current);
     if (keywords.hasOwnProperty(remaining)) {
-      return keywords[remaining as Keyword];
+      const type = keywords[remaining as Keyword];
+      return this.token(type);
     }
-    return TOKEN.SYMBOL;
+    return this.token(TOKEN.SYMBOL);
   }
   private get string() {
     while (this.peek !== `"` && !this.atEnd) {
@@ -1632,7 +1633,7 @@ export class Lexer {
     }
     if (this.atEnd) return this.errorToken(`Unterminated string.`);
     this.advance();
-    return this.token(TOKEN.STRING);
+    return this.token(TOKEN.STRING, "atom");
   }
   private match(expected: LEXEME) {
     if (this.atEnd) return false;
@@ -1879,231 +1880,61 @@ abstract class Calc {
     return outputTree;
   }
 }
-
-type OP_RULE = { precedence: number; arity: number; assoc: "left" | "right" };
-
-type OP_RULE_SET = { [key: string]: OP_RULE };
-
-const rules: OP_RULE_SET = {
-  ["or"]: { precedence: 10, arity: 2, assoc: "left" },
-  ["nor"]: { precedence: 11, arity: 2, assoc: "left" },
-  ["xor"]: { precedence: 12, arity: 2, assoc: "left" },
-  ["xnor"]: { precedence: 13, arity: 2, assoc: "left" },
-  ["and"]: { precedence: 14, arity: 2, assoc: "left" },
-  ["nand"]: { precedence: 15, arity: 2, assoc: "left" },
-  ["!="]: { precedence: 16, arity: 2, assoc: "left" },
-  ["="]: { precedence: 16, arity: 2, assoc: "left" },
-  ["<="]: { precedence: 16, arity: 2, assoc: "left" },
-  [">="]: { precedence: 16, arity: 2, assoc: "left" },
-  ["<"]: { precedence: 16, arity: 2, assoc: "left" },
-  [">"]: { precedence: 16, arity: 2, assoc: "left" },
-  ["to"]: { precedence: 17, arity: 2, assoc: "left" },
-  ["+"]: { precedence: 18, arity: 2, assoc: "left" },
-  ["-"]: { precedence: 18, arity: 2, assoc: "left" },
-  ["*"]: { precedence: 19, arity: 2, assoc: "left" },
-  ["/"]: { precedence: 19, arity: 2, assoc: "left" },
-  ["%"]: { precedence: 20, arity: 2, assoc: "left" },
-  ["mod"]: { precedence: 20, arity: 2, assoc: "left" },
-  ["rem"]: { precedence: 20, arity: 2, assoc: "left" },
-  ["div"]: { precedence: 20, arity: 2, assoc: "left" },
-  ["^"]: { precedence: 21, arity: 2, assoc: "right" },
-  ["!"]: { precedence: 400, arity: 1, assoc: "right" },
-  ["not"]: { precedence: 400, arity: 1, assoc: "right" },
-};
-
-/* -------------------------------------------------------------------------- */
-/* § PARSETREE                                                                */
-/* -------------------------------------------------------------------------- */
-class Parsetree extends Calc {
-  queue: List<Token>;
-  nodesQueue: List<ASTNode>;
-  stack: Stack<Token>;
-  lexer: Lexer;
-  token: Token;
-  previousToken: Token;
-  error: string;
-  index: number;
-  result: ASTNode;
-  constructor() {
-    super();
-    this.nodesQueue = new List();
-    this.queue = new List();
-    this.lexer = new Lexer();
-    this.token = Token.nil;
-    this.previousToken = Token.nil;
-    this.stack = new Stack();
-    this.error = "";
-    this.result = ast.nil;
-    this.index = 0;
-  }
-  isOp(token: Token) {
-    return rules.hasOwnProperty(token.lexeme);
-  }
-  associates(dir: "left" | "right") {
-    return rules[this.token.lexeme].assoc === dir;
-  }
-  precOf(token: Token) {
-    return rules[token.lexeme].precedence;
-  }
-  isLeftOf(op2: Token) {
-    return (this.associates("left") &&
-      this.precOf(this.token) <= this.precOf(op2));
-  }
-  isRightOf(op2: Token) {
-    return (this.associates("right") &&
-      this.precOf(this.token) < this.precOf(op2));
-  }
-  addToOutput(token: Token) {
-    this.queue.enqueue(token);
-  }
-  addNode(o: ASTNode) {
-    this.nodesQueue.enqueue(o);
-  }
-  outputLeaf(token: Token) {
-    this.queue.enqueue(token);
-    switch (token.type) {
-      case TOKEN.INTEGER:
-        this.addNode(ast.int(token.lexeme, 10));
-        break;
-      case TOKEN.FLOAT:
-        this.addNode(ast.float(token.lexeme));
-        break;
-      case TOKEN.COMPLEX_NUMBER:
-        this.addNode(ast.complex(token.lexeme));
-        break;
-      case TOKEN.OCTAL_NUMBER:
-        this.addNode(ast.int(token.lexeme, 8));
-        break;
-      case TOKEN.HEX_NUMBER:
-        this.addNode(ast.int(token.lexeme, 16));
-        break;
-      case TOKEN.BINARY_NUMBER:
-        this.addNode(ast.int(token.lexeme, 2));
-        break;
-      case TOKEN.TRUE:
-        this.addNode(ast.integer(1));
-        break;
-      case TOKEN.FALSE:
-        this.addNode(ast.integer(0));
-        break;
-      case TOKEN.FRACTION:
-        this.addNode(ast.fraction(token.lexeme));
-        break;
-      case TOKEN.STRING:
-        this.addNode(ast.string(token.lexeme));
-        break;
-      case TOKEN.NULL:
-        this.addNode(ast.nil);
-        break;
-      case TOKEN.SYMBOL:
-        this.addNode(ast.symbol(token.lexeme, SYMBOL.VARIABLE));
-        break;
-    }
-  }
-  popBinop() {
-    const left = this.nodesQueue.popLast()!;
-    const right = this.nodesQueue.popLast()!;
-    return [right, left];
-  }
-  popUnop() {
-    const arg = this.nodesQueue.popLast()!;
-    return arg;
-  }
-  get nextToken() {
-    return this.lexer.nextToken;
-  }
-  popOperator() {
-    const op = this.stack.pop()!;
-    switch (true) {
-      case op.isBinop: {
-        const [left, right] = this.popBinop();
-        this.addNode(ast.binex(left, op.lexeme, right));
-        break;
-      }
-      case op.isUnop: {
-        const arg = this.popUnop();
-        this.addNode(ast.unex(op.lexeme, arg));
-        break;
-      }
-    }
-    return op;
-  }
-  parse(src: string) {
-    this.lexer.init(src);
-    this.readToken();
-    while (this.hasTokens && !this.error) {
-      if (this.isOp(this.token)) {
-        while (this.stack.isNotEmpty) {
-          const op2 = this.stack.top;
-          if (this.isOp(op2) && (this.isLeftOf(op2) || this.isRightOf(op2))) {
-            this.addToOutput(this.popOperator());
-          } else break;
-        }
-        this.stack.push(this.token);
-      } else if (this.token.isLeftParen) {
-        this.stack.push(this.token);
-      } else if (this.token.isRightParen) {
-        while (this.stack.isNotEmpty) {
-          const out = this.popOperator();
-          if (out && out.isLeftParen) break;
-          else this.addToOutput(out!);
-        }
-      } else this.outputLeaf(this.token);
-      this.readToken();
-    }
-    while (this.stack.isNotEmpty) {
-      const op = this.popOperator()!;
-      if (op.isLeftParen || op.isRightParen) {
-        this.err("paren mismatched");
-        this.result = ast.root(this.error);
-        return this;
-      }
-      this.addToOutput(op);
-    }
-    this.stack.clear();
-    this.result = ast.root(this.nodesQueue.array);
-    return this;
-  }
-  tree() {
-    return Calc.treeString(this.result, (node) => {
-      if (node instanceof ASTNode) {
-        node.kind = `[${NODE[node.kind]}]`.toLowerCase().replace(
-          "_",
-          "-",
-        ) as any;
-      }
-    });
-  }
-  err(message: string) {
-    this.error = message;
-  }
-  readToken() {
-    this.previousToken = this.token;
-    if (
-      (this.token.isNumber && this.lexer.nextToken === "(") ||
-      (this.token.isRightParen && this.lexer.nextToken === "(")
-    ) {
-      this.token = new Token(TOKEN.STAR, "*", this.token.line);
-      return;
-    }
-    this.token = this.lexer.getToken();
-  }
-  get hasTokens() {
-    return this.token.type !== TOKEN.EOF;
-  }
-  static of(src: string) {
-    const p = new Parsetree();
-    p.parse(src);
-    return p;
-  }
-  static tokenize(src: string) {
-    return Calc.tokenize(src);
-  }
-}
-
+const LibCore = new Library({
+  numericConstants: [
+    ["e", Math.E],
+    ["PI", Math.PI],
+    ["LN2", Math.LN2],
+    ["LN10", Math.LN10],
+    ["LOG2E", Math.LOG2E],
+    ["LOG10E", Math.LOG10E],
+    ["SQRT1_2", Math.SQRT1_2],
+    ["SQRT2", Math.SQRT2],
+  ],
+  functions: [
+    ["abs", { fn: Math.abs, arity: 1, argtype: NODE.NUMBER }],
+    ["acos", { fn: Math.acos, arity: 1, argtype: NODE.NUMBER }],
+    ["acosh", { fn: Math.acosh, arity: 1, argtype: NODE.NUMBER }],
+    ["asin", { fn: Math.asin, arity: 1, argtype: NODE.NUMBER }],
+    ["asinh", { fn: Math.asinh, arity: 1, argtype: NODE.NUMBER }],
+    ["atan", { fn: Math.atan, arity: 1, argtype: NODE.NUMBER }],
+    ["atanh", { fn: Math.atanh, arity: 1, argtype: NODE.NUMBER }],
+    ["atan2", { fn: Math.atan2, arity: 1, argtype: NODE.NUMBER }],
+    ["cbrt", { fn: Math.cbrt, arity: 1, argtype: NODE.NUMBER }],
+    ["ceil", { fn: Math.ceil, arity: 1, argtype: NODE.NUMBER }],
+    ["clz32", { fn: Math.clz32, arity: 1, argtype: NODE.NUMBER }],
+    ["cos", { fn: Math.cos, arity: 1, argtype: NODE.NUMBER }],
+    ["cosh", { fn: Math.cosh, arity: 1, argtype: NODE.NUMBER }],
+    ["exp", { fn: Math.exp, arity: 1, argtype: NODE.NUMBER }],
+    ["expm1", { fn: Math.expm1, arity: 1, argtype: NODE.NUMBER }],
+    ["floor", { fn: Math.floor, arity: 1, argtype: NODE.NUMBER }],
+    ["fround", { fn: Math.fround, arity: 1, argtype: NODE.NUMBER }],
+    ["gcd", { fn: math.GCD, arity: 2, argtype: NODE.NUMBER }],
+    ["hypot", { fn: Math.hypot, arity: 150, argtype: NODE.NUMBER }],
+    ["imul", { fn: Math.imul, arity: 2, argtype: NODE.NUMBER }],
+    ["log", { fn: Math.log, arity: 1, argtype: NODE.NUMBER }],
+    ["ln", { fn: Math.log, arity: 1, argtype: NODE.NUMBER }],
+    ["log1p", { fn: Math.log1p, arity: 1, argtype: NODE.NUMBER }],
+    ["log10", { fn: Math.log10, arity: 1, argtype: NODE.NUMBER }],
+    ["log2", { fn: Math.log2, arity: 1, argtype: NODE.NUMBER }],
+    ["lg", { fn: Math.log2, arity: 1, argtype: NODE.NUMBER }],
+    ["max", { fn: Math.max, arity: 150, argtype: NODE.NUMBER }],
+    ["min", { fn: Math.min, arity: 150, argtype: NODE.NUMBER }],
+    ["pow", { fn: Math.pow, arity: 2, argtype: NODE.NUMBER }],
+    ["random", { fn: Math.random, arity: 0, argtype: NODE.NUMBER }],
+    ["round", { fn: Math.round, arity: 1, argtype: NODE.NUMBER }],
+    ["sign", { fn: Math.sign, arity: 1, argtype: NODE.NUMBER }],
+    ["sin", { fn: Math.sin, arity: 1, argtype: NODE.NUMBER }],
+    ["sinh", { fn: Math.sinh, arity: 1, argtype: NODE.NUMBER }],
+    ["sqrt", { fn: Math.sqrt, arity: 1, argtype: NODE.NUMBER }],
+    ["tan", { fn: Math.tan, arity: 1, argtype: NODE.NUMBER }],
+    ["tanh", { fn: Math.tanh, arity: 1, argtype: NODE.NUMBER }],
+    ["trunc", { fn: Math.trunc, arity: 1, argtype: NODE.NUMBER }],
+    ["even", { fn: math.even, arity: 1, argtype: NODE.NUMBER }],
+    ["odd", { fn: math.odd, arity: 1, argtype: NODE.NUMBER }],
+  ],
+});
 export interface Parser {
-  /** The input to parse. */
-  source: string;
   /**
    * An error message indicating an
    * error during the parse. If
@@ -2119,7 +1950,6 @@ export interface Parser {
    * the result will have a length of 1.
    */
   result: Root;
-
   /**
    * Parses the input source, returning
    * an ASTNode. The parse result
@@ -2132,77 +1962,17 @@ export interface Parser {
 }
 
 export class Parser extends Calc {
-  private previous: Token;
-  private scanner: Lexer;
-  private peek: Token;
-  private idx: number;
-  private lib: Library;
-  private funcNames: Set<string>;
+  token: Token = Token.nil;
+  lastToken: Token = Token.nil;
+  private lastNode: ASTNode = ast.nil;
+  private scanner: Lexer = new Lexer();
+  private idx: number = 0;
+  private funcNames: Set<string> = new Set();
+  private source: string = "";
   constructor() {
     super();
-    this.funcNames = new Set();
-    this.lib = new Library({
-      numericConstants: [
-        ["e", Math.E],
-        ["PI", Math.PI],
-        ["LN2", Math.LN2],
-        ["LN10", Math.LN10],
-        ["LOG2E", Math.LOG2E],
-        ["LOG10E", Math.LOG10E],
-        ["SQRT1_2", Math.SQRT1_2],
-        ["SQRT2", Math.SQRT2],
-      ],
-      functions: [
-        ["abs", { fn: Math.abs, arity: 1, argtype: NODE.NUMBER }],
-        ["acos", { fn: Math.acos, arity: 1, argtype: NODE.NUMBER }],
-        ["acosh", { fn: Math.acosh, arity: 1, argtype: NODE.NUMBER }],
-        ["asin", { fn: Math.asin, arity: 1, argtype: NODE.NUMBER }],
-        ["asinh", { fn: Math.asinh, arity: 1, argtype: NODE.NUMBER }],
-        ["atan", { fn: Math.atan, arity: 1, argtype: NODE.NUMBER }],
-        ["atanh", { fn: Math.atanh, arity: 1, argtype: NODE.NUMBER }],
-        ["atan2", { fn: Math.atan2, arity: 1, argtype: NODE.NUMBER }],
-        ["cbrt", { fn: Math.cbrt, arity: 1, argtype: NODE.NUMBER }],
-        ["ceil", { fn: Math.ceil, arity: 1, argtype: NODE.NUMBER }],
-        ["clz32", { fn: Math.clz32, arity: 1, argtype: NODE.NUMBER }],
-        ["cos", { fn: Math.cos, arity: 1, argtype: NODE.NUMBER }],
-        ["cosh", { fn: Math.cosh, arity: 1, argtype: NODE.NUMBER }],
-        ["exp", { fn: Math.exp, arity: 1, argtype: NODE.NUMBER }],
-        ["expm1", { fn: Math.expm1, arity: 1, argtype: NODE.NUMBER }],
-        ["floor", { fn: Math.floor, arity: 1, argtype: NODE.NUMBER }],
-        ["fround", { fn: Math.fround, arity: 1, argtype: NODE.NUMBER }],
-        ["gcd", { fn: math.GCD, arity: 2, argtype: NODE.NUMBER }],
-        ["hypot", { fn: Math.hypot, arity: 150, argtype: NODE.NUMBER }],
-        ["imul", { fn: Math.imul, arity: 2, argtype: NODE.NUMBER }],
-        ["log", { fn: Math.log, arity: 1, argtype: NODE.NUMBER }],
-        ["ln", { fn: Math.log, arity: 1, argtype: NODE.NUMBER }],
-        ["log1p", { fn: Math.log1p, arity: 1, argtype: NODE.NUMBER }],
-        ["log10", { fn: Math.log10, arity: 1, argtype: NODE.NUMBER }],
-        ["log2", { fn: Math.log2, arity: 1, argtype: NODE.NUMBER }],
-        ["lg", { fn: Math.log2, arity: 1, argtype: NODE.NUMBER }],
-        ["max", { fn: Math.max, arity: 150, argtype: NODE.NUMBER }],
-        ["min", { fn: Math.min, arity: 150, argtype: NODE.NUMBER }],
-        ["pow", { fn: Math.pow, arity: 2, argtype: NODE.NUMBER }],
-        ["random", { fn: Math.random, arity: 0, argtype: NODE.NUMBER }],
-        ["round", { fn: Math.round, arity: 1, argtype: NODE.NUMBER }],
-        ["sign", { fn: Math.sign, arity: 1, argtype: NODE.NUMBER }],
-        ["sin", { fn: Math.sin, arity: 1, argtype: NODE.NUMBER }],
-        ["sinh", { fn: Math.sinh, arity: 1, argtype: NODE.NUMBER }],
-        ["sqrt", { fn: Math.sqrt, arity: 1, argtype: NODE.NUMBER }],
-        ["tan", { fn: Math.tan, arity: 1, argtype: NODE.NUMBER }],
-        ["tanh", { fn: Math.tanh, arity: 1, argtype: NODE.NUMBER }],
-        ["trunc", { fn: Math.trunc, arity: 1, argtype: NODE.NUMBER }],
-        ["even", { fn: math.even, arity: 1, argtype: NODE.NUMBER }],
-        ["odd", { fn: math.odd, arity: 1, argtype: NODE.NUMBER }],
-      ],
-    });
-    this.idx = 0;
-    this.source = "";
     this.error = null;
-    this.scanner = new Lexer();
-    this.previous = new Token(TOKEN.NIL, "", 0);
-    this.peek = new Token(TOKEN.NIL, "", 0);
   }
-
   /* -------------------------------------------------------------------------- */
   /* § Parse                                                                    */
   /* -------------------------------------------------------------------------- */
@@ -2213,8 +1983,8 @@ export class Parser extends Calc {
   private init(source: string) {
     this.source = source;
     this.scanner.init(source);
-    this.peek = this.scanner.getToken();
-    this.previous = this.peek;
+    this.token = this.scanner.getToken();
+    this.lastToken = this.token;
   }
   public parse(source: string) {
     this.init(source);
@@ -2235,7 +2005,7 @@ export class Parser extends Calc {
    */
   private stmntList() {
     const statements: ASTNode[] = [this.stmnt()];
-    while (this.hasTokens) {
+    while (!this.token.isEOF) {
       statements.push(this.stmnt());
     }
     return statements;
@@ -2282,7 +2052,7 @@ export class Parser extends Calc {
   /* -------------------------------------------------------------------------- */
   private block() {
     const statements: ASTNode[] = [];
-    while (!this.sees(TOKEN.RIGHT_BRACE) && this.hasTokens) {
+    while (!this.sees(TOKEN.RIGHT_BRACE) && !this.token.isEOF) {
       statements.push(this.stmnt());
     }
     this.eat(TOKEN.RIGHT_BRACE, this.expected("}"));
@@ -2341,6 +2111,76 @@ export class Parser extends Calc {
   /* -------------------------------------------------------------------------- */
   private expression() {
     return this.or();
+  }
+
+  parseExpr(source: string) {
+    this.init(source);
+    const result = this.pratt();
+    return result;
+  }
+
+  lit(node: (lexeme: string) => ASTNode) {
+    const lexeme = this.eat(this.token.type, `Expected ${this.token.typename}`);
+    const newnode = node(lexeme);
+    this.lastNode = newnode;
+    return newnode;
+  }
+  infix(lhs: ASTNode, operator: string, rhs: ASTNode) {
+    const expr = ast.binex(lhs, operator, rhs);
+    this.lastNode = expr;
+    return expr;
+  }
+
+  pratt(minbp = PREC.NONE) {
+    let lhs: ASTNode = ast.nil;
+    switch (this.token.type) {
+      case TOKEN.INTEGER:
+        lhs = this.lit((lexeme) => ast.int(lexeme));
+        break;
+      case TOKEN.FLOAT:
+        lhs = this.lit((lexeme) => ast.float(lexeme));
+        break;
+      case TOKEN.COMPLEX:
+        throw new Error("complex unimplemented");
+      case TOKEN.OCTAL:
+        lhs = this.lit((lexeme) => ast.int(lexeme, 8));
+        break;
+      case TOKEN.HEX:
+        lhs = this.lit((lexeme) => ast.int(lexeme, 16));
+        break;
+      case TOKEN.BINARY:
+        lhs = this.lit((lexeme) => ast.int(lexeme, 2));
+        break;
+      case TOKEN.FRACTION:
+        lhs = this.lit((lexeme) => ast.fraction(lexeme));
+        break;
+      case TOKEN.SCINUM:
+        let lexeme = this.eatNumber(TOKEN.SCINUM);
+        lhs = this.expand(lexeme);
+        break;
+      case TOKEN.TRUE:
+        lhs = this.lit(() => ast.TRUE);
+        break;
+      case TOKEN.FALSE:
+        lhs = this.lit(() => ast.FALSE);
+        break;
+      case TOKEN.STRING:
+        lhs = this.lit((lexeme) => ast.string(lexeme));
+        break;
+      case TOKEN.NULL:
+      default:
+        lhs = this.lit(() => ast.nil);
+    }
+    while (!this.token.isEOF && !this.token.isSemicolon) {
+      const op = this.token;
+      if (op.isEOF) break;
+      if (!op.isOperator) throw new Error("expected operator");
+      if (op.bp < minbp) break;
+      this.advance();
+      let rhs = this.pratt(op.bp);
+      lhs = this.infix(lhs, op.lexeme, rhs);
+    }
+    return lhs;
   }
 
   private or() {
@@ -2445,7 +2285,7 @@ export class Parser extends Calc {
     let last = node;
     while (
       (this.check(TOKEN.SYMBOL)) ||
-      (this.isNumeric(this.peek) && last.isSymbol() &&
+      (this.token.isNumber && last.isSymbol() &&
         !this.funcNames.has(last.value)) ||
       (this.check(TOKEN.LEFT_PAREN))
     ) {
@@ -2471,8 +2311,8 @@ export class Parser extends Calc {
   /* § Parse Unary Prefix                                                       */
   /* -------------------------------------------------------------------------- */
   private unaryPrefix() {
-    if (this.match([TOKEN.NOT, TOKEN.TILDE])) {
-      const op = this.previous.lexeme;
+    if (this.match([TOKEN.NOT, TOKEN.TILDE, TOKEN.UNARY_MINUS])) {
+      const op = this.lastToken.lexeme;
       const arg = this.power();
       return ast.unex(op, arg);
     }
@@ -2485,7 +2325,7 @@ export class Parser extends Calc {
   private power(): ASTNode {
     let node: ASTNode = this.primary();
     while (this.match([TOKEN.CARET])) {
-      const op = this.previous.lexeme;
+      const op = this.lastToken.lexeme;
       const arg: ASTNode = this.unaryPrefix();
       node = ast.binex(node, op, arg);
     }
@@ -2496,7 +2336,7 @@ export class Parser extends Calc {
   /* § Parse Primary                                                            */
   /* -------------------------------------------------------------------------- */
   private primary() {
-    switch (this.peek.type) {
+    switch (this.token.type) {
       case TOKEN.LEFT_PAREN:
         return this.parend();
       case TOKEN.SYMBOL:
@@ -2538,7 +2378,7 @@ export class Parser extends Calc {
       } while (this.match([TOKEN.COMMA]));
       this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
     } else this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
-    return ast.callExpr(name, params, this.lib.getFunction(name));
+    return ast.callExpr(name, params, LibCore.getFunction(name));
   }
 
   /* -------------------------------------------------------------------------- */
@@ -2597,40 +2437,40 @@ export class Parser extends Calc {
   /* -------------------------------------------------------------------------- */
   private literal() {
     let lexeme = "";
-    switch (this.peek.type) {
-      case TOKEN.EXP:
-        lexeme = this.eat(TOKEN.EXP, "Expected exp");
-        return this.algExpr();
+    switch (this.token.type) {
       case TOKEN.INTEGER:
         lexeme = this.eatNumber(TOKEN.INTEGER);
         return ast.int(lexeme);
       case TOKEN.FLOAT:
         lexeme = this.eatNumber(TOKEN.FLOAT);
         return ast.float(lexeme);
-      case TOKEN.COMPLEX_NUMBER:
-        lexeme = this.eatNumber(TOKEN.COMPLEX_NUMBER);
+      case TOKEN.COMPLEX:
+        lexeme = this.eatNumber(TOKEN.COMPLEX);
         return ast.complex(lexeme);
-      case TOKEN.OCTAL_NUMBER:
-        lexeme = this.eatNumber(TOKEN.OCTAL_NUMBER);
+      case TOKEN.OCTAL:
+        lexeme = this.eatNumber(TOKEN.OCTAL);
         return ast.int(lexeme, 8);
-      case TOKEN.HEX_NUMBER:
-        lexeme = this.eatNumber(TOKEN.HEX_NUMBER);
+      case TOKEN.HEX:
+        lexeme = this.eatNumber(TOKEN.HEX);
         return ast.int(lexeme, 16);
-      case TOKEN.BINARY_NUMBER:
-        lexeme = this.eatNumber(TOKEN.BINARY_NUMBER);
+      case TOKEN.BINARY:
+        lexeme = this.eatNumber(TOKEN.BINARY);
         return ast.int(lexeme, 2);
+      case TOKEN.FRACTION:
+        lexeme = this.eatNumber(TOKEN.BINARY);
+        return ast.fraction(lexeme);
+      case TOKEN.SCINUM:
+        lexeme = this.eatNumber(TOKEN.SCINUM);
+        return this.expand(lexeme);
+      case TOKEN.EXP:
+        lexeme = this.eat(TOKEN.EXP, "Expected exp");
+        return this.algExpr();
       case TOKEN.TRUE:
         lexeme = this.eatNumber(TOKEN.TRUE);
         return ast.integer(1);
       case TOKEN.FALSE:
         lexeme = this.eatNumber(TOKEN.FALSE);
         return ast.integer(0);
-      case TOKEN.FRACTION:
-        lexeme = this.eatNumber(TOKEN.FRACTION);
-        return ast.fraction(lexeme);
-      case TOKEN.SCIENTIFIC_NUMBER:
-        lexeme = this.eatNumber(TOKEN.SCIENTIFIC_NUMBER);
-        return this.expand(lexeme);
       case TOKEN.STRING:
         lexeme = this.eat(TOKEN.STRING, this.expected("string"));
         return ast.string(lexeme);
@@ -2658,7 +2498,7 @@ export class Parser extends Calc {
    * will return an error node.
    */
   private croak(message: string) {
-    message = `Line[${this.peek.line}]: ${message}`;
+    message = `Line[${this.token.line}]: ${message}`;
     this.error = message;
   }
 
@@ -2699,25 +2539,25 @@ export class Parser extends Calc {
   private sees(...types: TOKEN[]) {
     if (types[0] === TOKEN.EOF) return false;
     for (let i = 0; i < types.length; i++) {
-      if (this.peek.type === types[i]) return true;
+      if (this.token.type === types[i]) return true;
     }
     return false;
   }
 
   private check(type: TOKEN) {
     if (type === TOKEN.EOF) return false;
-    return this.peek.type === type;
+    return this.token.type === type;
   }
 
-  private advance() {
-    this.previous = this.peek;
-    this.peek = this.scanner.getToken();
+  advance() {
+    this.lastToken = this.token;
+    this.token = this.scanner.getToken();
     this.idx = this.scanner.current;
-    return this.previous;
+    return this.lastToken;
   }
 
   private eat(tokenType: TOKEN, message: string) {
-    const token = this.peek;
+    const token = this.token;
     if (token.type === TOKEN.EOF) {
       this.croak(`${message} at end.`);
     }
@@ -2731,16 +2571,16 @@ export class Parser extends Calc {
   private parseExpression({ left, ops, right, astnode }: Rule): ASTNode {
     let LEFT: ASTNode = this[left]();
     while (this.match(ops)) {
-      const OP = this.previous.lexeme;
+      const OP = this.lastToken.lexeme;
       const RIGHT = this[right]();
       LEFT = astnode(LEFT, OP, RIGHT);
     }
     return LEFT;
   }
 
-  private get hasTokens() {
-    return this.peek.type !== TOKEN.EOF;
-  }
+  // private get hasTokens() {
+  // return this.token.type !== TOKEN.EOF;
+  // }
 
   static build(op: string, params: string[]) {
     const input = Parser.make(op, params);
@@ -2773,22 +2613,6 @@ export class Parser extends Calc {
     return this.eat(tokenType, "Expected number");
   }
 
-  /**
-   * Returns true if the next
-   * token is any number token,
-   * false otherwise.
-   */
-  private isNumeric(token: Token) {
-    return (token.type === TOKEN.INTEGER ||
-      token.type === TOKEN.FRACTION ||
-      token.type === TOKEN.FLOAT ||
-      token.type === TOKEN.COMPLEX_NUMBER ||
-      token.type === TOKEN.OCTAL_NUMBER ||
-      token.type === TOKEN.HEX_NUMBER ||
-      token.type === TOKEN.BINARY_NUMBER ||
-      token.type === TOKEN.SCIENTIFIC_NUMBER);
-  }
-
   tree(format: "ast" | "s-expression" = "ast") {
     if (format === "s-expression") {
       const prefix = new ToPrefix();
@@ -2803,20 +2627,19 @@ export class Parser extends Calc {
       }
     });
   }
+
+  
 }
 
 /* -------------------------------------------------------------------------- */
 /* § Live Testing                                                             */
 /* -------------------------------------------------------------------------- */
 
-const expr = `
-4 + (x - 2)(x + 1)
-`;
+const expr = `2^5^4`;
 
-const e1 = new Parser().parse(expr).tree();
-const ptree = new Parsetree();
-const e2 = ptree.parse(expr).tree();
-log("Parser");
-log(e1);
-log("Parsetree:");
-log(e2);
+const parser = new Parser();
+const r2 = parser.parse(expr)
+const r1 = parser.parseExpr(expr);
+log(parser.tree);
+log(r1);
+log(r2);
