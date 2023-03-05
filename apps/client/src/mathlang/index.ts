@@ -81,6 +81,9 @@ export namespace math {
   export function abs(n: number) {
     return Math.abs(n);
   }
+  export function factorial(n: number | string) {
+    throw new Error("factorial unimplemented");
+  }
   export function simplify(n: number, d: number) {
     const sign = sgn(n) * sgn(d);
     const N = abs(n);
@@ -1389,6 +1392,7 @@ export interface Lexer {
   source: string;
   start: number;
   current: number;
+  previousToken: Token;
   end: number;
   line: number;
   numtype: NUM_TOKEN;
@@ -1399,6 +1403,7 @@ export class Lexer {
     this.start = 0;
     this.current = 0;
     this.end = source.length;
+    this.previousToken = Token.nil;
     this.line = 1;
     return this;
   }
@@ -1412,6 +1417,7 @@ export class Lexer {
     const lexeme = lex ?? this.source.substring(this.start, this.current);
     const line = this.line;
     const out = new Token(type, lexeme, line);
+    this.previousToken = out;
     return out;
   }
   private get peek(): LEXEME {
@@ -1423,7 +1429,8 @@ export class Lexer {
   }
   private advance() {
     this.current++;
-    return this.source[this.current - 1] as LEXEME;
+    const out = this.source[this.current - 1] as LEXEME;
+    return out;
   }
 
   private skipWhitespace() {
@@ -1454,6 +1461,7 @@ export class Lexer {
       this.numtype = TOKEN.INTEGER;
       return this.number();
     }
+
     switch (c) {
       case `,`:
         return this.token(TOKEN.COMMA);
@@ -1481,7 +1489,10 @@ export class Lexer {
           this.numtype = TOKEN.INTEGER;
           return this.number();
         }
-        return this.token(TOKEN.MINUS);
+        if (this.previousToken.isNumber || this.previousToken.isSymbol) {
+          return this.token(TOKEN.MINUS);
+        }
+        return this.token(TOKEN.UNARY_MINUS);
       case "?":
         return this.token(TOKEN.EROTEME);
       case ":":
@@ -1764,7 +1775,6 @@ interface Rule {
   astnode: (left: ASTNode, operator: string, right: ASTNode) => ASTNode;
 }
 
-
 /* -------------------------------------------------------------------------- */
 /* § ABSTRACT: CALC                                                           */
 /* -------------------------------------------------------------------------- */
@@ -1870,40 +1880,40 @@ abstract class Calc {
   }
 }
 
-
 type OP_RULE = { precedence: number; arity: number; assoc: "left" | "right" };
 
 type OP_RULE_SET = { [key: string]: OP_RULE };
 
 const rules: OP_RULE_SET = {
-  ["+"]: { precedence: 1, arity: 2, assoc: "left" },
-  ["-"]: { precedence: 1, arity: 2, assoc: "left" },
-  ["*"]: { precedence: 2, arity: 2, assoc: "left" },
-  ["/"]: { precedence: 2, arity: 2, assoc: "left" },
-  ["^"]: { precedence: 3, arity: 2, assoc: "right" },
-  ["!"]: { precedence: 4, arity: 2, assoc: "right" },
+  ["or"]: { precedence: 10, arity: 2, assoc: "left" },
+  ["nor"]: { precedence: 11, arity: 2, assoc: "left" },
+  ["xor"]: { precedence: 12, arity: 2, assoc: "left" },
+  ["xnor"]: { precedence: 13, arity: 2, assoc: "left" },
+  ["and"]: { precedence: 14, arity: 2, assoc: "left" },
+  ["nand"]: { precedence: 15, arity: 2, assoc: "left" },
+  ["!="]: { precedence: 16, arity: 2, assoc: "left" },
+  ["="]: { precedence: 16, arity: 2, assoc: "left" },
+  ["<="]: { precedence: 16, arity: 2, assoc: "left" },
+  [">="]: { precedence: 16, arity: 2, assoc: "left" },
+  ["<"]: { precedence: 16, arity: 2, assoc: "left" },
+  [">"]: { precedence: 16, arity: 2, assoc: "left" },
+  ["to"]: { precedence: 17, arity: 2, assoc: "left" },
+  ["+"]: { precedence: 18, arity: 2, assoc: "left" },
+  ["-"]: { precedence: 18, arity: 2, assoc: "left" },
+  ["*"]: { precedence: 19, arity: 2, assoc: "left" },
+  ["/"]: { precedence: 19, arity: 2, assoc: "left" },
+  ["%"]: { precedence: 20, arity: 2, assoc: "left" },
+  ["mod"]: { precedence: 20, arity: 2, assoc: "left" },
+  ["rem"]: { precedence: 20, arity: 2, assoc: "left" },
+  ["div"]: { precedence: 20, arity: 2, assoc: "left" },
+  ["^"]: { precedence: 21, arity: 2, assoc: "right" },
+  ["!"]: { precedence: 400, arity: 1, assoc: "right" },
+  ["not"]: { precedence: 400, arity: 1, assoc: "right" },
 };
-const isOp = (token: Token) => rules.hasOwnProperty(token.lexeme);
 
-const associates = {
-  left: (token: Token) => rules[token.lexeme].assoc === "left",
-  right: (token: Token) => rules[token.lexeme].assoc === "right",
-};
-
-const precOf = (token: Token) => rules[token.lexeme].precedence;
-
-// const integer = (token: Token) => ({ value: token.lexeme, kind: "integer" });
-// const variable = (token: Token) => ({ value: token.lexeme, kind: "variable" });
-// const float = (token: Token) => ({ value: token.lexeme, kind: "float" });
-// const fraction = (token: Token) => ({ value: token.lexeme, kind: "fraction" });
-
-// const binex = (left: Object | null, op: string, right: Object | null) => ({
-  // left,
-  // op,
-  // right,
-// });
-
-
+/* -------------------------------------------------------------------------- */
+/* § PARSETREE                                                                */
+/* -------------------------------------------------------------------------- */
 class Parsetree extends Calc {
   queue: List<Token>;
   nodesQueue: List<ASTNode>;
@@ -1912,6 +1922,7 @@ class Parsetree extends Calc {
   token: Token;
   previousToken: Token;
   error: string;
+  index: number;
   result: ASTNode;
   constructor() {
     super();
@@ -1921,19 +1932,31 @@ class Parsetree extends Calc {
     this.token = Token.nil;
     this.previousToken = Token.nil;
     this.stack = new Stack();
-    this.error = '';
+    this.error = "";
     this.result = ast.nil;
+    this.index = 0;
+  }
+  isOp(token: Token) {
+    return rules.hasOwnProperty(token.lexeme);
+  }
+  associates(dir: "left" | "right") {
+    return rules[this.token.lexeme].assoc === dir;
+  }
+  precOf(token: Token) {
+    return rules[token.lexeme].precedence;
   }
   isLeftOf(op2: Token) {
-    return (associates.left(this.token) && precOf(this.token) <= precOf(op2));
+    return (this.associates("left") &&
+      this.precOf(this.token) <= this.precOf(op2));
   }
   isRightOf(op2: Token) {
-    return (associates.right(this.token) && precOf(this.token) < precOf(op2));
+    return (this.associates("right") &&
+      this.precOf(this.token) < this.precOf(op2));
   }
   addToOutput(token: Token) {
     this.queue.enqueue(token);
   }
-  addNode(o:ASTNode) {
+  addNode(o: ASTNode) {
     this.nodesQueue.enqueue(o);
   }
   outputLeaf(token: Token) {
@@ -1941,6 +1964,36 @@ class Parsetree extends Calc {
     switch (token.type) {
       case TOKEN.INTEGER:
         this.addNode(ast.int(token.lexeme, 10));
+        break;
+      case TOKEN.FLOAT:
+        this.addNode(ast.float(token.lexeme));
+        break;
+      case TOKEN.COMPLEX_NUMBER:
+        this.addNode(ast.complex(token.lexeme));
+        break;
+      case TOKEN.OCTAL_NUMBER:
+        this.addNode(ast.int(token.lexeme, 8));
+        break;
+      case TOKEN.HEX_NUMBER:
+        this.addNode(ast.int(token.lexeme, 16));
+        break;
+      case TOKEN.BINARY_NUMBER:
+        this.addNode(ast.int(token.lexeme, 2));
+        break;
+      case TOKEN.TRUE:
+        this.addNode(ast.integer(1));
+        break;
+      case TOKEN.FALSE:
+        this.addNode(ast.integer(0));
+        break;
+      case TOKEN.FRACTION:
+        this.addNode(ast.fraction(token.lexeme));
+        break;
+      case TOKEN.STRING:
+        this.addNode(ast.string(token.lexeme));
+        break;
+      case TOKEN.NULL:
+        this.addNode(ast.nil);
         break;
       case TOKEN.SYMBOL:
         this.addNode(ast.symbol(token.lexeme, SYMBOL.VARIABLE));
@@ -1952,13 +2005,25 @@ class Parsetree extends Calc {
     const right = this.nodesQueue.popLast()!;
     return [right, left];
   }
+  popUnop() {
+    const arg = this.nodesQueue.popLast()!;
+    return arg;
+  }
+  get nextToken() {
+    return this.lexer.nextToken;
+  }
   popOperator() {
     const op = this.stack.pop()!;
     switch (true) {
       case op.isBinop: {
         const [left, right] = this.popBinop();
         this.addNode(ast.binex(left, op.lexeme, right));
-        // this.addNode(binex(left, op.lexeme, right));
+        break;
+      }
+      case op.isUnop: {
+        const arg = this.popUnop();
+        this.addNode(ast.unex(op.lexeme, arg));
+        break;
       }
     }
     return op;
@@ -1967,10 +2032,10 @@ class Parsetree extends Calc {
     this.lexer.init(src);
     this.readToken();
     while (this.hasTokens && !this.error) {
-      if (isOp(this.token)) {
+      if (this.isOp(this.token)) {
         while (this.stack.isNotEmpty) {
           const op2 = this.stack.top;
-          if (isOp(op2) && (this.isLeftOf(op2) || this.isRightOf(op2))) {
+          if (this.isOp(op2) && (this.isLeftOf(op2) || this.isRightOf(op2))) {
             this.addToOutput(this.popOperator());
           } else break;
         }
@@ -1990,21 +2055,35 @@ class Parsetree extends Calc {
       const op = this.popOperator()!;
       if (op.isLeftParen || op.isRightParen) {
         this.err("paren mismatched");
-        this.result = ast.string(this.error);
-        return this.result;
+        this.result = ast.root(this.error);
+        return this;
       }
       this.addToOutput(op);
     }
     this.stack.clear();
-    this.result = this.nodesQueue.array[0];
+    this.result = ast.root(this.nodesQueue.array);
     return this;
+  }
+  tree() {
+    return Calc.treeString(this.result, (node) => {
+      if (node instanceof ASTNode) {
+        node.kind = `[${NODE[node.kind]}]`.toLowerCase().replace(
+          "_",
+          "-",
+        ) as any;
+      }
+    });
   }
   err(message: string) {
     this.error = message;
   }
   readToken() {
-    if (this.token.isNumber && this.lexer.nextToken==='(') {
-      this.token = new Token(TOKEN.STAR, '*', this.previousToken.line);
+    this.previousToken = this.token;
+    if (
+      (this.token.isNumber && this.lexer.nextToken === "(") ||
+      (this.token.isRightParen && this.lexer.nextToken === "(")
+    ) {
+      this.token = new Token(TOKEN.STAR, "*", this.token.line);
       return;
     }
     this.token = this.lexer.getToken();
@@ -2013,7 +2092,7 @@ class Parsetree extends Calc {
     return this.token.type !== TOKEN.EOF;
   }
   static of(src: string) {
-    const p = new Parsetree()
+    const p = new Parsetree();
     p.parse(src);
     return p;
   }
@@ -2021,10 +2100,6 @@ class Parsetree extends Calc {
     return Calc.tokenize(src);
   }
 }
-
-// const p = Parsetree.of('2(x - 1)')
-// log(p.result)
-
 
 export interface Parser {
   /** The input to parse. */
@@ -2127,12 +2202,6 @@ export class Parser extends Calc {
     this.previous = new Token(TOKEN.NIL, "", 0);
     this.peek = new Token(TOKEN.NIL, "", 0);
   }
-  
-  /* -------------------------------------------------------------------------- */
-  /* § Parse Expression                                                         */
-  /* -------------------------------------------------------------------------- */
-  
-  
 
   /* -------------------------------------------------------------------------- */
   /* § Parse                                                                    */
@@ -2740,14 +2809,14 @@ export class Parser extends Calc {
 /* § Live Testing                                                             */
 /* -------------------------------------------------------------------------- */
 
-const parser = new Parser();
-const expr1 = `
-17 // 2
+const expr = `
+4 + (x - 2)(x + 1)
 `;
-const parsing = parser.parse(expr1);
-// const tokens = parser.tokenize(expr1).toString()
-// log(tokens)
-const result = parsing.eval();
-log(result);
-const tree = parsing.tree("ast");
-log(tree);
+
+const e1 = new Parser().parse(expr).tree();
+const ptree = new Parsetree();
+const e2 = ptree.parse(expr).tree();
+log("Parser");
+log(e1);
+log("Parsetree:");
+log(e2);

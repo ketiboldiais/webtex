@@ -48,94 +48,97 @@ export enum TOKEN {
   /** Lexeme: `|` */
   VBAR,
 
-  /** Lexeme: `.` */
+  /** Lexeme: `.`, binary operator - function composition */
   DOT,
 
   /* -------------------------------------------------------------------------- */
   /* § Math Operator Tokens                                                     */
   /* -------------------------------------------------------------------------- */
-  /** Lexeme: `+` */
+  /** Lexeme: `+`, binary operator */
   PLUS,
 
-  /** Lexeme: `'` */
-  SINGLE_QUOTE,
+  /** Lexeme: `'`, unary operator */
+  SINGLE_QUOTE, 
 
-  /** Lexeme: `-` */
+  /** Lexeme: `-`, binary operator */
   MINUS,
 
-  /** Lexeme: `*` */
+  /** Lexeme: `-`, unary operator */
+  UNARY_MINUS,
+
+  /** Lexeme: `*`, binary operator */
   STAR,
 
-  /** Lexeme: `/` */
+  /** Lexeme: `/`, binary operator */
   SLASH,
 
-  /** Lexeme: `%` */
+  /** Lexeme: `%`, binary operator */
   PERCENT,
 
-  /** Lexeme: `^` */
+  /** Lexeme: `^`, binary operator */
   CARET,
 
-  /** Lexeme: `!` */
+  /** Lexeme: `!`, unary operator */
   BANG,
 
-  /** Lexeme: `mod` */
+  /** Lexeme: `mod`, binary operator */
   MOD,
 
-  /** Lexeme: `//` */
+  /** Lexeme: `//`, binary operator */
   DIV,
 
-  /** Lexeme: `rem` */
+  /** Lexeme: `rem`, binary operator */
   REM,
 
-  /** Lexeme: `to` */
+  /** Lexeme: `to`, binary operator */
   TO,
 
   /* -------------------------------------------------------------------------- */
   /* § List Operator Tokens                                                     */
   /* -------------------------------------------------------------------------- */
-  /** Lexeme: `.+` */
+  /** Lexeme: `.+`, binary operator */
   DOT_PLUS,
 
-  /** Lexeme: `.-` */
+  /** Lexeme: `.-`, binary operator */
   DOT_MINUS,
 
-  /** Lexeme: `.*` */
+  /** Lexeme: `.*`, binary operator */
   DOT_STAR,
 
-  /** Lexeme: `./` */
+  /** Lexeme: `./`, binary operator */
   DOT_SLASH,
 
-  /** Lexeme: `.%` */
+  /** Lexeme: `.%`, binary operator */
   DOT_PERCENT,
 
-  /** Lexeme: `.^` */
+  /** Lexeme: `.^`, binary operator */
   DOT_CARET,
 
   /* -------------------------------------------------------------------------- */
   /* § Relational Operator Tokens                                               */
   /* -------------------------------------------------------------------------- */
-  /** Lexeme: `==` */
-  DEQUAL,
+  /** Lexeme: `==`, binary operator */
+  DEQUAL, 
 
-  /** Lexeme: `!=` */
+  /** Lexeme: `!=`, binary operator */
   NEQ,
 
-  /** Lexeme: `<` */
+  /** Lexeme: `<`, binary operator */
   LT,
 
-  /** Lexeme: `>` */
+  /** Lexeme: `>`, binary operator */
   GT,
 
-  /** Lexeme: `>=` */
+  /** Lexeme: `>=`, binary operator */
   GTE,
 
-  /** Lexeme: `<=` */
+  /** Lexeme: `<=`, binary operator */
   LTE,
 
-  /** Lexeme: `=` */
+  /** Lexeme: `=`, binary operator */
   EQUAL,
 
-  /** Lexeme: `~` */
+  /** Lexeme: `~`, unary operator */
   TILDE,
 
   /* -------------------------------------------------------------------------- */
@@ -147,40 +150,40 @@ export enum TOKEN {
   /* -------------------------------------------------------------------------- */
   /* § Bitwise Operator Tokens                                                  */
   /* -------------------------------------------------------------------------- */
-  /** Lexeme: `&` */
+  /** Lexeme: `&`, binary operator */
   AMP,
 
-  /** Lexeme: `>>` */
+  /** Lexeme: `>>`, binary operator */
   LSHIFT,
 
-  /** Lexeme: `<<` */
+  /** Lexeme: `<<`, binary operator */
   RSHIFT,
 
-  /** Lexeme: `>>>` */
+  /** Lexeme: `>>>`, binary operator */
   LOG_SHIFT,
 
   /* -------------------------------------------------------------------------- */
   /* § Logical Operator Tokens                                                  */
   /* -------------------------------------------------------------------------- */
-  /** Lexeme: `nor` */
+  /** Lexeme: `nor`, binary operator */
   NOR,
 
-  /** Lexeme: `not` */
+  /** Lexeme: `not`, unary operator */
   NOT,
 
-  /** Lexeme: `or` */
+  /** Lexeme: `or`, binary operator */
   OR,
 
-  /** Lexeme: `xor` */
+  /** Lexeme: `xor`, binary operator */
   XOR,
 
-  /** Lexeme: `xnor` */
+  /** Lexeme: `xnor`, binary operator */
   XNOR,
 
-  /** Lexeme: `and` */
+  /** Lexeme: `and`, binary operator */
   AND,
 
-  /** Lexeme: `nand` */
+  /** Lexeme: `nand`, binary operator */
   NAND,
 
   /* -------------------------------------------------------------------------- */
@@ -364,7 +367,10 @@ export class Token {
     this.lexeme = lexeme;
     this.line = line;
   }
-  static nil = new Token(TOKEN.NIL, '', -1);
+  get isNil() {
+    return this.type === TOKEN.NIL;
+  }
+  static nil = new Token(TOKEN.NIL, "", -1);
   get isLeftParen() {
     return this.type === TOKEN.LEFT_PAREN;
   }
@@ -425,6 +431,9 @@ export class Token {
   }
   get isSingleQuote() {
     return this.type === TOKEN.SINGLE_QUOTE;
+  }
+  get isUnaryMinus() {
+    return this.type === TOKEN.UNARY_MINUS;
   }
   get isMinus() {
     return this.type === TOKEN.MINUS;
@@ -528,27 +537,67 @@ export class Token {
   get isExp() {
     return this.type === TOKEN.EXP;
   }
+  
+  get isUnop() {
+    return (
+      this.type === TOKEN.SINGLE_QUOTE ||
+      this.type === TOKEN.UNARY_MINUS ||
+      this.type === TOKEN.BANG ||
+      this.type === TOKEN.NOT ||
+      this.type === TOKEN.TILDE
+    )
+  }
 
   // range-based checkers
   get isBinop() {
-    return 16 <= this.type && this.type <= 53;
-  }
-  get isLiteral() {
-    return 71 <= this.type && this.type <= 85;
+    return (
+      this.type === TOKEN.DOT ||
+      this.type === TOKEN.PLUS ||
+      this.type === TOKEN.MINUS ||
+      this.type === TOKEN.STAR ||
+      this.type === TOKEN.SLASH ||
+      this.type === TOKEN.PERCENT ||
+      this.type === TOKEN.CARET ||
+      this.type === TOKEN.MOD ||
+      this.type === TOKEN.DIV ||
+      this.type === TOKEN.REM ||
+      this.type === TOKEN.TO ||
+      this.type === TOKEN.DOT_PLUS ||
+      this.type === TOKEN.DOT_MINUS ||
+      this.type === TOKEN.DOT_STAR ||
+      this.type === TOKEN.DOT_SLASH ||
+      this.type === TOKEN.DOT_PERCENT ||
+      this.type === TOKEN.DOT_CARET ||
+      this.type === TOKEN.DEQUAL ||
+      this.type === TOKEN.NEQ ||
+      this.type === TOKEN.LT ||
+      this.type === TOKEN.GT ||
+      this.type === TOKEN.GTE ||
+      this.type === TOKEN.LTE ||
+      this.type === TOKEN.EQUAL ||
+      this.type === TOKEN.AMP ||
+      this.type === TOKEN.LSHIFT ||
+      this.type === TOKEN.RSHIFT ||
+      this.type === TOKEN.LOG_SHIFT ||
+      this.type === TOKEN.NOR ||
+      this.type === TOKEN.OR ||
+      this.type === TOKEN.XOR ||
+      this.type === TOKEN.XNOR ||
+      this.type === TOKEN.AND ||
+      this.type === TOKEN.NAND ||
+      this.type === TOKEN.SINGLE_QUOTE
+    );
   }
   get isNumber() {
-    return 78 <= this.type && this.type <= 85;
-    // return (
-      // this.type === TOKEN.INTEGER ||
-      // this.type === TOKEN.FLOAT ||
-      // this.type === TOKEN.FRACTION ||
-      // this.type === TOKEN.COMPLEX_NUMBER ||
-      // this.type === TOKEN.OCTAL_NUMBER ||
-      // this.type === TOKEN.HEX_NUMBER ||
-      // this.type === TOKEN.BINARY_NUMBER ||
-      // this.type === TOKEN.SCIENTIFIC_NUMBER
-    // );
+    return (
+      this.type === TOKEN.INTEGER ||
+      this.type === TOKEN.FLOAT ||
+      this.type === TOKEN.FRACTION ||
+      this.type === TOKEN.COMPLEX_NUMBER ||
+      this.type === TOKEN.OCTAL_NUMBER ||
+      this.type === TOKEN.HEX_NUMBER ||
+      this.type === TOKEN.BINARY_NUMBER ||
+      this.type === TOKEN.SCIENTIFIC_NUMBER
+    );
   }
 }
-
-
