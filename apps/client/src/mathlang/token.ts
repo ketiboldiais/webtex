@@ -471,7 +471,7 @@ const TokenRecord: { [k in TOKEN]: Entry } = {
    */
   [TOKEN.TO]: {
     kind: CLASS.INFIX,
-    precedence: PREC.APEX,
+    precedence: PREC.TOP,
     fixity: AFIX.LEFT,
   },
   /**
@@ -933,16 +933,16 @@ export class Token {
   get isIllegal() {
     return TokenRecord[this.type].kind === CLASS.ILLEGAL;
   }
-  get isPrefixOp() {
+  get isPrefix() {
     return TokenRecord[this.type].kind === CLASS.PREFIX;
   }
-  get isPostfixOp() {
+  get isPostfix() {
     return TokenRecord[this.type].kind === CLASS.POSTFIX;
   }
-  get isInfixOp() {
+  get isInfix() {
     return TokenRecord[this.type].kind === CLASS.INFIX;
   }
-  get isMixfixOp() {
+  get isMixfix() {
     return TokenRecord[this.type].kind === CLASS.MIXFIX;
   }
   get isAtomic() {
@@ -952,10 +952,10 @@ export class Token {
     return !this.isEOF && !this.isSemicolon && !this.isDelimiter;
   }
   get isOperator() {
-    return this.isInfixOp ||
-      this.isPrefixOp ||
-      this.isPostfixOp ||
-      this.isMixfixOp;
+    return this.isInfix ||
+      this.isPostfix ||
+      this.isPrefix ||
+      this.isMixfix;
   }
   get isChainAssociative() {
     return TokenRecord[this.type].fixity === AFIX.CHAIN;
@@ -981,8 +981,14 @@ export class Token {
     return (TokenRecord[this.type].precedence <
       TokenRecord[otherToken.type].precedence);
   }
+  get isVbar() {
+    return this.type === TOKEN.VBAR;
+  }
   get isLeftParen() {
     return this.type === TOKEN.LEFT_PAREN;
+  }
+  get isLeftBracket() {
+    return this.type === TOKEN.LEFT_BRACKET;
   }
   get isRightParen() {
     return this.type === TOKEN.RIGHT_PAREN;

@@ -11,6 +11,7 @@ import {
 const { log } = console;
 
 export namespace algom {
+  const hasProp = (obj: Object, p: string) => obj.hasOwnProperty(p);
   export const match = {
     /**
      * Returns true if the string is an integer:
@@ -91,14 +92,13 @@ export namespace algom {
     return new Num(res, NUM.FRACTION);
   }
   export const is = {
+    func: (v: any): v is Function => typeof v === "function",
+    obj: (v: any): v is Object => typeof v === "object",
     number: (v: any): v is number => typeof v === "number",
     string: (v: any): v is string => typeof v === "number",
     bool: (v: any): v is boolean => typeof v === "boolean",
-    function: (v: any): v is Function => typeof v === "function",
     integer: (v: any) => {
-      if (typeof v === "number") {
-        return Number.isInteger(v);
-      }
+      if (typeof v === "number") return Number.isInteger(v);
       return match.int(v);
     },
   };
@@ -159,7 +159,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § enum: NODE                                                               */
   /* -------------------------------------------------------------------------- */
-  export enum NODE {
+  enum NODE {
     BLOCK,
     TUPLE,
     VECTOR,
@@ -206,7 +206,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § Abstract Class: ASTNode                                                  */
   /* -------------------------------------------------------------------------- */
-  export abstract class ASTNode {
+  abstract class ASTNode {
     kind: NODE;
     constructor(kind: NODE) {
       this.kind = kind;
@@ -230,8 +230,8 @@ export namespace algom {
     isMatrix(): this is Matrix {
       return this.kind === NODE.MATRIX;
     }
-    isNull(): this is Tuple {
-      return this.kind === NODE.TUPLE;
+    isNull(): this is Null {
+      return this.kind === NODE.NULL;
     }
     isNum(): this is Num {
       return this.kind === NODE.NUMBER;
@@ -261,7 +261,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § ASTNode: Root                                                            */
   /* -------------------------------------------------------------------------- */
-  export class Root extends ASTNode {
+  class Root extends ASTNode {
     root: ASTNode[];
     constructor(root: ASTNode[]) {
       super(NODE.ROOT);
@@ -275,7 +275,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § ASTNode: Exp                                                             */
   /* -------------------------------------------------------------------------- */
-  export class Exp extends ASTNode {
+  class Exp extends ASTNode {
     value: ASTNode;
     constructor(value: ASTNode) {
       super(NODE.ALGEBRAIC_EXPRESSION);
@@ -288,7 +288,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § ASTNode: Assignment                                                      */
   /* -------------------------------------------------------------------------- */
-  export class Assignment extends ASTNode {
+  class Assignment extends ASTNode {
     name: string;
     value: ASTNode;
     constructor(name: string, value: ASTNode) {
@@ -303,7 +303,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § ASTNode: Block                                                           */
   /* -------------------------------------------------------------------------- */
-  export class Block extends ASTNode {
+  class Block extends ASTNode {
     body: ASTNode[];
     constructor(body: ASTNode[]) {
       super(NODE.BLOCK);
@@ -316,7 +316,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § ASTNode: Tuple                                                           */
   /* -------------------------------------------------------------------------- */
-  export class Tuple extends ASTNode {
+  class Tuple extends ASTNode {
     elements: ASTNode[];
     constructor(elements: ASTNode[]) {
       super(NODE.TUPLE);
@@ -330,7 +330,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § ASTNode: Matrix                                                          */
   /* -------------------------------------------------------------------------- */
-  export class Matrix extends ASTNode {
+  class Matrix extends ASTNode {
     vectors: Vector[];
     rows: number;
     columns: number;
@@ -390,7 +390,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § ASTNode: Vector                                                          */
   /* -------------------------------------------------------------------------- */
-  export class Vector extends ASTNode {
+  class Vector extends ASTNode {
     elements: ASTNode[];
     len: number;
     constructor(elements: ASTNode[]) {
@@ -406,7 +406,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § ASTNode: Null                                                            */
   /* -------------------------------------------------------------------------- */
-  export class Null extends ASTNode {
+  class Null extends ASTNode {
     value: null;
     constructor() {
       super(NODE.NULL);
@@ -427,7 +427,7 @@ export namespace algom {
     INT,
     COMPLEX,
   }
-  export class Num extends ASTNode {
+  class Num extends ASTNode {
     value: string;
     #type: NUM;
     constructor(value: string | number, type: NUM) {
@@ -655,7 +655,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § Aux: Fraction                                                            */
   /* -------------------------------------------------------------------------- */
-  export class Fraction extends Num {
+  class Fraction extends Num {
     N: number;
     D: number;
     constructor(n: number, d: number) {
@@ -668,7 +668,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § Aux: Int                                                                 */
   /* -------------------------------------------------------------------------- */
-  export class Int {
+  class Int {
     N: number;
     constructor(n: number) {
       this.N = n;
@@ -681,7 +681,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § Aux: Complex                                                             */
   /* -------------------------------------------------------------------------- */
-  export class Complex {
+  class Complex {
     real: number;
     imaginary: number;
     constructor(real: number, imaginary: string) {
@@ -696,7 +696,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § Aux: Float                                                               */
   /* -------------------------------------------------------------------------- */
-  export class Float {
+  class Float {
     N: number;
     constructor(n: number) {
       this.N = n;
@@ -709,7 +709,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § ASTNode: Conditional                                                     */
   /* -------------------------------------------------------------------------- */
-  export class CondExpr extends ASTNode {
+  class CondExpr extends ASTNode {
     condition: ASTNode;
     consequent: ASTNode;
     alternate: ASTNode;
@@ -746,7 +746,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § ASTNode: Chars                                                           */
   /* -------------------------------------------------------------------------- */
-  export class Chars extends ASTNode {
+  class Chars extends ASTNode {
     value: string;
     constructor(value: string) {
       super(NODE.CHARS);
@@ -760,7 +760,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § ASTNode: Function Declaration                                            */
   /* -------------------------------------------------------------------------- */
-  export class FunDeclaration extends ASTNode {
+  class FunDeclaration extends ASTNode {
     name: string;
     params: Sym[];
     body: ASTNode;
@@ -777,7 +777,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § ASTNode: Variable Declaration                                            */
   /* -------------------------------------------------------------------------- */
-  export class VarDeclaration extends ASTNode {
+  class VarDeclaration extends ASTNode {
     name: string;
     value: ASTNode;
     constructor(op: string, value: ASTNode) {
@@ -793,7 +793,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § ASTNode: CallExpr                                                        */
   /* -------------------------------------------------------------------------- */
-  export class CallExpr extends ASTNode {
+  class CallExpr extends ASTNode {
     functionName: string;
     args: ASTNode[];
     length: number;
@@ -813,7 +813,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § ASTNode: UnaryExpr                                                       */
   /* -------------------------------------------------------------------------- */
-  export class UnaryExpr extends ASTNode {
+  class UnaryExpr extends ASTNode {
     op: string;
     arg: ASTNode;
     constructor(op: string, arg: ASTNode) {
@@ -829,7 +829,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § ASTNode: BinaryExpr                                                      */
   /* -------------------------------------------------------------------------- */
-  export class BinaryExpr extends ASTNode {
+  class BinaryExpr extends ASTNode {
     left: ASTNode;
     op: string;
     right: ASTNode;
@@ -939,7 +939,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § Visitor: ToPrefix                                                        */
   /* -------------------------------------------------------------------------- */
-  export class ToPrefix implements Visitor<string> {
+  class ToPrefix implements Visitor<string> {
     cond(n: CondExpr) {
       const test: string = this.toPrefix(n.condition) + "\n";
       const consequent: string = "\t" + this.toPrefix(n.consequent) + "\n";
@@ -1037,7 +1037,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § Visitor: ToString                                                        */
   /* -------------------------------------------------------------------------- */
-  export class ToString implements Visitor<string> {
+  class ToString implements Visitor<string> {
     cond(n: CondExpr) {
       const test: string = this.toString(n.condition);
       const consequent: string = this.toString(n.consequent);
@@ -1138,7 +1138,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § INTERPRETER                                                              */
   /* -------------------------------------------------------------------------- */
-  export class Interpreter implements Visitor<ASTNode> {
+  class Interpreter implements Visitor<ASTNode> {
     environment: Environment;
     str: ToString;
     constructor(environment = new Environment()) {
@@ -1379,8 +1379,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § LEXER                                                                    */
   /* -------------------------------------------------------------------------- */
-
-  export interface Lexer {
+  interface Lexer {
     source: string;
     start: number;
     current: number;
@@ -1390,7 +1389,7 @@ export namespace algom {
     line: number;
     numtype: NUM_TOKEN;
   }
-  export class Lexer {
+  class Lexer {
     init(source: string) {
       this.source = source;
       this.start = 0;
@@ -1744,7 +1743,7 @@ export namespace algom {
   /* § ABSTRACT: CALC                                                           */
   /* -------------------------------------------------------------------------- */
 
-  const LibCore = new Library({
+  const corelib = new Library({
     numericConstants: [
       ["e", Math.E],
       ["PI", Math.PI],
@@ -1802,8 +1801,7 @@ export namespace algom {
   /* -------------------------------------------------------------------------- */
   /* § PARSER                                                                   */
   /* -------------------------------------------------------------------------- */
-
-  export interface Parser {
+  interface Parser {
     /**
      * An error message indicating an
      * error during the parse. If
@@ -1829,8 +1827,7 @@ export namespace algom {
      */
     parse(source: string): this;
   }
-
-  export class Parser {
+  class Parser {
     token: Token = Token.nil;
     lastToken: Token = Token.nil;
     private lastNode: ASTNode = ast.nil;
@@ -1963,18 +1960,22 @@ export namespace algom {
         this.eat(TOKEN.SEMICOLON, this.expected(";"));
       return expr;
     }
-    parseExpr(source: string) {
-      this.init(source);
-      const result = this.expression();
-      return result;
-    }
+
     private lit(node: (lexeme: string) => ASTNode) {
-      const previousToken = this.consume();
+      const previousToken = this.advance();
       let newnode = node(previousToken.lexeme);
       if (newnode.isNum() && this.token.isSymbol) {
-        const sym = this.advance();
-        const rhs = ast.symbol(sym.lexeme, SYMBOL.VARIABLE);
-        newnode = ast.binex(newnode, "*", rhs);
+        if (this.isVariableName(this.token.lexeme)) {
+          const sym = this.advance();
+          let rhs = ast.symbol(sym.lexeme, SYMBOL.VARIABLE);
+          newnode = ast.binex(newnode, "*", rhs);
+        }
+        if (corelib.hasFunction(this.token.lexeme)) {
+          const sym = this.advance();
+          const s = ast.symbol(sym.lexeme, SYMBOL.VARIABLE);
+          let rhs = this.callexpr(s);
+          newnode = ast.binex(newnode, "*", rhs);
+        }
       }
       if (this.token.isLeftParen) {
         const rhs = this.parend();
@@ -1984,97 +1985,106 @@ export namespace algom {
       return newnode;
     }
 
-    private infix(lhs: ASTNode, operator: string, rhs: ASTNode) {
-      const expr = ast.binex(lhs, operator, rhs);
-      this.lastNode = expr;
-      return expr;
-    }
-
-    private prefix() {
-      const op = this.consume();
-      let rhs = this.expression(op.bp);
-      return ast.unex(op.lexeme, rhs);
-    }
-
     private expression(minbp = PREC.NONE) {
+      if (minbp === PREC.APEX) return ast.nil;
       let lhs: ASTNode = ast.nil;
-      switch (this.token.type) {
-        case TOKEN.SYMBOL:
-          lhs = this.id();
+      switch (true) {
+        case this.token.isAtomic:
+          lhs = this.literal();
           break;
-        case TOKEN.LEFT_BRACKET:
-          lhs = this.array();
-          break;
-        case TOKEN.VBAR:
-          lhs = this.absoluteValue();
-          break;
-        case TOKEN.LEFT_PAREN:
+        case this.token.isLeftParen:
           lhs = this.parend();
           if (this.token.isLeftParen && !this.lastNode.isCallExpr()) {
             const rhs = this.parend();
             lhs = ast.binex(lhs, "*", rhs);
           }
           break;
-        case TOKEN.UNARY_MINUS:
-          lhs = this.prefix();
+        case this.token.isLeftBracket:
+          lhs = this.array();
           break;
-        case TOKEN.INTEGER:
-          lhs = this.lit((lexeme) => ast.int(lexeme));
+        case this.token.isVbar:
+          lhs = this.absoluteValue();
           break;
-        case TOKEN.FLOAT:
-          lhs = this.lit((lexeme) => ast.float(lexeme));
-          break;
-        case TOKEN.COMPLEX:
-          throw new Error("complex unimplemented");
-        case TOKEN.OCTAL:
-          lhs = this.lit((lexeme) => ast.int(lexeme, 8));
-          break;
-        case TOKEN.HEX:
-          lhs = this.lit((lexeme) => ast.int(lexeme, 16));
-          break;
-        case TOKEN.BINARY:
-          lhs = this.lit((lexeme) => ast.int(lexeme, 2));
-          break;
-        case TOKEN.FRACTION:
-          lhs = this.lit((lexeme) => ast.fraction(lexeme));
-          break;
-        case TOKEN.SCINUM:
-          const prevToken = this.consume();
-          lhs = this.expand(prevToken.lexeme);
-          break;
-        case TOKEN.TRUE:
-          lhs = this.lit(() => ast.TRUE);
-          break;
-        case TOKEN.FALSE:
-          lhs = this.lit(() => ast.FALSE);
-          break;
-        case TOKEN.STRING:
-          lhs = this.lit((lexeme) => ast.string(lexeme));
-          break;
-        case TOKEN.NULL:
-          lhs = this.lit(() => ast.nil);
-          break;
-        default:
-          this.panic();
       }
       while (this.token.isOperable) {
         const op = this.token;
+        let rhs: ASTNode = ast.nil;
         if (op.isEOF) break;
         if (!op.isOperator) this.expectedOp();
+        if (op.isPrefix||op.isPostfix) {
+          if (op.bp < minbp) break;
+          this.advance();
+          rhs = this.expression(op.bp);
+          lhs = this.makeExpr(lhs, op.lexeme, rhs);
+          continue;
+        }
         if (op.bp < minbp) break;
         this.advance();
-        let rhs = this.expression(op.bp);
-        lhs = this.infix(lhs, op.lexeme, rhs);
+        rhs = this.expression(op.bp);
+        lhs = this.makeExpr(lhs, op.lexeme, rhs);
       }
       return lhs;
+    }
+
+    private makeExpr(lhs: ASTNode, operator: string, rhs: ASTNode) {
+      let expr: ASTNode = ast.nil;
+      switch (true) {
+        case (!lhs.isNull() && !rhs.isNull()):
+          expr = ast.binex(lhs, operator, rhs);
+          break;
+        case (!lhs.isNull() && rhs.isNull()):
+          expr = ast.unex(operator, lhs);
+          break;
+        case (lhs.isNull() && !rhs.isNull()):
+          expr = ast.unex(operator, rhs);
+          break;
+      }
+      this.lastNode = expr;
+      return expr;
+    }
+
+    private literal() {
+      switch (this.token.type) {
+        case TOKEN.SYMBOL:
+          return this.id();
+        case TOKEN.INTEGER:
+          return this.lit((lexeme) => ast.int(lexeme));
+        case TOKEN.FLOAT:
+          return this.lit((lexeme) => ast.float(lexeme));
+        case TOKEN.OCTAL:
+          return this.lit((lexeme) => ast.int(lexeme, 8));
+        case TOKEN.HEX:
+          return this.lit((lexeme) => ast.int(lexeme, 16));
+        case TOKEN.BINARY:
+          return this.lit((lexeme) => ast.int(lexeme, 2));
+        case TOKEN.FRACTION:
+          return this.lit((lexeme) => ast.fraction(lexeme));
+        case TOKEN.SCINUM:
+          const prevToken = this.advance();
+          return this.expand(prevToken.lexeme);
+        case TOKEN.TRUE:
+          return this.lit(() => ast.TRUE);
+        case TOKEN.FALSE:
+          return this.lit(() => ast.FALSE);
+        case TOKEN.STRING:
+          return this.lit((lexeme) => ast.string(lexeme));
+        case TOKEN.NULL:
+          return this.lit(() => ast.nil);
+        case TOKEN.COMPLEX:
+          throw new Error("complex unimplemented");
+        default:
+          this.panic();
+          return ast.nil;
+      }
     }
 
     private absoluteValue() {
       this.eat(TOKEN.VBAR, this.expected("|"));
       const expr = this.expression(PREC.NONE);
       this.eat(TOKEN.VBAR, this.expected("|"));
-      return ast.callExpr("abs", [expr], LibCore.getFunction("abs"));
+      return ast.callExpr("abs", [expr], corelib.getFunction("abs"));
     }
+
     private parend(): ASTNode {
       this.eat(TOKEN.LEFT_PAREN, this.expected("("));
       const expr = this.expression(PREC.NONE);
@@ -2095,9 +2105,9 @@ export namespace algom {
       throw new Error(message);
     }
 
-    private isVarName(name: string) {
-      return (!this.funcNames.has(name) && !LibCore.hasFunction(name)) ||
-        LibCore.hasNamedValue(name);
+    private isVariableName(name: string) {
+      return (!this.funcNames.has(name) && !corelib.hasFunction(name)) ||
+        corelib.hasNamedValue(name);
     }
 
     private id(): ASTNode {
@@ -2114,7 +2124,7 @@ export namespace algom {
     }
 
     private callexpr(node: Sym): ASTNode {
-      if (this.isVarName(node.value)) {
+      if (this.isVariableName(node.value)) {
         let rhs = this.parend();
         return ast.binex(node, "*", rhs);
       }
@@ -2127,7 +2137,7 @@ export namespace algom {
         } while (this.match([TOKEN.COMMA]));
         this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
       } else this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
-      return ast.callExpr(node.value, params, LibCore.getFunction(node.value));
+      return ast.callExpr(node.value, params, corelib.getFunction(node.value));
     }
 
     private array() {
@@ -2252,12 +2262,6 @@ export namespace algom {
       throw new Error(message);
     }
 
-    private consume() {
-      const token = this.token;
-      this.eat(token.type, `Expected ${this.token.typename}`);
-      return token;
-    }
-
     private eat(tokenType: TOKEN, message: string) {
       const token = this.token;
       if (token.type === TOKEN.EOF) {
@@ -2309,10 +2313,8 @@ export namespace algom {
       }
       return new TokenStream(out);
     }
-    static treeString<T extends Object>(
-      myObject: T,
-      callback?: (node: any) => void,
-    ) {
+
+    static treeString<T extends Object>(Obj: T, cbfn?: (node: any) => void) {
       const prefix = (key: keyof T, last: boolean) => {
         let str = last ? "└" : "├";
         if (key) str += "─ ";
@@ -2322,65 +2324,66 @@ export namespace algom {
       const getKeys = (obj: T) => {
         const keys: (keyof T)[] = [];
         for (const branch in obj) {
-          if (
-            !obj.hasOwnProperty(branch) || typeof (obj[branch]) === "function"
-          ) continue;
+          if (!hasProp(obj, branch) || is.func(obj[branch])) continue;
           keys.push(branch);
         }
         return keys;
       };
-
       const grow = (
         key: keyof T,
         root: any,
         last: boolean,
-        prevStates: ([T, boolean])[],
+        prevstack: ([T, boolean])[],
         cb: (str: string) => any,
       ) => {
-        callback && callback(root);
+        cbfn && cbfn(root);
         let line = "";
         let index = 0;
         let lastKey = false;
-        let circular = false;
-        let statesCopy = prevStates.slice(0);
-        if (statesCopy.push([root, last]) && prevStates.length > 0) {
-          prevStates.forEach(function (lastState, idx) {
+        let circ = false;
+        let stack = prevstack.slice(0);
+        if (stack.push([root, last]) && stack.length > 0) {
+          prevstack.forEach(function (lastState, idx) {
             if (idx > 0) line += (lastState[1] ? " " : "│") + "  ";
-            if (!circular && lastState[0] === root) circular = true;
+            if (!circ && lastState[0] === root) circ = true;
           });
           line += prefix(key, last) + key.toString();
-          if (typeof root !== "object") line += ": " + root;
-          circular && (line += " (circular ref.)");
+          if (!is.obj(root)) line += ": " + root;
+          circ && (line += " (circular ref.)");
           cb(line);
         }
-        if (!circular && typeof root === "object") {
+        if (!circ && is.obj(root)) {
           const keys = getKeys(root);
           keys.forEach((branch) => {
             lastKey = ++index === keys.length;
-            grow(branch, root[branch], lastKey, statesCopy, cb);
+            grow(branch, root[branch], lastKey, stack, cb);
           });
         }
       };
-
-      let outputTree = "";
-      const obj = Object.assign({}, myObject);
+      let output = "";
+      const obj = Object.assign({}, Obj);
       grow(
         "." as keyof T,
         obj,
         false,
         [],
-        (line: string) => (outputTree += line + "\n"),
+        (line: string) => (output += line + "\n"),
       );
-      return outputTree;
+      return output;
     }
+  }
+  export const parser = new Parser();
+  export function parse(input: string) {
+    return parser.parse(input);
+  }
+  export function valof(input: string) {
+    return parser.parse(input).eval();
   }
 }
 /* -------------------------------------------------------------------------- */
 /* § Live Testing                                                             */
 /* -------------------------------------------------------------------------- */
 
-const expr = `1 - |2 + 5|`;
-const parser = new algom.Parser;
-const result = parser.parse(expr);
-log(parser);
-log(result.ast);
+const expr = `4! + 2`;
+const res = algom.parse(expr).ast;
+log(res);
