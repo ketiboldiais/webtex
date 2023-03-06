@@ -1986,7 +1986,6 @@ export namespace algom {
     }
 
     private expression(minbp = PREC.NONE) {
-      if (minbp === PREC.APEX) return ast.nil;
       let lhs: ASTNode = ast.nil;
       switch (true) {
         case this.token.isAtomic:
@@ -2011,13 +2010,6 @@ export namespace algom {
         let rhs: ASTNode = ast.nil;
         if (op.isEOF) break;
         if (!op.isOperator) this.expectedOp();
-        if (op.isPrefix||op.isPostfix) {
-          if (op.bp < minbp) break;
-          this.advance();
-          rhs = this.expression(op.bp);
-          lhs = this.makeExpr(lhs, op.lexeme, rhs);
-          continue;
-        }
         if (op.bp < minbp) break;
         this.advance();
         rhs = this.expression(op.bp);
@@ -2384,6 +2376,6 @@ export namespace algom {
 /* § Live Testing                                                             */
 /* -------------------------------------------------------------------------- */
 
-const expr = `4! + 2`;
+const expr = `cos(0) + 4`;
 const res = algom.parse(expr).ast;
 log(res);
