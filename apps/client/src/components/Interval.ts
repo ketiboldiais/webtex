@@ -115,4 +115,4 @@ function I(x: number, y: number): Interval {
   return Object.assign(state, {});
 }
 
-const k = I(1, 2);
+export {}

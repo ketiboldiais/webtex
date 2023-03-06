@@ -1,63 +1,811 @@
-import {
-  Keyword,
-  keywords,
-  LEXEME,
-  NUM_TOKEN,
-  PREC,
-  TOKEN,
-  Token,
-  TokenStream,
-} from "./token.js";
+import { List } from "./structs/list.js";
 const { log } = console;
 
 export namespace algom {
+  export enum TOKEN {
+    EOF,
+    ERROR,
+    NIL,
+    COMMA,
+    QUERY,
+    LPAREN,
+    RPAREN,
+    LBRACKET,
+    RBRACKET,
+    LBRACE,
+    RBRACE,
+    DQUOTE,
+    SEMICOLON,
+    COLON,
+    /**
+     * Vertical bar is the absolute value delimiter.
+     */
+    VBAR,
+    /* -------------------------------------------------------------------------- */
+    /* § Operator Tokens                                                          */
+    /* -------------------------------------------------------------------------- */
+    /**
+     * Dot for function composition.
+     * ~~~
+     * f(x) := x^2
+     * g(x) := x + 1
+     * f.g(x) => f(g(x)) => (x + 1)^2
+     * ~~~
+     */
+    DOT,
+    /**
+     * Addition is left-associative.
+     * ~~~
+     * a + b + c => (a + b) + c
+     * ~~~
+     */
+    PLUS,
+    /**
+     * `++` maps to list concatenation (set union).
+     * Left-associative.
+     * ~~~
+     * A ++ B ++ C => (A ++ B) ++ C
+     * ~~~
+     * Example:
+     * ~~~
+     * [1,2] ++ [3,4] => [1,2,3,4]
+     * ~~~
+     */
+    PLUS_PLUS,
+    /**
+     * Single quote maps to the derivative.
+     * ~~~
+     * (x^2)' => (2x)' => 1
+     * (x^2)'' => 1
+     * ~~~
+     */
+    SQUOTE,
+    /**
+     * Subtraction is left-associative.
+     * ~~~
+     * a - b - c => (a - b) - c
+     * ~~~
+     */
+    MINUS,
+    /**
+     * Multiplication is left-associative.
+     * ~~~
+     * a * b * c => (a * b) * c
+     * ~~~
+     */
+    STAR,
+    /**
+     * Division is left-associative.
+     * ~~~
+     * a/b/c => (a/b)/c
+     * ~~~
+     */
+    SLASH,
+    /**
+     * The `%` operator returns the signed remainder.
+     * It is left-associative.
+     * ~~~
+     * a % b % c => (a % b) % c
+     * ~~~
+     */
+    PERCENT,
+    /**
+     * The `^` operator maps to exponentiation.
+     * It is right-associative.
+     * ~~~
+     * a^b^c => a^(b^c)
+     * ~~~
+     */
+    CARET,
+    /**
+     * The `!` operator maps to factorial.
+     * It is left-associative.
+     * ~~~
+     * a!! => (a!)!
+     * ~~~
+     */
+    BANG,
+    /**
+     * The `mod` operator maps to the
+     * modulus operator. It is left-associative.
+     *
+     * ~~~
+     * a mod b mod c => (a mod b) mod c
+     * ~~~
+     */
+    MOD,
+    /**
+     * The `//` operator maps to integer division.
+     * It is left-associative.
+     * ~~~
+     * a // b // c => (a // b) // c
+     * ~~~
+     */
+    DIV,
+    /**
+     * The `rem` operator maps to unsigned remainder.
+     * It is left-associative.
+     * ~~~
+     * a rem b rem c => (a rem b) rem c
+     * ~~~
+     */
+    REM,
+    /**
+     * The `to` operator maps to a conversion.
+     * It is left associative.
+     * 4in to m to cm => (4in to m) to cm
+     */
+    TO,
+    /**
+     * `==` maps to equivalence.
+     * This is a chain-associative.
+     * ~~~
+     * a == b == c => (a == b) && (b == c)
+     * ~~~
+     * Under the hood, this is simply a function
+     * call:
+     * ~~~
+     * a == b == c => allEquivalent(a,b,c)
+     * ~~~
+     */
+    DEQUAL,
+    /**
+     * `!=` maps to inequality.
+     * This is chain-associative.
+     * ~~~
+     * a != b != c => (a != b) && (b != c)
+     * ~~~
+     * Again, a function call:
+     * ~~~
+     * a != b != c => allNotEqual(a,b,c)
+     * ~~~
+     */
+    NEQ,
+    /**
+     * `<` maps to less than.
+     * Chain associative.
+     * ~~~
+     * a < b < c => (a < b) && (b < c)
+     * ~~~
+     */
+    LT,
+    /**
+     * `>` maps to greater than.
+     * Chain associative.
+     * ~~~
+     * a > b > c => (a > b) && (b > c)
+     * ~~~
+     */
+    GT,
+    /**
+     * `>=` maps to greater than or equal to.
+     * Chain associative.
+     * ~~~
+     * a >= b >= c => (a >= b) && (b >= c)
+     * ~~~
+     */
+    GTE,
+    /**
+     * `<=` maps to less than or equal to.
+     * Chain associative.
+     * ~~~
+     * a <= b <= c => (a <= b) && (b <= c)
+     * ~~~
+     */
+    LTE,
+    /**
+     * `=` maps to strict equality.
+     * Chain associative.
+     * ~~~
+     * a = b = c => (a = b) && (b = c)
+     * ~~~
+     */
+    EQUAL,
+    /**
+     * `~` maps to list removal (set minus).
+     * Left-associative.
+     * ~~~
+     * A ~ B ~ C => (A ~ B) ~ C
+     * ~~~
+     * Example:
+     * ~~~
+     * [1,2,3] ~ [1,2] => [3]
+     * ~~~
+     */
+    TILDE,
+    /**
+     * `:=` maps to assignment.
+     * Right-associative.
+     * ~~~
+     * a := b := c => a := (b := c)
+     * ~~~
+     */
+    ASSIGN,
+    /**
+     * `&` maps to set intersection.
+     * Left-associative.
+     * ~~~
+     * A & B & C => (A & B) & C
+     * ~~~
+     * Example:
+     * ~~~
+     * [1,2,8,9] & [2,4,1] => [1,2]
+     * ~~~
+     */
+    AMP,
+    /**
+     * `&` maps to append element.
+     * Left-associative.
+     * ~~~
+     * A << x << y => (A << x) << y
+     * ~~~
+     * Example:
+     * ~~~
+     * [1,2,3] << 4 => [1,2,3,4]
+     * ~~~
+     */
+    LSHIFT,
+    /**
+     * `>>` maps to prepend element.
+     * Left-associative.
+     * ~~~
+     * x >> y >> A => (x >> y) >> A
+     * ~~~
+     * Example:
+     * ~~~
+     * 1 >> 2 => [1,2]
+     * ~~~
+     */
+    RSHIFT,
+    /**
+     * `-` maps to arithmetic negation.
+     * Right-associative.
+     * ~~~
+     * --x => -(-x)
+     * ~~~
+     */
+    UNARY_MINUS,
+    /**
+     * 'in' maps to a check whether
+     * an element exists in a compound.
+     * Left-associative.
+     * ~~~
+     * x in A in B => (x in A) in B
+     * ~~~
+     * Example:
+     * ~~~
+     * 4 in [1,2,3,4] => 'true'
+     * ~~~
+     */
+    IN,
+
+    NOT,
+    NOR,
+    OR,
+    XOR,
+    XNOR,
+    AND,
+    NAND,
+    THROW,
+    ELSE,
+    FOR,
+    FUNCTION,
+    IF,
+    RETURN,
+    THIS,
+    WHILE,
+    DO,
+    LET,
+    CONST,
+    FALSE,
+    TRUE,
+    INF,
+    NAN,
+    NULL,
+    SYMBOL,
+    STRING,
+    INTEGER,
+    FRACTION,
+    FLOAT,
+    HEX,
+    BINARY,
+    OCTAL,
+    SCINUM,
+    COMPLEX,
+  }
+  export type NUM_TOKEN =
+    | TOKEN.INTEGER
+    | TOKEN.FLOAT
+    | TOKEN.FRACTION
+    | TOKEN.HEX
+    | TOKEN.BINARY
+    | TOKEN.OCTAL
+    | TOKEN.SCINUM
+    | TOKEN.COMPLEX;
+
+  export const keywords = {
+    [`and`]: TOKEN.AND,
+    [`nand`]: TOKEN.NAND,
+    [`throw`]: TOKEN.THROW,
+    [`else`]: TOKEN.ELSE,
+    [`for`]: TOKEN.FOR,
+    [`function`]: TOKEN.FUNCTION,
+    [`if`]: TOKEN.IF,
+    [`in`]: TOKEN.IN,
+    [`return`]: TOKEN.RETURN,
+    [`this`]: TOKEN.THIS,
+    [`while`]: TOKEN.WHILE,
+    [`do`]: TOKEN.DO,
+    [`Inf`]: TOKEN.INF,
+    [`mod`]: TOKEN.MOD,
+    [`nor`]: TOKEN.NOR,
+    [`NaN`]: TOKEN.NAN,
+    [`not`]: TOKEN.NOT,
+    [`null`]: TOKEN.NULL,
+    [`or`]: TOKEN.OR,
+    [`rem`]: TOKEN.REM,
+    [`to`]: TOKEN.TO,
+    [`true`]: TOKEN.TRUE,
+    [`false`]: TOKEN.FALSE,
+    [`xor`]: TOKEN.XOR,
+    [`xnor`]: TOKEN.XNOR,
+    [`let`]: TOKEN.LET,
+    [`const`]: TOKEN.CONST,
+  };
+  export type Keyword = keyof typeof keywords;
+  export type LEXEME = Lexeme | Keyword;
+
+  export interface Token {
+    type: TOKEN;
+    lexeme: string;
+    line: number;
+  }
+
+  export enum PREC {
+    /** For utility types. */
+    NON,
+
+    /** E.g., equality. */
+    LOW,
+
+    /** E.g., inequality. */
+    LMID,
+
+    /** E.g., Sums. */
+    MID,
+
+    /** E.g., Products. */
+    UMID,
+
+    /** E.g., Exponentiation and modulo. */
+    HIGH,
+
+    /** E.g., prefix operators. */
+    TOP,
+
+    /** E.g., postfix operators */
+    PEAK,
+
+    /** E.g., Postfix operators and function calls. */
+    APEX,
+  }
+
+  enum FIX {
+    NON,
+    CHAIN,
+    LEFT,
+    RIGHT,
+  }
+  enum KIND {
+    UTIL,
+    DELIM,
+    KEYWORD,
+    ILLEGAL,
+    PREFIX,
+    INFIX,
+    POSTFIX,
+    MIXFIX,
+    ATOMIC,
+  }
+
+  type Entry = {
+    kind: KIND;
+    prec: PREC;
+    fixity: FIX;
+  };
+
+  const TokenRecord: { [k in TOKEN]: Entry } = {
+    [TOKEN.EOF]: { kind: KIND.UTIL, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.ERROR]: { kind: KIND.UTIL, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.NIL]: { kind: KIND.UTIL, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.COMMA]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.QUERY]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.LPAREN]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.RPAREN]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.LBRACKET]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.RBRACKET]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.LBRACE]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.RBRACE]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.DQUOTE]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.SEMICOLON]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.COLON]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.VBAR]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.IN]: { kind: KIND.INFIX, prec: PREC.LMID, fixity: FIX.LEFT },
+    [TOKEN.SQUOTE]: { kind: KIND.POSTFIX, prec: PREC.PEAK, fixity: FIX.LEFT },
+    [TOKEN.DOT]: { kind: KIND.INFIX, prec: PREC.PEAK, fixity: FIX.RIGHT },
+    [TOKEN.MINUS]: { kind: KIND.INFIX, prec: PREC.MID, fixity: FIX.LEFT },
+    [TOKEN.PLUS]: { kind: KIND.INFIX, prec: PREC.MID, fixity: FIX.LEFT },
+    [TOKEN.STAR]: { kind: KIND.INFIX, prec: PREC.UMID, fixity: FIX.LEFT },
+    [TOKEN.SLASH]: { kind: KIND.INFIX, prec: PREC.UMID, fixity: FIX.LEFT },
+    [TOKEN.CARET]: { kind: KIND.INFIX, prec: PREC.HIGH, fixity: FIX.RIGHT },
+    [TOKEN.BANG]: { kind: KIND.POSTFIX, prec: PREC.PEAK, fixity: FIX.LEFT },
+    [TOKEN.PERCENT]: { kind: KIND.INFIX, prec: PREC.HIGH, fixity: FIX.NON },
+    [TOKEN.MOD]: { kind: KIND.INFIX, prec: PREC.HIGH, fixity: FIX.LEFT },
+    [TOKEN.DIV]: { kind: KIND.INFIX, prec: PREC.HIGH, fixity: FIX.LEFT },
+    [TOKEN.REM]: { kind: KIND.INFIX, prec: PREC.HIGH, fixity: FIX.LEFT },
+    [TOKEN.TO]: { kind: KIND.INFIX, prec: PREC.TOP, fixity: FIX.LEFT },
+    [TOKEN.DEQUAL]: { kind: KIND.INFIX, prec: PREC.LOW, fixity: FIX.CHAIN },
+    [TOKEN.EQUAL]: { kind: KIND.INFIX, prec: PREC.LOW, fixity: FIX.CHAIN },
+    [TOKEN.NEQ]: { kind: KIND.INFIX, prec: PREC.LOW, fixity: FIX.CHAIN },
+    [TOKEN.LT]: { kind: KIND.INFIX, prec: PREC.LOW, fixity: FIX.CHAIN },
+    [TOKEN.GT]: { kind: KIND.INFIX, prec: PREC.LOW, fixity: FIX.CHAIN },
+    [TOKEN.GTE]: { kind: KIND.INFIX, prec: PREC.LOW, fixity: FIX.CHAIN },
+    [TOKEN.LTE]: { kind: KIND.INFIX, prec: PREC.LOW, fixity: FIX.CHAIN },
+    [TOKEN.ASSIGN]: { kind: KIND.INFIX, prec: PREC.LOW, fixity: FIX.RIGHT },
+    [TOKEN.TILDE]: { kind: KIND.PREFIX, prec: PREC.MID, fixity: FIX.CHAIN },
+    [TOKEN.PLUS_PLUS]: { kind: KIND.INFIX, prec: PREC.MID, fixity: FIX.LEFT },
+    [TOKEN.AMP]: { kind: KIND.INFIX, prec: PREC.MID, fixity: FIX.LEFT },
+    [TOKEN.LSHIFT]: { kind: KIND.INFIX, prec: PREC.MID, fixity: FIX.LEFT },
+    [TOKEN.RSHIFT]: { kind: KIND.INFIX, prec: PREC.MID, fixity: FIX.LEFT },
+    [TOKEN.UNARY_MINUS]: {
+      kind: KIND.PREFIX,
+      prec: PREC.TOP,
+      fixity: FIX.RIGHT,
+    },
+    /**
+     * `-` maps to logical negation.
+     * Right-associative.
+     * ~~~
+     * not not x => not(not x)
+     * ~~~
+     */
+    [TOKEN.NOT]: {
+      kind: KIND.PREFIX,
+      prec: PREC.TOP,
+      fixity: FIX.RIGHT,
+    },
+    /**
+     * `or` maps to logical or.
+     * left-associative.
+     * ~~~
+     * a or b or c => (a or b) or c
+     * ~~~
+     */
+    [TOKEN.OR]: {
+      kind: KIND.INFIX,
+      prec: PREC.LOW,
+      fixity: FIX.LEFT,
+    },
+    /**
+     * `nor` maps to logical nor.
+     * left-associative.
+     * ~~~
+     * a nor b nor c => (a nor b) nor c
+     * ~~~
+     */
+    [TOKEN.NOR]: {
+      kind: KIND.INFIX,
+      prec: PREC.LMID,
+      fixity: FIX.LEFT,
+    },
+    /**
+     * `xor` maps to logical xor.
+     * left-associative.
+     * ~~~
+     * a xor b xor c => (a xor b) xor c
+     * ~~~
+     */
+    [TOKEN.XOR]: {
+      kind: KIND.INFIX,
+      prec: PREC.MID,
+      fixity: FIX.LEFT,
+    },
+    /**
+     * `xnor` maps to logical xnor.
+     * left-associative.
+     * ~~~
+     * a xnor b xnor c => (a xnor b) xnor c
+     * ~~~
+     */
+    [TOKEN.XNOR]: {
+      kind: KIND.INFIX,
+      prec: PREC.UMID,
+      fixity: FIX.LEFT,
+    },
+    /**
+     * `and` maps to logical and.
+     * left-associative.
+     * ~~~
+     * a and b and c => (a and b) and c
+     * ~~~
+     */
+    [TOKEN.AND]: {
+      kind: KIND.INFIX,
+      prec: PREC.HIGH,
+      fixity: FIX.NON,
+    },
+    /**
+     * `nand` maps to logical nand.
+     * left-associative.
+     * ~~~
+     * a nand b nand c => (a nand b) nand c
+     * ~~~
+     */
+    [TOKEN.NAND]: {
+      kind: KIND.UTIL,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+
+    /**
+     * The following are keywords.
+     * If the token class is `illegal`,
+     * then the keyword is either disallowed
+     * in the language or unimplemented.
+     */
+    [TOKEN.THROW]: {
+      kind: KIND.ILLEGAL,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+    [TOKEN.ELSE]: {
+      kind: KIND.KEYWORD,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+    [TOKEN.FOR]: {
+      kind: KIND.ILLEGAL,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+    [TOKEN.FUNCTION]: {
+      kind: KIND.ILLEGAL,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+    [TOKEN.IF]: {
+      kind: KIND.KEYWORD,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+    [TOKEN.RETURN]: {
+      kind: KIND.ILLEGAL,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+    [TOKEN.THIS]: {
+      kind: KIND.ILLEGAL,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+    [TOKEN.WHILE]: {
+      kind: KIND.ILLEGAL,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+    [TOKEN.DO]: {
+      kind: KIND.ILLEGAL,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+    [TOKEN.LET]: {
+      kind: KIND.KEYWORD,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+    [TOKEN.CONST]: {
+      kind: KIND.ILLEGAL,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+
+    /**
+     * The following are atomic values.
+     */
+    [TOKEN.FALSE]: {
+      kind: KIND.ATOMIC,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+    [TOKEN.TRUE]: {
+      kind: KIND.ATOMIC,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+    [TOKEN.INF]: {
+      kind: KIND.ATOMIC,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+    [TOKEN.NAN]: {
+      kind: KIND.ATOMIC,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+    [TOKEN.NULL]: {
+      kind: KIND.ATOMIC,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+    [TOKEN.SYMBOL]: {
+      kind: KIND.ATOMIC,
+      prec: PREC.NON,
+      fixity: FIX.NON,
+    },
+    [TOKEN.STRING]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.INTEGER]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.FRACTION]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.FLOAT]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.HEX]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.BINARY]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.OCTAL]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.SCINUM]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.COMPLEX]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
+  };
+
+  const numerics: { [key in NUM_TOKEN]: boolean } = {
+    [TOKEN.INTEGER]: true,
+    [TOKEN.FRACTION]: true,
+    [TOKEN.FLOAT]: true,
+    [TOKEN.HEX]: true,
+    [TOKEN.BINARY]: true,
+    [TOKEN.OCTAL]: true,
+    [TOKEN.SCINUM]: true,
+    [TOKEN.COMPLEX]: true,
+  } as const;
+
+  export class Token {
+    constructor(type: TOKEN, lexeme: string, line: number) {
+      this.type = type;
+      this.lexeme = lexeme;
+      this.line = line;
+    }
+    get isSemicolon() {
+      return this.type === TOKEN.SEMICOLON;
+    }
+    get typename() {
+      return TOKEN[this.type].replace("_", "-").toLowerCase();
+    }
+    get isNumber() {
+      return numerics[this.type as NUM_TOKEN] !== undefined;
+    }
+    get isIllegal() {
+      return TokenRecord[this.type].kind === KIND.ILLEGAL;
+    }
+    get isPrefix() {
+      return TokenRecord[this.type].kind === KIND.PREFIX;
+    }
+    get isPostfix() {
+      return TokenRecord[this.type].kind === KIND.POSTFIX;
+    }
+    get isInfix() {
+      return TokenRecord[this.type].kind === KIND.INFIX;
+    }
+    get isMixfix() {
+      return TokenRecord[this.type].kind === KIND.MIXFIX;
+    }
+    get isAtomic() {
+      return TokenRecord[this.type].kind === KIND.ATOMIC;
+    }
+    get isOperable() {
+      return !this.isEOF && !this.isSemicolon && !this.isDelimiter;
+    }
+    get isOperator() {
+      return this.isInfix ||
+        this.isPostfix ||
+        this.isPrefix ||
+        this.isMixfix;
+    }
+    get isChainAssociative() {
+      return TokenRecord[this.type].fixity === FIX.CHAIN;
+    }
+    get isDelimiter() {
+      return TokenRecord[this.type].kind === KIND.DELIM;
+    }
+    get isEOF() {
+      return this.type === TOKEN.EOF;
+    }
+    isDelim(lexeme: "(" | ")" | "|" | "[" | "]" | "{" | "}") {
+      return this.isDelimiter && this.lexeme === lexeme;
+    }
+    get bp() {
+      return TokenRecord[this.type].prec;
+    }
+    /**
+     * Returns true if this token
+     * strictly does not precede ('<')
+     * the other token.
+     */
+    doesNotPrecede(otherToken: Token) {
+      return (TokenRecord[this.type].prec <
+        TokenRecord[otherToken.type].prec);
+    }
+    get isVbar() {
+      return this.type === TOKEN.VBAR;
+    }
+    get isRightBrace() {
+      return this.type === TOKEN.RBRACE;
+    }
+    get isLeftBrace() {
+      return this.type === TOKEN.LBRACE;
+    }
+    get isLeftParen() {
+      return this.type === TOKEN.LPAREN;
+    }
+    get isRightParen() {
+      return this.type === TOKEN.RPAREN;
+    }
+    get isLeftBracket() {
+      return this.type === TOKEN.LBRACKET;
+    }
+    get isRightBracket() {
+      return this.type === TOKEN.RBRACKET;
+    }
+    get isSymbol() {
+      return this.type === TOKEN.SYMBOL;
+    }
+    static nil = new Token(TOKEN.NIL, "", -1);
+    toString(linePad = 0, lexPad = 2, typePad = 0) {
+      const lex = `${this.lexeme}`.padEnd(lexPad);
+      const line = `${this.line}`.padEnd(linePad);
+      const type = `${this.typename}`.padEnd(typePad);
+      return `(${line})[ ${lex}][${type}]`;
+    }
+  }
+
+  export class TokenStream {
+    tokens: Token[];
+    length: number;
+    constructor(tokens: Token[]) {
+      this.tokens = tokens;
+      this.length = tokens.length;
+    }
+    toString() {
+      let str = "";
+      for (let i = 0; i < this.length; i++) {
+        str += this.tokens[i].toString() + `\n`;
+      }
+      return str;
+    }
+  }
+
   const hasProp = (obj: Object, p: string) => obj.hasOwnProperty(p);
+  function mergeTuples(a: Tuple | ASTNode, b: Tuple | ASTNode) {
+    let L: List<ASTNode> = new List();
+    switch (true) {
+      case (a.isTuple() && b.isTuple()):
+        L = (a as Tuple).value.concat((b as Tuple).value);
+        break;
+      case (a.isTuple() && !b.isTuple()):
+        L = (a as Tuple).value.push(b);
+        break;
+      case (!a.isTuple() && b.isTuple()):
+        L = (b as Tuple).value.push(a);
+        break;
+      case (!a.isTuple() && !b.isTuple()):
+        L = List.of(a, b);
+        break;
+    }
+    return Tuple.of(L);
+  }
   export const match = {
-    /**
-     * Returns true if the string is an integer:
-     * ~~~
-     * {..., -1, -2, 0, 1, 2, ...}
-     * ~~~
-     */
     int: (s: string) => /^-?(0|[1-9]\d*)(?<!-0)$/.test(s),
-    /**
-     * Returns true if the string is a floating point number.
-     * ~~~
-     * {..., -1.21, -2.8, 0.02, 1.0, 2.008, ...}
-     * ~~~
-     */
     float: (s: string) => /^(?!-0(\.0+)?$)-?(0|[1-9]\d*)(\.\d+)?$/.test(s),
-    /**
-     * Returns true if the string is an unsigned integer.
-     * ~~~
-     * {0, 1, 2, 3, 4, ...}
-     * ~~~
-     */
     uInt: (s: string) => /^(0|[1-9]\d*)$/.test(s),
-    /**
-     * Returns true if the string is an unsigned float.
-     * ~~~
-     * {0.001, 1.5, 2.91, 3.3, 4.0192, ...}
-     * ~~~
-     */
     uFloat: (s: string) => /^(0|[1-9]\d*)(\.\d+)?$/.test(s),
-    /**
-     * Returns true if the string is a scientific number
-     * of integers.
-     * ~~~
-     * {..., -1e5, 2e3, 8e10, ...}
-     * ~~~
-     */
-    iSci: (s: string) => /^(?!-0)-?(0|[1-9]\d*)(e-?(0|[1-9]\d*))?$/i.test(s),
-    /**
-     * Returns true if the string is a scientific number
-     * of floats.
-     * ~~~
-     * {..., -1.4e5.17, 2.1e3.0, 8.93e1.42, ...}
-     * ~~~
-     */
-    fSci: (s: string) =>
-      /^(?!-0(\.0+)?(e|$))-?(0|[1-9]\d*)(\.\d+)?(e-?(0|[1-9]\d*))?$/i.test(s),
+    scinum: (s: string) =>
+      /^(?!-0?(\.0+)?(e|$))-?(0|[1-9]\d*)?(\.\d+)?(?<=\d)(e[-+]?(0|[1-9]\d*))?$/i
+        .test(s),
     hex: (s: string) => /^0x[0-9a-f]+$/i.test(s),
     binary: (s: string) => /^0b[0-1]+$/i.test(s),
     octal: (s: string) => /^0o[0-8]+$/i.test(s),
@@ -122,16 +870,10 @@ export namespace algom {
       case match.float(n):
         n = floor(toFloat(n));
         return new Int(n);
-      case match.iSci(n): {
+      case match.scinum(n): {
         const [a, b] = split(n, "e");
-        const x = toInt(a);
-        const y = toInt(b);
-        return new Int(x ** y);
-      }
-      case match.fSci(n): {
-        const [a, b] = split(n, "e");
-        const x = floor(toFloat(a));
-        const y = floor(toFloat(b));
+        const x = Number(a);
+        const y = Number(b);
         return new Int(x ** y);
       }
       case match.frac(n): {
@@ -192,7 +934,6 @@ export namespace algom {
     block(n: Block): T;
     vector(n: Vector): T;
     matrix(n: Matrix): T;
-    exp(n: Exp): T;
     unaryExpr(n: UnaryExpr): T;
     callExpr(n: CallExpr): T;
     binaryExpr(n: BinaryExpr): T;
@@ -259,7 +1000,7 @@ export namespace algom {
     }
   }
   /* -------------------------------------------------------------------------- */
-  /* § ASTNode: Root                                                            */
+  /* § Root Node                                                                */
   /* -------------------------------------------------------------------------- */
   class Root extends ASTNode {
     root: ASTNode[];
@@ -269,20 +1010,6 @@ export namespace algom {
     }
     accept<T>(n: Visitor<T>): T {
       return n.root(this);
-    }
-  }
-
-  /* -------------------------------------------------------------------------- */
-  /* § ASTNode: Exp                                                             */
-  /* -------------------------------------------------------------------------- */
-  class Exp extends ASTNode {
-    value: ASTNode;
-    constructor(value: ASTNode) {
-      super(NODE.ALGEBRAIC_EXPRESSION);
-      this.value = value;
-    }
-    accept<T>(n: Visitor<T>): T {
-      return n.exp(this);
     }
   }
   /* -------------------------------------------------------------------------- */
@@ -317,10 +1044,13 @@ export namespace algom {
   /* § ASTNode: Tuple                                                           */
   /* -------------------------------------------------------------------------- */
   class Tuple extends ASTNode {
-    elements: ASTNode[];
-    constructor(elements: ASTNode[]) {
+    value: List<ASTNode>;
+    constructor(elements: List<ASTNode>) {
       super(NODE.TUPLE);
-      this.elements = elements;
+      this.value = elements;
+    }
+    static of(list: List<ASTNode>) {
+      return new Tuple(list);
     }
     accept<T>(n: Visitor<T>): T {
       return n.tuple(this);
@@ -851,9 +1581,6 @@ export namespace algom {
     static int(v: string, base = 10) {
       return new Num(algom.toInt(v, base).toString(), NUM.INT);
     }
-    static exp(v: ASTNode) {
-      return new Exp(v);
-    }
     static TRUE = new Num(1, NUM.INT);
     static FALSE = new Num(0, NUM.INT);
     static float(v: string) {
@@ -906,7 +1633,7 @@ export namespace algom {
     static unex(op: string, arg: ASTNode) {
       return new UnaryExpr(op, arg);
     }
-    static tuple(elements: ASTNode[]) {
+    static tuple(elements: List<ASTNode>) {
       return new Tuple(elements);
     }
     static block(elements: ASTNode[]) {
@@ -946,9 +1673,6 @@ export namespace algom {
       const alternate: string = "\t" + " else " + this.toPrefix(n.alternate);
       return `(cond ${test} ${consequent} ${alternate})`;
     }
-    exp(n: Exp): string {
-      return `(${n.value})`;
-    }
     assign(n: Assignment): string {
       const name = n.name;
       const value = this.toPrefix(n.value);
@@ -967,7 +1691,7 @@ export namespace algom {
       return n.value;
     }
     tuple(n: Tuple): string {
-      return this.stringify(n.elements);
+      return this.stringify(n.value.array);
     }
     block(n: Block): string {
       let result = "(";
@@ -1044,9 +1768,6 @@ export namespace algom {
       const alternate: string = this.toString(n.alternate);
       return `if (${test}) {${consequent}} else {${alternate}}`;
     }
-    exp(n: Exp): string {
-      return this.toString(n.value);
-    }
     assign(n: Assignment): string {
       const name = n.name;
       const value = this.toString(n.value);
@@ -1065,7 +1786,7 @@ export namespace algom {
       return n.value;
     }
     tuple(n: Tuple): string {
-      return this.stringify(n.elements, ", ", ["(", ")"]);
+      return this.stringify(n.value.array);
     }
     block(n: Block): string {
       let result = "";
@@ -1164,12 +1885,6 @@ export namespace algom {
       return n.accept(this.str);
     }
     /* -------------------------------------------------------------------------- */
-    /* § Interpret Algebraic Expression                                           */
-    /* -------------------------------------------------------------------------- */
-    exp(n: Exp): ASTNode {
-      return ast.string(this.stringify(n));
-    }
-    /* -------------------------------------------------------------------------- */
     /* § Interpret Call Expression                                                */
     /* -------------------------------------------------------------------------- */
     callExpr(node: CallExpr): ASTNode {
@@ -1232,7 +1947,7 @@ export namespace algom {
     /* -------------------------------------------------------------------------- */
     sym(node: Sym): ASTNode {
       const v = this.environment.lookup(node.value);
-      if (v === null) return node;
+      if (v.isNull()) return ast.string(node.value);
       return v;
     }
     /* -------------------------------------------------------------------------- */
@@ -1257,7 +1972,7 @@ export namespace algom {
     /* § Interpret Tuple                                                          */
     /* -------------------------------------------------------------------------- */
     tuple(n: Tuple): ASTNode {
-      return n;
+      return Tuple.of(n.value.map((v) => this.evaluate(v)));
     }
     /* -------------------------------------------------------------------------- */
     /* § Interpret Block                                                          */
@@ -1299,6 +2014,13 @@ export namespace algom {
     binaryExpr(n: BinaryExpr): ASTNode {
       const left = this.evaluate(n.left);
       const right = this.evaluate(n.right);
+      const op = n.op;
+      if ((left.isTuple() || right.isTuple())) {
+        switch (op) {
+          case "++":
+            return mergeTuples(left, right);
+        }
+      }
       if (left.isMatrix() && right.isMatrix()) {
         switch (n.op) {
           case "+":
@@ -1383,8 +2105,7 @@ export namespace algom {
     source: string;
     start: number;
     current: number;
-    previousToken: Token;
-    currentToken: Token;
+    prevToken: Token;
     end: number;
     line: number;
     numtype: NUM_TOKEN;
@@ -1395,8 +2116,7 @@ export namespace algom {
       this.start = 0;
       this.current = 0;
       this.end = source.length;
-      this.previousToken = Token.nil;
-      this.currentToken = Token.nil;
+      this.prevToken = Token.nil;
       this.line = 1;
       return this;
     }
@@ -1408,11 +2128,10 @@ export namespace algom {
       return new Token(TOKEN.ERROR, message, this.line);
     }
     private token(type: TOKEN, lex?: string) {
-      this.previousToken = this.currentToken;
       const lexeme = lex ?? this.source.substring(this.start, this.current);
       const line = this.line;
       const out = new Token(type, lexeme, line);
-      this.currentToken = out;
+      this.prevToken = out;
       return out;
     }
     private get peek(): LEXEME {
@@ -1460,35 +2179,35 @@ export namespace algom {
         case `,`:
           return this.token(TOKEN.COMMA);
         case `(`:
-          return this.token(TOKEN.LEFT_PAREN);
+          return this.token(TOKEN.LPAREN);
         case `)`:
-          return this.token(TOKEN.RIGHT_PAREN);
+          return this.token(TOKEN.RPAREN);
         case `[`:
-          return this.token(TOKEN.LEFT_BRACKET);
+          return this.token(TOKEN.LBRACKET);
         case `]`:
-          return this.token(TOKEN.RIGHT_BRACKET);
+          return this.token(TOKEN.RBRACKET);
         case `{`:
-          return this.token(TOKEN.LEFT_BRACE);
+          return this.token(TOKEN.LBRACE);
         case `}`:
-          return this.token(TOKEN.RIGHT_BRACE);
+          return this.token(TOKEN.RBRACE);
         case `'`:
-          return this.token(TOKEN.SINGLE_QUOTE);
+          return this.token(TOKEN.SQUOTE);
         case `;`:
           return this.token(TOKEN.SEMICOLON);
         case `+`:
-          return this.token(TOKEN.PLUS);
+          return this.token(this.match("+") ? TOKEN.PLUS_PLUS : TOKEN.PLUS);
         case "-":
-          if (this.isDigit(this.peek)) {
+          if (this.isDigit(this.peek) && !this.prevToken.isNumber) {
             this.advance();
             this.numtype = TOKEN.INTEGER;
             return this.number();
           }
-          if (this.previousToken.isNumber || this.previousToken.isSymbol) {
+          if (this.prevToken.isNumber || this.prevToken.isSymbol) {
             return this.token(TOKEN.MINUS);
           }
           return this.token(TOKEN.UNARY_MINUS);
         case "?":
-          return this.token(TOKEN.EROTEME);
+          return this.token(TOKEN.QUERY);
         case ":":
           return this.token(this.match("=") ? TOKEN.ASSIGN : TOKEN.COLON);
         case "&":
@@ -1661,7 +2380,7 @@ export namespace algom {
         this.values.set(name, value);
       }
       if (this.parent === undefined) {
-        this.throwError(`Cannot assign to nonexistent variable ${name}.`);
+        this.assign(name, ast.nil);
       }
       this.parent!.assign(name, value);
     }
@@ -1891,7 +2610,7 @@ export namespace algom {
           return this.conditional();
         case this.match([TOKEN.LET]):
           return this.variableDeclaration();
-        case this.match([TOKEN.LEFT_BRACE]):
+        case this.match([TOKEN.LBRACE]):
           return this.block();
         default:
           return this.exprStmt();
@@ -1904,9 +2623,12 @@ export namespace algom {
     }
 
     private conditional() {
-      this.eat(TOKEN.LEFT_PAREN, this.expected("("));
+      const parser = "[conditional]: ";
+      const err1 = parser + "Expected ‘(’";
+      const err2 = parser + "Expected ‘)’";
+      this.eat(TOKEN.LPAREN, err1);
       const test = this.expression();
-      this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
+      this.eat(TOKEN.RPAREN, err2);
       const consequent: ASTNode = this.stmnt();
       const alternate: ASTNode = this.match([TOKEN.ELSE])
         ? this.stmnt()
@@ -1915,49 +2637,54 @@ export namespace algom {
     }
 
     private block() {
+      const parser = "[block]: ";
+      const err = parser + "Expected ‘}’ to close block.";
       const statements: ASTNode[] = [];
-      while (!this.check(TOKEN.RIGHT_BRACE) && !this.token.isEOF) {
+      while (!this.check(TOKEN.RBRACE) && !this.token.isEOF) {
         statements.push(this.stmnt());
       }
-      this.eat(TOKEN.RIGHT_BRACE, this.expected("}"));
+      this.eat(TOKEN.RBRACE, err);
       return ast.block(statements);
     }
 
     private variableDeclaration() {
-      const name = this.eat(
-        TOKEN.SYMBOL,
-        this.expected("variable-name"),
-      );
+      const parser = "[variable-declaration]: ";
+      const err1 = parser + "Expected variable name";
+      const name = this.eat(TOKEN.SYMBOL, err1);
       let init: ASTNode = ast.nil;
-      if (this.match([TOKEN.LEFT_PAREN])) {
+      if (this.match([TOKEN.LPAREN])) {
         return this.functionDeclaration(name);
       }
-      if (this.match([TOKEN.ASSIGN])) init = this.expression();
-      this.eat(TOKEN.SEMICOLON, this.expected(";"));
+      if (this.match([TOKEN.ASSIGN])) init = this.exprStmt();
       return ast.varDeclaration(name, init);
     }
 
     private functionDeclaration(name: string) {
       this.funcNames.add(name);
       let params: Sym[] = [];
-      if (!this.check(TOKEN.RIGHT_PAREN)) {
+      const parser = "[function-declaration]: ";
+      const err1 = parser + "Expected name";
+      const err2 = parser + "Expected ‘)’";
+      if (!this.check(TOKEN.RPAREN)) {
         do {
-          const n = this.eat(TOKEN.SYMBOL, "Expected symbol.");
+          const n = this.eat(TOKEN.SYMBOL, err1);
           params.push(ast.symbol(n, SYMBOL.VARIABLE));
         } while (this.match([TOKEN.COMMA]));
-        this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
-      } else this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
-      this.eat(TOKEN.ASSIGN, this.expected(":="));
-      const body: ASTNode = this.match([TOKEN.LEFT_BRACE])
-        ? this.stmnt()
-        : this.exprStmt();
+        this.eat(TOKEN.RPAREN, err2);
+      } else this.eat(TOKEN.RPAREN, err2);
+      const err3 = parser + "Expected assignment operator ‘:=’";
+      this.eat(TOKEN.ASSIGN, err3);
+      const body: ASTNode = this.stmnt();
       return ast.funDeclaration(name, params, body);
     }
 
     private exprStmt() {
       const expr = this.expression();
-      (this.source[this.idx]) &&
-        this.eat(TOKEN.SEMICOLON, this.expected(";"));
+      if (!this.lastToken.isSemicolon && !this.lastToken.isRightBrace) {
+        const parser = "[expression-statement]: ";
+        const err1 = parser + "Expected ‘;’ to end statement";
+        this.source[this.idx] && this.eat(TOKEN.SEMICOLON, err1);
+      }
       return expr;
     }
 
@@ -1985,18 +2712,21 @@ export namespace algom {
       return newnode;
     }
 
-    private expression(minbp = PREC.NONE) {
+    private expression(minbp = PREC.NON) {
       let lhs: ASTNode = ast.nil;
       switch (true) {
-        // case this.token.isAtomic:
-          // lhs = this.literal();
-          // break;
+        case this.token.isAtomic:
+          lhs = this.literal();
+          break;
         case this.token.isLeftParen:
           lhs = this.parend();
           if (this.token.isLeftParen && !this.lastNode.isCallExpr()) {
             const rhs = this.parend();
             lhs = ast.binex(lhs, "*", rhs);
           }
+          break;
+        case this.token.isLeftBrace:
+          lhs = this.block();
           break;
         case this.token.isLeftBracket:
           lhs = this.array();
@@ -2007,8 +2737,6 @@ export namespace algom {
       }
       while (this.token.isOperable) {
         if (this.token.type === TOKEN.EOF) break;
-        if (this.token.isAtomic) lhs = this.literal()
-        // if (!this.token.isOperator) this.expectedOp();
         const op = this.token;
         if (op.bp < minbp) break;
         this.advance();
@@ -2065,36 +2793,37 @@ export namespace algom {
         case TOKEN.COMPLEX:
           throw new Error("complex unimplemented");
         default:
-          // this.panic();
           return ast.nil;
       }
     }
 
     private absoluteValue() {
-      this.eat(TOKEN.VBAR, this.expected("|"));
-      const expr = this.expression(PREC.NONE);
-      this.eat(TOKEN.VBAR, this.expected("|"));
+      const parser = "[absolute-value]: ";
+      const err = parser + "Expected ‘|’";
+      this.eat(TOKEN.VBAR, err);
+      const expr = this.expression(PREC.NON);
+      this.eat(TOKEN.VBAR, err);
       return ast.callExpr("abs", [expr], corelib.getFunction("abs"));
     }
 
     private parend(): ASTNode {
-      this.eat(TOKEN.LEFT_PAREN, this.expected("("));
-      const expr = this.expression(PREC.NONE);
+      const parser = "[parenthesized-expression]: ";
+      const err1 = parser + "Expected ‘(’";
+      const err2 = parser + "Expected ‘)’";
+      this.eat(TOKEN.LPAREN, err1);
+      const expr = this.expression(PREC.NON);
+      let elements = List.of(expr);
       if (this.match([TOKEN.COMMA])) {
-        let elements = [expr];
         do {
           elements.push(this.expression());
         } while (this.match([TOKEN.COMMA]));
-        this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
+        this.eat(TOKEN.RPAREN, err2);
         return ast.tuple(elements);
-      } else this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
+      } else this.eat(TOKEN.RPAREN, err2);
+      if (this.scanner.prevToken.type === TOKEN.PLUS_PLUS) {
+        return ast.tuple(elements);
+      }
       return expr;
-    }
-
-    private expectedOp() {
-      const lexeme = this.token.lexeme;
-      const message = `Expected operator, got [${lexeme}]`;
-      throw new Error(message);
     }
 
     private isVariableName(name: string) {
@@ -2103,9 +2832,11 @@ export namespace algom {
     }
 
     private id(): ASTNode {
-      const name = this.eat(TOKEN.SYMBOL, this.expected("id"));
+      const parser = "[identifier]: ";
+      const err = parser + "Expected valid identifier";
+      const name = this.eat(TOKEN.SYMBOL, err);
       let node = ast.symbol(name, SYMBOL.VARIABLE);
-      if (this.check(TOKEN.LEFT_PAREN)) {
+      if (this.check(TOKEN.LPAREN)) {
         return this.callexpr(node);
       }
       if (this.match([TOKEN.ASSIGN])) {
@@ -2116,26 +2847,31 @@ export namespace algom {
     }
 
     private callexpr(node: Sym): ASTNode {
+      const parser = "[call-expression]: ";
+      const err1 = parser + "Expected ‘(’";
+      const err2 = parser + "Expected ‘)’";
       if (this.isVariableName(node.value)) {
         let rhs = this.parend();
         return ast.binex(node, "*", rhs);
       }
-      this.eat(TOKEN.LEFT_PAREN, this.expected("("));
+      this.eat(TOKEN.LPAREN, err1);
       let params: ASTNode[] = [];
-      if (!this.check(TOKEN.RIGHT_PAREN)) {
+      if (!this.check(TOKEN.RPAREN)) {
         do {
           let param = this.expression();
           params.push(param);
         } while (this.match([TOKEN.COMMA]));
-        this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
-      } else this.eat(TOKEN.RIGHT_PAREN, this.expected(")"));
+        this.eat(TOKEN.RPAREN, err2);
+      } else this.eat(TOKEN.RPAREN, err2);
       return ast.callExpr(node.value, params, corelib.getFunction(node.value));
     }
 
     private array() {
       let builder: "matrix" | "vector" = "vector";
       let elements: ASTNode[] = [];
-      this.eat(TOKEN.LEFT_BRACKET, this.expected("["));
+      const parser = "[array]: ";
+      const err1 = parser + "Expected ‘[’";
+      this.eat(TOKEN.LBRACKET, err1);
       let element = this.expression();
       let rows = 0;
       let cols = 0;
@@ -2145,19 +2881,22 @@ export namespace algom {
         builder = "matrix";
       }
       elements.push(element);
+      const err3 = parser + "Matrices must only have vector elements.";
+      const err4 = parser + "No jagged arrays permitted";
       while (this.match([TOKEN.COMMA])) {
         let expr = this.expression();
         if (builder === "matrix" && (!expr.isVector())) {
-          throw new Error("Matrices must only have vector elements.");
+          throw new Error(err3);
         }
         if (expr instanceof Vector) {
           builder = "matrix";
           rows += 1;
-          if (cols !== expr.len) this.croak("No jagged arrays permitted");
+          if (cols !== expr.len) this.croak(err4);
         }
         elements.push(expr);
       }
-      this.eat(TOKEN.RIGHT_BRACKET, this.expected("]"));
+      const err2 = parser + "Expected ‘]’";
+      this.eat(TOKEN.RBRACKET, err2);
       return builder === "matrix"
         ? ast.matrix(elements as Vector[], rows, cols)
         : ast.vector(elements);
@@ -2174,10 +2913,6 @@ export namespace algom {
       throw new Error(message);
     }
 
-    /** Returns an expected error string. */
-    private expected(s: string) {
-      return `Expected ${s}`;
-    }
     /**
      * Special handling for scientific numbers.
      * To simplify the type system, we convert
@@ -2235,6 +2970,7 @@ export namespace algom {
       }
       return Parser.treeString(this.result, (node) => {
         if (node instanceof ASTNode) node.kind = node.nkind as any;
+        if (node instanceof Tuple) node.value = node.value.array as any;
       });
     }
 
@@ -2368,7 +3104,7 @@ export namespace algom {
   export function parse(input: string) {
     return parser.parse(input);
   }
-  export function valof(input: string) {
+  export function val(input: string) {
     return parser.parse(input).eval();
   }
 }
@@ -2376,6 +3112,6 @@ export namespace algom {
 /* § Live Testing                                                             */
 /* -------------------------------------------------------------------------- */
 
-const expr = `(3 * 4) + (1 - 8)`;
-const res = algom.parse(expr).ast;
+const expr = `(1/2) ++ (2) ++ (1^2, 2^2, 3^2, 4^2)`;
+const res = algom.val(expr);
 log(res);

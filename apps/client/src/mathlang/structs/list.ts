@@ -10,8 +10,8 @@ class ListNode<t> {
   }
 }
 export class List<t> {
-  #head: ListNode<t> | null = null;
-  #tail: ListNode<t> | null = null;
+  _head: ListNode<t> | null = null;
+  _tail: ListNode<t> | null = null;
   #length: number = 0;
   constructor() {}
   #rem(a: number, b: number) {
@@ -23,9 +23,9 @@ export class List<t> {
     fn: (node: ListNode<t>, index: number) => void,
     stop = this.#length,
   ) {
-    if (this.#head === null || this.#tail === null) return null;
+    if (this._head === null || this._tail === null) return null;
     let i = 0;
-    let current = this.#head;
+    let current = this._head;
     while (i < stop) {
       fn(current, i);
       current = current.next!;
@@ -48,10 +48,10 @@ export class List<t> {
   }
 
   get first() {
-    return this.#head === null ? null : this.#head.value;
+    return this._head === null ? null : this._head.value;
   }
   get last() {
-    return this.#tail === null ? null : this.#tail.value;
+    return this._tail === null ? null : this._tail.value;
   }
   get length() {
     return this.#length;
@@ -78,16 +78,16 @@ export class List<t> {
     return out;
   }
   popFirst() {
-    if (this.#head === null) {
+    if (this._head === null) {
       return null;
     }
-    const oldhead = this.#head;
+    const oldhead = this._head;
     if (this.#length === 1) {
-      this.#head = null;
-      this.#tail = null;
+      this._head = null;
+      this._tail = null;
     } else {
-      this.#head = oldhead.next;
-      this.#head!.prev = null;
+      this._head = oldhead.next;
+      this._head!.prev = null;
       oldhead.next = null;
     }
     this.#length--;
@@ -145,13 +145,13 @@ export class List<t> {
   }
   prefix(value: t) {
     const newnode = ListNode.of(value);
-    if (this.#head === null) {
-      this.#head = newnode;
-      this.#tail = newnode;
+    if (this._head === null) {
+      this._head = newnode;
+      this._tail = newnode;
     } else {
-      this.#head.prev = newnode;
-      newnode.next = this.#head;
-      this.#head = newnode;
+      this._head.prev = newnode;
+      newnode.next = this._head;
+      this._head = newnode;
     }
     this.#length++;
     return this;
@@ -173,13 +173,13 @@ export class List<t> {
   }
   push(value: t) {
     const newnode = ListNode.of(value);
-    if (this.#head === null) {
-      this.#head = newnode;
-      this.#tail = newnode;
+    if (this._head === null) {
+      this._head = newnode;
+      this._tail = newnode;
     } else {
-      this.#tail!.next = newnode;
-      newnode.prev = this.#tail;
-      this.#tail = newnode;
+      this._tail!.next = newnode;
+      newnode.prev = this._tail;
+      this._tail = newnode;
     }
     this.#length++;
     return this;
@@ -193,7 +193,7 @@ export class List<t> {
   #reverse(list: List<t>) {
     if (list.isEmpty) return list;
     let temp = null;
-    let current = list.#head;
+    let current = list._head;
     while (current !== null) {
       temp = current.prev;
       current.prev = current.next;
@@ -201,7 +201,7 @@ export class List<t> {
       current = current.prev;
     }
     if (temp !== null) {
-      list.#head = temp.prev;
+      list._head = temp.prev;
     }
     return list;
   }
@@ -221,16 +221,16 @@ export class List<t> {
     return str;
   }
   popLast() {
-    if (this.#head === null) {
+    if (this._head === null) {
       return null;
     }
-    const poppedNode = this.#tail!;
+    const poppedNode = this._tail!;
     if (this.#length === 1) {
-      this.#head = null;
-      this.#tail = null;
+      this._head = null;
+      this._tail = null;
     } else {
-      this.#tail = poppedNode.prev!;
-      this.#tail.next = null;
+      this._tail = poppedNode.prev!;
+      this._tail.next = null;
     }
     this.#length--;
     return poppedNode.value;
@@ -249,8 +249,8 @@ export class List<t> {
     return this;
   }
   clear() {
-    this.#head = null;
-    this.#tail = null;
+    this._head = null;
+    this._tail = null;
     this.#length = 0;
     return this;
   }
@@ -273,7 +273,7 @@ export class List<t> {
     return [...this];
   }
   *iterator(): IterableIterator<t> {
-    let current = this.#head;
+    let current = this._head;
     while (current !== null) {
       yield current.value;
       current = current.next;
@@ -282,4 +282,13 @@ export class List<t> {
   [Symbol.iterator]() {
     return this.iterator();
   }
+  concat(other:List<t>) {
+    if (this.isEmpty) return other;
+    const list = this.clone;
+    list._tail!.next = other._head;
+    other._head!.prev = list._tail;
+    return list;
+  }
 }
+
+

@@ -336,9 +336,9 @@ function Navbar() {
         <li>
           <Link to="/">Workspace</Link>
         </li>
-        <li>
-          <Link to="/packages">Packages</Link>
-        </li>
+        {/* <li> */}
+          {/* <Link to="/packages">Packages</Link> */}
+        {/* </li> */}
       </ul>
     </nav>
   );
