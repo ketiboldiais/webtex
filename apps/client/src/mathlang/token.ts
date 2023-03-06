@@ -163,7 +163,6 @@ enum AFIX {
 }
 enum CLASS {
   UTIL,
-  ATOMIC,
   DELIMITER,
   KEYWORD,
   ILLEGAL,
@@ -171,6 +170,7 @@ enum CLASS {
   INFIX,
   POSTFIX,
   MIXFIX,
+  ATOMIC,
 }
 
 type Entry = {

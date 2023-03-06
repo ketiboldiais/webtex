@@ -1988,9 +1988,9 @@ export namespace algom {
     private expression(minbp = PREC.NONE) {
       let lhs: ASTNode = ast.nil;
       switch (true) {
-        case this.token.isAtomic:
-          lhs = this.literal();
-          break;
+        // case this.token.isAtomic:
+          // lhs = this.literal();
+          // break;
         case this.token.isLeftParen:
           lhs = this.parend();
           if (this.token.isLeftParen && !this.lastNode.isCallExpr()) {
@@ -2006,29 +2006,29 @@ export namespace algom {
           break;
       }
       while (this.token.isOperable) {
+        if (this.token.type === TOKEN.EOF) break;
+        if (this.token.isAtomic) lhs = this.literal()
+        // if (!this.token.isOperator) this.expectedOp();
         const op = this.token;
-        let rhs: ASTNode = ast.nil;
-        if (op.isEOF) break;
-        if (!op.isOperator) this.expectedOp();
         if (op.bp < minbp) break;
         this.advance();
-        rhs = this.expression(op.bp);
+        let rhs = this.expression(op.bp);
         lhs = this.makeExpr(lhs, op.lexeme, rhs);
       }
       return lhs;
     }
 
-    private makeExpr(lhs: ASTNode, operator: string, rhs: ASTNode) {
+    private makeExpr(lhs: ASTNode, op: string, rhs: ASTNode) {
       let expr: ASTNode = ast.nil;
       switch (true) {
         case (!lhs.isNull() && !rhs.isNull()):
-          expr = ast.binex(lhs, operator, rhs);
+          expr = ast.binex(lhs, op, rhs);
           break;
         case (!lhs.isNull() && rhs.isNull()):
-          expr = ast.unex(operator, lhs);
+          expr = ast.unex(op, lhs);
           break;
         case (lhs.isNull() && !rhs.isNull()):
-          expr = ast.unex(operator, rhs);
+          expr = ast.unex(op, rhs);
           break;
       }
       this.lastNode = expr;
@@ -2065,7 +2065,7 @@ export namespace algom {
         case TOKEN.COMPLEX:
           throw new Error("complex unimplemented");
         default:
-          this.panic();
+          // this.panic();
           return ast.nil;
       }
     }
@@ -2376,6 +2376,6 @@ export namespace algom {
 /* § Live Testing                                                             */
 /* -------------------------------------------------------------------------- */
 
-const expr = `cos(0) + 4`;
+const expr = `(3 * 4) + (1 - 8)`;
 const res = algom.parse(expr).ast;
 log(res);
