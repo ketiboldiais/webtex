@@ -925,7 +925,7 @@ export class Token {
     return this.type === TOKEN.SEMICOLON;
   }
   get typename() {
-    return TOKEN[this.type];
+    return TOKEN[this.type].replace("_", "-").toLowerCase();
   }
   get isNumber() {
     return numerics[this.type as NUM_TOKEN] !== undefined;
@@ -948,17 +948,14 @@ export class Token {
   get isAtomic() {
     return TokenRecord[this.type].kind === CLASS.ATOMIC;
   }
+  get isOperable() {
+    return !this.isEOF && !this.isSemicolon && !this.isDelimiter;
+  }
   get isOperator() {
     return this.isInfixOp ||
       this.isPrefixOp ||
       this.isPostfixOp ||
       this.isMixfixOp;
-  }
-  get isLeftAssociative() {
-    return TokenRecord[this.type].fixity === AFIX.LEFT;
-  }
-  get isRightAssociative() {
-    return TokenRecord[this.type].fixity === AFIX.RIGHT;
   }
   get isChainAssociative() {
     return TokenRecord[this.type].fixity === AFIX.CHAIN;
@@ -984,24 +981,6 @@ export class Token {
     return (TokenRecord[this.type].precedence <
       TokenRecord[otherToken.type].precedence);
   }
-  /**
-   * Returns true if this token
-   * has a strictly higher precedence ('>') than
-   * the other token.
-   */
-  precedes(otherToken: Token) {
-    return (TokenRecord[this.type].precedence >
-      TokenRecord[otherToken.type].precedence);
-  }
-  /**
-   * Returns true if this token has
-   * weakly higher precedence ('>=') than
-   * the other token.
-   */
-  weaklyPrecedes(otherToken: Token) {
-    return (TokenRecord[this.type].precedence >=
-      TokenRecord[otherToken.type].precedence);
-  }
   get isLeftParen() {
     return this.type === TOKEN.LEFT_PAREN;
   }
@@ -1012,6 +991,12 @@ export class Token {
     return this.type === TOKEN.SYMBOL;
   }
   static nil = new Token(TOKEN.NIL, "", -1);
+  toString(linePad=0, lexPad=2, typePad=0) {
+    const lex = `${this.lexeme}`.padEnd(lexPad);
+    const line = `${this.line}`.padEnd(linePad);
+    const type = `${this.typename}`.padEnd(typePad);
+    return `(${line})[ ${lex}][${type}]`;
+  }
 }
 
 export class TokenStream {
@@ -1022,23 +1007,9 @@ export class TokenStream {
     this.length = tokens.length;
   }
   toString() {
-    function buildTokenString(token: Token) {
-      const lex = ` ${token.lexeme}`.padEnd(12);
-      const line = ` ${token.line}`.padEnd(8);
-      const type = ` ${TOKEN[token.type]}`.padEnd(25);
-      return `|${lex}|${line}|${type}|`;
-    }
-    const lex = ` Token`.padEnd(12);
-    const line = ` Line`.padEnd(8);
-    const type = ` Type`.padEnd(25);
-    const _lex = `------------`;
-    const _line = `--------`;
-    const _type = `-------------------------`;
-    const header = `|${lex}|${line}|${type}|\n`;
-    const _header = `|${_lex}|${_line}|${_type}|\n`;
-    let str = header + _header;
+    let str = '';
     for (let i = 0; i < this.length; i++) {
-      str += buildTokenString(this.tokens[i]) + `\n`;
+      str += this.tokens[i].toString() + `\n`;
     }
     return str;
   }
