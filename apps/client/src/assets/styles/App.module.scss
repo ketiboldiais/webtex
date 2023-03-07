@@ -12,6 +12,7 @@
 		position: absolute;
 		top: 28px;
 		padding: 0;
+		.Plotter {@include PlotterStyles}
 		.Packages { @include PackagesPage; }
 		.Workspace {
 			display: flex;

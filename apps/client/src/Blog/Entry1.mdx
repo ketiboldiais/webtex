@@ -1,3 +1,5 @@
+import {Plot2d} from '../components/chips/Plot2d.tsx'
+
 # Webtex Dependencies
 
 This is the packages page for Webtex, which outlines some of the modules used by the editor.
@@ -37,22 +39,20 @@ etc.&mdash;is handled by React's useContext, useState, and useEffect
 hooks.
 
 ## FPlot
-Webtex renders function plots with FPlot, a React component that renders function plots. 
+Webtex renders function plots with FPlot, a custom React component that renders function plots. 
 
+<Plot2d f={'f(x) := 2cos(x)'}/>
 
-## Parsers
-A significant challenge to rendering function plots within a text
-editor, rich or plain, is parsing user input. Regular expressions are
-insufficient, because mathematical notation is anything but
-context-free.
+Under the hood, the graph above is rendered with the following code:
 
-To solve this problem, Webtex uses several custom parsers. First, a
-recursive descent parser for managing side effects and directing
-parser flow. Second, parser combinators and packrat parsers for
-performing the actual substantive parsing. And third, an Earley parser
-for handling extreme edge cases.
+~~~jsx
+<Plot2d f={'f(x) := 2cos(x)'}/>
+~~~
 
-For the vast majority of user inputs, the parser combinators and
-packrat parsers get the job done. The trickier edge cases are implicit
-multiplication, right-recursive grammars, and ambiguous notations like
-${\sin^{-1}x}$ versus ${x^{-1}.}$
+User inputs are entered as strings on the editor, following the grammar of Webtex's
+scripting language, Algom. The Algom input is then compiled to a JavaScript
+object with a local scope and access to the Algom namespace (the input's “global environment”).
+Using a custom language as opposed to JavaScript's `new Function` or `eval` syntax ensures
+that user inputs are properly sanitized and restricted to not just the editor, but a namespace
+that only exists on an open editor.
+

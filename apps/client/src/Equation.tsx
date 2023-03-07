@@ -14,7 +14,6 @@ import {
   DOMExportOutput,
   EditorConfig,
   KEY_ESCAPE_COMMAND,
-  LexicalEditor,
   LexicalNode,
   NodeKey,
   SELECTION_CHANGE_COMMAND,
@@ -191,7 +190,7 @@ function EquationComponent({ equation, inline, nodeKey }: EquationProps) {
       return mergeRegister(
         editor.registerCommand(
           SELECTION_CHANGE_COMMAND,
-          (payload) => {
+          (_payload) => {
             const activeElement = document.activeElement;
             const inputElem = inputRef.current;
             if (inputElem !== activeElement) {
@@ -203,7 +202,7 @@ function EquationComponent({ equation, inline, nodeKey }: EquationProps) {
         ),
         editor.registerCommand(
           KEY_ESCAPE_COMMAND,
-          (payload) => {
+          (_payload) => {
             const activeElement = document.activeElement;
             const inputElem = inputRef.current;
             if (inputElem === activeElement) {
@@ -372,9 +371,6 @@ function KatexRenderer({
   }, [equation, inline]);
 
   return (
-    // We use spacers either side to ensure Android doesn't try and compose from the
-    // inner text from Katex. There didn't seem to be any other way of making this work,
-    // without having a physical space.
     <>
       <span className="spacer"></span>
       <span
@@ -390,7 +386,7 @@ function KatexRenderer({
 
 export const EQUATION: TextMatchTransformer = {
   dependencies: [EquationNode],
-  export: (node, exportChildren, exportFormat) => {
+  export: (node, _exportChildren, _exportFormat) => {
     if (!$isEquationNode) return null;
     return `$${node.getEquation()}$`;
   },

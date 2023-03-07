@@ -210,6 +210,41 @@ $margin13: 24rem;
   }
 }
 
+@mixin PlotterStyles {
+  display: grid;
+  grid-template-rows: 15fr 1fr;
+  @include Shadow1(1);
+  .PlotWindow {
+    @include Shadow1(1);
+  }
+  .PlotControl {
+    display: grid;
+    grid-template-columns: 1fr 12fr 1fr;
+    gap: 4px;
+    padding: 0.4em;
+    .Prompt {
+      font-family: monospace;
+    }
+    button {
+      @include Shadow1(1);
+      background-color: white;
+      border: solid thin lightgrey;
+      width: 100%;
+      cursor: pointer;
+    }
+    input {
+      border-radius: 0;
+      border: none;
+      border-bottom: solid thin lightgrey;
+      outline: none;
+      width: 100%;
+      text-align: left;
+      padding: 0 4px;
+      font-family: monospace;
+    }
+  }
+}
+
 @mixin FlatButton($width: fit-content, $color: inherit) {
   button {
     width: $width;
@@ -412,6 +447,8 @@ $margin13: 24rem;
     cursor: pointer;
   }
 }
+
+
 
 @mixin PackagesPage {
   margin: 0;

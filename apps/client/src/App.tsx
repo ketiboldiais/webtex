@@ -336,9 +336,12 @@ function Navbar() {
         <li>
           <Link to="/">Workspace</Link>
         </li>
-        {/* <li> */}
+        <li>
           {/* <Link to="/packages">Packages</Link> */}
-        {/* </li> */}
+        </li>
+        <li>
+          {/* <Link to="/canvas">Canvas</Link> */}
+        </li>
       </ul>
     </nav>
   );
@@ -352,8 +355,41 @@ function Page() {
       <Routes>
         <Route path={"/"} element={<Workspace />} />
         <Route path={"/packages"} element={<Packages />} />
+        <Route path={"/canvas"} element={<Canvas />} />
       </Routes>
     </main>
+  );
+}
+
+import { Plot2d } from "@components/chips/Plot2d";
+import { algom } from "./mathlang";
+
+function Canvas() {
+  const [fn, setFn] = useState("");
+  const [plot, setPlot] = useState<string | null>(null);
+  const [err, setErr] = useState<string>("");
+  const plotNow = () => {
+    const f = "f(x) := " + fn + ";";
+    const fx = algom.compfn(f);
+    if (fx instanceof algom.Errnode) {
+      setErr(fx.value);
+    }
+    setPlot(f);
+  };
+
+  return (
+    <div className={"canvas"}>
+      <div className={S.Plotter}>
+        <div className={S.PlotWindow}>
+          {err === "" && plot ? <Plot2d f={plot} /> : <>{err}</>}
+        </div>
+        <div className={S.PlotControl}>
+          <div className={S.Prompt}>f(x) =</div>
+          <input onChange={(ev) => setFn(ev.target.value)} />
+          <button onClick={plotNow}>plot</button>
+        </div>
+      </div>
+    </div>
   );
 }
 

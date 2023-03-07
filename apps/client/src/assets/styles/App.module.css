@@ -43,7 +43,7 @@
   text-decoration: none;
   padding: 0;
   margin: 0 0.4em;
-  color: hsl(210deg, 16%, 76%);
+  color: hsl(210, 16%, 76%);
   font-size: 0.9rem;
 }
 .App .NavBar .LinkList {
@@ -60,12 +60,46 @@
   top: 28px;
   padding: 0;
 }
+.App main .Plotter {
+  display: grid;
+  grid-template-rows: 15fr 1fr;
+  box-shadow: 0px 1px 3px hsl(1, 0%, 91%), 0 1px 2px hsl(1, 0%, 50%);
+}
+.App main .Plotter .PlotWindow {
+  box-shadow: 0px 1px 3px hsl(1, 0%, 91%), 0 1px 2px hsl(1, 0%, 50%);
+}
+.App main .Plotter .PlotControl {
+  display: grid;
+  grid-template-columns: 1fr 12fr 1fr;
+  gap: 4px;
+  padding: 0.4em;
+}
+.App main .Plotter .PlotControl .Prompt {
+  font-family: monospace;
+}
+.App main .Plotter .PlotControl button {
+  box-shadow: 0px 1px 3px hsl(1, 0%, 91%), 0 1px 2px hsl(1, 0%, 50%);
+  background-color: white;
+  border: solid thin lightgrey;
+  width: 100%;
+  cursor: pointer;
+}
+.App main .Plotter .PlotControl input {
+  border-radius: 0;
+  border: none;
+  border-bottom: solid thin lightgrey;
+  outline: none;
+  width: 100%;
+  text-align: left;
+  padding: 0 4px;
+  font-family: monospace;
+}
 .App main .Packages {
   margin: 0;
   padding: 2em;
   padding-bottom: 50%;
   overflow-y: scroll;
-  scrollbar-color: hsl(210deg, 16%, 76%) white;
+  scrollbar-color: hsl(210, 16%, 76%) white;
   scrollbar-width: thin;
   display: flex;
   flex-direction: column;
@@ -78,7 +112,7 @@
   background: white;
 }
 .App main .Packages::-webkit-scrollbar-thumb {
-  background-color: hsl(210deg, 16%, 76%);
+  background-color: hsl(210, 16%, 76%);
   border-radius: 5px;
 }
 .App main .Packages ol li {
@@ -116,7 +150,7 @@
   color: inherit;
   margin: 0;
   background-color: inherit;
-  box-shadow: 0px 1px 3px hsl(4deg, 0%, 91%), 0 1px 2px hsl(4deg, 0%, 50%);
+  box-shadow: 0px 1px 3px hsl(4, 0%, 91%), 0 1px 2px hsl(4, 0%, 50%);
   font-family: "Muli";
   border: 0;
   cursor: pointer;
@@ -133,14 +167,14 @@
   padding: 0.2em 0.4em;
   margin: 10px 0;
   scrollbar-width: none;
-  box-shadow: 0px 1px 3px hsl(5deg, 0%, 91%), 0 1px 2px hsl(5deg, 0%, 50%);
+  box-shadow: 0px 1px 3px hsl(5, 0%, 91%), 0 1px 2px hsl(5, 0%, 50%);
 }
 .App main .Workspace .Sidebar .NoteList::-webkit-scrollbar {
   display: none;
 }
 .App main .Workspace .Sidebar .NoteList .Active {
-  background-color: hsl(215deg, 75%, 55%);
-  color: hsl(208deg, 21%, 88%);
+  background-color: hsl(215, 75%, 55%);
+  color: hsl(208, 21%, 88%);
 }
 .App main .Workspace .Sidebar .NoteList .Active button {
   color: #ffab6a;
@@ -148,7 +182,7 @@
   background-color: inherit;
 }
 .App main .Workspace .Sidebar .NoteList .Item {
-  box-shadow: 0px 1px 3px hsl(5deg, 0%, 91%), 0 1px 2px hsl(5deg, 0%, 50%);
+  box-shadow: 0px 1px 3px hsl(5, 0%, 91%), 0 1px 2px hsl(5, 0%, 50%);
 }
 .App main .Workspace .Sidebar .NoteList .Item small {
   font-size: 0.7rem;
@@ -192,7 +226,7 @@
   color: inherit;
   margin: 0 2px;
   background-color: inherit;
-  box-shadow: 0px 1px 3px hsl(4deg, 0%, 91%), 0 1px 2px hsl(4deg, 0%, 50%);
+  box-shadow: 0px 1px 3px hsl(4, 0%, 91%), 0 1px 2px hsl(4, 0%, 50%);
   font-family: "Muli";
   border: 0;
   cursor: pointer;
@@ -209,7 +243,7 @@
   justify-content: center;
   align-items: center;
   flex-wrap: nowrap;
-  box-shadow: 0px 1px 3px hsl(4deg, 0%, 91%), 0 1px 2px hsl(4deg, 0%, 50%);
+  box-shadow: 0px 1px 3px hsl(4, 0%, 91%), 0 1px 2px hsl(4, 0%, 50%);
 }
 .App main .Workspace .TextEditor .EditorToolbar .dropdown:hover {
   cursor: pointer;
@@ -232,7 +266,7 @@
 .App main .Workspace .TextEditor .EditorToolbar .dropdown .active {
   height: 170px;
   background-color: white;
-  border: solid thin hsl(208deg, 21%, 88%);
+  border: solid thin hsl(208, 21%, 88%);
 }
 .App main .Workspace .TextEditor .EditorToolbar .dropdown button {
   width: 100%;
@@ -247,13 +281,13 @@
 }
 .App main .Workspace .TextEditor .EditorToolbar .dropdown button:hover {
   cursor: pointer;
-  background-color: hsl(210deg, 16%, 76%);
+  background-color: hsl(210, 16%, 76%);
 }
 .App main .Workspace .TextEditor .Lexical {
   height: 90vh;
   overflow-y: scroll;
   border: solid thin #e4e4e4;
-  scrollbar-color: hsl(210deg, 16%, 76%) white;
+  scrollbar-color: hsl(210, 16%, 76%) white;
   scrollbar-width: thin;
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
   transition: 0.3s;
@@ -267,7 +301,7 @@
   background: white;
 }
 .App main .Workspace .TextEditor .Lexical::-webkit-scrollbar-thumb {
-  background-color: hsl(210deg, 16%, 76%);
+  background-color: hsl(210, 16%, 76%);
   border-radius: 5px;
 }
 .App main .Workspace .TextEditor .Lexical:hover {

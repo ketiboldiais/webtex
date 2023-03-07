@@ -36,8 +36,8 @@
   padding: 10px;
 }
 .EditorContainer .TitleInput {
-  border-bottom: solid thin hsl(210deg, 16%, 76%);
-  color: hsl(207deg, 12%, 43%);
+  border-bottom: solid thin hsl(210, 16%, 76%);
+  color: hsl(207, 12%, 43%);
   margin: 0 auto;
   display: block;
   text-align: center;
@@ -47,7 +47,7 @@
 .EditorContainer .Toolbar {
   display: flex;
   flex-wrap: wrap;
-  border: solid thin hsl(208deg, 21%, 88%);
+  border: solid thin hsl(208, 21%, 88%);
   justify-content: flex-start;
   padding: 0.25rem;
 }
@@ -108,7 +108,7 @@
 }
 .EditorContainer button {
   background-color: inherit;
-  border: solid thin hsl(210deg, 16%, 76%);
+  border: solid thin hsl(210, 16%, 76%);
 }
 .EditorContainer button {
   background-size: contain;
@@ -120,5 +120,5 @@
   width: 1.6rem;
 }
 .EditorContainer button svg {
-  fill: hsl(208deg, 12%, 58%);
+  fill: hsl(208, 12%, 58%);
 }/*# sourceMappingURL=Editor.module.css.map */

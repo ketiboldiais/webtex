@@ -2,6 +2,274 @@ import { List } from "./structs/list.js";
 const { log } = console;
 
 export namespace algom {
+  /* -------------------------------------------------------------------------- */
+  /* § LIBRARY                                                                  */
+  /* -------------------------------------------------------------------------- */
+  type Calculi = {
+    [key: string]: any;
+  };
+
+  class Library {
+    private record: Calculi;
+    constructor(record: Calculi) {
+      this.record = record;
+    }
+    hasNamedValue(name: string) {
+      return this.record.hasOwnProperty(name);
+    }
+    getFunction(name: string): Function | undefined {
+      const res = this.record[name];
+      if (typeof res === "function") return res;
+    }
+    getNumericConstant(name: string): number | undefined {
+      const result = this.record[name];
+      if (typeof result === "number") return result;
+    }
+    hasFunction(name: string) {
+      return typeof this.record[name] === "function";
+    }
+    hasConstant(name: string) {
+      return typeof this.record[name] === "number";
+    }
+    static execute() {
+    }
+  }
+  const lib: Calculi = {
+    e: Math.E,
+    PI: Math.PI,
+    LN2: Math.LN2,
+    LN10: Math.LN10,
+    LOG2E: Math.LOG2E,
+    LOG10E: Math.LOG10E,
+    SQRT1_2: Math.SQRT1_2,
+    SQRT2: Math.SQRT2,
+    abs: Math.abs,
+    acos: Math.acos,
+    acosh: Math.acosh,
+    asin: Math.asin,
+    asinh: Math.asinh,
+    atan: Math.atan,
+    atanh: Math.atanh,
+    atan2: Math.atan2,
+    cbrt: Math.cbrt,
+    ceil: Math.ceil,
+    clz32: Math.clz32,
+    cos: Math.cos,
+    cosh: Math.cosh,
+    exp: Math.exp,
+    expm1: Math.expm1,
+    floor: Math.floor,
+    fround: Math.fround,
+    gcd: algom.GCD,
+    hypot: Math.hypot,
+    imul: Math.imul,
+    log: Math.log,
+    ln: Math.log,
+    log1p: Math.log1p,
+    log10: Math.log10,
+    log2: Math.log2,
+    lg: Math.log2,
+    max: Math.max,
+    min: Math.min,
+    pow: Math.pow,
+    random: Math.random,
+    round: Math.round,
+    sign: Math.sign,
+    sin: Math.sin,
+    sinh: Math.sinh,
+    sqrt: Math.sqrt,
+    tan: Math.tan,
+    tanh: Math.tanh,
+    trunc: Math.trunc,
+    even: algom.even,
+    odd: algom.odd,
+  };
+  const match = {
+    isInt: (s: string) => /^-?(0|[1-9]\d*)(?<!-0)$/.test(s),
+    isFloat: (s: string) => /^(?!-0(\.0+)?$)-?(0|[1-9]\d*)(\.\d+)?$/.test(s),
+    isUInt: (s: string) => /^(0|[1-9]\d*)$/.test(s),
+    isUFloat: (s: string) => /^(0|[1-9]\d*)(\.\d+)?$/.test(s),
+    isSci: (s: string) =>
+      /^(?!-0?(\.0+)?(e|$))-?(0|[1-9]\d*)?(\.\d+)?(?<=\d)(e[-+]?(0|[1-9]\d*))?$/i
+        .test(s),
+    isHex: (s: string) => /^0x[0-9a-f]+$/i.test(s),
+    isBinary: (s: string) => /^0b[0-1]+$/i.test(s),
+    isOctal: (s: string) => /^0o[0-8]+$/i.test(s),
+    isFrac: (s: string) => /^(-?[1-9][0-9]*|0)\/[1-9][0-9]*/.test(s),
+  };
+  const corelib = new Library(lib);
+  const hasProp = (obj: Object, p: string) =>
+    typeof obj === "object" && obj.hasOwnProperty(p);
+
+  function compute(left: Num, op: string, right: Num): ASTNode | undefined {
+    switch (op) {
+      case "+":
+        return left.add(right);
+      case "-":
+        return left.minus(right);
+      case "*":
+        return left.times(right);
+      case "/":
+        return left.divide(right);
+      case "^":
+        return left.pow(right);
+      case "%":
+      case "rem":
+        return left.rem(right);
+      case "//":
+        return left.div(right);
+      case "mod":
+        return left.mod(right);
+      case ">":
+        return left.gt(right);
+      case ">=":
+        return left.gte(right);
+      case "<":
+        return left.lt(right);
+      case "<=":
+        return left.lte(right);
+      case "=":
+        return left.equals(right);
+    }
+  }
+
+  function mergeTuples(a: Tuple | ASTNode, b: Tuple | ASTNode) {
+    let L: List<ASTNode> = new List();
+    switch (true) {
+      case (a.isTuple() && b.isTuple()):
+        L = (a as Tuple).value.concat((b as Tuple).value);
+        break;
+      case (a.isTuple() && !b.isTuple()):
+        L = (a as Tuple).value.push(b);
+        break;
+      case (!a.isTuple() && b.isTuple()):
+        L = (b as Tuple).value.push(a);
+        break;
+      case (!a.isTuple() && !b.isTuple()):
+        L = List.of(a, b);
+        break;
+    }
+    return Tuple.of(L);
+  }
+  export function GCD(a: number, b: number) {
+    if (!is.integer(a) || !is.integer(b)) {
+      return Infinity;
+    }
+    let t = 1;
+    while (b !== 0) {
+      t = b;
+      b = a % b;
+      a = t;
+    }
+    return a;
+  }
+  export function abs(n: number) {
+    return Math.abs(n);
+  }
+  export function factorial(n: number | string) {
+    // throw new Error("factorial unimplemented");
+  }
+  export function simplify(n: number, d: number) {
+    const sign = sgn(n) * sgn(d);
+    const N = abs(n);
+    const D = abs(d);
+    const f = GCD(n, d);
+    const numer = (sign * n) / f;
+    const denom = D / f;
+    const res = `${numer}/${denom}`;
+    return new Num(res, NUM.FRACTION);
+  }
+  export const is = {
+    func: (v: any): v is Function => typeof v === "function",
+    obj: (v: any): v is Object => typeof v === "object",
+    number: (v: any): v is number => typeof v === "number",
+    string: (v: any): v is string => typeof v === "number",
+    bool: (v: any): v is boolean => typeof v === "boolean",
+    integer: (v: any) => {
+      if (typeof v === "number") return Number.isInteger(v);
+      return lib.isInt(v);
+    },
+  };
+  export function sgn(x: number) {
+    return x === 0 ? 0 : x > 0 ? 1 : -1;
+  }
+
+  export function N(n: string) {
+    switch (true) {
+      case match.isBinary(n):
+        return ast.int(n, 2);
+      case match.isHex(n):
+        return ast.int(n, 16);
+      case match.isOctal(n):
+        return ast.int(n, 8);
+      case match.isFloat(n):
+        return ast.float(n);
+      case match.isSci(n): {
+        const [a, b] = split(n, "e");
+        const x = Number(a);
+        const y = Number(b);
+        return ast.float(`${x}${y}`);
+      }
+      case match.isFrac(n): {
+        const [a, b] = split(n, "/");
+        const x = toInt(a);
+        const y = toInt(b);
+        return ast.float(`${x / y}`);
+      }
+      case n === "NaN":
+        return ast.integer(NaN);
+      case n === "Inf":
+        return ast.integer(Infinity);
+      default:
+        return ast.int("NaN");
+    }
+  }
+  export const toInt = Number.parseInt;
+  export const toFloat = Number.parseFloat;
+  export const floor = Math.floor;
+  export const isNaN = Number.isNaN;
+  export const split = (s: string, splitter: string) => s.split(splitter);
+  export function integer(n: string | number) {
+    if (typeof n === "number") return new Int(n);
+    switch (true) {
+      case lib.isBinary(n):
+        return new Int(toInt(n, 2));
+      case lib.isHex(n):
+        return new Int(toInt(n, 16));
+      case lib.isOctal(n):
+        return new Int(toInt(n, 8));
+      case lib.isFloat(n):
+        n = floor(toFloat(n));
+        return new Int(n);
+      case lib.isSci(n): {
+        const [a, b] = split(n, "e");
+        const x = Number(a);
+        const y = Number(b);
+        return new Int(x ** y);
+      }
+      case lib.isFrac(n): {
+        const [a, b] = split(n, "/");
+        const x = toInt(a);
+        const y = toInt(b);
+        return new Int(x ** y);
+      }
+    }
+    return new Int(NaN);
+  }
+
+  export function getFrac(n: string) {
+    const [a, b] = split(n, "/");
+    const x = toInt(a);
+    const y = toInt(b);
+    return [x, y];
+  }
+  export function even(n: number) {
+    return n % 2 === 0 ? 1 : 0;
+  }
+  export function odd(n: number) {
+    return n % 2 !== 0 ? 1 : 0;
+  }
+
   export enum TOKEN {
     EOF,
     ERROR,
@@ -264,7 +532,7 @@ export namespace algom {
      * --x => -(-x)
      * ~~~
      */
-    UNARY_MINUS,
+    NEGATE,
     /**
      * 'in' maps to a check whether
      * an element exists in a compound.
@@ -278,13 +546,61 @@ export namespace algom {
      * ~~~
      */
     IN,
-
+    /**
+     * `-` maps to logical negation.
+     * Right-associative.
+     * ~~~
+     * not not x => not(not x)
+     * ~~~
+     */
     NOT,
-    NOR,
+    /**
+     * `or` maps to logical or.
+     * left-associative.
+     * ~~~
+     * a or b or c => (a or b) or c
+     * ~~~
+     */
     OR,
+    /**
+     * `nor` maps to logical nor.
+     * left-associative.
+     * ~~~
+     * a nor b nor c => (a nor b) nor c
+     * ~~~
+     */
+    NOR,
+    /**
+     * `xor` maps to logical xor.
+     * left-associative.
+     * ~~~
+     * a xor b xor c => (a xor b) xor c
+     * ~~~
+     */
     XOR,
+    /**
+     * `xnor` maps to logical xnor.
+     * left-associative.
+     * ~~~
+     * a xnor b xnor c => (a xnor b) xnor c
+     * ~~~
+     */
     XNOR,
+    /**
+     * `and` maps to logical and.
+     * left-associative.
+     * ~~~
+     * a and b and c => (a and b) and c
+     * ~~~
+     */
     AND,
+    /**
+     * `nand` maps to logical nand.
+     * left-associative.
+     * ~~~
+     * a nand b nand c => (a nand b) nand c
+     * ~~~
+     */
     NAND,
     THROW,
     ELSE,
@@ -304,8 +620,8 @@ export namespace algom {
     NULL,
     SYMBOL,
     STRING,
-    INTEGER,
-    FRACTION,
+    INT,
+    FRAC,
     FLOAT,
     HEX,
     BINARY,
@@ -314,9 +630,9 @@ export namespace algom {
     COMPLEX,
   }
   export type NUM_TOKEN =
-    | TOKEN.INTEGER
+    | TOKEN.INT
     | TOKEN.FLOAT
-    | TOKEN.FRACTION
+    | TOKEN.FRAC
     | TOKEN.HEX
     | TOKEN.BINARY
     | TOKEN.OCTAL
@@ -430,15 +746,16 @@ export namespace algom {
     [TOKEN.SEMICOLON]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
     [TOKEN.COLON]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
     [TOKEN.VBAR]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
-    [TOKEN.IN]: { kind: KIND.INFIX, prec: PREC.LMID, fixity: FIX.LEFT },
     [TOKEN.SQUOTE]: { kind: KIND.POSTFIX, prec: PREC.PEAK, fixity: FIX.LEFT },
+    [TOKEN.BANG]: { kind: KIND.POSTFIX, prec: PREC.PEAK, fixity: FIX.LEFT },
+
     [TOKEN.DOT]: { kind: KIND.INFIX, prec: PREC.PEAK, fixity: FIX.RIGHT },
     [TOKEN.MINUS]: { kind: KIND.INFIX, prec: PREC.MID, fixity: FIX.LEFT },
     [TOKEN.PLUS]: { kind: KIND.INFIX, prec: PREC.MID, fixity: FIX.LEFT },
     [TOKEN.STAR]: { kind: KIND.INFIX, prec: PREC.UMID, fixity: FIX.LEFT },
     [TOKEN.SLASH]: { kind: KIND.INFIX, prec: PREC.UMID, fixity: FIX.LEFT },
     [TOKEN.CARET]: { kind: KIND.INFIX, prec: PREC.HIGH, fixity: FIX.RIGHT },
-    [TOKEN.BANG]: { kind: KIND.POSTFIX, prec: PREC.PEAK, fixity: FIX.LEFT },
+    [TOKEN.IN]: { kind: KIND.INFIX, prec: PREC.LMID, fixity: FIX.LEFT },
     [TOKEN.PERCENT]: { kind: KIND.INFIX, prec: PREC.HIGH, fixity: FIX.NON },
     [TOKEN.MOD]: { kind: KIND.INFIX, prec: PREC.HIGH, fixity: FIX.LEFT },
     [TOKEN.DIV]: { kind: KIND.INFIX, prec: PREC.HIGH, fixity: FIX.LEFT },
@@ -451,200 +768,50 @@ export namespace algom {
     [TOKEN.GT]: { kind: KIND.INFIX, prec: PREC.LOW, fixity: FIX.CHAIN },
     [TOKEN.GTE]: { kind: KIND.INFIX, prec: PREC.LOW, fixity: FIX.CHAIN },
     [TOKEN.LTE]: { kind: KIND.INFIX, prec: PREC.LOW, fixity: FIX.CHAIN },
-    [TOKEN.ASSIGN]: { kind: KIND.INFIX, prec: PREC.LOW, fixity: FIX.RIGHT },
     [TOKEN.TILDE]: { kind: KIND.PREFIX, prec: PREC.MID, fixity: FIX.CHAIN },
     [TOKEN.PLUS_PLUS]: { kind: KIND.INFIX, prec: PREC.MID, fixity: FIX.LEFT },
     [TOKEN.AMP]: { kind: KIND.INFIX, prec: PREC.MID, fixity: FIX.LEFT },
     [TOKEN.LSHIFT]: { kind: KIND.INFIX, prec: PREC.MID, fixity: FIX.LEFT },
     [TOKEN.RSHIFT]: { kind: KIND.INFIX, prec: PREC.MID, fixity: FIX.LEFT },
-    [TOKEN.UNARY_MINUS]: {
-      kind: KIND.PREFIX,
-      prec: PREC.TOP,
-      fixity: FIX.RIGHT,
-    },
-    /**
-     * `-` maps to logical negation.
-     * Right-associative.
-     * ~~~
-     * not not x => not(not x)
-     * ~~~
-     */
-    [TOKEN.NOT]: {
-      kind: KIND.PREFIX,
-      prec: PREC.TOP,
-      fixity: FIX.RIGHT,
-    },
-    /**
-     * `or` maps to logical or.
-     * left-associative.
-     * ~~~
-     * a or b or c => (a or b) or c
-     * ~~~
-     */
-    [TOKEN.OR]: {
-      kind: KIND.INFIX,
-      prec: PREC.LOW,
-      fixity: FIX.LEFT,
-    },
-    /**
-     * `nor` maps to logical nor.
-     * left-associative.
-     * ~~~
-     * a nor b nor c => (a nor b) nor c
-     * ~~~
-     */
-    [TOKEN.NOR]: {
-      kind: KIND.INFIX,
-      prec: PREC.LMID,
-      fixity: FIX.LEFT,
-    },
-    /**
-     * `xor` maps to logical xor.
-     * left-associative.
-     * ~~~
-     * a xor b xor c => (a xor b) xor c
-     * ~~~
-     */
-    [TOKEN.XOR]: {
-      kind: KIND.INFIX,
-      prec: PREC.MID,
-      fixity: FIX.LEFT,
-    },
-    /**
-     * `xnor` maps to logical xnor.
-     * left-associative.
-     * ~~~
-     * a xnor b xnor c => (a xnor b) xnor c
-     * ~~~
-     */
-    [TOKEN.XNOR]: {
-      kind: KIND.INFIX,
-      prec: PREC.UMID,
-      fixity: FIX.LEFT,
-    },
-    /**
-     * `and` maps to logical and.
-     * left-associative.
-     * ~~~
-     * a and b and c => (a and b) and c
-     * ~~~
-     */
-    [TOKEN.AND]: {
-      kind: KIND.INFIX,
-      prec: PREC.HIGH,
-      fixity: FIX.NON,
-    },
-    /**
-     * `nand` maps to logical nand.
-     * left-associative.
-     * ~~~
-     * a nand b nand c => (a nand b) nand c
-     * ~~~
-     */
-    [TOKEN.NAND]: {
-      kind: KIND.UTIL,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
+    [TOKEN.NEGATE]: { kind: KIND.PREFIX, prec: PREC.TOP, fixity: FIX.RIGHT },
+    [TOKEN.NOT]: { kind: KIND.PREFIX, prec: PREC.TOP, fixity: FIX.RIGHT },
+    [TOKEN.OR]: { kind: KIND.INFIX, prec: PREC.LOW, fixity: FIX.LEFT },
+    [TOKEN.NOR]: { kind: KIND.INFIX, prec: PREC.LMID, fixity: FIX.LEFT },
+    [TOKEN.XOR]: { kind: KIND.INFIX, prec: PREC.MID, fixity: FIX.LEFT },
+    [TOKEN.XNOR]: { kind: KIND.INFIX, prec: PREC.UMID, fixity: FIX.LEFT },
+    [TOKEN.AND]: { kind: KIND.INFIX, prec: PREC.HIGH, fixity: FIX.NON },
+    [TOKEN.NAND]: { kind: KIND.UTIL, prec: PREC.NON, fixity: FIX.NON },
 
+    [TOKEN.ASSIGN]: { kind: KIND.INFIX, prec: PREC.LOW, fixity: FIX.RIGHT },
     /**
      * The following are keywords.
      * If the token class is `illegal`,
      * then the keyword is either disallowed
      * in the language or unimplemented.
      */
-    [TOKEN.THROW]: {
-      kind: KIND.ILLEGAL,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
-    [TOKEN.ELSE]: {
-      kind: KIND.KEYWORD,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
-    [TOKEN.FOR]: {
-      kind: KIND.ILLEGAL,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
-    [TOKEN.FUNCTION]: {
-      kind: KIND.ILLEGAL,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
-    [TOKEN.IF]: {
-      kind: KIND.KEYWORD,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
-    [TOKEN.RETURN]: {
-      kind: KIND.ILLEGAL,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
-    [TOKEN.THIS]: {
-      kind: KIND.ILLEGAL,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
-    [TOKEN.WHILE]: {
-      kind: KIND.ILLEGAL,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
-    [TOKEN.DO]: {
-      kind: KIND.ILLEGAL,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
-    [TOKEN.LET]: {
-      kind: KIND.KEYWORD,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
-    [TOKEN.CONST]: {
-      kind: KIND.ILLEGAL,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
-
+    [TOKEN.THROW]: { kind: KIND.ILLEGAL, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.ELSE]: { kind: KIND.KEYWORD, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.FOR]: { kind: KIND.ILLEGAL, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.FUNCTION]: { kind: KIND.ILLEGAL, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.IF]: { kind: KIND.KEYWORD, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.RETURN]: { kind: KIND.ILLEGAL, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.THIS]: { kind: KIND.ILLEGAL, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.WHILE]: { kind: KIND.ILLEGAL, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.DO]: { kind: KIND.ILLEGAL, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.LET]: { kind: KIND.KEYWORD, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.CONST]: { kind: KIND.ILLEGAL, prec: PREC.NON, fixity: FIX.NON },
     /**
-     * The following are atomic values.
+     * These are atomic values.
      */
-    [TOKEN.FALSE]: {
-      kind: KIND.ATOMIC,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
-    [TOKEN.TRUE]: {
-      kind: KIND.ATOMIC,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
-    [TOKEN.INF]: {
-      kind: KIND.ATOMIC,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
-    [TOKEN.NAN]: {
-      kind: KIND.ATOMIC,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
-    [TOKEN.NULL]: {
-      kind: KIND.ATOMIC,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
-    [TOKEN.SYMBOL]: {
-      kind: KIND.ATOMIC,
-      prec: PREC.NON,
-      fixity: FIX.NON,
-    },
+    [TOKEN.FALSE]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.TRUE]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.INF]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.NAN]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.NULL]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.SYMBOL]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
     [TOKEN.STRING]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
-    [TOKEN.INTEGER]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
-    [TOKEN.FRACTION]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.INT]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
+    [TOKEN.FRAC]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
     [TOKEN.FLOAT]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
     [TOKEN.HEX]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
     [TOKEN.BINARY]: { kind: KIND.ATOMIC, prec: PREC.NON, fixity: FIX.NON },
@@ -654,8 +821,8 @@ export namespace algom {
   };
 
   const numerics: { [key in NUM_TOKEN]: boolean } = {
-    [TOKEN.INTEGER]: true,
-    [TOKEN.FRACTION]: true,
+    [TOKEN.INT]: true,
+    [TOKEN.FRAC]: true,
     [TOKEN.FLOAT]: true,
     [TOKEN.HEX]: true,
     [TOKEN.BINARY]: true,
@@ -698,7 +865,8 @@ export namespace algom {
       return TokenRecord[this.type].kind === KIND.ATOMIC;
     }
     get isOperable() {
-      return !this.isEOF && !this.isSemicolon && !this.isDelimiter;
+      return !this.isEOF && !this.isSemicolon && !this.isDelimiter &&
+        this.type !== TOKEN.ASSIGN;
     }
     get isOperator() {
       return this.isInfix ||
@@ -715,20 +883,8 @@ export namespace algom {
     get isEOF() {
       return this.type === TOKEN.EOF;
     }
-    isDelim(lexeme: "(" | ")" | "|" | "[" | "]" | "{" | "}") {
-      return this.isDelimiter && this.lexeme === lexeme;
-    }
     get bp() {
       return TokenRecord[this.type].prec;
-    }
-    /**
-     * Returns true if this token
-     * strictly does not precede ('<')
-     * the other token.
-     */
-    doesNotPrecede(otherToken: Token) {
-      return (TokenRecord[this.type].prec <
-        TokenRecord[otherToken.type].prec);
     }
     get isVbar() {
       return this.type === TOKEN.VBAR;
@@ -741,6 +897,10 @@ export namespace algom {
     }
     get isLeftParen() {
       return this.type === TOKEN.LPAREN;
+    }
+    get isKeyword() {
+      return TokenRecord[this.type].kind === KIND.KEYWORD ||
+        TokenRecord[this.type].kind === KIND.ILLEGAL;
     }
     get isRightParen() {
       return this.type === TOKEN.RPAREN;
@@ -779,130 +939,12 @@ export namespace algom {
     }
   }
 
-  const hasProp = (obj: Object, p: string) => obj.hasOwnProperty(p);
-  function mergeTuples(a: Tuple | ASTNode, b: Tuple | ASTNode) {
-    let L: List<ASTNode> = new List();
-    switch (true) {
-      case (a.isTuple() && b.isTuple()):
-        L = (a as Tuple).value.concat((b as Tuple).value);
-        break;
-      case (a.isTuple() && !b.isTuple()):
-        L = (a as Tuple).value.push(b);
-        break;
-      case (!a.isTuple() && b.isTuple()):
-        L = (b as Tuple).value.push(a);
-        break;
-      case (!a.isTuple() && !b.isTuple()):
-        L = List.of(a, b);
-        break;
-    }
-    return Tuple.of(L);
-  }
-  export const match = {
-    int: (s: string) => /^-?(0|[1-9]\d*)(?<!-0)$/.test(s),
-    float: (s: string) => /^(?!-0(\.0+)?$)-?(0|[1-9]\d*)(\.\d+)?$/.test(s),
-    uInt: (s: string) => /^(0|[1-9]\d*)$/.test(s),
-    uFloat: (s: string) => /^(0|[1-9]\d*)(\.\d+)?$/.test(s),
-    scinum: (s: string) =>
-      /^(?!-0?(\.0+)?(e|$))-?(0|[1-9]\d*)?(\.\d+)?(?<=\d)(e[-+]?(0|[1-9]\d*))?$/i
-        .test(s),
-    hex: (s: string) => /^0x[0-9a-f]+$/i.test(s),
-    binary: (s: string) => /^0b[0-1]+$/i.test(s),
-    octal: (s: string) => /^0o[0-8]+$/i.test(s),
-    frac: (s: string) => /^(-?[1-9][0-9]*|0)\/[1-9][0-9]*/.test(s),
-  };
-  export function GCD(a: number, b: number) {
-    if (!is.integer(a) || !is.integer(b)) {
-      return Infinity;
-    }
-    let t = 1;
-    while (b !== 0) {
-      t = b;
-      b = a % b;
-      a = t;
-    }
-    return a;
-  }
-  export function abs(n: number) {
-    return Math.abs(n);
-  }
-  export function factorial(n: number | string) {
-    throw new Error("factorial unimplemented");
-  }
-  export function simplify(n: number, d: number) {
-    const sign = sgn(n) * sgn(d);
-    const N = abs(n);
-    const D = abs(d);
-    const f = GCD(n, d);
-    const numer = (sign * n) / f;
-    const denom = D / f;
-    const res = `${numer}/${denom}`;
-    return new Num(res, NUM.FRACTION);
-  }
-  export const is = {
-    func: (v: any): v is Function => typeof v === "function",
-    obj: (v: any): v is Object => typeof v === "object",
-    number: (v: any): v is number => typeof v === "number",
-    string: (v: any): v is string => typeof v === "number",
-    bool: (v: any): v is boolean => typeof v === "boolean",
-    integer: (v: any) => {
-      if (typeof v === "number") return Number.isInteger(v);
-      return match.int(v);
-    },
-  };
-  export function sgn(x: number) {
-    return x === 0 ? 0 : x > 0 ? 1 : -1;
-  }
-  export const toInt = Number.parseInt;
-  export const toFloat = Number.parseFloat;
-  export const floor = Math.floor;
-  export const isNaN = Number.isNaN;
-  export const split = (s: string, splitter: string) => s.split(splitter);
-  export function integer(n: string | number) {
-    if (typeof n === "number") return new Int(n);
-    switch (true) {
-      case match.binary(n):
-        return new Int(toInt(n, 2));
-      case match.hex(n):
-        return new Int(toInt(n, 16));
-      case match.octal(n):
-        return new Int(toInt(n, 8));
-      case match.float(n):
-        n = floor(toFloat(n));
-        return new Int(n);
-      case match.scinum(n): {
-        const [a, b] = split(n, "e");
-        const x = Number(a);
-        const y = Number(b);
-        return new Int(x ** y);
-      }
-      case match.frac(n): {
-        const [a, b] = split(n, "/");
-        const x = toInt(a);
-        const y = toInt(b);
-        return new Int(x ** y);
-      }
-    }
-    return new Int(NaN);
-  }
-  export function getFrac(n: string) {
-    const [a, b] = split(n, "/");
-    const x = toInt(a);
-    const y = toInt(b);
-    return [x, y];
-  }
-  export function even(n: number) {
-    return n % 2 === 0 ? 1 : 0;
-  }
-  export function odd(n: number) {
-    return n % 2 !== 0 ? 1 : 0;
-  }
-
   /* -------------------------------------------------------------------------- */
   /* § enum: NODE                                                               */
   /* -------------------------------------------------------------------------- */
   enum NODE {
     BLOCK,
+    ERROR,
     TUPLE,
     VECTOR,
     MATRIX,
@@ -942,18 +984,23 @@ export namespace algom {
     root(n: Root): T;
     cond(n: CondExpr): T;
     assign(n: Assignment): T;
+    bool(n: Bool): T;
+    error(n: Errnode): T;
   }
 
   /* -------------------------------------------------------------------------- */
   /* § Abstract Class: ASTNode                                                  */
   /* -------------------------------------------------------------------------- */
-  abstract class ASTNode {
+  export abstract class ASTNode {
     kind: NODE;
     constructor(kind: NODE) {
       this.kind = kind;
     }
+    get erred() {
+      return this.kind === NODE.ERROR;
+    }
     get nkind() {
-      return NODE[this.kind];
+      return NODE[this.kind].toLowerCase().replace("_", "-");
     }
     abstract accept<T>(n: Visitor<T>): T;
     isBlock(): this is Block {
@@ -961,6 +1008,9 @@ export namespace algom {
     }
     isCallExpr() {
       return this.kind === NODE.CALL_EXPRESSION;
+    }
+    isBool(): this is Bool {
+      return this.kind === NODE.BOOL;
     }
     isTuple(): this is Tuple {
       return this.kind === NODE.TUPLE;
@@ -999,14 +1049,26 @@ export namespace algom {
       return this.kind === NODE.ROOT;
     }
   }
+  export class Errnode extends ASTNode {
+    value: string;
+    constructor(message: string) {
+      super(NODE.ERROR);
+      this.value = message;
+    }
+    accept<T>(n: Visitor<T>): T {
+      return n.error(this);
+    }
+  }
   /* -------------------------------------------------------------------------- */
   /* § Root Node                                                                */
   /* -------------------------------------------------------------------------- */
   class Root extends ASTNode {
     root: ASTNode[];
+    error: boolean;
     constructor(root: ASTNode[]) {
       super(NODE.ROOT);
       this.root = root;
+      this.error = false;
     }
     accept<T>(n: Visitor<T>): T {
       return n.root(this);
@@ -1089,6 +1151,16 @@ export namespace algom {
       }
       return new Matrix(v, this.rows, this.columns);
     }
+    forall(
+      fn: (n: ASTNode, rowIndex: number, columnIndex: number) => any,
+    ): any {
+      for (let i = 0; i < this.rows; i++) {
+        for (let j = 0; j < this.columns; j++) {
+          this.matrix[i][j] = fn(this.matrix[i][j], i, j);
+        }
+      }
+      return this.matrix;
+    }
     map(fn: (n: ASTNode, rowIndex: number, columnIndex: number) => ASTNode) {
       let out = this.clone();
       for (let i = 0; i < this.rows; i++) {
@@ -1148,6 +1220,38 @@ export namespace algom {
   }
 
   /* -------------------------------------------------------------------------- */
+  /* § ASTNode: Bool                                                            */
+  /* -------------------------------------------------------------------------- */
+  class Bool extends ASTNode {
+    value: boolean;
+    constructor(value: boolean) {
+      super(NODE.BOOL);
+      this.value = value;
+    }
+    accept<T>(v: Visitor<T>) {
+      return v.bool(this);
+    }
+    and(other: Bool) {
+      return ast.bool(this.value && other.value);
+    }
+    or(other: Bool) {
+      return ast.bool(this.value || other.value);
+    }
+    nor(other: Bool) {
+      return ast.bool(!(this.value || other.value));
+    }
+    xor(other: Bool) {
+      return ast.bool(this.value !== other.value);
+    }
+    xnor(other: Bool) {
+      return ast.bool(this.value === other.value);
+    }
+    nand(other: Bool) {
+      return ast.bool(!(this.value && other.value));
+    }
+  }
+
+  /* -------------------------------------------------------------------------- */
   /* § ASTNode: Num                                                             */
   /* -------------------------------------------------------------------------- */
   type NUMBER = Int | Float | Fraction;
@@ -1185,24 +1289,7 @@ export namespace algom {
     get isFalse() {
       return this.raw <= 0;
     }
-    and(n: Num) {
-      return this.isTrue && n.isTrue ? ast.TRUE : ast.FALSE;
-    }
-    or(n: Num) {
-      return this.isTrue || n.isTrue ? ast.TRUE : ast.FALSE;
-    }
-    nor(n: Num) {
-      return this.or(n).isTrue ? ast.FALSE : ast.TRUE;
-    }
-    xor(n: Num) {
-      return this.raw !== n.raw ? ast.TRUE : ast.FALSE;
-    }
-    xnor(n: Num) {
-      return this.xor(n).isTrue ? ast.FALSE : ast.TRUE;
-    }
-    nand(n: Num) {
-      return this.and(n).isTrue ? ast.FALSE : ast.TRUE;
-    }
+
     accept<T>(v: Visitor<T>) {
       return v.num(this);
     }
@@ -1290,33 +1377,38 @@ export namespace algom {
       return new Num(result, this.type(result));
     }
     gte(x: Num) {
-      let result = 1;
+      let result = false;
       if (this.hasFrac(x)) {
         const GT = this.gt(x);
         const EQ = this.equals(x);
-        result = GT.value === "1" && EQ.value === "1" ? 1 : 0;
-      } else result = this.numval.N >= x.numval.D ? 1 : 0;
-      return new Num(result, NUM.INT);
+        result = GT.value && EQ.value;
+      } else result = this.numval.N >= x.numval.D;
+      return ast.bool(result);
+    }
+    equals(x: Num) {
+      const a = algom.simplify(this.numval.N, this.numval.D);
+      const b = algom.simplify(x.numval.N, x.numval.D);
+      const result = a.numval.N === b.numval.N && a.numval.D === b.numval.D;
+      return ast.bool(result);
     }
     gt(x: Num) {
-      let result = 1;
+      let result = false;
       if (this.hasFrac(x)) {
-        const L = this.lte(x);
-        result = L.value === "1" ? 0 : 1;
-      } else result = this.numval.N > x.numval.D ? 1 : 0;
-      return new Num(result, NUM.INT);
+        result = this.lte(x).value;
+      } else result = this.numval.N > x.numval.D;
+      return ast.bool(result);
     }
     lt(x: Num) {
-      let result = 1;
+      let result = false;
       if (this.hasFrac(x)) {
         const L = this.lte(x);
         const R = this.equals(x);
-        result = L.value === "1" && R.value === "0" ? 1 : 0;
-      } else result = this.numval.N < x.numval.D ? 1 : 0;
-      return new Num(result, NUM.INT);
+        result = L.value && R.value;
+      } else result = this.numval.N < x.numval.D;
+      return ast.bool(result);
     }
     lte(x: Num) {
-      let result = 1;
+      let result = false;
       if (this.hasFrac(x)) {
         const tN = this.numval.N;
         const tD = this.numval.D;
@@ -1328,9 +1420,9 @@ export namespace algom {
         const otherD = xND.numval.D;
         const thisD = tND.numval.D;
         const otherN = xND.numval.N;
-        result = thisN * otherD <= otherN * thisD ? 1 : 0;
-      } else result = this.numval.N <= x.numval.N ? 1 : 0;
-      return new Num(result, NUM.INT);
+        result = thisN * otherD <= otherN * thisD;
+      } else result = this.numval.N <= x.numval.N;
+      return ast.bool(result);
     }
     minus(x: Num) {
       let result = 0;
@@ -1370,15 +1462,6 @@ export namespace algom {
       const b = x.numval.N;
       result = a * b;
       return new Num(result, this.type(result));
-    }
-    equals(x: Num) {
-      const a = algom.simplify(this.numval.N, this.numval.D);
-      const b = algom.simplify(x.numval.N, x.numval.D);
-      const result = a.numval.N === b.numval.N &&
-          a.numval.D === b.numval.D
-        ? 1
-        : 0;
-      return new Num(result, NUM.INT);
     }
   }
 
@@ -1500,6 +1583,9 @@ export namespace algom {
       this.params = params;
       this.body = body;
     }
+    get paramlist() {
+      return this.params.map((n) => n.value);
+    }
     accept<T>(n: Visitor<T>): T {
       return n.funDeclaration(this);
     }
@@ -1510,10 +1596,12 @@ export namespace algom {
   class VarDeclaration extends ASTNode {
     name: string;
     value: ASTNode;
-    constructor(op: string, value: ASTNode) {
+    line: number;
+    constructor(op: string, value: ASTNode, line: number) {
       super(NODE.VARIABLE_DECLARATION);
       this.name = op;
       this.value = value;
+      this.line = line;
     }
     accept<T>(n: Visitor<T>): T {
       return n.varDeclaration(this);
@@ -1524,13 +1612,13 @@ export namespace algom {
   /* § ASTNode: CallExpr                                                        */
   /* -------------------------------------------------------------------------- */
   class CallExpr extends ASTNode {
-    functionName: string;
+    callee: string;
     args: ASTNode[];
     length: number;
-    native?: FunctionEntry;
-    constructor(functionName: string, args: ASTNode[], native?: FunctionEntry) {
+    native?: Function;
+    constructor(callee: string, args: ASTNode[], native?: Function) {
       super(NODE.CALL_EXPRESSION);
-      this.functionName = functionName;
+      this.callee = callee;
       this.args = args;
       this.length = args.length;
       this.native = native;
@@ -1581,12 +1669,36 @@ export namespace algom {
     static int(v: string, base = 10) {
       return new Num(algom.toInt(v, base).toString(), NUM.INT);
     }
-    static TRUE = new Num(1, NUM.INT);
-    static FALSE = new Num(0, NUM.INT);
+    static redeclareError(name: string) {
+      return new Errnode(
+        `[Resolver]: Name “${name}” has been declared in the same scope, redeclaration prohibited.`,
+      );
+    }
+    static argsErr(callee: string, expected: number, actual: number) {
+      const a1 = expected === 0 ? "no" : `${expected}`;
+      const a2 = expected === 1 ? " argument," : " arguments,";
+      const a12 = a1 + a2;
+      const fName = "Function " + "“" + callee + "”";
+      return new Errnode(
+        `${fName} requires ${a12} but ${actual} were passed.`,
+      );
+    }
+    static resError(message: string) {
+      return new Errnode(`[Resolver]: ${message}`);
+    }
+    static typeError(message: string) {
+      return new Errnode(`[Typechecker]: ${message}`);
+    }
+    static error(message: string) {
+      return new Errnode(message);
+    }
+    static bool(value: boolean) {
+      return new Bool(value);
+    }
     static float(v: string) {
       return new Num(v, NUM.FLOAT);
     }
-    static callExpr(fn: string, args: ASTNode[], native?: FunctionEntry) {
+    static callExpr(fn: string, args: ASTNode[], native?: Function) {
       return new CallExpr(fn, args, native);
     }
     static assign(name: string, value: ASTNode) {
@@ -1639,8 +1751,8 @@ export namespace algom {
     static block(elements: ASTNode[]) {
       return new Block(elements);
     }
-    static varDeclaration(name: string, value: ASTNode) {
-      return new VarDeclaration(name, value);
+    static varDeclaration(name: string, value: ASTNode, line: number) {
+      return new VarDeclaration(name, value, line);
     }
     static funDeclaration(name: string, params: Sym[], body: ASTNode) {
       return new FunDeclaration(name, params, body);
@@ -1664,101 +1776,6 @@ export namespace algom {
   }
 
   /* -------------------------------------------------------------------------- */
-  /* § Visitor: ToPrefix                                                        */
-  /* -------------------------------------------------------------------------- */
-  class ToPrefix implements Visitor<string> {
-    cond(n: CondExpr) {
-      const test: string = this.toPrefix(n.condition) + "\n";
-      const consequent: string = "\t" + this.toPrefix(n.consequent) + "\n";
-      const alternate: string = "\t" + " else " + this.toPrefix(n.alternate);
-      return `(cond ${test} ${consequent} ${alternate})`;
-    }
-    assign(n: Assignment): string {
-      const name = n.name;
-      const value = this.toPrefix(n.value);
-      return `(assign ${name} ${value})`;
-    }
-    chars(n: Chars): string {
-      return `"` + n.value + `"`;
-    }
-    null(n: Null): string {
-      return "null";
-    }
-    num(n: Num): string {
-      return n.value;
-    }
-    sym(n: Sym): string {
-      return n.value;
-    }
-    tuple(n: Tuple): string {
-      return this.stringify(n.value.array);
-    }
-    block(n: Block): string {
-      let result = "(";
-      for (let i = 0; i < n.body.length; i++) {
-        result += this.toPrefix(n.body[i]);
-      }
-      return result + ")";
-    }
-    vector(n: Vector): string {
-      return this.stringify(n.elements);
-    }
-    unaryExpr(n: UnaryExpr): string {
-      let op = n.op;
-      let result = this.toPrefix(n.arg);
-      const out = `(` + op + result + `)`;
-      return out;
-    }
-    binaryExpr(n: BinaryExpr): string {
-      let left = this.toPrefix(n.left);
-      let right = this.toPrefix(n.right);
-      return `(` + n.op + " " + left + " " + right + `)`;
-    }
-    varDeclaration(n: VarDeclaration): string {
-      const name = n.name;
-      return `(define ` + name + " " + this.toPrefix(n.value) + `)`;
-    }
-    root(n: Root): string {
-      let result: string[] = [];
-      n.root.forEach((n) => result.push(this.toPrefix(n)));
-      const out = result.join("\n");
-      return `(` + out + `)`;
-    }
-    funDeclaration(node: FunDeclaration): string {
-      const name = node.name;
-      const params = this.stringify(node.params);
-      const body = this.toPrefix(node.body);
-      return `(fun ${name} ${params} ${body})`;
-    }
-    matrix(n: Matrix): string {
-      let elements: string[] = [];
-      n.vectors.forEach((v) => elements.push("\t" + this.toPrefix(v)));
-      const Es = "(\n" + elements.join("\n") + "\n)";
-      return Es;
-    }
-    callExpr(n: CallExpr): string {
-      let fn = n.functionName;
-      let arglist = this.stringify(n.args);
-      return fn + arglist;
-    }
-    stringify(
-      nodes: ASTNode[],
-      separator = " ",
-      delims = ["(", ")"],
-      prefix = "",
-      postfix = "",
-    ) {
-      let out: string[] = [];
-      nodes.forEach((n) => prefix + out.push(this.toPrefix(n)) + postfix);
-      const [leftDelim, rightDelim] = delims;
-      return leftDelim + out.join(separator) + rightDelim;
-    }
-    toPrefix(n: ASTNode) {
-      return n.accept(this);
-    }
-  }
-
-  /* -------------------------------------------------------------------------- */
   /* § Visitor: ToString                                                        */
   /* -------------------------------------------------------------------------- */
   class ToString implements Visitor<string> {
@@ -1767,6 +1784,12 @@ export namespace algom {
       const consequent: string = this.toString(n.consequent);
       const alternate: string = this.toString(n.alternate);
       return `if (${test}) {${consequent}} else {${alternate}}`;
+    }
+    error(n: Errnode): string {
+      return n.value;
+    }
+    bool(n: Bool): string {
+      return `${n.value}`;
     }
     assign(n: Assignment): string {
       const name = n.name;
@@ -1835,7 +1858,7 @@ export namespace algom {
       return Es;
     }
     callExpr(n: CallExpr): string {
-      let fn = n.functionName;
+      let fn = n.callee;
       let arglist = this.stringify(n.args);
       return fn + arglist;
     }
@@ -1857,247 +1880,537 @@ export namespace algom {
   }
 
   /* -------------------------------------------------------------------------- */
+  /* § SCOPE                                                                    */
+  /* -------------------------------------------------------------------------- */
+
+  class Scope {
+    values: { [key: string]: any };
+    parent?: Scope;
+    constructor(parent?: Scope) {
+      this.values = {};
+      this.parent = parent;
+    }
+    assign(name: string, value: any) {
+      if (this.has(name)) {
+        this.values[name] = value;
+        return value;
+      } else if (this.parent !== undefined) {
+        this.parent.assign(name, value);
+        return value;
+      } else {
+        this.values[name] = value;
+        return value;
+      }
+    }
+    has(name: string) {
+      return this.values[name] !== undefined || lib[name] !== undefined;
+    }
+    define(name: string, value: any) {
+      if (this.has(name)) {
+        return null;
+      }
+      this.values[name] = value;
+      return value;
+    }
+    get(name: string): any {
+      if (this.has(name)) return this.values[name];
+      if (this.parent !== undefined) return this.parent.get(name);
+      return null;
+    }
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /* § FN                                                                       */
+  /* -------------------------------------------------------------------------- */
+  export class Fn {
+    name: string;
+    length: number;
+    params: any[];
+    body: ASTNode;
+    constructor(name: string, params: any[], body: ASTNode) {
+      this.name = name;
+      this.params = [];
+      this.length = params.length;
+      this.body = body;
+      const set = new Set();
+      for (let i = 0; i < params.length; i++) {
+        if (!set.has(params[i])) {
+          this.params.push(params[i]);
+        }
+        set.add(params[i]);
+      }
+    }
+    interpret(interpreter: Interpreter, args: any[]) {
+      const scope = new Scope();
+      for (let i = 0; i < this.length; i++) {
+        scope.define(this.params[i], args[i]);
+      }
+      return interpreter.execBlock([this.body], scope);
+    }
+    call(compiler: Compile, args: any[]) {
+      const scope = new Scope();
+      for (let i = 0; i < this.length; i++) {
+        scope.define(this.params[i], args[i]);
+      }
+      return compiler.executeBlock([this.body], scope);
+    }
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /* § COMPILER                                                                 */
+  /* -------------------------------------------------------------------------- */
+  class Compile implements Visitor<any> {
+    scope: Scope;
+    constructor() {
+      this.scope = new Scope();
+    }
+    interpret(nodes: ASTNode[]) {
+      for (let i = 0; i < nodes.length; i++) {
+        this.execute(nodes[i]);
+      }
+    }
+    execute(n: ASTNode) {
+      return n.accept(this);
+    }
+    bool(n: Bool) {
+      return n.value;
+    }
+    chars(n: Chars) {
+      return n.value;
+    }
+    null() {
+      return null;
+    }
+    num(n: Num) {
+      return n.raw;
+    }
+    sym(n: Sym) {
+      if (corelib.hasConstant(n.value)) {
+        return corelib.getNumericConstant(n.value);
+      }
+      const res = this.scope.get(n.value);
+      return res;
+    }
+    error(n: Errnode) {
+      return n.value;
+    }
+    tuple(n: Tuple) {
+      const elements = n.value.map((node) => this.execute(node));
+      return elements.array;
+    }
+    block(n: Block) {
+      return this.executeBlock(n.body, this.scope);
+    }
+    executeBlock(statements: ASTNode[], env: Scope): any {
+      const previous = this.scope;
+      this.scope = env;
+      let result = null;
+      for (let i = 0; i < statements.length; i++) {
+        result = this.execute(statements[i]);
+      }
+      this.scope = previous;
+      return result;
+    }
+    vector(n: Vector) {
+      const elements: any[] = n.elements.map((node) => this.execute(node));
+      return elements;
+    }
+    matrix(n: Matrix) {
+      const matrix: any = n.forall((n) => this.execute(n));
+      return matrix;
+    }
+    unaryExpr(n: UnaryExpr): any {
+      const arg = this.execute(n.arg);
+      const op = n.op;
+      switch (op) {
+        case "-":
+          return -arg;
+        case "!":
+          return !arg;
+      }
+      return null;
+    }
+    callExpr(n: CallExpr) {
+      const fn = this.scope.get(n.callee);
+      let args: any[] = [];
+      for (let i = 0; i < n.args.length; i++) {
+        args.push(this.execute(n.args[i]));
+      }
+      if (n.native) {
+        return n.native.apply(null, args);
+      }
+      if (fn instanceof Fn) {
+        const res = fn.call(this, args);
+        return res;
+      }
+      return null;
+    }
+    binaryExpr(n: BinaryExpr) {
+      const left: any = this.execute(n.left);
+      const right: any = this.execute(n.right);
+      const op = n.op;
+      switch (op) {
+        case "+":
+          return left + right;
+        case "-":
+          return left - right;
+        case "*":
+          return left * right;
+        case "/":
+          return left / right;
+        case "^":
+          return left ** right;
+        case "mod":
+          return ((left % right) + left) % right;
+        case "%":
+        case "rem":
+          return left % right;
+        case "//":
+          return Math.floor(left / right);
+        case ">":
+          return left > right;
+        case ">=":
+          return left >= right;
+        case "<":
+          return left < right;
+        case "<=":
+          return left <= right;
+        case "!=":
+          return left !== right;
+        case "and":
+          return left && right;
+        case "or":
+          return left || right;
+        case "nor":
+          return !(left || right);
+        case "xor":
+          return left !== right;
+        case "xnor":
+          return left === right;
+        case "nand":
+          return !(left && right);
+        case "==":
+        case "=":
+          return left === right;
+      }
+    }
+    varDeclaration(node: VarDeclaration): any {
+      let value = null;
+      if (!node.value.isNull()) {
+        value = this.execute(node.value);
+      }
+      return this.scope.define(node.name, value);
+    }
+    funDeclaration(node: FunDeclaration) {
+      const fn = new Fn(node.name, node.paramlist, node.body);
+      this.scope.define(node.name, fn);
+      return fn;
+    }
+    root(n: Root): Runtimeval {
+      let result = this.scope;
+      for (let i = 0; i < n.root.length; i++) {
+        result = this.execute(n.root[i]);
+      }
+      const output = Object.assign(this.scope, { result });
+      return output;
+    }
+    cond(n: CondExpr): any {
+      if (this.execute(n.condition)) {
+        return this.execute(n.consequent);
+      } else return this.execute(n.alternate);
+    }
+    assign(n: Assignment): any {
+      const value = this.execute(n.value);
+      this.scope.assign(n.name, value);
+      return value;
+    }
+  }
+  interface Runtimeval extends Scope {
+    result: any;
+  }
+
+  /* -------------------------------------------------------------------------- */
   /* § INTERPRETER                                                              */
   /* -------------------------------------------------------------------------- */
   class Interpreter implements Visitor<ASTNode> {
-    environment: Environment;
     str: ToString;
-    constructor(environment = new Environment()) {
-      this.environment = environment;
+    scope: Scope;
+    constructor() {
       this.str = new ToString();
-    }
-    private evalMath(nodeargs: ASTNode[], native: FunctionEntry) {
-      let args: number[] = [];
-      nodeargs.forEach((node) => {
-        const num = this.evaluate(node);
-        num.isNum() && args.push(num.raw);
-      });
-      const result = Library.execute({ fn: native, args });
-      switch (typeof result) {
-        case "number":
-          const build = algom.match.int(`${result}`) ? ast.int : ast.float;
-          return build(`${result}`);
-        default:
-          return ast.nil;
-      }
+      this.scope = new Scope();
     }
     stringify(n: ASTNode) {
       return n.accept(this.str);
     }
-    /* -------------------------------------------------------------------------- */
-    /* § Interpret Call Expression                                                */
-    /* -------------------------------------------------------------------------- */
-    callExpr(node: CallExpr): ASTNode {
-      const { native } = node;
-      if (native) {
-        switch (native.argtype) {
-          case NODE.NUMBER:
-            return this.evalMath(node.args, native);
-          default:
-            throw new Error("Unhandled argtype in native.");
-        }
-      } else {
-        const { functionName, args } = node;
-        const callee = this.environment.lookup(functionName);
-        if (callee.isFunDeclaration()) {
-          const { params, body } = callee;
-          const env = new Environment(this.environment);
-          params.forEach((n, i) => env.declare(n.value, args[i]));
-          const ip = new Interpreter(env);
-          const result = body.accept(ip);
-          return result;
-        }
-        return ast.nil;
-      }
+
+    error(n: Errnode): ASTNode {
+      return n;
     }
-    /* -------------------------------------------------------------------------- */
-    /* § Interpret Assignment                                                     */
-    /* -------------------------------------------------------------------------- */
-    assign(n: Assignment): ASTNode {
-      const value = this.evaluate(n.value);
-      this.environment.assign(n.name, value);
+
+    funDeclaration(node: FunDeclaration): ASTNode {
+      const fn = new Fn(node.name, node.paramlist, node.body);
+      this.scope.define(node.name, fn);
+      return ast.nil;
+    }
+
+    callExpr(node: CallExpr): ASTNode {
+      const args: ASTNode[] = [];
+      const callee = node.callee;
+      const arglen = node.length;
+      for (let i = 0; i < arglen; i++) {
+        args.push(this.exec(node.args[i]));
+      }
+      if (node.native) {
+        let nargs: number[] = [];
+        const L = node.native.length;
+        if (args.length < L) {
+          return ast.argsErr(callee, L, arglen);
+        }
+        args.forEach((num, i) => {
+          i < L && num.kind === NODE.NUMBER && nargs.push((num as Num).raw);
+        });
+        const result = node.native.apply(null, nargs);
+        switch (typeof result) {
+          case "number":
+            return N(`${result}`);
+          case "boolean":
+            return ast.bool(result);
+          case "string":
+            return ast.string(result);
+          case "undefined":
+          default:
+            return ast.typeError("Invalid native call.");
+        }
+      }
+      const fn = this.scope.get(callee);
+      if (fn === null) {
+        return ast.resError(`No function named ${callee} exists.`);
+      }
+      if (fn instanceof Fn) {
+        if (arglen < fn.length) return ast.argsErr(callee, fn.length, arglen);
+        return fn.interpret(this, args);
+      }
+      return ast.nil;
+    }
+
+    varDeclaration(node: VarDeclaration): ASTNode {
+      let value: ASTNode = ast.nil;
+      if (!node.value.isNull()) {
+        value = this.exec(node.value);
+      }
+      const res = this.scope.define(node.name, value);
+      if (res === null) {
+        return ast.redeclareError(node.name);
+      }
+      return res;
+    }
+
+    assign(node: Assignment): ASTNode {
+      const value = this.exec(node.value);
+      this.scope.assign(node.name, value);
       return value;
     }
-    /* -------------------------------------------------------------------------- */
-    /* § Interpret Matrix                                                         */
-    /* -------------------------------------------------------------------------- */
+    sym(node: Sym): ASTNode {
+      const n = corelib.getNumericConstant(node.value);
+      if (n) return N(n.toString());
+      const value = this.scope.get(node.value);
+      if (value === null || value === undefined) {
+        return ast.resError(`No variable named ${node.value} exists.`);
+      }
+      return value;
+    }
     matrix(n: Matrix): ASTNode {
       return n;
     }
-    /* -------------------------------------------------------------------------- */
-    /* § Interpret Chars (string)                                                 */
-    /* -------------------------------------------------------------------------- */
     chars(n: Chars): ASTNode {
       return n;
     }
-    /* -------------------------------------------------------------------------- */
-    /* § Intepret Null                                                            */
-    /* -------------------------------------------------------------------------- */
+    bool(n: Bool): ASTNode {
+      return n;
+    }
     null(n: Null): ASTNode {
       return n;
     }
-    /* -------------------------------------------------------------------------- */
-    /* § Interpret Number                                                         */
-    /* -------------------------------------------------------------------------- */
     num(n: Num): ASTNode {
       return n;
     }
-    /* -------------------------------------------------------------------------- */
-    /* § Interpret Symbol                                                         */
-    /* -------------------------------------------------------------------------- */
-    sym(node: Sym): ASTNode {
-      const v = this.environment.lookup(node.value);
-      if (v.isNull()) return ast.string(node.value);
-      return v;
-    }
-    /* -------------------------------------------------------------------------- */
-    /* § Interpret Conditional                                                    */
-    /* -------------------------------------------------------------------------- */
     cond(n: CondExpr): ASTNode {
-      const test = this.evaluate(n.condition);
-      if (test.isNum() && test.raw > 0) {
-        return this.evaluate(n.consequent);
+      const test = this.exec(n.condition);
+      if (test.isBool() && test.value) {
+        return this.exec(n.consequent);
       }
-      return this.evaluate(n.alternate);
+      return this.exec(n.alternate);
     }
-    /* -------------------------------------------------------------------------- */
-    /* § Interpret Function Declaration                                           */
-    /* -------------------------------------------------------------------------- */
-    funDeclaration(node: FunDeclaration): ASTNode {
-      const { name } = node;
-      this.environment.declare(name, node);
-      return ast.nil;
-    }
-    /* -------------------------------------------------------------------------- */
-    /* § Interpret Tuple                                                          */
-    /* -------------------------------------------------------------------------- */
+
     tuple(n: Tuple): ASTNode {
-      return Tuple.of(n.value.map((v) => this.evaluate(v)));
+      return Tuple.of(n.value.map((v) => this.exec(v)));
     }
-    /* -------------------------------------------------------------------------- */
-    /* § Interpret Block                                                          */
-    /* -------------------------------------------------------------------------- */
+
     block(node: Block): ASTNode {
-      return this.executeBlock(node.body, new Environment(this.environment));
+      return this.execBlock(node.body, this.scope);
     }
-    private executeBlock(statements: ASTNode[], environment: Environment) {
-      const previous = this.environment;
-      this.environment = environment;
+    execBlock(statements: ASTNode[], env: Scope) {
+      const prev = this.scope;
+      this.scope = env;
       let result: ASTNode = ast.nil;
       for (let i = 0; i < statements.length; i++) {
-        result = this.evaluate(statements[i]);
+        if (result.erred) return result;
+        result = this.exec(statements[i]);
       }
-      this.environment = previous;
+      this.scope = prev;
       return result;
     }
-    /* -------------------------------------------------------------------------- */
-    /* § Interpret Vector                                                         */
-    /* -------------------------------------------------------------------------- */
+
     vector(n: Vector): ASTNode {
       return n;
     }
-    /* -------------------------------------------------------------------------- */
-    /* § Interpret Unary Expression                                               */
-    /* -------------------------------------------------------------------------- */
+
     unaryExpr(n: UnaryExpr): ASTNode {
       return n;
     }
-    private isSymFrac(n: ASTNode) {
-      return n.isBinex() &&
-        n.op === "/" &&
-        n.left.isSymbol() &&
-        n.right.isSymbol();
-    }
-    /* -------------------------------------------------------------------------- */
-    /* § Interpret Binary Expression                                              */
-    /* -------------------------------------------------------------------------- */
+
     binaryExpr(n: BinaryExpr): ASTNode {
-      const left = this.evaluate(n.left);
-      const right = this.evaluate(n.right);
+      const left = this.exec(n.left);
+      if (left.erred) return left;
+      const right = this.exec(n.right);
+      if (right.erred) return right;
       const op = n.op;
       if ((left.isTuple() || right.isTuple())) {
         switch (op) {
           case "++":
             return mergeTuples(left, right);
+          default:
+            return ast.typeError(`Operand ${op} doesn’t work with tuples.`);
         }
       }
       if (left.isMatrix() && right.isMatrix()) {
         switch (n.op) {
           case "+":
             return left.add(right);
+          default:
+            return ast.typeError(`Operand ${op} doesn’t work with matrices.`);
         }
-      }
-      if (n.op === "to") {
-        const prefix1Right = this.isSymFrac(right) || right.isSymbol();
-        let L = this.stringify(left);
-        let R = this.stringify(right);
-        if (prefix1Right) R = "1" + R;
-        log([L, R]);
       }
       if (left.isNum() && right.isNum()) {
-        switch (n.op) {
-          case "+":
-            return left.add(right);
-          case "-":
-            return left.minus(right);
-          case "*":
-            return left.times(right);
-          case "/":
-            return left.divide(right);
-          case "^":
-            return left.pow(right);
-          case "%":
-          case "rem":
-            return left.rem(right);
-          case "//":
-            return left.div(right);
-          case "mod":
-            return left.mod(right);
-          case "and":
-            return left.and(right);
-          case ">":
-            return left.gt(right);
-          case ">=":
-            return left.gte(right);
-          case "<":
-            return left.lt(right);
-          case "<=":
-            return left.lte(right);
-          case "=":
-            return left.equals(right);
-          case "and":
-            return left.and(right);
-          case "or":
-            return left.or(right);
-          case "nor":
-            return left.nor(right);
-          case "xor":
-            return left.xor(right);
-          case "xnor":
-            return left.xnor(right);
-          case "nand":
-            return left.nand(right);
-        }
+        const result = compute(left, n.op, right);
+        if (result) return result;
       }
-      return ast.binex(left, n.op, right);
+      return ast.error(`Unknown use of operator ${n.op}`);
     }
-    varDeclaration(node: VarDeclaration): ASTNode {
-      const value = this.evaluate(node.value);
-      this.environment.declare(node.name, value);
-      return value;
-    }
-    root(n: Root): ASTNode {
-      let result: ASTNode = new Null();
-      for (let i = 0; i < n.root.length; i++) {
-        result = this.evaluate(n.root[i]);
+
+    root(node: Root): ASTNode {
+      if (node.error) return node.root[0];
+      let result: ASTNode = ast.nil;
+      for (let i = 0; i < node.root.length; i++) {
+        if (result.erred) return result;
+        result = this.exec(node.root[i]);
       }
       return result;
     }
-    evaluate(n: ASTNode) {
-      return n.accept(this);
+
+    exec(node: ASTNode) {
+      if (node.erred) return node;
+      return node.accept(this);
     }
   }
 
+  class ToPrefix implements Visitor<string> {
+    cond(n: CondExpr) {
+      const test: string = this.toPrefix(n.condition) + "\n";
+      const consequent: string = "\t" + this.toPrefix(n.consequent) + "\n";
+      const alternate: string = "\t" + " else " + this.toPrefix(n.alternate);
+      return `(cond ${test} ${consequent} ${alternate})`;
+    }
+    assign(n: Assignment): string {
+      const name = n.name;
+      const value = this.toPrefix(n.value);
+      return `(assign ${name} ${value})`;
+    }
+    bool(n: Bool): string {
+      return `${n.value}`;
+    }
+    chars(n: Chars): string {
+      return `"` + n.value + `"`;
+    }
+    null(n: Null): string {
+      return "null";
+    }
+    num(n: Num): string {
+      return n.value;
+    }
+    sym(n: Sym): string {
+      return n.value;
+    }
+    tuple(n: Tuple): string {
+      return this.stringify(n.value.array);
+    }
+    block(n: Block): string {
+      let result = "(";
+      for (let i = 0; i < n.body.length; i++) {
+        result += this.toPrefix(n.body[i]);
+      }
+      return result + ")";
+    }
+    vector(n: Vector): string {
+      return this.stringify(n.elements);
+    }
+    error(n: Errnode): string {
+      return n.value;
+    }
+    unaryExpr(n: UnaryExpr): string {
+      let op = n.op;
+      let result = this.toPrefix(n.arg);
+      const out = `(` + op + result + `)`;
+      return out;
+    }
+    binaryExpr(n: BinaryExpr): string {
+      let left = this.toPrefix(n.left);
+      let right = this.toPrefix(n.right);
+      return `(` + n.op + " " + left + " " + right + `)`;
+    }
+    varDeclaration(n: VarDeclaration): string {
+      const name = n.name;
+      return `(define ` + name + " " + this.toPrefix(n.value) + `)`;
+    }
+    root(n: Root): string {
+      let result: string[] = [];
+      n.root.forEach((n) => result.push(this.toPrefix(n)));
+      const out = result.join("\n");
+      return `(` + out + `)`;
+    }
+    funDeclaration(node: FunDeclaration): string {
+      const name = node.name;
+      const params = this.stringify(node.params);
+      const body = this.toPrefix(node.body);
+      return `(fun ${name} ${params} ${body})`;
+    }
+    matrix(n: Matrix): string {
+      let elements: string[] = [];
+      n.vectors.forEach((v) => elements.push("\t" + this.toPrefix(v)));
+      const Es = "(\n" + elements.join("\n") + "\n)";
+      return Es;
+    }
+    callExpr(n: CallExpr): string {
+      let fn = n.callee;
+      let arglist = this.stringify(n.args);
+      return fn + arglist;
+    }
+    stringify(
+      nodes: ASTNode[],
+      separator = " ",
+      delims = ["(", ")"],
+      prefix = "",
+      postfix = "",
+    ) {
+      let out: string[] = [];
+      nodes.forEach((n) => prefix + out.push(this.toPrefix(n)) + postfix);
+      const [leftDelim, rightDelim] = delims;
+      return leftDelim + out.join(separator) + rightDelim;
+    }
+    toPrefix(n: ASTNode) {
+      return n.accept(this);
+    }
+  }
   /* -------------------------------------------------------------------------- */
   /* § LEXER                                                                    */
   /* -------------------------------------------------------------------------- */
@@ -2172,7 +2485,7 @@ export namespace algom {
       const c = this.advance();
       if (this.isAlpha(c)) return this.identifier();
       if (this.isDigit(c)) {
-        this.numtype = TOKEN.INTEGER;
+        this.numtype = TOKEN.INT;
         return this.number();
       }
       switch (c) {
@@ -2199,13 +2512,13 @@ export namespace algom {
         case "-":
           if (this.isDigit(this.peek) && !this.prevToken.isNumber) {
             this.advance();
-            this.numtype = TOKEN.INTEGER;
+            this.numtype = TOKEN.INT;
             return this.number();
           }
           if (this.prevToken.isNumber || this.prevToken.isSymbol) {
             return this.token(TOKEN.MINUS);
           }
-          return this.token(TOKEN.UNARY_MINUS);
+          return this.token(TOKEN.NEGATE);
         case "?":
           return this.token(TOKEN.QUERY);
         case ":":
@@ -2250,7 +2563,7 @@ export namespace algom {
           return this.string;
       }
 
-      return this.errorToken(`unrecognized token: ‘${c}’`);
+      return this.errorToken(`Unrecognized token “${c}”`);
     }
     private get seesScientific() {
       return (this.peek === "e" || this.peek === "E") &&
@@ -2270,7 +2583,7 @@ export namespace algom {
       }
       if (this.stillSeesNumber) {
         if (this.peek === ".") this.numtype = TOKEN.FLOAT;
-        if (this.peek === "/") this.numtype = TOKEN.FRACTION;
+        if (this.peek === "/") this.numtype = TOKEN.FRAC;
         this.advance();
         while (this.isDigit(this.peek)) this.advance();
       }
@@ -2363,171 +2676,9 @@ export namespace algom {
   }
 
   /* -------------------------------------------------------------------------- */
-  /* § ENVIRONMENT                                                              */
-  /* -------------------------------------------------------------------------- */
-  class Environment {
-    values: Map<string, ASTNode>;
-    parent?: Environment;
-    constructor(parent?: Environment) {
-      this.values = new Map();
-      this.parent = parent;
-    }
-    private throwError(message: string) {
-      throw new Error(`[Runtime Error]: ${message}.`);
-    }
-    assign(name: string, value: ASTNode) {
-      if (this.values.has(name)) {
-        this.values.set(name, value);
-      }
-      if (this.parent === undefined) {
-        this.assign(name, ast.nil);
-      }
-      this.parent!.assign(name, value);
-    }
-    /**
-     * Adds a new variable to the environment's
-     * variable record.
-     */
-    declare(name: string, value: ASTNode): ASTNode {
-      if (this.values.has(name)) {
-        this.throwError(`Variable ${name} has been declared.`);
-      }
-      this.values.set(name, value);
-      return value;
-    }
-    lookup(name: string): ASTNode {
-      if (this.values.has(name)) {
-        return this.values.get(name)!;
-      }
-      if (this.parent === undefined) {
-        return ast.nil;
-      }
-      return this.parent!.lookup(name);
-    }
-  }
-
-  /* -------------------------------------------------------------------------- */
-  /* § LIBRARY                                                                  */
-  /* -------------------------------------------------------------------------- */
-  interface FunctionEntry {
-    fn: Function;
-    arity: number;
-    argtype: NODE;
-  }
-  interface LibraryArgs {
-    numericConstants: [string, number][];
-    functions: [string, FunctionEntry][];
-  }
-  interface ExecuteArgs<T> {
-    fn: FunctionEntry;
-    args: T[];
-  }
-  class Library {
-    numericConstants: Map<string, number>;
-    functions: Map<string, FunctionEntry>;
-    constructor({ numericConstants, functions }: LibraryArgs) {
-      this.numericConstants = new Map(numericConstants);
-      this.functions = new Map(functions);
-    }
-    hasNamedValue(name: string) {
-      return this.numericConstants.has(name);
-    }
-    getFunction(name: string) {
-      return this.functions.get(name);
-    }
-    getNumericConstant(name: string) {
-      const result = this.numericConstants.get(name);
-      if (result === undefined) {
-        throw new Error(`[Library]: No constant named ${name}.`);
-      }
-      return result;
-    }
-    hasFunction(name: string) {
-      return this.functions.has(name);
-    }
-    hasNumericConstant(name: string) {
-      return this.functions.has(name);
-    }
-    static execute<T>({ fn, args }: ExecuteArgs<T>) {
-      const result = fn.fn.apply(null, args);
-      return result;
-    }
-    addFunction(name: string, def: FunctionEntry) {
-      this.functions.set(name, def);
-      return this;
-    }
-  }
-
-  /* -------------------------------------------------------------------------- */
-  /* § ABSTRACT: CALC                                                           */
-  /* -------------------------------------------------------------------------- */
-
-  const corelib = new Library({
-    numericConstants: [
-      ["e", Math.E],
-      ["PI", Math.PI],
-      ["LN2", Math.LN2],
-      ["LN10", Math.LN10],
-      ["LOG2E", Math.LOG2E],
-      ["LOG10E", Math.LOG10E],
-      ["SQRT1_2", Math.SQRT1_2],
-      ["SQRT2", Math.SQRT2],
-    ],
-    functions: [
-      ["abs", { fn: Math.abs, arity: 1, argtype: NODE.NUMBER }],
-      ["acos", { fn: Math.acos, arity: 1, argtype: NODE.NUMBER }],
-      ["acosh", { fn: Math.acosh, arity: 1, argtype: NODE.NUMBER }],
-      ["asin", { fn: Math.asin, arity: 1, argtype: NODE.NUMBER }],
-      ["asinh", { fn: Math.asinh, arity: 1, argtype: NODE.NUMBER }],
-      ["atan", { fn: Math.atan, arity: 1, argtype: NODE.NUMBER }],
-      ["atanh", { fn: Math.atanh, arity: 1, argtype: NODE.NUMBER }],
-      ["atan2", { fn: Math.atan2, arity: 1, argtype: NODE.NUMBER }],
-      ["cbrt", { fn: Math.cbrt, arity: 1, argtype: NODE.NUMBER }],
-      ["ceil", { fn: Math.ceil, arity: 1, argtype: NODE.NUMBER }],
-      ["clz32", { fn: Math.clz32, arity: 1, argtype: NODE.NUMBER }],
-      ["cos", { fn: Math.cos, arity: 1, argtype: NODE.NUMBER }],
-      ["cosh", { fn: Math.cosh, arity: 1, argtype: NODE.NUMBER }],
-      ["exp", { fn: Math.exp, arity: 1, argtype: NODE.NUMBER }],
-      ["expm1", { fn: Math.expm1, arity: 1, argtype: NODE.NUMBER }],
-      ["floor", { fn: Math.floor, arity: 1, argtype: NODE.NUMBER }],
-      ["fround", { fn: Math.fround, arity: 1, argtype: NODE.NUMBER }],
-      ["gcd", { fn: algom.GCD, arity: 2, argtype: NODE.NUMBER }],
-      ["hypot", { fn: Math.hypot, arity: 150, argtype: NODE.NUMBER }],
-      ["imul", { fn: Math.imul, arity: 2, argtype: NODE.NUMBER }],
-      ["log", { fn: Math.log, arity: 1, argtype: NODE.NUMBER }],
-      ["ln", { fn: Math.log, arity: 1, argtype: NODE.NUMBER }],
-      ["log1p", { fn: Math.log1p, arity: 1, argtype: NODE.NUMBER }],
-      ["log10", { fn: Math.log10, arity: 1, argtype: NODE.NUMBER }],
-      ["log2", { fn: Math.log2, arity: 1, argtype: NODE.NUMBER }],
-      ["lg", { fn: Math.log2, arity: 1, argtype: NODE.NUMBER }],
-      ["max", { fn: Math.max, arity: 150, argtype: NODE.NUMBER }],
-      ["min", { fn: Math.min, arity: 150, argtype: NODE.NUMBER }],
-      ["pow", { fn: Math.pow, arity: 2, argtype: NODE.NUMBER }],
-      ["random", { fn: Math.random, arity: 0, argtype: NODE.NUMBER }],
-      ["round", { fn: Math.round, arity: 1, argtype: NODE.NUMBER }],
-      ["sign", { fn: Math.sign, arity: 1, argtype: NODE.NUMBER }],
-      ["sin", { fn: Math.sin, arity: 1, argtype: NODE.NUMBER }],
-      ["sinh", { fn: Math.sinh, arity: 1, argtype: NODE.NUMBER }],
-      ["sqrt", { fn: Math.sqrt, arity: 1, argtype: NODE.NUMBER }],
-      ["tan", { fn: Math.tan, arity: 1, argtype: NODE.NUMBER }],
-      ["tanh", { fn: Math.tanh, arity: 1, argtype: NODE.NUMBER }],
-      ["trunc", { fn: Math.trunc, arity: 1, argtype: NODE.NUMBER }],
-      ["even", { fn: algom.even, arity: 1, argtype: NODE.NUMBER }],
-      ["odd", { fn: algom.odd, arity: 1, argtype: NODE.NUMBER }],
-    ],
-  });
-
-  /* -------------------------------------------------------------------------- */
   /* § PARSER                                                                   */
   /* -------------------------------------------------------------------------- */
   interface Parser {
-    /**
-     * An error message indicating an
-     * error during the parse. If
-     * no error occurred, the field
-     * is the empty string.
-     */
-    error: string | null;
     /**
      * The result of the parsing
      * is an array of ASTs.
@@ -2548,7 +2699,9 @@ export namespace algom {
   }
   class Parser {
     token: Token = Token.nil;
+    error: Errnode | null;
     lastToken: Token = Token.nil;
+    private compiler: Compile = new Compile();
     private lastNode: ASTNode = ast.nil;
     private scanner: Lexer = new Lexer();
     private idx: number = 1;
@@ -2585,11 +2738,12 @@ export namespace algom {
       this.scanner.init(source);
       this.token = this.scanner.getToken();
     }
+
     public parse(source: string) {
       this.init(source);
       const result = this.stmntList();
       if (this.error !== null) {
-        this.result = ast.root(this.error);
+        this.result = ast.root([this.error]);
       } else {
         this.result = ast.root(result);
       }
@@ -2598,7 +2752,8 @@ export namespace algom {
 
     private stmntList() {
       const statements: ASTNode[] = [this.stmnt()];
-      while (!this.token.isEOF) {
+      while (!this.token.isEOF && this.error === null) {
+        if (this.error) return this.error;
         statements.push(this.stmnt());
       }
       return statements;
@@ -2656,7 +2811,7 @@ export namespace algom {
         return this.functionDeclaration(name);
       }
       if (this.match([TOKEN.ASSIGN])) init = this.exprStmt();
-      return ast.varDeclaration(name, init);
+      return ast.varDeclaration(name, init, this.token.line);
     }
 
     private functionDeclaration(name: string) {
@@ -2680,10 +2835,26 @@ export namespace algom {
 
     private exprStmt() {
       const expr = this.expression();
+      while (this.check(TOKEN.SEMICOLON)) {
+        this.advance();
+      }
       if (!this.lastToken.isSemicolon && !this.lastToken.isRightBrace) {
         const parser = "[expression-statement]: ";
         const err1 = parser + "Expected ‘;’ to end statement";
-        this.source[this.idx] && this.eat(TOKEN.SEMICOLON, err1);
+        (this.source[this.idx] || this.source[this.idx - 1] === ";") &&
+          this.eat(TOKEN.SEMICOLON, err1);
+      }
+      return expr;
+    }
+
+    assign() {
+      let expr = this.expression();
+      if (this.match([TOKEN.ASSIGN])) {
+        const value: ASTNode = this.assign();
+        if (expr.isSymbol()) {
+          const name = ast.symbol(expr.value, SYMBOL.VARIABLE);
+          return ast.assign(name.value, value);
+        }
       }
       return expr;
     }
@@ -2713,6 +2884,7 @@ export namespace algom {
     }
 
     private expression(minbp = PREC.NON) {
+      if (this.error !== null) return this.error as ASTNode;
       let lhs: ASTNode = ast.nil;
       switch (true) {
         case this.token.isAtomic:
@@ -2735,9 +2907,10 @@ export namespace algom {
           lhs = this.absoluteValue();
           break;
       }
-      while (this.token.isOperable) {
+      while (this.token.isOperable && this.error === null) {
         if (this.token.type === TOKEN.EOF) break;
         const op = this.token;
+        if (op.isKeyword) this.panic("found prohibited keyword");
         if (op.bp < minbp) break;
         this.advance();
         let rhs = this.expression(op.bp);
@@ -2767,7 +2940,7 @@ export namespace algom {
       switch (this.token.type) {
         case TOKEN.SYMBOL:
           return this.id();
-        case TOKEN.INTEGER:
+        case TOKEN.INT:
           return this.lit((lexeme) => ast.int(lexeme));
         case TOKEN.FLOAT:
           return this.lit((lexeme) => ast.float(lexeme));
@@ -2777,15 +2950,15 @@ export namespace algom {
           return this.lit((lexeme) => ast.int(lexeme, 16));
         case TOKEN.BINARY:
           return this.lit((lexeme) => ast.int(lexeme, 2));
-        case TOKEN.FRACTION:
+        case TOKEN.FRAC:
           return this.lit((lexeme) => ast.fraction(lexeme));
         case TOKEN.SCINUM:
           const prevToken = this.advance();
           return this.expand(prevToken.lexeme);
         case TOKEN.TRUE:
-          return this.lit(() => ast.TRUE);
+          return this.lit(() => ast.bool(true));
         case TOKEN.FALSE:
-          return this.lit(() => ast.FALSE);
+          return this.lit(() => ast.bool(false));
         case TOKEN.STRING:
           return this.lit((lexeme) => ast.string(lexeme));
         case TOKEN.NULL:
@@ -2828,7 +3001,7 @@ export namespace algom {
 
     private isVariableName(name: string) {
       return (!this.funcNames.has(name) && !corelib.hasFunction(name)) ||
-        corelib.hasNamedValue(name);
+        corelib.hasConstant(name);
     }
 
     private id(): ASTNode {
@@ -2863,7 +3036,11 @@ export namespace algom {
         } while (this.match([TOKEN.COMMA]));
         this.eat(TOKEN.RPAREN, err2);
       } else this.eat(TOKEN.RPAREN, err2);
-      return ast.callExpr(node.value, params, corelib.getFunction(node.value));
+      return ast.callExpr(
+        node.value,
+        params,
+        corelib.getFunction(node.value),
+      );
     }
 
     private array() {
@@ -2886,12 +3063,12 @@ export namespace algom {
       while (this.match([TOKEN.COMMA])) {
         let expr = this.expression();
         if (builder === "matrix" && (!expr.isVector())) {
-          throw new Error(err3);
+          this.panic(err3);
         }
         if (expr instanceof Vector) {
           builder = "matrix";
           rows += 1;
-          if (cols !== expr.len) this.croak(err4);
+          if (cols !== expr.len) this.panic(err4);
         }
         elements.push(expr);
       }
@@ -2907,11 +3084,11 @@ export namespace algom {
      * If the error property is set, then the parser
      * will return an error node.
      */
-    private croak(message: string) {
-      message = `Line[${this.token.line}]: ${message}`;
-      this.error = message;
-      throw new Error(message);
-    }
+    // private croak(message: string) {
+    // message = `Line[${this.token.line}]: ${message}`;
+    // this.error = ast.error(message);
+    // return this.error;
+    // }
 
     /**
      * Special handling for scientific numbers.
@@ -2933,6 +3110,7 @@ export namespace algom {
      * is requested from the lexer.
      */
     private match(tokenTypes: TOKEN[]) {
+      if (this.error) return false;
       for (let i = 0; i < tokenTypes.length; i++) {
         const tokentype = tokenTypes[i];
         if (this.check(tokentype)) {
@@ -2944,17 +3122,17 @@ export namespace algom {
     }
 
     private check(type: TOKEN) {
-      if (type === TOKEN.EOF) return false;
+      if (this.error || type === TOKEN.EOF) return false;
       return this.token.type === type;
     }
 
-    eval() {
+    get val() {
       const n = new Interpreter();
       const out = this.result.accept(n);
       return n.stringify(out);
     }
 
-    toString(out: ASTNode = this.result) {
+    toString(out: ASTNode) {
       const s = new ToString();
       return out.accept(s);
     }
@@ -2968,150 +3146,161 @@ export namespace algom {
         const prefix = new ToPrefix();
         return this.result.accept(prefix);
       }
-      return Parser.treeString(this.result, (node) => {
+      if (this.error) {
+        return this.error.value;
+      }
+      return tree(this.result, (node) => {
         if (node instanceof ASTNode) node.kind = node.nkind as any;
         if (node instanceof Tuple) node.value = node.value.array as any;
       });
     }
 
-    private panic() {
+    private panic(messages: string) {
       const line = this.token.line;
-      const lexeme = this.token.lexeme;
-      const typename = this.token.typename;
       const plexeme = this.lastToken.lexeme;
       const ptypename = this.lastToken.typename;
       const lastNode = this.lastNode.nkind;
-      const line0 = `Parsing Error: Unexpected token.\n`;
-      const line1 = `\tToken: ${typename}[${lexeme}]\n`;
-      const line2 = `\tLine: ${line}\n`;
-      const line3 = `\tLast token: ${ptypename}[${plexeme}]\n`;
-      const line4 = `\tLast node parsed: ${lastNode}`;
-      const message = line0 + line1 + line2 + line3 + line4;
-      throw new Error(message);
+      const line0 = `Parsing Error:\n`;
+      const line2 = `Line: ${line}\n`;
+      const line3 = `Last lexeme parsed: A ${ptypename} “${plexeme}”\n`;
+      const line4 = `Last semantic parsed: ${lastNode}\n`;
+      const message = line0 + line2 + line3 + line4 + messages;
+      this.error = ast.error(message);
+      return this.error;
     }
 
     private eat(tokenType: TOKEN, message: string) {
       const token = this.token;
       if (token.type === TOKEN.EOF) {
-        this.croak(`${message} at end.`);
+        if (this.error) {
+          return this.error.value;
+        }
+        const erm = `Abrupt end of input.`;
+        this.error = ast.error(erm);
+        this.panic(erm);
+        return erm;
       }
-      if (token.type === TOKEN.ERROR || token.type !== tokenType) {
-        this.croak(`${message}, got ${token.lexeme}`);
+      if (token.type !== tokenType) {
+        this.panic(message);
+        return message;
       }
       this.advance();
       return token.lexeme;
     }
     private advance() {
+      if (this.token.type === TOKEN.ERROR) {
+        this.panic(`[scanner]: ${this.token.lexeme}`);
+        this.token = new Token(TOKEN.EOF, "", this.token.line);
+        return this.token;
+      }
+      if (this.error) {
+        this.scanner.init("");
+        this.token = new Token(TOKEN.EOF, "", this.token.line);
+        return this.token;
+      }
       this.lastToken = this.token;
       this.token = this.scanner.getToken();
       this.idx = this.scanner.current;
       return this.lastToken;
     }
-    /* -------------------------------------------------------------------------- */
-    /* § Tokenize                                                                 */
-    /* -------------------------------------------------------------------------- */
-    /**
-     * Generates an array of tokens from
-     * the input source. This method isn't
-     * used by the parser, but is useful
-     * for debugging expressions. The
-     * result property always has at least
-     * one ASTNode. By default, it contains
-     * the empty astnode, an object with the shape:
-     * ~~~
-     * {value: 'null', kind: 'null' }
-     * ~~~
-     * Note that the value is a string `'null'`,
-     * not the literal `null`. If an error
-     * occurred during parsing, then the result
-     * field contains a single error astnode:
-     * ~~~
-     * {value: [error-message], kind: 'error' }
-     * ~~~
-     * where [error-message] is a string.
-     */
-    static tokenize(source: string): TokenStream {
-      let out: Token[] = [];
-      const lexer = new Lexer();
-      lexer.init(source);
-      while (true) {
-        const token = lexer.getToken();
-        out.push(token);
-        if (token.type === TOKEN.EOF) break;
-      }
-      return new TokenStream(out);
-    }
 
-    static treeString<T extends Object>(Obj: T, cbfn?: (node: any) => void) {
-      const prefix = (key: keyof T, last: boolean) => {
-        let str = last ? "└" : "├";
-        if (key) str += "─ ";
-        else str += "──┐";
-        return str;
-      };
-      const getKeys = (obj: T) => {
-        const keys: (keyof T)[] = [];
-        for (const branch in obj) {
-          if (!hasProp(obj, branch) || is.func(obj[branch])) continue;
-          keys.push(branch);
-        }
-        return keys;
-      };
-      const grow = (
-        key: keyof T,
-        root: any,
-        last: boolean,
-        prevstack: ([T, boolean])[],
-        cb: (str: string) => any,
-      ) => {
-        cbfn && cbfn(root);
-        let line = "";
-        let index = 0;
-        let lastKey = false;
-        let circ = false;
-        let stack = prevstack.slice(0);
-        if (stack.push([root, last]) && stack.length > 0) {
-          prevstack.forEach(function (lastState, idx) {
-            if (idx > 0) line += (lastState[1] ? " " : "│") + "  ";
-            if (!circ && lastState[0] === root) circ = true;
-          });
-          line += prefix(key, last) + key.toString();
-          if (!is.obj(root)) line += ": " + root;
-          circ && (line += " (circular ref.)");
-          cb(line);
-        }
-        if (!circ && is.obj(root)) {
-          const keys = getKeys(root);
-          keys.forEach((branch) => {
-            lastKey = ++index === keys.length;
-            grow(branch, root[branch], lastKey, stack, cb);
-          });
-        }
-      };
-      let output = "";
-      const obj = Object.assign({}, Obj);
-      grow(
-        "." as keyof T,
-        obj,
-        false,
-        [],
-        (line: string) => (output += line + "\n"),
-      );
-      return output;
+    compile() {
+      return this.result.accept(this.compiler);
     }
+  }
+
+  export function tokenize(source: string): TokenStream {
+    let out: Token[] = [];
+    const lexer = new Lexer();
+    lexer.init(source);
+    while (true) {
+      const token = lexer.getToken();
+      out.push(token);
+      if (token.type === TOKEN.EOF) break;
+    }
+    return new TokenStream(out);
+  }
+
+  export function tree<T extends Object>(Obj: T, cbfn?: (node: any) => void) {
+    const prefix = (key: keyof T, last: boolean) => {
+      let str = last ? "└" : "├";
+      if (key) str += "─ ";
+      else str += "──┐";
+      return str;
+    };
+    const getKeys = (obj: T) => {
+      const keys: (keyof T)[] = [];
+      for (const branch in obj) {
+        if (!hasProp(obj, branch) || is.func(obj[branch])) continue;
+        keys.push(branch);
+      }
+      return keys;
+    };
+    const grow = (
+      key: keyof T,
+      root: any,
+      last: boolean,
+      prevstack: ([T, boolean])[],
+      cb: (str: string) => any,
+    ) => {
+      cbfn && cbfn(root);
+      let line = "";
+      let index = 0;
+      let lastKey = false;
+      let circ = false;
+      let stack = prevstack.slice(0);
+      if (stack.push([root, last]) && stack.length > 0) {
+        prevstack.forEach(function (lastState, idx) {
+          if (idx > 0) line += (lastState[1] ? " " : "│") + "  ";
+          if (!circ && lastState[0] === root) circ = true;
+        });
+        line += prefix(key, last) + key.toString();
+        if (!is.obj(root)) line += ": " + root;
+        circ && (line += " (circular ref.)");
+        cb(line);
+      }
+      if (!circ && is.obj(root)) {
+        const keys = getKeys(root);
+        keys.forEach((branch) => {
+          lastKey = ++index === keys.length;
+          grow(branch, root[branch], lastKey, stack, cb);
+        });
+      }
+    };
+    let output = "";
+    const obj = Object.assign({}, Obj);
+    grow(
+      "." as keyof T,
+      obj,
+      false,
+      [],
+      (line: string) => (output += line + "\n"),
+    );
+    return output;
   }
   export const parser = new Parser();
   export function parse(input: string) {
     return parser.parse(input);
   }
-  export function val(input: string) {
-    return parser.parse(input).eval();
+  export function compile(input: string) {
+    const parsing = parser.parse(input);
+    if (parsing.error) return parser.result.root[0] as Errnode;
+    const fn = parsing.result.accept(new Compile()) as Runtimeval;
+    return fn.result;
+  }
+  export function compfn(input: string) {
+    const c = new Compile();
+    const src = "let " + input + ";";
+    const output = compile(src);
+    log(output);
+    if (output instanceof Errnode) return output;
+    if (output instanceof Fn) return (...args: any[]) => output.call(c, args);
+    return ast.error(
+      `Could not compile the expression ${input} to a function.`,
+    );
+  }
+  export function evaluate(input: string) {
+    const parsing = parser.parse(input);
+    return parsing.evaluate(parsing.result);
   }
 }
-/* -------------------------------------------------------------------------- */
-/* § Live Testing                                                             */
-/* -------------------------------------------------------------------------- */
-
-const expr = `(1/2) ++ (2) ++ (1^2, 2^2, 3^2, 4^2)`;
-const res = algom.val(expr);
-log(res);

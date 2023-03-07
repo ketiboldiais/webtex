@@ -24,12 +24,12 @@
 }
 .DropdownContainer {
   position: relative;
-  color: hsl(209deg, 15%, 28%);
+  color: hsl(209, 15%, 28%);
   width: 7rem;
   height: -moz-fit-content;
   height: fit-content;
   font-size: 0.8rem;
-  border: solid thin hsl(210deg, 16%, 76%);
+  border: solid thin hsl(210, 16%, 76%);
   display: flex;
   align-items: center;
   gap: 0.5em;
@@ -38,17 +38,17 @@
   outline: none;
 }
 .DropdownContainer .divider {
-  background-color: hsl(210deg, 16%, 76%);
+  background-color: hsl(210, 16%, 76%);
   align-self: stretch;
   width: 0.05em;
 }
 .DropdownContainer .caret {
   translate: 0 50%;
   border: 0.3em solid transparent;
-  border-top-color: hsl(207deg, 12%, 43%);
+  border-top-color: hsl(207, 12%, 43%);
 }
 .DropdownContainer:focus {
-  border-color: hsl(215deg, 75%, 55%);
+  border-color: hsl(215, 75%, 55%);
 }
 .DropdownContainer .ValueField {
   flex-grow: 1;
@@ -64,7 +64,7 @@
   background-color: white;
   max-height: 10em;
   overflow-y: auto;
-  border: solid thin hsl(210deg, 16%, 76%);
+  border: solid thin hsl(210, 16%, 76%);
   border-radius: 0.25em;
   width: 100%;
   left: 0;
@@ -85,15 +85,15 @@
   transform: rotate(45deg);
   height: 0.8rem;
   width: 0.4rem;
-  border-bottom: solid 2px hsl(215deg, 59%, 65%);
-  border-right: solid 2px hsl(215deg, 59%, 65%);
+  border-bottom: solid 2px hsl(215, 59%, 65%);
+  border-right: solid 2px hsl(215, 59%, 65%);
 }
 .DropdownContainer .optionsList dt.selected {
-  background-color: hsl(208deg, 21%, 88%);
+  background-color: hsl(208, 21%, 88%);
 }
 .DropdownContainer .optionsList dt.highlighted {
-  background-color: hsl(215deg, 78%, 45%);
-  color: hsl(208deg, 21%, 88%);
+  background-color: hsl(215, 78%, 45%);
+  color: hsl(208, 21%, 88%);
 }
 .DropdownContainer .optionsList.show {
   display: block;
