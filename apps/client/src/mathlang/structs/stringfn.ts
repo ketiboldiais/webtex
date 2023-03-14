@@ -1,29 +1,34 @@
+
+export function isAlpha(c: string) {
+  return (c >= "a" && c <= "z") ||
+    (c >= "A" && c <= "Z") ||
+    c == "_";
+}
+export function isDotDigit(c: string) {
+  return ((c >= "0" && c <= "9") || (c === "."));
+}
 export interface R<t> {
   res: t;
   rem: string;
   err: string | null;
   type: string;
 }
-
 type outfn = <t>(
   res: t,
   rem: string,
   err: string | null,
   type?: string,
 ) => R<t>;
-
 export const output: outfn = (res, rem, err, type = "") => ({
   res,
   rem,
   err,
   type,
 });
-
 export class P<t> {
   constructor(public run: (input: string) => R<t>) {
     this.run = run;
   }
-
   amid<x>(wrapper: P<x>) {
     const content = new P(this.run);
     const psr: P<[x, t, x]> = chain([wrapper, content, wrapper]);
@@ -37,7 +42,7 @@ export class P<t> {
       );
     });
   }
-  chain<x>(fn: (a: R<t>) => P<x>) {
+  then<x>(fn: (a: R<t>) => P<x>) {
     const run = this.run;
     return new P((input) => {
       const res = run(input);
@@ -45,6 +50,19 @@ export class P<t> {
         return output(res.res, res.rem, res.err) as unknown as R<x>;
       }
       return fn(res).run(res.rem);
+    });
+  }
+  fmap<x>(fn: (a: t) => x): P<x> {
+    return new P<x>((input): R<x> => {
+      const parsed = this.run(input);
+      if (parsed.err) {
+        return parsed as unknown as R<x>;
+      }
+      let res = fn(parsed.res);
+      if (Array.isArray(res)) {
+        res.flat();
+      }
+      return output(res, parsed.rem, parsed.err, parsed.type);
     });
   }
   map<x>(fn: (a: t) => x): P<x> {
@@ -77,11 +95,11 @@ export class P<t> {
   }
 }
 
-export function literal(pattern: string, type = pattern) {
+export function lit(pattern: string, type = pattern) {
   return new P<string>((input) => {
     return input.startsWith(pattern)
       ? output(pattern, input.slice(pattern.length), null, type)
-      : output("", input, "error in literal", "error");
+      : output("", input, "error in lit", "error");
   });
 }
 
@@ -97,10 +115,6 @@ export function regex(regexp: RegExp) {
     return output("", input, "no regex match found", "regex");
   });
 }
-type UnwrapP<T> = T extends P<infer U> ? U : T;
-type UnwrapPs<T extends [...any[]]> = T extends [infer Head, ...infer Tail]
-  ? [UnwrapP<Head>, ...UnwrapPs<Tail>]
-  : [];
 
 export function chain<k extends any[], t extends P<any>[]>(parsers: [...t]) {
   return new P<[...k]>((input): R<[...k]> => {
@@ -135,7 +149,21 @@ export function word(parsers: P<string>[]) {
   });
 }
 
-export function oneof<t extends P<any>[]>(parsers: [...t]) {
+export function manyof<t extends P<any>[]>(parsers: [...t]) {
+  return new P((input) => {
+    let result = parsers[0].run(input);
+    let out = [result.res];
+    do {
+      for (let i = 0; i < parsers.length; i++) {
+        result = parsers[i].run(result.rem);
+        if (!result.err) out.push(result.res);
+      }
+      if (result.err) break;
+    } while (!result.err && result.rem !== "");
+    return output(out.join(""), result.rem, null, result.type);
+  });
+}
+export function choice<t extends P<any>[]>(parsers: [...t]) {
   return new P((input) => {
     let nx = parsers[0].run(input);
     for (let i = 1; i < parsers.length; i++) {
@@ -157,11 +185,11 @@ export function hop(parser: P<string>) {
 }
 
 export function term<t>(p: P<t>) {
-  const ws = oneof([
-    literal(" "),
-    literal("\t"),
-    literal("\r"),
-    literal("\n"),
+  const ws = choice([
+    lit(" "),
+    lit("\t"),
+    lit("\r"),
+    lit("\n"),
   ]);
   return new P<t>((input) => {
     return chain([hop(ws), p, hop(ws)]).map((d) => d[0]).run(input);
@@ -169,9 +197,8 @@ export function term<t>(p: P<t>) {
 }
 
 export function a(s: string) {
-  return term(literal(s));
+  return term(lit(s));
 }
-export const an = a;
 
 export function repeat<x>(parser: P<x>) {
   return new P<x[]>((input) => {
@@ -208,7 +235,7 @@ export function apart(separator: P<string>) {
 export function from(patterns: (string)[]): P<string>[] {
   let output = [];
   for (let i = 0; i < patterns.length; i++) {
-    output.push(literal(patterns[i]));
+    output.push(lit(patterns[i]));
   }
   return output;
 }
@@ -221,97 +248,9 @@ export function maybe<t>(parser: P<t>) {
   });
 }
 
-type someset = {
-  letters: P<string>;
-  "upper-latin": P<string>;
-  "lower-latin": P<string>;
-  digit: P<string>;
-  "positive-integer": P<string>;
-  "negative-integer": P<string>;
-  "integer": P<string>;
-  "natural-number": P<string>;
-  "scientific-number": P<string>;
-  "binary-number": P<string>;
-  "octal-number": P<string>;
-  "hexadecimal-number": P<string>;
-  "real-number": P<string>;
-  float: P<string>;
-  rational: P<string>;
-};
-
-export function of(option: keyof someset) {
-  const digits = [...asciiGen([48, 57])];
-  const nonzerodigits = digits.slice(1);
-  const zero = literal("0");
-  const letters = regex(/^\w+/);
-  const upperLatin = regex(/^[A-Z]+/);
-  const lowerLatin = regex(/^[a-z]+/);
-  const digit = regex(/^\d+/);
-  const posint = word([
-    many(from(nonzerodigits)),
-    maybe(many(from(digits))),
-  ]);
-  const negint = word([literal("-"), many(from(nonzerodigits))]);
-  const natnum = oneof([zero, negint, posint]);
-  const integer = zero.or(negint).or(posint);
-  const float = word([
-    integer,
-    literal("."),
-    word([many([zero]), posint]).or(natnum),
-  ]);
-  const rational = word([integer, literal("/"), integer]);
-  const scientific = word([
-    float.or(integer),
-    literal("e").or(literal("E")),
-    float.or(integer),
-  ]);
-  const binary = word([literal("0b"), many(from(["0", "1"]))]);
-  const octal = word([literal("0o"), many(from(digits))]);
-  const hex = word([
-    literal("0x"),
-    many(from([...digits, ...asciiGen([65, 90]), ...asciiGen([97, 122])])),
-  ]);
-  const real = oneof([
-    scientific,
-    rational,
-    float,
-    integer,
-    natnum,
-  ]);
-  const Ps: someset = {
-    letters,
-    digit,
-    integer,
-    "upper-latin": upperLatin,
-    "lower-latin": lowerLatin,
-    "positive-integer": posint,
-    "negative-integer": negint,
-    "natural-number": natnum,
-    float,
-    rational,
-    "real-number": real,
-    "scientific-number": scientific,
-    "binary-number": binary,
-    "octal-number": octal,
-    "hexadecimal-number": hex,
-  };
-  return Ps[option];
-}
-export function* asciiGen(
-  range: [number, number],
-): Generator<string, void, void> {
-  for (let i = range[0]; i <= range[1]; i++) {
-    yield String.fromCharCode(i);
-  }
-}
-
-export function recur<t>(parser: () => P<t>): P<t> {
-  return new P<t>((input) => parser().run(input));
-}
-
 export function many<t>(parsers: P<t>[]) {
   return new P<string>((input) => {
-    const res = (repeat(oneof(parsers)) as P<string[]>).run(input);
+    const res = (repeat(choice(parsers)) as P<string[]>).run(input);
     if (res.err) return output("", res.rem, res.err, res.type);
     const result = res.res.flat().join("");
     return output(result, res.rem, res.err, res.type);
@@ -335,37 +274,163 @@ export function allbut(p: P<string>) {
   });
 }
 
-export const dquoted = allbut(literal(`"`)).amid(literal(`"`));
-
-export function atmost<t>(n: number, parser: P<t>) {
+export function lazy<t>(p: () => P<t>): P<t> {
   return new P((input) => {
-    const res = repeat(parser).run(input);
-    if (res.res.length > n) {
-      return output(
-        [] as t[],
-        input,
-        `error[atmost]: expected ${n} got ${res.res.length}`,
-        res.type,
-      );
-    }
-    if (res.err) {
-      return output("", input.slice(0), null, "atmost") as unknown as R<t[]>;
-    }
-    return res;
+    return p().run(input);
   });
 }
 
-export function atleast<t>(n: number, parser: P<t>) {
-  return new P((input) => {
-    const res = repeat(parser).run(input);
-    if (res.res.length === 0 || res.res.length < n) {
-      return output(
-        [] as t[],
-        input,
-        `error[atleast]: expected ${n} got ${res.res.length}`,
-        res.type,
-      );
+const digit = regex(/^\d+/);
+const hex = word([
+  lit("0x"),
+  manyof([digit, regex(/^[a-f]/i)]),
+]);
+const _binary = word([lit("0b"), manyof([lit("0").or(lit("1"))])]);
+const posint = word([manyof([regex(/^[1-9]+/)]), manyof([digit])]);
+const negint = word([lit("-"), posint]);
+const _integer = choice([negint, posint, lit("0")]);
+const float = word([_integer, lit("."), manyof([digit])]);
+const dottedFloat = word([
+  maybe(lit("-").or(lit("+"))),
+  lit("."),
+  manyof([digit]),
+]);
+const scientificNumber = word([
+  float.or(dottedFloat).or(_integer),
+  lit("E").or(lit("e")),
+  maybe(lit("+").or(lit("-"))),
+  _integer,
+]);
+const optSpace = maybe(repeat(regex(/^\s+/)));
+const realNumber = choice([
+  hex,
+  _binary,
+  scientificNumber,
+  float,
+  dottedFloat,
+  _integer,
+]);
+const complexNumber = word([
+  realNumber,
+  optSpace,
+  lit("+").or(lit("-")),
+  optSpace,
+  realNumber,
+  lit("i"),
+]);
+
+export function getComplexParts(src: string) {
+  const cpx = chain([
+    realNumber,
+    a("+").or(a("-")),
+    realNumber,
+    lit("i"),
+  ]).map((d) => [d[0], d[2]]).run(src);
+  if (cpx.err) return ["NaN", "NaN"];
+  return cpx.res;
+}
+
+export type StringNumType =
+  | "hex"
+  | "binary"
+  | "scientific"
+  | "float"
+  | "fraction"
+  | "integer"
+  | "unknown"
+  | "complex-number";
+export type NumParsing = { num: string; kind: StringNumType };
+export function verifyNumber(input: string): NumParsing {
+  let res = complexNumber.run(input);
+  if (!res.err) return { num: res.res, kind: "complex-number" };
+  res = hex.run(input);
+  if (!res.err) return { num: res.res, kind: "hex" };
+  res = _binary.run(input);
+  if (!res.err) return { num: res.res, kind: "binary" };
+  res = scientificNumber.run(input);
+  if (!res.err) return { num: res.res.toUpperCase(), kind: "scientific" };
+  res = float.run(input);
+  if (!res.err) return { num: res.res, kind: "float" };
+  res = dottedFloat.run(input);
+  if (!res.err) return { num: res.res, kind: "float" };
+  res = _integer.run(input);
+  if (!res.err) return { num: res.res, kind: "integer" };
+  return { num: "", kind: "unknown" };
+}
+export const match = {
+  isInt: (s: string) => /^-?(0|[1-9]\d*)(?<!-0)$/.test(s),
+  isFloat: (s: string) => /^(?!-0(\.0+)?$)-?(0|[1-9]\d*)(\.\d+)?$/.test(s),
+  isUInt: (s: string) => /^(0|[1-9]\d*)$/.test(s),
+  isUFloat: (s: string) => /^(0|[1-9]\d*)(\.\d+)?$/.test(s),
+  isSci: (s: string) =>
+    /^(?!-0?(\.0+)?(e|$))-?(0|[1-9]\d*)?(\.\d+)?(?<=\d)(e[-+]?(0|[1-9]\d*))?$/i
+      .test(s),
+  isHex: (s: string) => /^0x[0-9a-f]+$/i.test(s),
+  isBinary: (s: string) => /^0b[0-1]+$/i.test(s),
+  isOctal: (s: string) => /^0o[0-8]+$/i.test(s),
+  isFrac: (s: string) => /^(-?[1-9][0-9]*|0)\/[1-9][0-9]*/.test(s),
+};
+
+export function tree<T extends Object>(Obj: T, cbfn?: (node: any) => void) {
+  const prefix = (key: keyof T, last: boolean) => {
+    let str = last ? "└" : "├";
+    if (key) str += "─ ";
+    else str += "──┐";
+    return str;
+  };
+  const getKeys = (obj: T) => {
+    const keys: (keyof T)[] = [];
+    for (const branch in obj) {
+      if (!obj.hasOwnProperty(branch) || typeof obj[branch] === "function") {
+        continue;
+      }
+      keys.push(branch);
     }
-    return res;
-  });
+    return keys;
+  };
+  const grow = (
+    key: keyof T,
+    root: any,
+    last: boolean,
+    prevstack: ([T, boolean])[],
+    cb: (str: string) => any,
+  ) => {
+    cbfn && cbfn(root);
+    let line = "";
+    let index = 0;
+    let lastKey = false;
+    let circ = false;
+    let stack = prevstack.slice(0);
+    if (stack.push([root, last]) && stack.length > 0) {
+      prevstack.forEach(function (lastState, idx) {
+        if (idx > 0) line += (lastState[1] ? " " : "│") + "  ";
+        if (!circ && lastState[0] === root) circ = true;
+      });
+      line += prefix(key, last) + key.toString();
+      if (typeof root !== "object") line += ": " + root;
+      circ && (line += " (circular ref.)");
+      cb(line);
+    }
+    if (!circ && typeof root === "object") {
+      const keys = getKeys(root);
+      keys.forEach((branch) => {
+        lastKey = ++index === keys.length;
+        grow(branch, root[branch], lastKey, stack, cb);
+      });
+    }
+  };
+  let output = "";
+  const obj = Object.assign({}, Obj);
+  grow(
+    "." as keyof T,
+    obj,
+    false,
+    [],
+    (line: string) => (output += line + "\n"),
+  );
+  return output;
+}
+
+export function split(s: string, splitter: string) {
+  return s.split(splitter);
 }

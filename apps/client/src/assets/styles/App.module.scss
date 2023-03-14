@@ -6,13 +6,26 @@
 	grid-template-columns: 1fr;
 	grid-template-rows: 0.8fr 30fr;
 	.NavBar { @include NavBarStyles; }
+	input, button {
+		 color: inherit; 
+		 background-color: inherit;
+		 border: inherit;
+		 font-family: inherit;
+		 cursor: pointer;
+	}
 	main {
 		height: 100vh;
 		width: 100vw;
 		position: absolute;
 		top: 28px;
 		padding: 0;
-		.Plotter {@include PlotterStyles}
+		.Playground {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			height: 90%;
+			@include Plotter;
+		}
 		.Packages { @include PackagesPage; }
 		.Workspace {
 			display: flex;

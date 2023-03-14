@@ -354,41 +354,19 @@ function Page() {
     <main>
       <Routes>
         <Route path={"/"} element={<Workspace />} />
-        <Route path={"/packages"} element={<Packages />} />
-        <Route path={"/canvas"} element={<Canvas />} />
+        {/* <Route path={"/packages"} element={<Packages />} /> */}
+        {/* <Route path={"/canvas"} element={<Canvas />} /> */}
       </Routes>
     </main>
   );
 }
 
-import { Plot2d } from "@components/chips/Plot2d";
-import { algom } from "./mathlang";
 
+import { Plotter } from "./Plot.js";
 function Canvas() {
-  const [fn, setFn] = useState("");
-  const [plot, setPlot] = useState<string | null>(null);
-  const [err, setErr] = useState<string>("");
-  const plotNow = () => {
-    const f = "f(x) := " + fn + ";";
-    const fx = algom.compfn(f);
-    if (fx instanceof algom.Errnode) {
-      setErr(fx.value);
-    }
-    setPlot(f);
-  };
-
   return (
-    <div className={"canvas"}>
-      <div className={S.Plotter}>
-        <div className={S.PlotWindow}>
-          {err === "" && plot ? <Plot2d f={plot} /> : <>{err}</>}
-        </div>
-        <div className={S.PlotControl}>
-          <div className={S.Prompt}>f(x) =</div>
-          <input onChange={(ev) => setFn(ev.target.value)} />
-          <button onClick={plotNow}>plot</button>
-        </div>
-      </div>
+    <div className={S.Playground}>
+      <Plotter/>
     </div>
   );
 }
@@ -591,6 +569,7 @@ import {
   EditorState,
   ElementNode,
   LexicalEditor,
+  NodeKey,
   RootNode,
   SELECTION_CHANGE_COMMAND,
 } from "lexical";
@@ -1039,13 +1018,8 @@ function getContent(editor: EditorState | null) {
   return editor === null ? EMPTY_NOTE : JSON.stringify(editor);
 }
 
-type BtnFn = MouseEventHandler<HTMLButtonElement>;
-type BtnEvt = Parameters<BtnFn>[0];
-interface ButtonProps {
-  click: BtnFn;
-  label?: string | ReactNode;
-  className?: string;
-}
+
+
 import boldSVG from "./icons/bold.svg";
 function BoldIcon() {
   return <img src={boldSVG} />;
@@ -1086,7 +1060,13 @@ function Boldtext({ content }: { content: string }) {
 function Subtext({ content }: { content: string }) {
   return <small>{content}</small>;
 }
-function Button({ click, label, className }: ButtonProps) {
+
+export interface ButtonProps {
+  click: BtnFn;
+  label?: string | ReactNode;
+  className?: string;
+}
+export function Button({ click, label, className }: ButtonProps) {
   return <button onClick={click} className={className}>{label}</button>;
 }
 
@@ -1098,10 +1078,12 @@ function selectionUpdate(callback: () => ElementNode) {
     }
   };
 }
-type LiFn = MouseEventHandler<HTMLLIElement>;
-type DivFn = MouseEventHandler<HTMLDivElement>;
-type LiEvt = Parameters<LiFn>[0];
-type InputFn = ChangeEventHandler<HTMLInputElement>;
+export type LiFn = MouseEventHandler<HTMLLIElement>;
+export type DivFn = MouseEventHandler<HTMLDivElement>;
+export type LiEvt = Parameters<LiFn>[0];
+export type InputFn = ChangeEventHandler<HTMLInputElement>;
+export type BtnFn = MouseEventHandler<HTMLButtonElement>;
+export type BtnEvt = Parameters<BtnFn>[0];
 
 interface typeDropdown {
   title?: string;

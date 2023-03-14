@@ -1,5 +1,3 @@
-import {Plot2d} from '../components/chips/Plot2d.tsx'
-
 # Webtex Dependencies
 
 This is the packages page for Webtex, which outlines some of the modules used by the editor.
@@ -37,22 +35,4 @@ about: (1) what's created, (2) what's read, (3) what's updated, and
 editor, what's displayed on the toolbar, what's highlighted,
 etc.&mdash;is handled by React's useContext, useState, and useEffect
 hooks.
-
-## FPlot
-Webtex renders function plots with FPlot, a custom React component that renders function plots. 
-
-<Plot2d f={'f(x) := 2cos(x)'}/>
-
-Under the hood, the graph above is rendered with the following code:
-
-~~~jsx
-<Plot2d f={'f(x) := 2cos(x)'}/>
-~~~
-
-User inputs are entered as strings on the editor, following the grammar of Webtex's
-scripting language, Algom. The Algom input is then compiled to a JavaScript
-object with a local scope and access to the Algom namespace (the input's “global environment”).
-Using a custom language as opposed to JavaScript's `new Function` or `eval` syntax ensures
-that user inputs are properly sanitized and restricted to not just the editor, but a namespace
-that only exists on an open editor.
 
