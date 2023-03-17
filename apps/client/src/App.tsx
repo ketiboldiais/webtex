@@ -361,12 +361,11 @@ function Page() {
   );
 }
 
-
 import { Plotter } from "./Plot.js";
 function Canvas() {
   return (
     <div className={S.Playground}>
-      <Plotter/>
+      <Plotter />
     </div>
   );
 }
@@ -1017,8 +1016,6 @@ function Dropdown({ title, children, className }: typeDropdown) {
 function getContent(editor: EditorState | null) {
   return editor === null ? EMPTY_NOTE : JSON.stringify(editor);
 }
-
-
 
 import boldSVG from "./icons/bold.svg";
 function BoldIcon() {

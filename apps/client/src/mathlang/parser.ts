@@ -8,13 +8,11 @@ import {
   Errnode,
   Root,
   Sym,
-  SYMBOL,
   Tuple,
   Vector,
 } from "./nodes/index.js";
 import { corelib } from "./scope.js";
 import { PREC, TOKEN } from "./structs/enums.js";
-import { LatexParser } from "./structs/latex.js";
 import { List } from "./structs/list.js";
 import { is } from "./structs/mathfn.js";
 import { split, tree } from "./structs/stringfn.js";
@@ -37,13 +35,12 @@ export interface Parser {
    * the result property will contain an
    * error astnode.
    */
-  parse(source: string): this;
+  parse(source: string): Root;
 }
 export class Parser {
   token: Token = Token.nil;
   error: Errnode | null;
   lastToken: Token = Token.nil;
-  latexParser: LatexParser = new LatexParser();
   private compiler: Compile = new Compile();
   private lastNode: ASTNode = ast.nil;
   private scanner: Lexer = new Lexer();
@@ -82,7 +79,7 @@ export class Parser {
     this.token = this.scanner.getToken();
   }
 
-  public parse(source: string) {
+  public parse(source: string): Root {
     this.init(source);
     const result = this.stmntList();
     if (this.error !== null) {
@@ -90,7 +87,7 @@ export class Parser {
     } else {
       this.result = ast.root(result);
     }
-    return this;
+    return this.result;
   }
 
   private stmntList() {
@@ -167,7 +164,7 @@ export class Parser {
     if (!this.check(TOKEN.RPAREN)) {
       do {
         const n = this.eat(TOKEN.SYMBOL, err1);
-        params.push(ast.symbol(n, SYMBOL.VARIABLE));
+        params.push(ast.symbol(n));
       } while (this.match([TOKEN.COMMA]));
       this.eat(TOKEN.RPAREN, err2);
     } else this.eat(TOKEN.RPAREN, err2);
@@ -182,7 +179,10 @@ export class Parser {
     while (this.check(TOKEN.SEMICOLON)) {
       this.advance();
     }
-    if (this.token.isEOF || this.lastToken.isRightBrace) {
+    if (
+      this.token.isEOF || this.lastToken.isRightBrace ||
+      this.lastToken.isSemicolon
+    ) {
       return expr;
     } else {
       const parser = "[expression-statement]: ";
@@ -198,12 +198,12 @@ export class Parser {
     if ((newnode.isNum()) && this.token.isSymbol) {
       if (this.isVariableName(this.token.lexeme)) {
         const sym = this.advance();
-        let rhs = ast.symbol(sym.lexeme, SYMBOL.VARIABLE);
+        let rhs = ast.symbol(sym.lexeme);
         newnode = ast.binex(newnode, "*", rhs);
       }
       if (corelib.hasFunction(this.token.lexeme)) {
         const sym = this.advance();
-        const s = ast.symbol(sym.lexeme, SYMBOL.VARIABLE);
+        const s = ast.symbol(sym.lexeme);
         let rhs = this.callexpr(s);
         newnode = ast.binex(newnode, "*", rhs);
       }
@@ -345,7 +345,7 @@ export class Parser {
     const parser = "[identifier]: ";
     const err = parser + "Expected valid identifier";
     const name = this.eat(TOKEN.SYMBOL, err);
-    let node = ast.symbol(name, SYMBOL.VARIABLE);
+    let node = ast.symbol(name);
     if (this.check(TOKEN.LPAREN)) {
       return this.callexpr(node);
     }
@@ -387,6 +387,19 @@ export class Parser {
     const err1 = parser + "Expected ‘[’";
     this.eat(TOKEN.LBRACKET, err1);
     let element = this.expression();
+    if (this.match([TOKEN.COLON])) {
+      let rhs = this.expression();
+      let step: ASTNode = ast.int("1");
+      if (this.match([TOKEN.COLON])) {
+        step = this.expression();
+      }
+      this.eat(TOKEN.RBRACKET, `Expected ‘]’ to close the range.`);
+      return ast.callExpr(
+        "range",
+        [element, rhs, step],
+        corelib.getFunction("range"),
+      );
+    }
     let rows = 0;
     let cols = 0;
     if (element instanceof Vector) {
@@ -409,6 +422,7 @@ export class Parser {
       }
       elements.push(expr);
     }
+
     const err2 = parser + "Expected ‘]’";
     this.eat(TOKEN.RBRACKET, err2);
     return builder === "matrix"
@@ -528,10 +542,5 @@ export class Parser {
 
   compile() {
     return this.result.accept(this.compiler);
-  }
-
-  latex(src: string) {
-    const res = this.latexParser.latex(src);
-    return res;
   }
 }

@@ -14,9 +14,9 @@ export class List<t> {
   _tail: ListNode<t> | null = null;
   #length: number = 0;
   constructor() {}
-  #rem(a: number, b: number) {
+  #rem(a: number) {
     a = Math.trunc(a);
-    b = Math.trunc(b);
+    let b = Math.trunc(this.length);
     return ((a % b) + b) % b;
   }
   #traverse(
@@ -59,7 +59,7 @@ export class List<t> {
   setItem(index: number) {
     return {
       as: (value: t) => {
-        index = this.#rem(index, this.#length);
+        index = this.#rem(index);
         this.#traverse((n, i) => {
           if (i === index) {
             n.value = value;
@@ -70,7 +70,7 @@ export class List<t> {
     };
   }
   item(index: number) {
-    index = this.#rem(index, this.#length);
+    index = this.#rem(index);
     let out = null;
     this.#traverse((n, i) => {
       if (i === index) out = n.value;
@@ -215,7 +215,7 @@ export class List<t> {
     const out = this.array;
     let str = "";
     for (let i = 0; i < out.length; i++) {
-      str += `[${out[i]}] ⟶ `;
+      str += `[${out[i]}]-`;
     }
     str += `null`;
     return str;
@@ -282,13 +282,23 @@ export class List<t> {
   [Symbol.iterator]() {
     return this.iterator();
   }
-  concat(other:List<t>) {
+  concat(other: List<t>) {
     if (this.isEmpty) return other;
     const list = this.clone;
     list._tail!.next = other._head;
     other._head!.prev = list._tail;
     return list;
   }
+  swap(i: number, j: number) {
+    i = this.#rem(i);
+    j = this.#rem(j);
+    const e_i = this.item(i);
+    const e_j = this.item(j);
+    const L = this.map((value, index) => {
+      if (index === i && e_j !== null) return e_j;
+      if (index === j && e_i !== null) return e_i;
+      return value;
+    });
+    return L;
+  }
 }
-
-

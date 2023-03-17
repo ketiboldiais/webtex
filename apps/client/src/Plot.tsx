@@ -5,22 +5,22 @@ import XyzSVG from "./icons/xyz.svg";
 import XYSVG from "./icons/xy.svg";
 import PolarSVG from "./icons/polar.svg";
 import CalcSVG from "./icons/calculate.svg";
-import {
-  MouseEventHandler,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import { BtnFn, Button, InputFn } from "./App";
+import SheetSVG from "./icons/sheet.svg";
+import { ReactNode, useCallback, useEffect, useState } from "react";
+import { Button } from "./App";
 import { algom } from "./mathlang";
-import {
-  Plot3d,
-  PlotParametric,
-  PlotXY,
-  PolarPlot,
-} from "@components/chips/Plot2";
+import { Plot3d, PlotParametric, PlotXY } from "@components/chips/Plot2";
+import { Sheet } from "./Sheet";
+import {Table } from "./DataTable";
+
+function SheetIcon() {
+  return (
+    <>
+      <img src={SheetSVG} />
+      <label>Spreadsheet</label>
+    </>
+  );
+}
 
 function CalcIcon() {
   return (
@@ -181,18 +181,27 @@ export function MinMax(
 }
 
 export function ParametricPlotter() {
-  const [xt, setxt] = useState("");
-  const [yt, setyt] = useState("");
-  const [xtTex, setxtTex] = useState("");
-  const [ytTex, setytTex] = useState("");
-  const [plot, setPlot] = useState(false);
   const [domain, setDomain] = useState<[number, number]>([-10, 10]);
   const [range, setRange] = useState<[number, number]>([-10, 10]);
   const [showPanel, setShowPanel] = useState(true);
-  const toLatex_xt = () => setxtTex(algom.latexify(xt));
-  const toLatex_yt = () => setytTex(algom.latexify(yt));
-  const updateXt: InputFn = (ev) => setxt(ev.target.value);
-  const updateYt: InputFn = (ev) => setyt(ev.target.value);
+  const [xt, setXt] = useState("");
+  const [yt, setYt] = useState("");
+  const [fns, setFns] = useState(["", ""]);
+  const [xtTex, setXTex] = useState("");
+  const [ytTex, setYTex] = useState("");
+
+  useEffect(() => {
+    setXTex(algom.toLatex(xt).latex);
+  }, [xt]);
+
+  useEffect(() => {
+    setYTex(algom.toLatex(yt).latex);
+  }, [yt]);
+
+  const updateFn = useCallback(() => {
+    setFns([xt, yt]);
+  }, [xt, yt]);
+
   return (
     <div className={S.PlotWindow}>
       <div
@@ -208,8 +217,8 @@ export function ParametricPlotter() {
                 className={S.FunctionInput}
                 type={"text"}
                 value={xt}
-                onChange={updateXt}
-                onKeyUp={toLatex_xt}
+                onChange={(ev) =>
+                  setXt(ev.target.value)}
               />
             </section>
             <section className={S.Prompt}>
@@ -218,8 +227,7 @@ export function ParametricPlotter() {
                 className={S.FunctionInput}
                 type={"text"}
                 value={yt}
-                onChange={updateYt}
-                onKeyUp={toLatex_yt}
+                onChange={(ev) => setYt(ev.target.value)}
               />
             </section>
             <MinMax
@@ -238,8 +246,7 @@ export function ParametricPlotter() {
             />
             <button
               className={S.AddPlotButton}
-              onClick={() =>
-                setPlot(true)}
+              onClick={updateFn}
             >
               Render
             </button>
@@ -253,21 +260,32 @@ export function ParametricPlotter() {
         )}
       </div>
       <div className={S.PlotRenderer}>
-        {plot && <PlotParametric fx={xt} fy={yt} />}
+        {fns[0] && fns[1] && (
+          <PlotParametric
+            fx={fns[0]}
+            fy={fns[1]}
+            domain={domain}
+            range={range}
+          />
+        )}
       </div>
     </div>
   );
 }
 
 export function Plotter3D() {
-  const [zfn, setZfn] = useState("");
+  const [fn, setFn] = useState("");
+  const [plotFn, setPlotFn] = useState("");
   const [tex, setTex] = useState("");
-  const [plot, setPlot] = useState(false);
   const [domain, setDomain] = useState<[number, number]>([-10, 10]);
   const [range, setRange] = useState<[number, number]>([-10, 10]);
   const [showPanel, setShowPanel] = useState(true);
-  const toLatex = () => setTex(algom.latexify(zfn));
-  const updateFn: InputFn = (ev) => setZfn(ev.target.value);
+  useEffect(() => {
+    setTex(algom.toLatex(fn).latex);
+  }, [fn]);
+  const updateFn = useCallback(() => {
+    setPlotFn(fn);
+  }, [fn]);
   return (
     <div className={S.PlotWindow}>
       <div
@@ -275,16 +293,15 @@ export function Plotter3D() {
         onMouseLeave={() => setShowPanel(false)}
         className={S.PlotPanel}
       >
-        {(showPanel || zfn === "") && (
+        {(showPanel || fn === "") && (
           <div className={S.PlotInputPanel}>
             <section className={S.Prompt}>
               <TeX math={"z(x,y) = ~"} className={S.Label} />
               <input
                 className={S.FunctionInput}
                 type={"text"}
-                value={zfn}
-                onChange={updateFn}
-                onKeyUp={toLatex}
+                value={fn}
+                onChange={(ev) => setFn(ev.target.value)}
               />
             </section>
             <MinMax
@@ -307,7 +324,7 @@ export function Plotter3D() {
               minLabel={"y₀"}
               maxLabel={"y₁"}
             />
-            <button className={S.AddPlotButton} onClick={() => setPlot(true)}>
+            <button className={S.AddPlotButton} onClick={updateFn}>
               Render
             </button>
             <div className={S.LiveTex}>
@@ -317,10 +334,10 @@ export function Plotter3D() {
         )}
       </div>
       <div className={S.PlotRenderer}>
-        {plot && (
+        {plotFn && (
           <Plot3d
             key={"xyz_plotter"}
-            z={zfn}
+            z={plotFn}
             // z={(x: number, y: number) => Math.sin(Math.sqrt(x ** 2 + y ** 2))}
           />
         )}
@@ -477,6 +494,7 @@ export function Plotter() {
     <ParametricPlotter key={"parameteric_plotter"} />,
     <Plotter3D key={"xyz_plotter"} />,
     <Calculator key={"plotter_calculator"} />,
+    <Sheet key={"spreadsheet"} />,
     // <PolarPlot key={"polar_plotter"} f={(x: number) => Math.sin(2 * x) * Math.cos(2 * x)} />,
   ];
   return (
@@ -486,10 +504,13 @@ export function Plotter() {
         <Button click={() => setActive(1)} label={<ParIcon />} />
         <Button click={() => setActive(2)} label={<XYZIcon />} />
         <Button click={() => setActive(3)} label={<CalcIcon />} />
+        <Button click={() => setActive(4)} label={<SheetIcon />} />
         {/* <Button click={() => setActive(4)} label={<PolarIcon />} /> */}
       </div>
       <div className={S.PlotOutput}>
-        {components.map((element, index) => (index === active && element))}
+        {/* {components.map((element, index) => (index === active && element))} */}
+        {/* <Sheet key={"spreadsheet"} /> */}
+        <Table />
       </div>
     </div>
   );

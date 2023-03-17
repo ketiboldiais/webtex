@@ -1,6 +1,5 @@
 import { ast } from "./nodes/index.js";
-import { SYMBOL } from "./nodes/index.js";
-import { Calculi, lib } from "./structs/mathfn.js";
+import { Calculi, lib, NativeArgType } from "./structs/mathfn.js";
 
 export class Library {
   private record: Calculi;
@@ -10,20 +9,26 @@ export class Library {
   hasNamedValue(name: string) {
     return this.record.hasOwnProperty(name);
   }
+  argOf(name: string): NativeArgType {
+    return this.record[name] && typeof this.record[name].val === "function" &&
+        this.record[name].argType !== undefined
+      ? this.record[name].argType as NativeArgType
+      : "number";
+  }
   getFunction(name: string): Function | undefined {
-    const res = this.record[name];
-    if (typeof res.val === "function") return res.val;
+    const result = this.record[name];
+    if (result && typeof result.val === "function") return result.val;
   }
   getConstantNode(name: string) {
     if (this.record[name]) {
       const fn = this.record[name].node;
       if (fn) return fn();
     }
-    return ast.symbol(name, SYMBOL.CONSTANT);
+    return ast.symbol(name);
   }
   getNumericConstant(name: string): number | undefined {
     const result = this.record[name];
-    if (typeof result.val === "number") return result.val;
+    if (result && typeof result.val === "number") return result.val;
   }
   hasFunction(name: string) {
     if (this.record[name]) {
@@ -65,7 +70,7 @@ export class Scope {
   }
   define(name: string, value: any) {
     if (this.has(name)) {
-      return null;
+      return value;
     }
     this.values[name] = value;
     return value;

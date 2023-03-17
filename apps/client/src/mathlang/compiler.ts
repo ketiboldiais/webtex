@@ -12,6 +12,7 @@ import {
   FunDeclaration,
   Group,
   Matrix,
+  Num,
   Root,
   Sym,
   Tuple,
@@ -19,16 +20,18 @@ import {
   VarDeclaration,
   Vector,
   Visitor,
-} from "./nodes/node.js";
-import { Num } from "./nodes/num.js";
+} from "./nodes/astnode.js";
 import { corelib, Scope } from "./scope.js";
 
 export class Compile implements Visitor<any> {
   scope: Scope;
   err: string;
-  constructor() {
-    this.scope = new Scope();
+  constructor(scope=new Scope()) {
+    this.scope = scope;
     this.err = "";
+  }
+  setScope(scope: Scope) {
+    this.scope = scope;
   }
   group(n: Group): any {
     return this.execute(n.expression);
@@ -57,7 +60,8 @@ export class Compile implements Visitor<any> {
     if (corelib.hasConstant(n.value)) {
       return corelib.getNumericConstant(n.value);
     }
-    const res = this.scope.get(n.value);
+    let res = this.scope.get(n.value);
+    if (res instanceof ASTNode) res = this.execute(res);
     return res;
   }
   error(n: Errnode) {
@@ -70,6 +74,16 @@ export class Compile implements Visitor<any> {
   }
   block(n: Block) {
     return this.executeBlock(n.body, this.scope);
+  }
+  execNodes(statements: ASTNode[], env: Scope): any {
+    const previous = this.scope;
+    this.scope = env;
+    let result = [];
+    for (let i = 0; i < statements.length; i++) {
+      result.push(this.execute(statements[i]));
+    }
+    this.scope = previous;
+    return result;
   }
   executeBlock(statements: ASTNode[], env: Scope): any {
     const previous = this.scope;

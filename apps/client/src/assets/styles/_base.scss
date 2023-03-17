@@ -26,8 +26,9 @@
 	src: url('../fonts/Muli-BoldItalic.ttf');
 }
 
+
+
 $mainFont: 'Muli';
-$line: solid thin lightgrey;
 $xxsmall: 0.6rem;
 $xsmall: 0.8rem;
 $small: 1rem;
@@ -80,6 +81,7 @@ $margin11: 12rem;
 $margin12: 16rem;
 $margin13: 24rem;
 
+$line: solid thin $coolGrey4;
 
 @mixin CircleButton {
 	border-radius: 100%;
@@ -402,9 +404,18 @@ $margin13: 24rem;
 		.Keyboard {
 			display: flex;
 			flex-direction: column;
-			.NumberPad { width: fit-content; }
-			.Trig { width: fit-content; }
-			.Clear {width: 100%;}
+
+			.NumberPad {
+				width: fit-content;
+			}
+
+			.Trig {
+				width: fit-content;
+			}
+
+			.Clear {
+				width: 100%;
+			}
 
 			button {
 				width: 50px;
@@ -415,20 +426,85 @@ $margin13: 24rem;
 				border-radius: 100%;
 				font-size: 1.3em;
 			}
-			
+
 			.Trig button {
 				font-size: 1em;
 				background-color: $red;
 				color: white;
 			}
+
 			.Clear button {
 				width: 100%;
 				margin: 0 auto;
 				border-radius: 5px;
 			}
 
-			
+
 		}
+	}
+}
+
+@mixin SpreadsheetStyles {
+
+	.Spreadsheet {
+		position: relative;
+		color: $coolGrey1;
+		@include Card;
+		padding: 5px;
+		padding-bottom: 20px;
+		margin: 5px;
+		text-align: center;
+
+		header {
+			color: $coolGrey4;
+			border-bottom: solid thin $coolGrey4;
+
+		}
+
+
+		input {
+			border-left: solid thin $coolGrey4;
+			border-bottom: solid thin $coolGrey4;
+			width: 100%;
+
+			&::placeholder {
+				color: rgb(188, 205, 211);
+			}
+		}
+
+		button {
+			border: solid thin $coolGrey3;
+			border-radius: 100%;
+			width: 19px;
+			height: 19px;
+			padding: 0;
+			padding-bottom: 2px;
+			background-color: $coolGrey5;
+			color: $coolGrey3;
+			margin: 2px;
+			line-height: 0;
+		}
+
+		.AddColButton {
+			position: absolute;
+			right: 0;
+
+		}
+	}
+
+
+
+	.Resizer {
+		cursor: pointer;
+		width: 10px;
+		height: 10px;
+		background-color: $coolGrey3;
+		border-radius: 100%;
+		position: absolute;
+		bottom: 0;
+		right: 0;
+		margin-bottom: -5px;
+		margin-right: -4px;
 	}
 }
 
@@ -472,6 +548,18 @@ $margin13: 24rem;
 	}
 }
 
+@mixin TableStyles {
+	.Table {
+		.EntryInput {
+			border: $line;
+			background-color: lightgrey;
+		}
+		.AddEntryBtn {
+			background-color: red;
+		}
+	}
+}
+
 @mixin FlatButton($width: fit-content, $color: inherit) {
 	button {
 		width: $width;
@@ -493,7 +581,7 @@ $margin13: 24rem;
 	scrollbar-width: none;
 	font-size: 0.88em;
 	font-family: 'CMU Serif';
-	height: 100%;
+	hkeight: 100%;
 }
 
 @mixin LexicalBase {

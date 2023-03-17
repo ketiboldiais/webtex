@@ -1,4 +1,5 @@
 import { ToString } from "./ToString.js";
+import { Compile } from "./compiler.js";
 import { Fn } from "./fn.js";
 import {
   Assignment,
@@ -14,7 +15,9 @@ import {
   FunDeclaration,
   Group,
   Matrix,
+  N,
   Null,
+  Num,
   Root,
   Sym,
   Tuple,
@@ -23,7 +26,6 @@ import {
   Vector,
   Visitor,
 } from "./nodes/index.js";
-import { N, Num } from "./nodes/num.js";
 import { corelib, Scope } from "./scope.js";
 import { NODE } from "./structs/enums.js";
 import { List } from "./structs/list.js";
@@ -81,9 +83,11 @@ function mergeTuples(a: Tuple | ASTNode, b: Tuple | ASTNode) {
 export class Interpreter implements Visitor<ASTNode> {
   str: ToString;
   scope: Scope;
-  constructor() {
+  compiler: Compile;
+  constructor(scope = new Scope(), compiler = new Compile()) {
     this.str = new ToString();
-    this.scope = new Scope();
+    this.scope = scope;
+    this.compiler = compiler;
   }
   stringify(n: ASTNode) {
     return n.accept(this.str);
@@ -101,6 +105,51 @@ export class Interpreter implements Visitor<ASTNode> {
     return ast.nil;
   }
 
+  private prepNumFn(
+    native: Function,
+    args: ASTNode[],
+    callee: string,
+    arglen: number,
+  ): any {
+    let nargs: number[] = [];
+    const L = native.length;
+    if (args.length < L) {
+      return ast.argsErr(callee, L, arglen);
+    }
+    args.forEach((num, i) => {
+      num.kind === NODE.NUMBER && nargs.push((num as Num).raw);
+    });
+    console.log(nargs);
+    return native.apply(null, nargs);
+  }
+
+  private prepNumArrayFn(
+    native: Function,
+    args: ASTNode[],
+    callee: string,
+    arglen: number,
+  ) {
+    let nargs: number[][] = [];
+    const L = native.length;
+    if (args.length < L) {
+      return ast.argsErr(callee, L, arglen);
+    }
+    args.forEach((vect, i) => {
+      if (i < L && vect.kind === NODE.VECTOR) {
+        const arg = this.compiler.execNodes(
+          (vect as Vector).elements,
+          this.scope,
+        );
+        console.log(arg);
+        if (Array.isArray(arg) && typeof arg[0] === "number") {
+          nargs.push(arg);
+        }
+      }
+    });
+    
+    return native.apply(null, nargs);
+  }
+
   callExpr(node: CallExpr): ASTNode {
     const args: ASTNode[] = [];
     const callee = node.callee;
@@ -109,15 +158,22 @@ export class Interpreter implements Visitor<ASTNode> {
       args.push(this.exec(node.args[i]));
     }
     if (node.native) {
-      let nargs: number[] = [];
-      const L = node.native.length;
-      if (args.length < L) {
-        return ast.argsErr(callee, L, arglen);
+      const argtype = corelib.argOf(callee);
+      let result: any = null;
+      switch (argtype) {
+        case "number":
+          result = this.prepNumFn(node.native, args, callee, arglen);
+          break;
+        case "number-array":
+          result = this.prepNumArrayFn(node.native, args, callee, arglen);
+          break;
       }
-      args.forEach((num, i) => {
-        i < L && num.kind === NODE.NUMBER && nargs.push((num as Num).raw);
-      });
-      const result = node.native.apply(null, nargs);
+      if (Array.isArray(result) && typeof result[0] === "number") {
+        const L = result.length;
+        const elements: ASTNode[] = [];
+        for (let i = 0; i < L; i++) elements.push(N(`${result[i]}`));
+        return ast.vector(elements);
+      }
       switch (typeof result) {
         case "number":
           return N(`${result}`);

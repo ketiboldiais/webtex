@@ -1,10 +1,10 @@
-import { ASTNode } from "../nodes/index.js";
-import { NUM, Num } from "../nodes/num.js";
+import { ASTNode, NUM, Num } from "../nodes/index.js";
 import { split } from "./stringfn.js";
-
+export type NativeArgType = "number" | "number-array";
 export type CalculiEntry = {
   val: number | Function;
   node?: () => ASTNode;
+  argType?: NativeArgType;
 };
 export type Calculi = { [key: string]: CalculiEntry };
 export const lib: Calculi = {
@@ -56,7 +56,39 @@ export const lib: Calculi = {
   trunc: { val: Math.trunc },
   even: { val: even },
   odd: { val: odd },
+  range: { val: range },
+  sum: { val: sum },
+  avg: { val: avg },
 };
+
+export function avg(...nums: number[]) {
+  if (nums===undefined) {
+    return 0;
+  }
+  const L = nums.length;
+  let total = sum(...nums);
+  return total / L;
+}
+
+export function sum(...nums: number[]) {
+  if (nums===undefined) {
+    return 0;
+  }
+  const L = nums.length;
+  let s = 0;
+  for (let i = 0; i < L; i++) {
+    s += nums[i];
+  }
+  return s;
+}
+
+export function range(start: number, end: number, step: number) {
+  const out: number[] = [];
+  for (let i = start; i < end; i += step) {
+    out.push(i);
+  }
+  return out;
+}
 export const is = {
   func: (v: any): v is Function => typeof v === "function",
   obj: (v: any): v is Object => typeof v === "object",

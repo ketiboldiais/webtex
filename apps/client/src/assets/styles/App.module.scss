@@ -25,6 +25,8 @@
 			align-items: center;
 			height: 90%;
 			@include Plotter;
+			@include SpreadsheetStyles;
+			@include TableStyles;
 		}
 		.Packages { @include PackagesPage; }
 		.Workspace {

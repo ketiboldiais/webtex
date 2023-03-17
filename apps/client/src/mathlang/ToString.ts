@@ -12,6 +12,7 @@ import {
   Group,
   Matrix,
   Null,
+  Num,
   Root,
   Sym,
   Tuple,
@@ -20,7 +21,6 @@ import {
   Vector,
   Visitor,
 } from "./nodes/index.js";
-import { Num } from "./nodes/num.js";
 
 export class ToString implements Visitor<string> {
   cond(n: CondExpr) {

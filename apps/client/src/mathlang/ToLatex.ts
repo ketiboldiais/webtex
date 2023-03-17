@@ -12,6 +12,7 @@ import {
   Group,
   Matrix,
   Null,
+  Num,
   Root,
   Sym,
   Tuple,
@@ -20,7 +21,6 @@ import {
   Vector,
   Visitor,
 } from "./nodes/index.js";
-import { Num } from "./nodes/num.js";
 
 export class ToLatex implements Visitor<string> {
   latexOf(node: ASTNode) {
@@ -34,7 +34,7 @@ export class ToLatex implements Visitor<string> {
   }
   group(node: Group): string {
     const content = this.latexOf(node.expression);
-    return `(${content})`;
+    return `\\left(${content}\\right)`;
   }
   null(n: Null): string {
     return "";
@@ -93,11 +93,11 @@ export class ToLatex implements Visitor<string> {
   }
   callExpr(node: CallExpr): string {
     const args = this.latexes(node.args, ", ", ["", ""]);
-    if (node.callee==='ceil') {
-      return `\\lceil${args}\\rceil`
+    if (node.callee === "ceil") {
+      return `\\lceil${args}\\rceil`;
     }
-    if (node.callee==='floor') {
-      return `\\lfloor${args}\\rfloor`
+    if (node.callee === "floor") {
+      return `\\lfloor${args}\\rfloor`;
     }
     if (node.callee === "cbrt") {
       return `\\sqrt[3]{${args}}`;
@@ -113,7 +113,10 @@ export class ToLatex implements Visitor<string> {
   }
   binaryExpr(node: BinaryExpr): string {
     const op = node.op;
-    if (node.left.isNum() && node.right.isSymbol() && op === "*") {
+    if (
+      (node.left.isNum() || node.left.isGroup()) && node.right.isSymbol() &&
+      op === "*"
+    ) {
       const L = this.latexOf(node.left);
       const R = this.latexOf(node.right);
       return `${L}${R}`;
@@ -121,8 +124,8 @@ export class ToLatex implements Visitor<string> {
     const left = this.latexOf(node.left);
     const right = this.latexOf(node.right);
     if (op === "/") return `\\dfrac{${left}}{${right}}`;
-    if (op === "^") return `${left}${op}${right}`;
-    if (op === "*") return `${left}\\times${right}`;
+    if (op === "^") return `${left}${op}{${right}}`;
+    if (op === "*") return `${left} \\times ${right}`;
     return `${left} ${op} ${right}`;
   }
   varDeclaration(n: VarDeclaration): string {

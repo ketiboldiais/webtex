@@ -1,5 +1,5 @@
 import { parametric, polar, xy, y } from "./structs/mathfn.js";
-import { ASTNode, Errnode } from "./nodes/node.js";
+import { ASTNode, Errnode } from "./nodes/astnode.js";
 import { Compile, Runtimeval } from "./compiler.js";
 import { Fn } from "./fn.js";
 import { Parser } from "./parser.js";
@@ -42,7 +42,7 @@ export namespace algom {
     if (parsing.error) {
       return new Runtimeval(null, (parser.result.root[0] as Errnode).value);
     }
-    return parsing.result.accept(new Compile()) as Runtimeval;
+    return parsing.accept(new Compile()) as Runtimeval;
   }
 
   export function makeFunction(body: string, params: string[]) {
@@ -60,12 +60,7 @@ export namespace algom {
   }
 
   export function evaluate(input: string) {
-    const parsing = parser.parse(input);
-    return parsing.val;
-  }
-
-  export function latexify(input: string) {
-    const latexParser = new Parser();
-    return latexParser.latex(input);
+    parser.parse(input);
+    return parser.val;
   }
 }

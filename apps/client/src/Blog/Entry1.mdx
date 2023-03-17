@@ -36,3 +36,22 @@ editor, what's displayed on the toolbar, what's highlighted,
 etc.&mdash;is handled by React's useContext, useState, and useEffect
 hooks.
 
+## Algom Language
+Webtex uses a small language called Algom, designed specifically
+for the Webtex editor. User inputs are read as raw strings, then passed
+through several stages:
+
+1. A tokenizer for lexical analysis. Blacklisted lexemes (e.g., JavaScript keywords like `throw`, `const`, `new`, `function`, etc.)
+	 are either filtered or replaced with the corresponding Algom keyword.
+2. The parser reads one token at a time as needed, with one lookahead, halting immediately on errors.
+3. If no errors occurred, expressions are passed to a typechecker for semantic analysis.
+4. For Webtex components that require native JavaScript functions (e.g., the function plotting or calculator modules), Algom function declarations are passed to an Algom compiler. The compiler then creates a JavaScript object acting as a scope for the Algom function to execute in.
+5. Otherwise, the Algom expressions are passed to an interpreter within the Algom namespace.
+
+
+
+### Why Write an Entirely Different Language?
+1. The two most obvious reasons are that JavaScript’s `eval` and `new Function` methods are not safe. The `new Function` syntax is slightly safer than `eval`, but there are still security risks. Using a sandboxed iFrame and having web workers handle the evaluation can mitigate those risks, but that assumes property security measures are placed for the iFrames themselves.
+2. The use of `new Function` will only work if the user passes valid JavaScript syntax. Webtex’s specification demands LaTeX rendering alongside some fairly elaborate mathematical constructs (e.g., matrix multiplication, rational arithmetic, complex number arithmetic, implicit multiplication, and so on). Attempting to fit this specification within ECMAScript is far more complicated than writing an entirely new language from scratch.
+3. JavaScript employs eager evaluation, but Algom aims to only evaluate expressions when they’re needed. This is particularly important for modules that must perform algebraic simplification or root-finding, where intermittent swell is a significant concern.
+4. The need for complete control. Because of all the different states comprising Webtex, having control over how user text is evaluated is a strict necessary condition. That control is only possible if we define what is lexically, syntactically, and semantically valid.

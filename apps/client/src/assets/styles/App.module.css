@@ -277,6 +277,70 @@
   color: white;
   font-size: 0.9rem;
 }
+.App main .Playground .Spreadsheet {
+  position: relative;
+  color: hsl(209, 15%, 28%);
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+  transition: 0.3s;
+  border-radius: 5px;
+  padding: 5px;
+  padding-bottom: 20px;
+  margin: 5px;
+  text-align: center;
+}
+.App main .Playground .Spreadsheet:hover {
+  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
+}
+.App main .Playground .Spreadsheet header {
+  color: hsl(210, 16%, 76%);
+  border-bottom: solid thin hsl(210, 16%, 76%);
+}
+.App main .Playground .Spreadsheet input {
+  border-left: solid thin hsl(210, 16%, 76%);
+  border-bottom: solid thin hsl(210, 16%, 76%);
+  width: 100%;
+}
+.App main .Playground .Spreadsheet input::-moz-placeholder {
+  color: rgb(188, 205, 211);
+}
+.App main .Playground .Spreadsheet input::placeholder {
+  color: rgb(188, 205, 211);
+}
+.App main .Playground .Spreadsheet button {
+  border: solid thin hsl(208, 12%, 58%);
+  border-radius: 100%;
+  width: 19px;
+  height: 19px;
+  padding: 0;
+  padding-bottom: 2px;
+  background-color: hsl(208, 21%, 88%);
+  color: hsl(208, 12%, 58%);
+  margin: 2px;
+  line-height: 0;
+}
+.App main .Playground .Spreadsheet .AddColButton {
+  position: absolute;
+  right: 0;
+}
+.App main .Playground .Resizer {
+  cursor: pointer;
+  width: 10px;
+  height: 10px;
+  background-color: hsl(208, 12%, 58%);
+  border-radius: 100%;
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  margin-bottom: -5px;
+  margin-right: -4px;
+}
+.App main .Playground .Table .EntryInput {
+  border: solid thin hsl(210, 16%, 76%);
+  background-color: lightgrey;
+}
+.App main .Playground .Table .AddEntryBtn {
+  background-color: red;
+}
 .App main .Packages {
   margin: 0;
   padding: 2em;
@@ -526,5 +590,5 @@
   scrollbar-width: none;
   font-size: 0.88em;
   font-family: "CMU Serif";
-  height: 100%;
+  hkeight: 100%;
 }/*# sourceMappingURL=App.module.css.map */

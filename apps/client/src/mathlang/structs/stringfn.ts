@@ -1,4 +1,3 @@
-
 export function isAlpha(c: string) {
   return (c >= "a" && c <= "z") ||
     (c >= "A" && c <= "Z") ||
@@ -433,4 +432,20 @@ export function tree<T extends Object>(Obj: T, cbfn?: (node: any) => void) {
 
 export function split(s: string, splitter: string) {
   return s.split(splitter);
+}
+
+export function* asciiGen(
+  start: number,
+  end: number,
+): Generator<string, void, void> {
+  for (let i = start; i <= end; i++) {
+    yield String.fromCharCode(i);
+  }
+}
+
+export function numToUpLatin(index: number): string {
+  const quot = Math.floor(index / 26);
+  const rem = Math.floor(index % 26);
+  const char = String.fromCharCode(rem + 97).toUpperCase();
+  return quot - 1 >= 0 ? numToUpLatin(quot - 1) + char : char;
 }

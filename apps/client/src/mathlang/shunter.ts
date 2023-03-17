@@ -4,7 +4,7 @@ import { Compile, Runtimeval } from "./compiler.js";
 import { Fn } from "./fn.js";
 import { Interpreter } from "./interpreter.js";
 import { Lexer } from "./lexer.js";
-import { ast, ASTNode, Root, Sym, SYMBOL, Vector } from "./nodes/index.js";
+import { ast, ASTNode, Root, Sym, Vector } from "./nodes/index.js";
 import { corelib } from "./scope.js";
 import { PREC, TOKEN } from "./structs/enums.js";
 import { Token } from "./structs/token.js";
@@ -105,7 +105,7 @@ export class Shunter {
   }
   private symbol() {
     const name = this.eat(TOKEN.SYMBOL);
-    let node = ast.symbol(name.lexeme, SYMBOL.VARIABLE);
+    let node = ast.symbol(name.lexeme);
     if (this.check(TOKEN.LPAREN) || corelib.hasFunction(node.value)) {
       return this.call(node);
     }
@@ -151,12 +151,12 @@ export class Shunter {
     if (newnode.isNum() && this.peek.isSymbol) {
       if (this.isVariableName(this.peek.lexeme)) {
         const sym = this.advance();
-        let rhs = ast.symbol(sym.lexeme, SYMBOL.VARIABLE);
+        let rhs = ast.symbol(sym.lexeme);
         newnode = ast.binex(newnode, "*", rhs);
       }
       if (corelib.hasFunction(this.peek.lexeme)) {
         const sym = this.advance();
-        const s = ast.symbol(sym.lexeme, SYMBOL.VARIABLE);
+        const s = ast.symbol(sym.lexeme);
         let rhs = this.call(s);
         newnode = ast.binex(newnode, "*", rhs);
       }
@@ -255,7 +255,7 @@ export class Shunter {
     return this.result.accept(new ToString());
   }
   compileFunction(body: string, params: string[]): string | Function {
-    const args = params.map((s) => ast.symbol(s, SYMBOL.VARIABLE));
+    const args = params.map((s) => ast.symbol(s));
     const def = this.parse(body).result;
     const c = new Compile();
     const root = new Root([ast.funDeclaration("f", args, def)]);
