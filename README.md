@@ -33,4 +33,4 @@ All development and testing over a network is done with Caddy for automatic HTTP
 The Webtex server uses Redis for cache management. Accordingly, for any given development pipeline, the Redis server must finish starting before the server starts. Because the client and the server are completely decoupled, they're free to run concurrently. Caddy, however, will run faster than either the client or the server. Accordingly, development is done with `tmux`, preconfigured with the `webtex.yml` file. The `webtex.yml` contains a command `js`. This is a Bash alias for `pnpm`. For more details on `tmux`, [_see_ the tmux documentation](https://tmuxguide.readthedocs.io/en/latest/tmux/tmux.html). For a `tmux` session manager, [_see_ tmuxinator](https://github.com/tmuxinator/tmuxinator).
 
 ## Algom
-The Webtex editor uses a small scripting language called Algom to parse mathematical expressions. _See_ the `client/`
+The Webtex editor uses a small scripting language called Algom to parse mathematical expressions. _See_ the `client/src/algom` directory for further documentation.
