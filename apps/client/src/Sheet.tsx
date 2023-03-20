@@ -1,11 +1,11 @@
 import S from "@styles/App.module.css";
 import { Fragment, useCallback, useMemo, useRef, useState } from "react";
-import { algom } from "./mathlang";
-import { numToUpLatin } from "./mathlang/structs/stringfn";
+import { algom } from "./algom/index.js";
+import { numToUpLatin } from "./algom/structs/stringfn";
 import { InputFn } from "./App";
-import { Scope } from "./mathlang/scope";
-import { Interpreter } from "./mathlang/visitors/interpreter";
-import { Compile } from "./mathlang/visitors/compiler";
+import { Scope } from "./algom/scope.js";
+import { Interpreter } from "./algom/visitors/interpreter.js";
+import { Compile } from "./algom/visitors/compiler.js";
 
 type Cell = {
   row: number;
@@ -39,12 +39,12 @@ export function Sheet() {
     if (cellContent) {
       if (cellContent.startsWith("=")) {
         const expr = `${cellname} ${cellContent}`;
-        const parsing = algom.parse(expr).root;
-        const result = interpreter.current.execBlock(parsing, scope.current);
+        const parsing = algom.parse(expr);
+        const result = interpreter.current.execBlock([parsing], scope.current);
         scope.current.define(cellname, result);
         return result.val;
       }
-      const node = algom.parse(cellContent).root[0];
+      const node = algom.parse(cellContent);
       scope.current.define(cellname, node);
 
       return cellContent;

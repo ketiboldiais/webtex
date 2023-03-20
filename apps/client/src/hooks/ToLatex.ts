@@ -21,7 +21,7 @@ import {
   Vector,
   Visitor,
   WhileNode
-} from "./astnode.js";
+} from "../algom/astnode.js";
 
 export class ToLatex implements Visitor<string> {
   whileStmnt(node: WhileNode): string {

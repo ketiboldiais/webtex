@@ -4,7 +4,7 @@ import { Compile, Runtimeval } from "./visitors/compiler.js";
 import { Fn } from "./fn.js";
 import { Parser } from "./parser.js";
 import { Interpreter } from "./visitors/interpreter.js";
-import { ToLatex } from "./ToLatex.js";
+import { ToLatex } from "../hooks/ToLatex.js";
 
 export namespace algom {
   export const getData = {

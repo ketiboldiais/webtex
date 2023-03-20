@@ -2,7 +2,7 @@ import plot from "./assets/styles/Plot.module.scss";
 import TeX from "@matejmazur/react-katex";
 import { Interval } from "./Interval";
 import { useCallback, useState } from "react";
-import { algom } from "./mathlang";
+import { algom } from "./algom/index.js";
 import { Plot1 } from "./components/chips/Plot2";
 import { Table } from "./DataTable";
 import { nanoid } from "@reduxjs/toolkit";

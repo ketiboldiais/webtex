@@ -1,6 +1,6 @@
 import { Interval } from "Interval";
 import { PlotParametric } from "components/chips/Plot2";
-import { algom } from "mathlang";
+import { algom } from "./algom/index.js";
 import { useCallback, useEffect, useState } from "react";
 import TeX from "@matejmazur/react-katex";
 

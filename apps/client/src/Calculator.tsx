@@ -1,8 +1,8 @@
-import { ast, ASTNode } from "./mathlang/astnode.js";
+import { ast, ASTNode } from "./algom/astnode.js";
 import TeX from "@matejmazur/react-katex";
 import { nanoid } from "@reduxjs/toolkit";
 import { Counter } from "./Counter";
-import { algom } from "mathlang/index.js";
+import { algom } from "./algom/index.js";
 import { useState } from "react";
 export function Calculator() {
   const [expr, setExpr] = useState("");

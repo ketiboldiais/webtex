@@ -8,7 +8,6 @@ import {
   useState,
 } from "react";
 import { InputFn } from "./App";
-import { nanoid } from "@reduxjs/toolkit";
 import { concat, Iff, Render, toggle } from "./utils";
 
 const keyOf = <t extends {}>(obj: t) => {

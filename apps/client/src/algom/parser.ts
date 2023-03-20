@@ -1,4 +1,4 @@
-import { ToLatex } from "./ToLatex.js";
+import { ToLatex } from "../hooks/ToLatex.js";
 import { ToString } from "./ToString.js";
 import { Compile, Runtimeval } from "./visitors/compiler.js";
 import { Fn } from "./fn.js";
