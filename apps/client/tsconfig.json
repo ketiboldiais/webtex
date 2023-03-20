@@ -6,7 +6,7 @@
     "strict": true,
     "module": "ESNext",
     "noEmit": true,
-    "baseUrl": "./",
+    "baseUrl": "./src",
     "jsx": "react-jsx",
     "types": ["node"],
     "moduleResolution": "node",
@@ -39,7 +39,10 @@
       "@model/*": ["./src/model/*"],
       "@utilities/*": ["./src/utils/*"],
       "@views/*": ["./src/views/*"],
-    }
+    },
+    "plugins": [
+      {"name": "typescript-plugin-css-modules"}
+    ]
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]

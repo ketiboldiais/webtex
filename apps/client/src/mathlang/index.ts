@@ -1,10 +1,9 @@
 import { parametric, polar, xy, y } from "./structs/mathfn.js";
-import { ASTNode, Errnode } from "./nodes/astnode.js";
-import { Compile, Runtimeval } from "./compiler.js";
+import { ASTNode } from "./astnode.js";
+import { Compile, Runtimeval } from "./visitors/compiler.js";
 import { Fn } from "./fn.js";
 import { Parser } from "./parser.js";
-import { Shunter } from "./shunter.js";
-import { Interpreter } from "./interpreter.js";
+import { Interpreter } from "./visitors/interpreter.js";
 import { ToLatex } from "./ToLatex.js";
 
 export namespace algom {
@@ -18,8 +17,7 @@ export namespace algom {
   export const parser = new Parser();
 
   export function evalLatex(src: string) {
-    const shunter = new Shunter();
-    return shunter.parse(src).evaluate();
+    return parser.compute(src);
   }
 
   export function evalNode(node: ASTNode) {
@@ -28,25 +26,27 @@ export namespace algom {
   }
 
   export function toLatex(src: string) {
-    const shunter = new Shunter();
-    const parsing = shunter.parse(src);
+    const parsing = parser.latex(src);
     return parsing;
   }
 
   export function parse(input: string) {
     return parser.parse(input);
   }
+  export function parseExpr(input: string) {
+    return parser.parseExpr(input);
+  }
 
   export function compile(input: string) {
     const parsing = parser.parse(input);
-    if (parsing.error) {
-      return new Runtimeval(null, (parser.result.root[0] as Errnode).value);
+    if (parsing.erred) {
+      return new Runtimeval(null, parsing.val);
     }
     return parsing.accept(new Compile()) as Runtimeval;
   }
 
   export function makeFunction(body: string, params: string[]) {
-    const res = new Shunter().compileFunction(body, params);
+    const res = parser.compileFunction(body, params);
     return res;
   }
 
@@ -60,7 +60,6 @@ export namespace algom {
   }
 
   export function evaluate(input: string) {
-    parser.parse(input);
-    return parser.val;
+    return parser.EVAL(input);
   }
 }

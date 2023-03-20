@@ -1,0 +1,66 @@
+@import './base';
+
+.plot {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	padding: $pad1;
+}
+
+.controller {
+	padding: $pad1;
+	border: $lightBorder;
+	border-top: none;
+}
+
+
+
+.show,
+.hide {
+	transform: scaleY(0);
+	transform-origin: top;
+	transition: transform 0.26s ease;
+	z-index: 200;
+	position: absolute;
+	background: rgba($pageColor, 0.61);
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+}
+
+.show {
+	transform: scaleY(1);
+}
+
+.hide {}
+
+.windowNav {
+	padding: $pad1;
+	border: $lightBorder;
+}
+
+.renderRow {
+	display: flex;
+	justify-content: flex-end;
+	margin: $margin1;
+
+	button {
+		@include Button1;
+	}
+}
+
+
+.windowNav button {
+	border-radius: 100%;
+	width: $medium;
+	height: $medium;
+	border: $line;
+	font-size: $xsmall;
+	color: $primary3;
+	cursor: pointer;
+}
+
+.svg {
+	width: 100%;
+	margin: 0 auto;
+}

@@ -20,9 +20,13 @@ import {
   VarDeclaration,
   Vector,
   Visitor,
-} from "./nodes/index.js";
+  WhileNode
+} from "./astnode.js";
 
 export class ToLatex implements Visitor<string> {
+  whileStmnt(node: WhileNode): string {
+    return ""
+  }
   latexOf(node: ASTNode) {
     if (node !== undefined) {
       return node.accept(this);

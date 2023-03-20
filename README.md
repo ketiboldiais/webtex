@@ -19,7 +19,7 @@ Contains various data structures used by Webtex.
 
 | Package            | Subdirectory | Description                                                                                                               |
 | ------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `@webtex/lang`     | `lang`       | Various parsers for Webtex’s text editor.                                                                                 |
+| `@webtex/lang`     | `lang`       | Various parsers for testing.                                                                                 |
 | `@webtex/bintree`  | `bintree`    | Binary search tree, used as an auxiliary structure for the `IndexedDB` component of the Redux component on the front end. |
 | `@webtex/list`     | `list`       | Doubly-linked list, used as an auxiliary structure for queueuing certain operations on the frontend.                      |
 | `@webtex/machines` | `machines`   | Various build systems for testing.                                                                                        |

@@ -1,6 +1,6 @@
-import { ToString } from "./ToString.js";
-import { Compile } from "./compiler.js";
-import { Fn } from "./fn.js";
+import { ToString } from "../ToString.js";
+import { Compile } from "../visitors/compiler.js";
+import { Fn } from "../fn.js";
 import {
   Assignment,
   ast,
@@ -15,7 +15,7 @@ import {
   FunDeclaration,
   Group,
   Matrix,
-  N,
+  getNUM,
   Null,
   Num,
   Root,
@@ -25,10 +25,11 @@ import {
   VarDeclaration,
   Vector,
   Visitor,
-} from "./nodes/index.js";
-import { corelib, Scope } from "./scope.js";
-import { NODE } from "./structs/enums.js";
-import { List } from "./structs/list.js";
+  WhileNode,
+} from "../astnode.js";
+import { corelib, Scope } from "../scope.js";
+import { NODE } from "../structs/enums.js";
+import { List } from "../structs/list.js";
 
 function compute(left: Num, op: string, right: Num): ASTNode | undefined {
   switch (op) {
@@ -84,10 +85,10 @@ export class Interpreter implements Visitor<ASTNode> {
   str: ToString;
   scope: Scope;
   compiler: Compile;
-  constructor(scope = new Scope(), compiler = new Compile()) {
+  constructor(scope = new Scope()) {
     this.str = new ToString();
     this.scope = scope;
-    this.compiler = compiler;
+    this.compiler = new Compile(this.scope);
   }
   stringify(n: ASTNode) {
     return n.accept(this.str);
@@ -97,6 +98,15 @@ export class Interpreter implements Visitor<ASTNode> {
   }
   error(n: Errnode): ASTNode {
     return n;
+  }
+  whileStmnt(node: WhileNode): ASTNode {
+    const cond = node.condition;
+    const body = node.body;
+    let result: ASTNode = ast.nil;
+    while (cond.accept(this.compiler)) {
+      result = this.exec(body);
+    }
+    return result;
   }
 
   funDeclaration(node: FunDeclaration): ASTNode {
@@ -146,7 +156,7 @@ export class Interpreter implements Visitor<ASTNode> {
         }
       }
     });
-    
+
     return native.apply(null, nargs);
   }
 
@@ -171,12 +181,12 @@ export class Interpreter implements Visitor<ASTNode> {
       if (Array.isArray(result) && typeof result[0] === "number") {
         const L = result.length;
         const elements: ASTNode[] = [];
-        for (let i = 0; i < L; i++) elements.push(N(`${result[i]}`));
+        for (let i = 0; i < L; i++) elements.push(getNUM(`${result[i]}`));
         return ast.vector(elements);
       }
       switch (typeof result) {
         case "number":
-          return N(`${result}`);
+          return getNUM(`${result}`);
         case "boolean":
           return ast.bool(result);
         case "string":
@@ -216,7 +226,7 @@ export class Interpreter implements Visitor<ASTNode> {
   }
   sym(node: Sym): ASTNode {
     const n = corelib.getNumericConstant(node.value);
-    if (n) return N(n.toString());
+    if (n) return getNUM(n.toString());
     const value = this.scope.get(node.value);
     if (value === null || value === undefined) {
       return ast.resError(`No variable named ${node.value} exists.`);

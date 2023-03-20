@@ -1,6 +1,6 @@
-import { Compile } from "./compiler.js";
-import { Interpreter } from "./interpreter.js";
-import { ASTNode } from "./nodes/index.js";
+import { Compile } from "./visitors/compiler.js";
+import { Interpreter } from "./visitors/interpreter.js";
+import { ASTNode } from "./astnode.js";
 import { Scope } from "./scope.js";
 
 export class Fn {

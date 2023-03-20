@@ -24,12 +24,13 @@
 }
 .App {
   font-size: 1em;
-  font-family: "Muli";
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   margin: 0;
   padding: 0;
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: 0.8fr 30fr;
+  grid-template-rows: 0.8fr 50fr;
+  background-color: rgb(253, 253, 253);
 }
 .App .NavBar {
   padding-right: 10px;
@@ -59,6 +60,9 @@
   border: inherit;
   font-family: inherit;
   cursor: pointer;
+  padding: 0;
+  margin: 0;
+  display: block;
 }
 .App main {
   height: 100vh;
@@ -73,280 +77,80 @@
   align-items: center;
   height: 90%;
 }
-.App main .Playground .Plotter {
-  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
-  transition: 0.3s;
-  border-radius: 5px;
-  background-color: white;
-  display: block;
-  width: 85%;
-  height: 100%;
-}
-.App main .Playground .Plotter:hover {
-  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
-}
-.App main .Playground .Plotter .PlotControl {
-  padding: 4px 0.8em;
-  display: flex;
-  justify-content: space-evenly;
-  background-color: rgb(220, 220, 220);
-  border: solid thin rgb(202, 202, 205);
-}
-.App main .Playground .Plotter .PlotControl button {
-  cursor: pointer;
-  border: none;
-  color: rgb(79, 79, 79);
-  background-color: inherit;
-  border-radius: 5px;
-}
-.App main .Playground .Plotter .PlotControl button label {
-  display: block;
-  font-size: 0.7rem;
-}
-.App main .Playground .Plotter .PlotControl button img {
-  padding: 4px;
-  border-radius: 10px;
-}
-.App main .Playground .Plotter .PlotControl button :hover {
-  background-color: rgb(202, 202, 205);
-}
-.App main .Playground .Plotter .PlotOutput .Calculator {
-  padding: 0.5em;
-  font-family: monospace;
-}
-.App main .Playground .Plotter .PlotOutput .Calculator .Screen {
-  color: white;
-  width: 100%;
-  height: 20vh;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: space-around;
-  padding: 0.7rem;
-  word-wrap: break-word;
-  word-break: break-all;
-  background-color: hsl(207, 12%, 43%);
-}
-.App main .Playground .Plotter .PlotOutput .Calculator .Keyboard {
-  display: flex;
-  flex-direction: column;
-}
-.App main .Playground .Plotter .PlotOutput .Calculator .Keyboard .NumberPad {
-  width: -moz-fit-content;
-  width: fit-content;
-}
-.App main .Playground .Plotter .PlotOutput .Calculator .Keyboard .Trig {
-  width: -moz-fit-content;
-  width: fit-content;
-}
-.App main .Playground .Plotter .PlotOutput .Calculator .Keyboard .Clear {
-  width: 100%;
-}
-.App main .Playground .Plotter .PlotOutput .Calculator .Keyboard button {
-  width: 50px;
-  height: 50px;
-  margin: 10px;
-  background-color: hsl(208, 21%, 88%);
-  color: hsl(207, 12%, 43%);
-  border-radius: 100%;
-  font-size: 1.3em;
-}
-.App main .Playground .Plotter .PlotOutput .Calculator .Keyboard .Trig button {
-  font-size: 1em;
-  background-color: #e87566;
-  color: white;
-}
-.App main .Playground .Plotter .PlotOutput .Calculator .Keyboard .Clear button {
-  width: 100%;
-  margin: 0 auto;
-  border-radius: 5px;
-}
-.App main .Playground .Plotter .PlotOutput .PlotWindow {
-  display: flex;
-  flex-direction: column;
-}
-.App main .Playground .Plotter .PlotOutput .PlotWindow .PlotRenderer {
-  height: 100%;
-}
-.App main .Playground .Plotter .PlotOutput .PlotWindow .PlotPanel {
-  width: 35%;
-  height: 40%;
-  z-index: 100;
-  position: absolute;
-}
-.App main .Playground .Plotter .PlotOutput .PlotWindow .PlotPanel .PlotInputPanel {
-  color: hsl(210, 30%, 96%);
-  padding: 0.3em;
-  display: flex;
-  margin: 2px;
-  border-radius: 4px;
-  flex-direction: column;
-  background: rgba(44, 44, 44, 0.61);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  border: 1px solid rgba(255, 255, 255, 0.271);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.174);
-}
-.App main .Playground .Plotter .PlotOutput .PlotWindow .PlotPanel .PlotInputPanel label {
-  font-size: 0.8rem;
-}
-.App main .Playground .Plotter .PlotOutput .PlotWindow .PlotPanel .PlotInputPanel .Prompt {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.App main .Playground .Plotter .PlotOutput .PlotWindow .PlotPanel .PlotInputPanel .Prompt .Label {
-  font-size: 0.8rem;
-}
-.App main .Playground .Plotter .PlotOutput .PlotWindow .PlotPanel .PlotInputPanel .Prompt .FunctionInput {
-  font-family: monospace;
-  margin: 5px;
-  width: 100%;
-  height: 50%;
-  padding: 0.4em 3px;
-  outline: none;
-  border: none;
-  background: rgba(58, 58, 58, 0.357);
-  border-radius: 3px;
-}
-.App main .Playground .Plotter .PlotOutput .PlotWindow .PlotPanel .PlotInputPanel .PlotInputOption {
-  height: 15%;
-  width: 100%;
-  margin: 2px 0;
-}
-.App main .Playground .Plotter .PlotOutput .PlotWindow .PlotPanel .PlotInputPanel .PlotInputOption .MinMaxLabel {
-  padding: 5%;
-  margin: auto;
-  font-size: 0.7rem;
-  text-align: center;
-  line-height: 0;
-}
-.App main .Playground .Plotter .PlotOutput .PlotWindow .PlotPanel .PlotInputPanel .PlotInputOption .MinMaxInput {
-  display: flex;
-  justify-content: space-evenly;
-  padding: 0.2em;
-}
-.App main .Playground .Plotter .PlotOutput .PlotWindow .PlotPanel .PlotInputPanel .PlotInputOption .MinMaxInput .NumberInput .NumInputLabel {
-  text-align: center;
-  font-family: "CMU Serif";
-  font-style: italic;
-  font-size: 0.9rem;
-}
-.App main .Playground .Plotter .PlotOutput .PlotWindow .PlotPanel .PlotInputPanel .PlotInputOption .MinMaxInput .NumberInput .Body {
-  display: flex;
-  width: 100%;
-  padding: 2px;
-}
-.App main .Playground .Plotter .PlotOutput .PlotWindow .PlotPanel .PlotInputPanel .PlotInputOption .MinMaxInput .NumberInput .Body .OpButton {
-  font-family: monospace;
-  border: none;
-  margin: 0;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-.App main .Playground .Plotter .PlotOutput .PlotWindow .PlotPanel .PlotInputPanel .PlotInputOption .MinMaxInput .NumberInput .Body .NumField {
-  margin: 0;
-  -webkit-appearance: none;
-  -moz-appearance: textfield;
-  width: 70%;
-  margin: auto;
-  font-size: 0.75rem;
-  text-align: center;
-  border: none;
-  background: rgba(58, 58, 58, 0.357);
-  border-radius: 3px;
-}
-.App main .Playground .Plotter .PlotOutput .PlotWindow .PlotPanel .PlotInputPanel .AddPlotButton {
-  margin: 10% 0;
-  background: rgba(58, 58, 58, 0.357);
-  border-radius: 3px;
-  border: 0;
-  height: 10%;
-  padding: 4px 0;
-}
-.App main .Playground .Plotter .PlotOutput .PlotWindow .PlotPanel .PlotInputPanel .LiveTex {
-  display: flex;
-  justify-content: center;
-  height: 20%;
-  padding: 1em 2px;
-  margin: 0.5em 0;
-  color: white;
-  font-size: 0.9rem;
-}
-.App main .Playground .Spreadsheet {
+.App main .Playground .tableView {
   position: relative;
-  color: hsl(209, 15%, 28%);
-  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
-  transition: 0.3s;
-  border-radius: 5px;
-  padding: 5px;
-  padding-bottom: 20px;
-  margin: 5px;
-  text-align: center;
+  border-collapse: collapse;
+  font-size: 1rem;
 }
-.App main .Playground .Spreadsheet:hover {
-  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
-}
-.App main .Playground .Spreadsheet header {
-  color: hsl(210, 16%, 76%);
-  border-bottom: solid thin hsl(210, 16%, 76%);
-}
-.App main .Playground .Spreadsheet input {
-  border-left: solid thin hsl(210, 16%, 76%);
+.App main .Playground .tableView input {
+  font-size: 0.8rem;
   border-bottom: solid thin hsl(210, 16%, 76%);
   width: 100%;
 }
-.App main .Playground .Spreadsheet input::-moz-placeholder {
-  color: rgb(188, 205, 211);
+.App main .Playground .hide {
+  visibility: hidden;
 }
-.App main .Playground .Spreadsheet input::placeholder {
-  color: rgb(188, 205, 211);
+.App main .Playground .extraControls {
+  display: flex;
 }
-.App main .Playground .Spreadsheet button {
-  border: solid thin hsl(208, 12%, 58%);
-  border-radius: 100%;
-  width: 19px;
-  height: 19px;
-  padding: 0;
+.App main .Playground .table {
+  display: flex;
+  flex-direction: column;
+}
+.App main .Playground .tableHeader {
+  display: flex;
+  justify-content: flex-start;
+  border-bottom: thin solid hsl(210, 16%, 76%);
   padding-bottom: 2px;
-  background-color: hsl(208, 21%, 88%);
-  color: hsl(208, 12%, 58%);
-  margin: 2px;
-  line-height: 0;
 }
-.App main .Playground .Spreadsheet .AddColButton {
-  position: absolute;
-  right: 0;
+.App main .Playground .tableHeaderCell {
+  font-weight: bold;
+  font-size: 0.85em;
+  margin: 0;
+  flex: 1;
+  margin: 0 2%;
 }
-.App main .Playground .Resizer {
-  cursor: pointer;
-  width: 10px;
-  height: 10px;
-  background-color: hsl(208, 12%, 58%);
-  border-radius: 100%;
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  margin-bottom: -5px;
-  margin-right: -4px;
+.App main .Playground .tableCell {
+  font-size: 0.9em;
+  display: block;
+  width: 100%;
+  margin: 0 2%;
 }
-.App main .Playground .Table .EntryInput {
-  border: solid thin hsl(210, 16%, 76%);
-  background-color: lightgrey;
+.App main .Playground .tableBody {
+  display: flex;
+  flex-direction: column;
 }
-.App main .Playground .Table .AddEntryBtn {
-  background-color: red;
+.App main .Playground .tableRow {
+  display: flex;
+  justify-content: space-evenly;
+  margin: 2% 0;
+}
+.App main .Playground .editRow {
+  display: flex;
+}
+.App main .Playground .tableFooter {
+  display: flex;
+}
+.App main .Playground .pushButton {
+  font-size: 0.85em;
+  width: -moz-fit-content;
+  width: fit-content;
+  margin: 0;
+  padding: 2px 0.5rem;
+}
+.App main .Playground .ascending,
+.App main .Playground .descending {
+  transition: transform 0.05s ease-out;
+}
+.App main .Playground .ascending {
+  transform: rotate(180deg);
 }
 .App main .Packages {
   margin: 0;
   padding: 2em;
   padding-bottom: 50%;
   overflow-y: scroll;
-  scrollbar-color: hsl(210, 16%, 76%) white;
+  scrollbar-color: rgb(253, 253, 253);
   scrollbar-width: thin;
   display: flex;
   flex-direction: column;
@@ -387,7 +191,6 @@
   display: flex;
   flex-direction: row;
   justify-content: flex-end;
-  align-items: normal;
   flex-wrap: nowrap;
 }
 .App main .Workspace .Sidebar .Header button {
@@ -396,14 +199,9 @@
   padding: 2px 5px;
   color: inherit;
   margin: 0;
-  background-color: inherit;
   box-shadow: 0px 1px 3px hsl(4, 0%, 91%), 0 1px 2px hsl(4, 0%, 50%);
-  font-family: "Muli";
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   border: 0;
-  cursor: pointer;
-}
-.App main .Workspace .Sidebar .Header button {
-  background-color: white;
 }
 .App main .Workspace .Sidebar .Header .ShowNotesButton {
   margin-right: 5px;
@@ -446,14 +244,11 @@
   grid-template-columns: 8fr 1fr;
 }
 .App main .Workspace .Sidebar .NoteList .Item .NoteItemHeader strong {
-  font-size: 0.8em;
+  font-size: 0.8rem;
   max-width: 90%;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-}
-.App main .Workspace .Sidebar .NoteList .Item .DeleteButton {
-  cursor: pointer;
 }
 .App main .Workspace .TextEditor {
   flex: 10;
@@ -472,11 +267,9 @@
   padding: 2px 5px;
   color: inherit;
   margin: 0 2px;
-  background-color: inherit;
   box-shadow: 0px 1px 3px hsl(4, 0%, 91%), 0 1px 2px hsl(4, 0%, 50%);
-  font-family: "Muli";
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   border: 0;
-  cursor: pointer;
 }
 .App main .Workspace .TextEditor .EditorToolbar .dropdown {
   width: 6.5em;
@@ -497,7 +290,7 @@
   background-color: inherit;
 }
 .App main .Workspace .TextEditor .EditorToolbar .dropdown .placeholder {
-  font-size: 0.8em;
+  font-size: 0.8rem;
   padding-left: 0.3em;
 }
 .App main .Workspace .TextEditor .EditorToolbar .dropdown .optionsList {
@@ -511,9 +304,9 @@
   transition: height 0.3s ease;
 }
 .App main .Workspace .TextEditor .EditorToolbar .dropdown .active {
-  height: 170px;
+  height: 220px;
   background-color: white;
-  border: solid thin hsl(208, 21%, 88%);
+  border: solid thin hsl(210, 16%, 76%);
 }
 .App main .Workspace .TextEditor .EditorToolbar .dropdown button {
   width: 100%;
@@ -534,7 +327,7 @@
   height: 90vh;
   overflow-y: scroll;
   border: solid thin #e4e4e4;
-  scrollbar-color: hsl(210, 16%, 76%) white;
+  scrollbar-color: rgb(253, 253, 253);
   scrollbar-width: thin;
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
   transition: 0.3s;

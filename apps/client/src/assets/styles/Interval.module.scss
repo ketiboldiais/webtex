@@ -1,0 +1,25 @@
+@import './base';
+
+.component {
+	width: 70%;
+	padding-left: $pad2;
+}
+.body {
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+.label {
+	display: flex;
+	margin-bottom: $margin4;
+	width: 25%;
+	justify-content: flex-start;
+	align-items: center;
+	font-family: $cmu_text;
+	font-size: 0.85rem;
+}
+
+.counters {
+	display: flex;
+}

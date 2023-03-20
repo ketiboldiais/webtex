@@ -1,0 +1,52 @@
+@import './base';
+
+.container {
+	padding: $pad2;
+}
+
+.field {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	width: fit-content;
+}
+
+.field button {
+	padding: $padtiny;
+	margin: $margin1;
+	background-color: $primary5;
+	color: $primary3;
+	border-radius: 100%;
+	width: $small;
+	height: $small;
+	line-height: 0.8;
+	padding-bottom: 3px;
+}
+
+.label {
+	padding: $padtiny;
+	display: flex;
+	justify-content: center;
+	text-align: center;
+	font-family: $cmu_math;
+	color: $primary3;
+	font-size: $xsmall;
+	display: block;
+}
+
+input.input {
+	color: $primary2;
+	border: solid thin $primary4;
+	border-radius: $xxsmall;
+	text-align: center;
+	width: 50%;
+	padding: $padtiny;
+}
+
+input.input::-webkit-outer-spin-button,
+input.input::-webkit-inner-spin-button {
+	margin: 0 !important;
+	-webkit-appearance: none !important;
+	-moz-appearance: textfield !important;
+	appearance: none !important;
+}

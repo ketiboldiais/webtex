@@ -4,8 +4,8 @@ import { algom } from "./mathlang";
 import { numToUpLatin } from "./mathlang/structs/stringfn";
 import { InputFn } from "./App";
 import { Scope } from "./mathlang/scope";
-import { Interpreter } from "./mathlang/interpreter";
-import { Compile } from "./mathlang/compiler";
+import { Interpreter } from "./mathlang/visitors/interpreter";
+import { Compile } from "./mathlang/visitors/compiler";
 
 type Cell = {
   row: number;

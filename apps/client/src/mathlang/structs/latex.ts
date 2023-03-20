@@ -1,5 +1,3 @@
-import { StringNumType, tree } from "./stringfn.js";
-
 export type TexEntry = { bp: number; latex: string };
 export type TeXDef = {
   [key: string]: (latex: string, bp?: number) => TexEntry;

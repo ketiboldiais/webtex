@@ -78,6 +78,7 @@ export enum KIND {
 
 export enum NODE {
   BLOCK,
+  WHILE,
   ERROR,
   GROUP,
   TUPLE,
@@ -204,17 +205,17 @@ export const TokenRecord: { [k in TOKEN]: Entry } = {
    * then the keyword is either disallowed
    * in the language or unimplemented.
    */
-  [TOKEN.THROW]: { kind: KIND.ILLEGAL, prec: PREC.NON, fixity: FIX.NON },
+  [TOKEN.IF]: { kind: KIND.KEYWORD, prec: PREC.NON, fixity: FIX.NON },
   [TOKEN.ELSE]: { kind: KIND.KEYWORD, prec: PREC.NON, fixity: FIX.NON },
+  [TOKEN.WHILE]: { kind: KIND.KEYWORD, prec: PREC.NON, fixity: FIX.NON },
+  [TOKEN.LET]: { kind: KIND.KEYWORD, prec: PREC.NON, fixity: FIX.NON },
   [TOKEN.FOR]: { kind: KIND.ILLEGAL, prec: PREC.NON, fixity: FIX.NON },
   [TOKEN.FUNCTION]: { kind: KIND.ILLEGAL, prec: PREC.NON, fixity: FIX.NON },
-  [TOKEN.IF]: { kind: KIND.KEYWORD, prec: PREC.NON, fixity: FIX.NON },
   [TOKEN.RETURN]: { kind: KIND.ILLEGAL, prec: PREC.NON, fixity: FIX.NON },
   [TOKEN.THIS]: { kind: KIND.ILLEGAL, prec: PREC.NON, fixity: FIX.NON },
-  [TOKEN.WHILE]: { kind: KIND.ILLEGAL, prec: PREC.NON, fixity: FIX.NON },
   [TOKEN.DO]: { kind: KIND.ILLEGAL, prec: PREC.NON, fixity: FIX.NON },
-  [TOKEN.LET]: { kind: KIND.KEYWORD, prec: PREC.NON, fixity: FIX.NON },
   [TOKEN.CONST]: { kind: KIND.ILLEGAL, prec: PREC.NON, fixity: FIX.NON },
+  [TOKEN.THROW]: { kind: KIND.ILLEGAL, prec: PREC.NON, fixity: FIX.NON },
   /**
    * These are atomic values.
    */

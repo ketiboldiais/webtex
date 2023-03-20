@@ -14,13 +14,14 @@ import {
   Null,
   Num,
   Root,
+  WhileNode,
   Sym,
   Tuple,
   UnaryExpr,
   VarDeclaration,
   Vector,
   Visitor,
-} from "./nodes/index.js";
+} from "./astnode.js";
 
 export class ToString implements Visitor<string> {
   cond(n: CondExpr) {
@@ -32,6 +33,9 @@ export class ToString implements Visitor<string> {
   group(node: Group): string {
     const expr = this.toString(node.expression);
     return `(` + expr + `)`;
+  }
+  whileStmnt(node: WhileNode): string {
+    return "";
   }
   error(n: Errnode): string {
     return n.value;

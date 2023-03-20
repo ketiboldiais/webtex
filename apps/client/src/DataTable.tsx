@@ -1,37 +1,19 @@
-import S from "@styles/App.module.css";
+import table from "../src/assets/styles/Table.module.scss";
 import {
+  CSSProperties,
   Dispatch,
-  Fragment,
   ReactNode,
   SetStateAction,
-  useEffect,
+  useCallback,
   useState,
 } from "react";
-import { BtnEvt, BtnFn, InputFn } from "./App";
+import { InputFn } from "./App";
+import { nanoid } from "@reduxjs/toolkit";
+import { concat, Iff, Render, toggle } from "./utils";
 
-const objKeys = <t extends {}>(obj: t) => {
+const keyOf = <t extends {}>(obj: t) => {
   return Object.keys(obj).map((k) => (k as keyof t));
 };
-
-type BaseType = string | symbol | number | boolean;
-
-function isBaseType(value: any): value is BaseType {
-  return (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean" ||
-    typeof value === "symbol"
-  );
-}
-
-type Struct = { [key: string]: string };
-
-interface TbProps<T extends Struct> {
-  data: T[];
-  onUpdate: Dispatch<SetStateAction<T[]>>;
-  keys: (keyof T)[];
-  headers?: string[];
-}
 
 const createObj = <T extends Struct>(keys: (keyof T)[]) => {
   let obj: Struct = {};
@@ -41,170 +23,267 @@ const createObj = <T extends Struct>(keys: (keyof T)[]) => {
   return obj as T;
 };
 
-export function Tb<T extends Struct>(
-  { data, keys, headers, onUpdate }: TbProps<T>,
+interface iFieldEdit<T extends Struct> {
+  keyOfT: keyof T;
+  value: string;
+  onChange: InputFn;
+}
+function FieldEdit<T extends Struct>(
+  { keyOfT, value, onChange }: iFieldEdit<T>,
+) {
+  const [val, setVal] = useState(value);
+  const handleEdit: InputFn = (event) => {
+    const newValue = event.target.value;
+    setVal(newValue);
+    onChange(event);
+  };
+  return (
+    <input
+      type={"text"}
+      onChange={handleEdit}
+      className={table.cellInput}
+      value={val}
+      name={String(keyOfT)}
+    />
+  );
+}
+
+interface iBtn {
+  click: () => void;
+}
+function Close({ click }: iBtn) {
+  return (
+    <button className={table.delete} onClick={click}>
+      &times;
+    </button>
+  );
+}
+
+function Save({ click }: iBtn) {
+  return <button className={table.save} onClick={click}>Save</button>;
+}
+function Cancel({ click }: iBtn) {
+  return <button className={table.abort} onClick={click}>Cancel</button>;
+}
+
+type Struct = { [key: string]: string };
+
+interface TbProps<T extends Struct> {
+  data: T[];
+  onUpdate: Dispatch<SetStateAction<T[]>>;
+  uid: string;
+  keys: (keyof T)[];
+  cell?: (v: string, k: keyof T) => ReactNode;
+  schema?: {
+    [k in keyof T]: {
+      label: string;
+      sort?: boolean;
+    };
+  };
+  extraControls?: ReactNode[];
+}
+type Order = "ascending" | "descending";
+
+export function Table<T extends Struct>(
+  { data, onUpdate, uid, schema, keys, cell, extraControls = [] }: TbProps<T>,
 ) {
   const blank = createObj(keys);
-  const headings = headers ? headers.slice(0, keys.length) : keys;
+  const headings = schema ? Object.values(schema).map((v) => v.label) : keys;
   const [entries, setEntries] = useState(data);
   const [editIndex, setEditIndex] = useState(-1);
   const [notEditing, setNotEditing] = useState(true);
-  const [addFormData, setAddFormData] = useState(blank);
-  const [editFormData, setEditFormData] = useState(blank);
+  const [newEntry, setNewEntry] = useState(blank);
+  const [editRow, setEditFormData] = useState(blank);
+  const [sortKey, setSortKey] = useState<keyof T>("");
+  const [sortOrder, setSortOrder] = useState<Order>("ascending");
+  const [sortReverse, setSortReverse] = useState(false);
 
-  const handleAddForm: InputFn = (event) => {
-    event.preventDefault();
-    const fieldName = event.target.getAttribute("name")!;
-    const fieldValue = event.target.value;
-    const newFormData: any = { ...addFormData };
-    newFormData[fieldName] = fieldValue;
-    setAddFormData(newFormData);
+  const updateSort = (key: keyof T) => {
+    if (key === sortKey) {
+      setSortReverse(!sortReverse);
+    }
+    setSortKey(key);
+    setSortOrder(sortOrder === "ascending" ? "descending" : "ascending");
   };
 
-  const handleEdit: InputFn = (event) => {
+  const sortedData = useCallback(() => {
+    if (!sortKey || !notEditing) return entries;
+    const sorted = entries.sort((a, b) => {
+      return a[sortKey] > b[sortKey] ? 1 : -1;
+    });
+    if (sortReverse) sorted.reverse();
+    return sorted;
+  }, [entries, sortKey, sortOrder, sortReverse]);
+
+  const setEntryField: InputFn = (event) => {
     event.preventDefault();
-    const fieldName = event.target.getAttribute("name")!;
-    const fieldValue = event.target.value;
-    const newFormData: any = { ...editFormData };
-    newFormData[fieldName] = fieldValue;
-    setEditFormData(newFormData);
+    const keyOfT = event.target.getAttribute("name")!;
+    const value = event.target.value;
+    const entry: any = { ...newEntry };
+    entry[keyOfT] = value;
+    setNewEntry(entry);
   };
 
-  const onEditClick = (event: BtnEvt, index: number) => {
-    event.preventDefault();
+  const updateEntry: InputFn = (event) => {
+    const keyOfT = event.target.getAttribute("name")!;
+    const value = event.target.value;
+    const entry: any = { ...editRow };
+    entry[keyOfT] = value;
+    setEditFormData(entry);
+  };
+
+  const focus = (index: number) => {
     setNotEditing(false);
     setEditIndex(index);
     setEditFormData({ ...entries[index] });
   };
 
-  const onSave = (event: BtnEvt, index: number) => {
-    event.preventDefault();
-    const update = { ...editFormData };
-    const updatedEntries = entries.map((t, i) => {
-      return (i === index) ? update : t;
-    });
+  const updateRow = (updatedEntryIndex: number) => {
+    for (let i = 0; i < keys.length; i++) {
+      if (editRow[keys[i]] === "") {
+        setEditIndex(-1);
+        setNotEditing(true);
+        return;
+      }
+    }
+    const updatedEntry = { ...editRow };
+    const updatedEntries = entries.map((entry, entryIndex) =>
+      (entryIndex === updatedEntryIndex) ? updatedEntry : entry
+    );
     setEntries(updatedEntries);
     onUpdate(updatedEntries);
     setEditIndex(-1);
     setNotEditing(true);
   };
-  
+
   const abortEdit = () => {
     setEditIndex(-1);
     setNotEditing(true);
-  }
-
-  const handleAddFormSubmit: BtnFn = (event) => {
-    event.preventDefault();
-    const newEntries = [...entries, addFormData];
-    setEntries(newEntries);
-    onUpdate(newEntries);
-    setAddFormData(blank);
   };
 
-  const del = (index: number) => {
+  const addEntry = () => {
+    for (let i = 0; i < keys.length; i++) {
+      if (newEntry[keys[i]] === "") return;
+    }
+    const newEntries = [...entries, newEntry];
+    setEntries(newEntries);
+    onUpdate(newEntries);
+    setNewEntry(blank);
+  };
+
+  const deleteEntry = (index: number) => {
     const newEntries = data.filter((_, idx) => idx !== index);
     setEntries(newEntries);
     onUpdate(newEntries);
   };
 
-  const s = {
+  const style: CSSProperties = {
     display: "grid",
-    gridTemplateColumns: `repeat(${keys.length + 1},1fr)`,
+    gridTemplateColumns: `repeat(${headings.length + 1}, 1fr)`,
+  };
+
+  const controlStyle: CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: `repeat(${extraControls.length + 3}, 1fr)`,
+    gap: "0.2rem",
   };
 
   return (
-    <div className={S.Table}>
-      <div>
-        <section style={s}>
-          {headings.map((header, i) => (
-            <div key={`${String(header)}${i}`}>{String(header)}</div>
-          ))}
-        </section>
-        <section>
-          {entries.map((item: T, i) => (
-            <Fragment key={`row${i}`}>
-              <div style={s}>
-                {objKeys(item).map((p, j) => (
-                  <Fragment key={`${i}cell${j}`}>
-                    {i === editIndex
-                      ? (
-                        <input
-                          type={"text"}
-                          style={{ background: "lightgrey" }}
-                          onChange={handleEdit}
-                          value={editFormData[p]}
-                          name={String(p)}
-                        />
-                      )
-                      : (
-                        <div>
-                          {isBaseType(item[p]) ? item[p] as ReactNode : ""}
-                        </div>
-                      )}
-                  </Fragment>
-                ))}
-                <div>
-                  {(notEditing || i !== editIndex) && (
-                    <>
-                      <button onClick={() => del(i)}>
-                        &times;
-                      </button>
-                      <button onClick={(event) => onEditClick(event, i)}>
-                        Edit
-                      </button>
-                    </>
-                  )}
-                  {!notEditing && i === editIndex && (
-                    <>
-                      <button onClick={(e) => onSave(e, i)}>Save</button>
-                      <button onClick={(e) => onSave(e, i)}>Cancel</button>
-                    </>
-                  )}
-                </div>
-              </div>
-            </Fragment>
-          ))}
-        </section>
-      </div>
-      <form style={s}>
-        {keys.map((h, i) => (
-          <input
-            value={addFormData[keys[i]]}
-            key={`${String(h)}${i}`}
-            type={"text"}
-            onChange={handleAddForm}
-            className={S.EntryInput}
-            name={String(keys[i])}
-            required
-          />
+    <div className={table.table}>
+      <article className={concat(table.header, table.row)} style={style}>
+        {headings.map((header, h) => (
+          <div
+            className={concat(table.cell, table.heading)}
+            key={concat(String(header), uid)}
+            onClick={() =>
+              schema && schema[keys[h]].sort && updateSort(keys[h])}
+          >
+            <div>
+              {String(header)}
+              <span>
+                {Render(
+                  <button
+                    className={toggle(table.descendIcon, table.ascendIcon).on(
+                      keys[h] === sortKey && sortOrder === "descending",
+                    )}
+                  >
+                    &#x25B2;
+                  </button>,
+                ).OnlyIf(schema && schema[keys[h]].sort)}
+              </span>
+            </div>
+          </div>
         ))}
-        <button
-          onClick={handleAddFormSubmit}
-          className={S.AddEntryBtn}
-        >
-          Add
-        </button>
-      </form>
+      </article>
+
+      <article className={table.body}>
+        {sortedData().map((item: T, i) => (
+          <div
+            style={style}
+            key={concat("row", i)}
+            className={toggle(table.editRow, table.row).on(
+              i === editIndex,
+            )}
+          >
+            {keyOf(item).map((p, j) => (
+              <div key={concat(i, "cell", uid, j)} className={table.cell}>
+                {Iff(i === editIndex).Then(
+                  <FieldEdit
+                    keyOfT={p}
+                    value={editRow[p]}
+                    onChange={updateEntry}
+                  />,
+                ).Else(
+                  <div
+                    onClick={() =>
+                      focus(i)}
+                  >
+                    {cell ? cell(item[p], p) : item[p]}
+                  </div>,
+                )}
+              </div>
+            ))}
+            <div
+              className={table.cell}
+              style={controlStyle}
+            >
+              {Render(
+                <Close click={() => deleteEntry(i)} />,
+              ).OnlyIf(notEditing || i !== editIndex)}
+              {Render(
+                <>
+                  <Save click={() => updateRow(i)} />
+                  <Cancel click={abortEdit} />
+                </>,
+              ).OnlyIf(!notEditing && i === editIndex)}
+            </div>
+          </div>
+        ))}
+      </article>
+
+      <article className={table.footer} style={style}>
+        {keys.map((h, i) => (
+          <div key={concat(uid, String(h), i)} className={table.cell}>
+            <input
+              value={newEntry[keys[i]]}
+              type={"text"}
+              onChange={setEntryField}
+              name={String(keys[i])}
+              placeholder={String(headings[i])}
+            />
+          </div>
+        ))}
+        <div className={table.cell}>
+          <button
+            className={table.push}
+            disabled={!notEditing}
+            onClick={addEntry}
+            key={concat("add", uid)}
+          >
+            {"add"}
+          </button>
+        </div>
+      </article>
     </div>
-  );
-}
-
-export function Table() {
-  const [data, setData] = useState([
-    { city: "NYC", pop: "512" },
-    { city: "LA", pop: "932" },
-    { city: "SF", pop: "95432" },
-    { city: "London", pop: "1294" },
-    { city: "Tokyo", pop: "9201" },
-  ]);
-
-  return (
-    <Tb
-      data={data}
-      onUpdate={setData}
-      keys={["city", "pop"]}
-      headers={["City", "Population"]}
-    />
   );
 }

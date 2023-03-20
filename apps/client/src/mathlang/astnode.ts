@@ -1,34 +1,36 @@
-import { NODE } from "../structs/enums.js";
-import { functions, symbols } from "../structs/latex.js";
-import { getComplexParts, match, split } from "../structs/stringfn.js";
-import { List } from "../structs/list.js";
-import { GCD, getFrac, sgn } from "../structs/mathfn.js";
-import { ToString } from "../ToString.js";
+import { NODE } from "./structs/enums.js";
+import { functions, symbols } from "./structs/latex.js";
+import { getComplexParts, match, split } from "./structs/stringfn.js";
+import { List } from "./structs/list.js";
+import { GCD, getFrac, sgn } from "./structs/mathfn.js";
+import { ToString } from "./ToString.js";
 
 /* -------------------------------------------------------------------------- */
 /* § Visitor Interface                                                        */
 /* -------------------------------------------------------------------------- */
+export type Atom = Chars | Null | Num | Sym | Bool;
 
 export interface Visitor<T> {
-  chars(n: Chars): T;
-  group(n: Group): T;
-  null(n: Null): T;
-  num(n: Num): T;
-  sym(n: Sym): T;
-  tuple(n: Tuple): T;
-  block(n: Block): T;
-  vector(n: Vector): T;
-  matrix(n: Matrix): T;
-  unaryExpr(n: UnaryExpr): T;
-  callExpr(n: CallExpr): T;
-  binaryExpr(n: BinaryExpr): T;
-  varDeclaration(n: VarDeclaration): T;
-  funDeclaration(n: FunDeclaration): T;
-  root(n: Root): T;
-  cond(n: CondExpr): T;
-  assign(n: Assignment): T;
-  bool(n: Bool): T;
-  error(n: Errnode): T;
+  chars(node: Chars): T;
+  null(node: Null): T;
+  num(node: Num): T;
+  sym(node: Sym): T;
+  bool(node: Bool): T;
+  group(node: Group): T;
+  tuple(node: Tuple): T;
+  block(node: Block): T;
+  vector(node: Vector): T;
+  matrix(node: Matrix): T;
+  unaryExpr(node: UnaryExpr): T;
+  callExpr(node: CallExpr): T;
+  binaryExpr(node: BinaryExpr): T;
+  varDeclaration(node: VarDeclaration): T;
+  funDeclaration(node: FunDeclaration): T;
+  root(node: Root): T;
+  cond(node: CondExpr): T;
+  assign(node: Assignment): T;
+  error(node: Errnode): T;
+  whileStmnt(node: WhileNode): T;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -48,6 +50,7 @@ export abstract class ASTNode {
     return NODE[this.kind].toLowerCase().replace("_", "-");
   }
   abstract accept<T>(n: Visitor<T>): T;
+
   isBlock(): this is Block {
     return this.kind === NODE.BLOCK;
   }
@@ -159,6 +162,26 @@ export class CondExpr extends ASTNode {
 }
 
 /* -------------------------------------------------------------------------- */
+/* § While Statement                                                          */
+/* -------------------------------------------------------------------------- */
+
+export class WhileNode extends ASTNode {
+  condition: ASTNode;
+  body: ASTNode;
+  constructor(condition: ASTNode, body: ASTNode) {
+    super(NODE.WHILE);
+    this.condition = condition;
+    this.body = body;
+  }
+  get val() {
+    return `while (${this.condition.val}): ${this.body.val}`;
+  }
+  accept<T>(n: Visitor<T>): T {
+    return n.whileStmnt(this);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /* § Unary Expression                                                         */
 /* -------------------------------------------------------------------------- */
 
@@ -213,7 +236,7 @@ export class Vector extends ASTNode {
     this.len = elements.length;
   }
   get val() {
-    return '[' + this.elements.map(v=>v.val).join(', ') + ']';
+    return "[" + this.elements.map((v) => v.val).join(", ") + "]";
   }
   accept<T>(n: Visitor<T>): T {
     return n.vector(this);
@@ -340,9 +363,11 @@ export class Bool extends ASTNode {
 
 export class Sym extends ASTNode {
   value: string;
-  constructor(value: string) {
+  isStatic: boolean;
+  constructor(value: string, isStatic = false) {
     super(NODE.SYMBOL);
     this.value = value;
+    this.isStatic = isStatic;
   }
   get val() {
     return this.value;
@@ -555,7 +580,7 @@ export function toNumeric(n: string) {
   }
 }
 
-export function N(n: string) {
+export function getNUM(n: string) {
   switch (true) {
     case match.isBinary(n):
       return ast.int(n, 2);
@@ -578,9 +603,9 @@ export function N(n: string) {
       return ast.float(`${x / y}`);
     }
     case n === "NaN":
-      return ast.integer(NaN);
+      return Num.NAN;
     case n === "Inf":
-      return ast.integer(Infinity);
+      return Num.INF;
     default:
       return ast.int("NaN");
   }
@@ -622,15 +647,23 @@ export enum NUM {
   OCTAL,
   HEX,
   SCIENTIFIC,
+  NAN,
+  INF,
 }
+
+/* -------------------------------------------------------------------------- */
+/* § Num                                                                      */
+/* -------------------------------------------------------------------------- */
 export class Num extends ASTNode {
   value: string;
   #type: NUM;
-  constructor(value: string | number, type: NUM) {
+  constructor(value: string, type: NUM) {
     super(NODE.NUMBER);
-    this.value = typeof value === "number" ? value.toString() : value;
+    this.value = value;
     this.#type = type;
   }
+  static NAN = new Num("NaN", NUM.NAN);
+  static INF = new Num("Inf", NUM.INF);
   get val() {
     return this.value;
   }
@@ -666,6 +699,10 @@ export class Num extends ASTNode {
   }
   get raw() {
     switch (this.#type) {
+      case NUM.NAN:
+        return NaN;
+      case NUM.INF:
+        return Infinity;
       case NUM.INT:
         return Number.parseInt(this.value);
       case NUM.FLOAT:
@@ -675,8 +712,9 @@ export class Num extends ASTNode {
         const n = Number.parseInt(parts[0]);
         const d = Number.parseInt(parts[1]);
         return n / d;
+      default:
+        return 0;
     }
-    return NaN;
   }
   get isTrue() {
     return this.raw > 0;
@@ -726,7 +764,7 @@ export class Num extends ASTNode {
     const a = this.numval.N;
     const b = x.numval.N;
     const result = Math.pow(a, 1 / b);
-    return new Num(result, this.type(result));
+    return new Num(`${result}`, this.type(result));
   }
   pow(x: Num) {
     if (this.#type === NUM.FRACTION && x.#type === NUM.INT) {
@@ -744,22 +782,25 @@ export class Num extends ASTNode {
     const a = this.numval.N;
     const b = x.numval.N;
     const result = a ** b;
-    return new Num(result, this.type(result));
+    return new Num(`${result}`, this.type(result));
   }
   mod(x: Num) {
     const a = integer(this.value).N;
     const b = integer(x.value).N;
-    return ast.integer(((a % b) + b) % b);
+    const c = ((a % b) + b) % b;
+    return ast.int(`${c}`);
   }
   rem(x: Num) {
     const a = integer(this.value).N;
     const b = integer(x.value).N;
-    return ast.integer(a % b);
+    const c = a % b;
+    return ast.int(`${c}`);
   }
   div(x: Num) {
     const a = integer(this.value).N;
     const b = integer(x.value).N;
-    return ast.integer(Math.floor(a / b));
+    const c = Math.floor(a / b);
+    return ast.int(`${c}`);
   }
 
   hasComplex(x: Num) {
@@ -782,7 +823,7 @@ export class Num extends ASTNode {
     const a = this.numval.N;
     const b = x.numval.N;
     result = a / b;
-    return new Num(result, this.type(result));
+    return new Num(`${result}`, this.type(result));
   }
   gte(x: Num) {
     let result = false;
@@ -843,7 +884,7 @@ export class Num extends ASTNode {
     const a = this.numval.N;
     const b = x.numval.N;
     result = a - b;
-    return new Num(result, this.type(result));
+    return new Num(`${result}`, this.type(result));
   }
   add(x: Num) {
     let result = 0;
@@ -866,7 +907,7 @@ export class Num extends ASTNode {
     const a = this.numval.N;
     const b = x.numval.N;
     result = a + b;
-    return new Num(result, this.type(result));
+    return new Num(`${result}`, this.type(result));
   }
   times(x: Num) {
     let result = 0;
@@ -879,7 +920,7 @@ export class Num extends ASTNode {
     const a = this.numval.N;
     const b = x.numval.N;
     result = a * b;
-    return new Num(result, this.type(result));
+    return new Num(`${result}`, this.type(result));
   }
 }
 
@@ -908,7 +949,7 @@ export class Fraction implements NumVal {
     return 0;
   }
   static of(n: number, d: number) {
-    return new Num(`${a}/${b}`, NUM.FRACTION);
+    return new Num(`${n}/${d}`, NUM.FRACTION);
   }
 }
 
@@ -930,7 +971,7 @@ export class Int implements NumVal {
     return 0;
   }
   static of(n: number) {
-    return new Num(n, NUM.INT);
+    return new Num(`${n}`, NUM.INT);
   }
 }
 
@@ -992,12 +1033,13 @@ export class Float implements NumVal {
     return 0;
   }
   static of(n: number) {
-    return new Num(n, NUM.FLOAT);
+    return new Num(`${n}`, NUM.FLOAT);
   }
 }
 
-const a = Int.of(4);
-const b = Complex.of(2, 3);
+/* -------------------------------------------------------------------------- */
+/* § Builder                                                                  */
+/* -------------------------------------------------------------------------- */
 
 export class ast {
   static int(v: string, base = 10) {
@@ -1051,9 +1093,6 @@ export class ast {
     const [a, b] = getFrac(s);
     return new Num(`${a}/${b}`, NUM.FRACTION);
   }
-  static integer(n: number) {
-    return new Num(n.toString(), NUM.INT);
-  }
   static decimal(n: number) {
     return new Num(n.toString(), NUM.FLOAT);
   }
@@ -1061,8 +1100,8 @@ export class ast {
     return new Chars(s);
   }
   static nil = new Null();
-  static symbol(s: string) {
-    return new Sym(s);
+  static symbol(s: string, isStatic = false) {
+    return new Sym(s, isStatic);
   }
   static algebra2(left: ASTNode, op: string, right: ASTNode) {
     return new BinaryExpr(left, op, right);
@@ -1099,18 +1138,20 @@ export class ast {
       ? new Root([new Chars(elements)])
       : new Root(elements);
   }
+  static whileStmt(condition: ASTNode, body: ASTNode) {
+    return new WhileNode(condition, body);
+  }
   static isCallExpr(node: any): node is CallExpr {
     return node instanceof CallExpr;
   }
-
   static isUnex(node: any): node is UnaryExpr {
     return node instanceof UnaryExpr;
   }
-
   static isBinex(node: any): node is BinaryExpr {
     return node instanceof BinaryExpr;
   }
-  static placeHolder(str: string) {
-    return new Null(str);
+  static unknown(str: string) {
+    return new Sym(str, true);
   }
 }
+

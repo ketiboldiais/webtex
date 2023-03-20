@@ -1,4 +1,4 @@
-import { ast } from "./nodes/index.js";
+import { ast } from "./astnode.js";
 import { Calculi, lib, NativeArgType } from "./structs/mathfn.js";
 
 export class Library {

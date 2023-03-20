@@ -2,22 +2,15 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 import path from "path";
-import rehypeKatex from "rehype-katex";
-import remarkMath from "remark-math";
 
 export default defineConfig(async () => {
-  const mdx = await import("@mdx-js/rollup");
   return {
     plugins: [
       react(),
       tsconfigPaths(),
-      mdx.default({
-        remarkPlugins: [remarkMath],
-        rehypePlugins: [rehypeKatex],
-      }),
     ],
     optimizeDeps: {
-      include: ["react/jsx-runtime", "@webtex/lib"],
+      include: ["react/jsx-runtime"],
     },
     resolve: {
       alias: {

@@ -299,9 +299,11 @@ import {
   ChangeEventHandler,
   createContext,
   Dispatch,
+  lazy,
   MouseEventHandler,
   ReactNode,
   SetStateAction,
+  Suspense,
   useCallback,
   useContext,
   useEffect,
@@ -337,9 +339,6 @@ function Navbar() {
           <Link to="/">Workspace</Link>
         </li>
         <li>
-          {/* <Link to="/packages">Packages</Link> */}
-        </li>
-        <li>
           {/* <Link to="/canvas">Canvas</Link> */}
         </li>
       </ul>
@@ -354,29 +353,18 @@ function Page() {
     <main>
       <Routes>
         <Route path={"/"} element={<Workspace />} />
-        {/* <Route path={"/packages"} element={<Packages />} /> */}
         {/* <Route path={"/canvas"} element={<Canvas />} /> */}
       </Routes>
     </main>
   );
 }
 
-import { Plotter } from "./Plot.js";
+import { XyPlotter } from "./Plot.js";
+
 function Canvas() {
   return (
     <div className={S.Playground}>
-      <Plotter />
-    </div>
-  );
-}
-
-/* ------------------------------ PACKAGES PAGE ----------------------------- */
-import Entry1 from "./Blog/Entry1.mdx";
-
-function Packages() {
-  return (
-    <div className={S.Packages}>
-      <Entry1 />
+      <XyPlotter />
     </div>
   );
 }
@@ -385,7 +373,77 @@ function Packages() {
 
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import theme from "../src/components/Editor/EditorTheme";
+
+const theme = {
+  ltr: "ltr",
+  rtl: "rtl",
+  placeholder: "editor-placeholder",
+  paragraph: "editor-paragraph",
+  quote: "editor-quote",
+  heading: {
+    h1: "editor-heading-h1",
+    h2: "editor-heading-h2",
+    h3: "editor-heading-h3",
+    h4: "editor-heading-h4",
+    h5: "editor-heading-h5",
+    h6: "editor-heading-h6",
+  },
+  list: {
+    nested: {
+      listitem: "editor-nested-listitem",
+    },
+    ol: "editor-list-ol",
+    ul: "editor-list-ul",
+    listitem: "editor-listitem",
+  },
+  image: "editor-image",
+  link: "editor-link",
+  text: {
+    bold: "editor-text-bold",
+    italic: "editor-text-italic",
+    overflowed: "editor-text-overflowed",
+    hashtag: "editor-text-hashtag",
+    underline: "editor-text-underline",
+    strikethrough: "editor-text-strikethrough",
+    underlineStrikethrough: "editor-text-underlineStrikethrough",
+    code: "editor-text-code",
+  },
+  code: "editor-code",
+  codeHighlight: {
+    atrule: "editor-tokenAttr",
+    attr: "editor-tokenAttr",
+    boolean: "editor-tokenProperty",
+    builtin: "editor-tokenSelector",
+    cdata: "editor-tokenComment",
+    char: "editor-tokenSelector",
+    class: "editor-tokenFunction",
+    "class-name": "editor-tokenFunction",
+    comment: "editor-tokenComment",
+    constant: "editor-tokenProperty",
+    deleted: "editor-tokenProperty",
+    doctype: "editor-tokenComment",
+    entity: "editor-tokenOperator",
+    function: "editor-tokenFunction",
+    important: "editor-tokenVariable",
+    inserted: "editor-tokenSelector",
+    keyword: "editor-tokenAttr",
+    namespace: "editor-tokenVariable",
+    number: "editor-tokenProperty",
+    operator: "editor-tokenOperator",
+    prolog: "editor-tokenComment",
+    property: "editor-tokenProperty",
+    punctuation: "editor-tokenPunctuation",
+    regex: "editor-tokenVariable",
+    selector: "editor-tokenSelector",
+    string: "editor-tokenSelector",
+    symbol: "editor-tokenProperty",
+    tag: "editor-tokenProperty",
+    url: "editor-tokenOperator",
+    variable: "editor-tokenVariable",
+  },
+};
+
+export default theme;
 
 interface IEditorContext {
   initEditor: LexicalEditor;
@@ -559,18 +617,38 @@ function styleNoteItem(note1: Note, note2: Note) {
  * during brief pauses:
  */
 
-import { useAutosave } from "@hooks/useAutosave";
+import { useAutosave } from "./hooks/useAutosave";
 
 /** Type definitions provded by Lexical. */
 import {
+  $applyNodeReplacement,
   $createParagraphNode,
+  $getNodeByKey,
+  $isNodeSelection,
+  $isRootNode,
+  CLICK_COMMAND,
   COMMAND_PRIORITY_CRITICAL,
+  COMMAND_PRIORITY_EDITOR,
+  COMMAND_PRIORITY_HIGH,
+  COMMAND_PRIORITY_LOW,
+  createCommand,
+  DecoratorNode,
+  DOMExportOutput,
+  DRAGSTART_COMMAND,
+  EditorConfig,
   EditorState,
   ElementNode,
+  GridSelection,
+  KEY_BACKSPACE_COMMAND,
+  KEY_DELETE_COMMAND,
   LexicalEditor,
+  LexicalNode,
   NodeKey,
+  NodeSelection,
   RootNode,
   SELECTION_CHANGE_COMMAND,
+  SerializedLexicalNode,
+  Spread,
 } from "lexical";
 
 /** Error boundary handler for debugging, provided by Lexical. */
@@ -587,7 +665,7 @@ import {
   $patchStyleText,
   $wrapNodes,
 } from "@lexical/selection";
-import { $getNearestNodeOfType } from "@lexical/utils";
+import { $getNearestNodeOfType, mergeRegister } from "@lexical/utils";
 
 /** Returns the selected node. */
 function getSelectedNode(selection: RangeSelection) {
@@ -640,6 +718,7 @@ import { $isLinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
  * Enables inline-markdown KaTeX rendering.
  */
 import { EquationNode, MathPlugin } from "./Equation";
+import { useLexicalNodeSelection as useSelection } from "@lexical/react/useLexicalNodeSelection";
 
 function Editor() {
   const dispatch = useAppDispatch();
@@ -941,6 +1020,7 @@ function Toolbar() {
         <Button label={<AlignRightIcon />} click={trigger.align.right} />
         <Button label={<JustifyIcon />} click={trigger.align.justify} />
         <BlockTypeDropdown />
+        <Button label={"Plot"} click={() => console.log("clicked")} />
       </div>
     </ToolbarContext.Provider>
   );

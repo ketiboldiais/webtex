@@ -1,0 +1,86 @@
+@import './base';
+
+.table {
+	font-family: $mainFont;
+	border: $lightBorder;
+}
+
+.body {}
+
+.header {
+	font-weight: bold;
+	border-bottom: $lightBorder;
+}
+
+.row,
+.editRow {
+	border-bottom: $lightBorder;
+}
+
+
+.heading {
+	border-right: $lightBorder;
+}
+
+.cell {
+	padding: $pad1;
+	margin: 0;
+	height: inherit;
+
+	&:not(:last-child) {
+		border-right: $lightBorder;
+	}
+
+	button,
+	input {
+		border: 0;
+		outline: none;
+	}
+}
+
+.heading {
+	font-size: $xsmall;
+}
+
+.footer input {
+	margin: 0;
+	border: 0;
+	border-bottom: $lightBorder;
+	padding: 0;
+
+	&::placeholder {
+		color: $primary4;
+	}
+}
+
+.ascendIcon,
+.descendIcon {
+	transition: transform 0.05s ease-out;
+}
+
+.ascendIcon {
+	transform: rotate(180deg);
+}
+
+
+
+button.delete {
+	color: salmon;
+	padding: 0;
+	margin: 0;
+	font-size: $xsmall;
+	width: $medium;
+}
+
+button.save,
+button.abort {
+	border: $line;
+	color: $primary3;
+	border-radius: $padtiny;
+}
+
+button.abort {}
+
+button.push {
+	@include Button1;
+}

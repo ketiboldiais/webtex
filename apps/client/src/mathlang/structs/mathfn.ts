@@ -1,4 +1,4 @@
-import { ASTNode, NUM, Num } from "../nodes/index.js";
+import { ASTNode, NUM, Num } from "../astnode.js";
 import { split } from "./stringfn.js";
 export type NativeArgType = "number" | "number-array";
 export type CalculiEntry = {
@@ -8,14 +8,14 @@ export type CalculiEntry = {
 };
 export type Calculi = { [key: string]: CalculiEntry };
 export const lib: Calculi = {
-  e: { val: Math.E, node: () => new Num(Math.E, NUM.FLOAT) },
-  pi: { val: Math.PI, node: () => new Num(Math.PI, NUM.FLOAT) },
-  LN2: { val: Math.LN2, node: () => new Num(Math.PI, NUM.FLOAT) },
-  LN10: { val: Math.LN10, node: () => new Num(Math.LN10, NUM.FLOAT) },
-  LOG2E: { val: Math.LOG2E, node: () => new Num(Math.LOG2E, NUM.FLOAT) },
-  LOG10E: { val: Math.LOG10E, node: () => new Num(Math.LOG10E, NUM.FLOAT) },
-  SQRT1_2: { val: Math.SQRT1_2, node: () => new Num(Math.SQRT1_2, NUM.FLOAT) },
-  SQRT2: { val: Math.SQRT2, node: () => new Num(Math.SQRT2, NUM.FLOAT) },
+  e: { val: Math.E, node: () => new Num(Math.E.toString(), NUM.FLOAT) },
+  pi: { val: Math.PI, node: () => new Num(Math.PI.toString(), NUM.FLOAT) },
+  LN2: { val: Math.LN2, node: () => new Num(Math.PI.toString(), NUM.FLOAT) },
+  LN10: { val: Math.LN10, node: () => new Num(Math.LN10.toString(), NUM.FLOAT) },
+  LOG2E: { val: Math.LOG2E, node: () => new Num(Math.LOG2E.toString(), NUM.FLOAT) },
+  LOG10E: { val: Math.LOG10E, node: () => new Num(Math.LOG10E.toString(), NUM.FLOAT) },
+  SQRT1_2: { val: Math.SQRT1_2, node: () => new Num(Math.SQRT1_2.toString(), NUM.FLOAT) },
+  SQRT2: { val: Math.SQRT2, node: () => new Num(Math.SQRT2.toString(), NUM.FLOAT) },
   abs: { val: Math.abs },
   acos: { val: Math.acos },
   acosh: { val: Math.acosh },

@@ -26,10 +26,11 @@
 	src: url('../fonts/Muli-BoldItalic.ttf');
 }
 
-
-
-$mainFont: 'Muli';
-$xxsmall: 0.6rem;
+$mainFont: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+$cmu_text: 'KaTeX_Main';
+$cmu_math: 'KaTeX_Math';
+$cmu_mono: 'KaTeX_Typewriter';
+$xxsmall: 0.7rem;
 $xsmall: 0.8rem;
 $small: 1rem;
 $medium: 1.2rem;
@@ -37,22 +38,22 @@ $large: 1.4rem;
 $xlarge: 1.8rem;
 $xxlarge: 2.6rem;
 $huge: 4.2rem;
+$pageColor: rgb(253, 253, 253);
 $orange: #ffab6a;
 $red: #e87566;
-$coolGrey1: hsl(209, 15%, 28%);
-$coolGrey2: hsl(207, 12%, 43%);
-$coolGrey3: hsl(208, 12%, 58%);
-$coolGrey4: hsl(210, 16%, 76%);
-$coolGrey5: hsl(208, 21%, 88%);
-$coolGrey6: hsl(210, 30%, 96%);
-
+$primary1: hsl(209, 15%, 28%);
+$primary2: hsl(207, 12%, 43%);
+$primary3: hsl(208, 12%, 58%);
+$primary4: hsl(210, 16%, 76%);
+$primary5: hsl(208, 21%, 88%);
+$primary6: hsl(210, 30%, 96%);
 $blue: 215;
 $blue1: hsl(215, 81%, 15%);
 $blue2: hsl(215, 79%, 25%);
 $blue3: hsl(215, 78%, 45%);
 $blue4: hsl(215, 75%, 55%);
 $blue5: hsl(215, 59%, 65%);
-
+$padtiny: 2px;
 $pad1: 0.25rem;
 $pad2: 0.5rem;
 $pad3: 0.75rem;
@@ -66,7 +67,6 @@ $pad10: 8rem;
 $pad11: 12rem;
 $pad12: 16rem;
 $pad13: 24rem;
-
 $margin1: 0.25rem;
 $margin2: 0.5rem;
 $margin3: 0.75rem;
@@ -80,8 +80,8 @@ $margin10: 8rem;
 $margin11: 12rem;
 $margin12: 16rem;
 $margin13: 24rem;
-
-$line: solid thin $coolGrey4;
+$line: solid thin $primary4;
+$lightBorder: solid thin $primary5;
 
 @mixin CircleButton {
 	border-radius: 100%;
@@ -94,6 +94,10 @@ $line: solid thin $coolGrey4;
 	padding-bottom: 2px;
 }
 
+@mixin l($color: black, $bg: inherit) {
+	border: 1px solid $color;
+	background-color: $bg;
+}
 
 @mixin GreyBox {
 	background: rgba(58, 58, 58, 0.357);
@@ -101,24 +105,11 @@ $line: solid thin $coolGrey4;
 }
 
 @mixin Indent {
-	box-shadow: inset -4px -4px 6px -1px rgb(249, 249, 249),
-		inset 2px 2px 8px -1px rgba(72, 79, 96, 0.205);
+	box-shadow: inset -4px -4px 6px -1px rgb(249, 249, 249), inset 2px 2px 8px -1px rgba(72, 79, 96, 0.205);
 }
 
 @mixin Shadow1($COLOR) {
 	box-shadow: 0px 1px 3px hsl($COLOR, 0%, 91%), 0 1px 2px hsl($COLOR, 0%, 50%);
-}
-
-@mixin Shadow2($COLOR) {
-	box-shadow: 0px 3px 6px hsl($COLOR, 0%, 77%), 0 2px 4px hsl($COLOR, 0%, 75%);
-}
-
-@mixin Border($COLOR, $WIDTH: thin) {
-	border: solid $WIDTH $COLOR;
-}
-
-@mixin Underline($COLOR, $WIDTH: thin) {
-	border-bottom: solid $WIDTH $COLOR;
 }
 
 @mixin Card {
@@ -131,31 +122,11 @@ $line: solid thin $coolGrey4;
 	}
 }
 
-@mixin Box {
-	border: solid thin lightgrey;
-}
-
 @mixin AppBase {
 	font-size: 1em;
-	font-family: 'Muli';
+	font-family: $mainFont;
 	margin: 0;
 	padding: 0;
-}
-
-@mixin FlexRow($justify: space-between, $align: normal, $wrap: nowrap) {
-	display: flex;
-	flex-direction: row;
-	justify-content: $justify;
-	align-items: $align;
-	flex-wrap: $wrap;
-}
-
-@mixin FlexColumn($justify: flex-start, $align: normal, $wrap: nowrap) {
-	display: flex;
-	flex-direction: column;
-	justify-content: $justify;
-	align-items: $align;
-	flex-wrap: $wrap;
 }
 
 @mixin UnstyledList($padding: 0, $margin: 0) {
@@ -189,7 +160,7 @@ $line: solid thin $coolGrey4;
 }
 
 @mixin Scrollbar {
-	scrollbar-color: $coolGrey4 white;
+	scrollbar-color: $pageColor;
 	scrollbar-width: thin;
 
 	&::-webkit-scrollbar {
@@ -201,7 +172,7 @@ $line: solid thin $coolGrey4;
 	}
 
 	&::-webkit-scrollbar-thumb {
-		background-color: $coolGrey4;
+		background-color: $primary4;
 		border-radius: 5px;
 	}
 }
@@ -219,14 +190,11 @@ $line: solid thin $coolGrey4;
 		padding: 2px 5px;
 		color: $color;
 		margin: $margin;
-		background-color: inherit;
 		@include Shadow1(4);
-		font-family: 'Muli';
+		font-family: $mainFont;
 		border: 0;
-		cursor: pointer;
 	}
 }
-
 
 @mixin Plot_Control {
 	padding: 4px 0.8em;
@@ -236,8 +204,6 @@ $line: solid thin $coolGrey4;
 	border: solid thin rgb(202, 202, 205);
 
 	button {
-		cursor: pointer;
-
 		label {
 			display: block;
 			font-size: 0.7rem;
@@ -250,7 +216,6 @@ $line: solid thin $coolGrey4;
 
 		border: none;
 		color: rgb(79, 79, 79);
-		background-color: inherit;
 		border-radius: 5px;
 
 		:hover {
@@ -259,56 +224,15 @@ $line: solid thin $coolGrey4;
 	}
 }
 
-@mixin CounterComponent {
-	.NumberInput {
-		.NumInputLabel {
-			text-align: center;
-			font-family: 'CMU Serif';
-			font-style: italic;
-			font-size: 0.9rem;
-		}
-
-		.Body {
-			display: flex;
-			width: 100%;
-			padding: 2px;
-
-			.OpButton {
-				font-family: monospace;
-				border: none;
-				margin: 0;
-				text-align: center;
-				display: flex;
-				flex-direction: column;
-				justify-content: center;
-				font-size: 0.9rem;
-				cursor: pointer;
-			}
-
-			.NumField {
-				margin: 0;
-				-webkit-appearance: none;
-				-moz-appearance: textfield;
-				width: 70%;
-				margin: auto;
-				font-size: 0.75rem;
-				text-align: center;
-				border: none;
-				@include GreyBox;
-			}
-		}
-	}
-}
-
 
 @mixin PlotDataPanel {
-	color: $coolGrey6;
+	color: $primary6;
 	padding: 0.3em;
+	background: rgba(44, 44, 44, 0.61);
 	display: flex;
 	margin: 2px;
 	border-radius: 4px;
 	flex-direction: column;
-	background: rgba(44, 44, 44, 0.61);
 	backdrop-filter: blur(2px);
 	-webkit-backdrop-filter: blur(2px);
 	border: 1px solid rgba(255, 255, 255, 0.271);
@@ -322,8 +246,6 @@ $line: solid thin $coolGrey4;
 		display: flex;
 		justify-content: center;
 		align-items: center;
-
-
 
 		.Label {
 			font-size: 0.8rem;
@@ -345,21 +267,20 @@ $line: solid thin $coolGrey4;
 		height: 15%;
 		width: 100%;
 		margin: 2px 0;
+	}
 
-		.MinMaxLabel {
-			padding: 5%;
-			margin: auto;
-			font-size: 0.7rem;
-			text-align: center;
-			line-height: 0;
-		}
+	.MinMaxLabel {
+		padding: 5%;
+		margin: auto;
+		font-size: 0.7rem;
+		text-align: center;
+		line-height: 0;
+	}
 
-		.MinMaxInput {
-			display: flex;
-			justify-content: space-evenly;
-			padding: 0.2em;
-			@include CounterComponent;
-		}
+	.MinMaxInput {
+		display: flex;
+		justify-content: space-evenly;
+		padding: 0.2em;
 	}
 
 	.AddPlotButton {
@@ -369,18 +290,7 @@ $line: solid thin $coolGrey4;
 		height: 10%;
 		padding: 4px 0;
 	}
-
-	.LiveTex {
-		display: flex;
-		justify-content: center;
-		height: 20%;
-		padding: 1em 2px;
-		margin: 0.5em 0;
-		color: white;
-		font-size: 0.9rem;
-	}
 }
-
 
 @mixin CalculatorStyles {
 	.Calculator {
@@ -398,7 +308,7 @@ $line: solid thin $coolGrey4;
 			padding: 0.7rem;
 			word-wrap: break-word;
 			word-break: break-all;
-			background-color: $coolGrey2;
+			background-color: $primary2;
 		}
 
 		.Keyboard {
@@ -421,8 +331,8 @@ $line: solid thin $coolGrey4;
 				width: 50px;
 				height: 50px;
 				margin: 10px;
-				background-color: $coolGrey5;
-				color: $coolGrey2;
+				background-color: $primary5;
+				color: $primary2;
 				border-radius: 100%;
 				font-size: 1.3em;
 			}
@@ -438,17 +348,14 @@ $line: solid thin $coolGrey4;
 				margin: 0 auto;
 				border-radius: 5px;
 			}
-
-
 		}
 	}
 }
 
 @mixin SpreadsheetStyles {
-
 	.Spreadsheet {
 		position: relative;
-		color: $coolGrey1;
+		color: $primary1;
 		@include Card;
 		padding: 5px;
 		padding-bottom: 20px;
@@ -456,15 +363,13 @@ $line: solid thin $coolGrey4;
 		text-align: center;
 
 		header {
-			color: $coolGrey4;
-			border-bottom: solid thin $coolGrey4;
-
+			color: $primary4;
+			border-bottom: $line;
 		}
 
-
 		input {
-			border-left: solid thin $coolGrey4;
-			border-bottom: solid thin $coolGrey4;
+			border-left: $line;
+			border-bottom: $line;
 			width: 100%;
 
 			&::placeholder {
@@ -473,14 +378,14 @@ $line: solid thin $coolGrey4;
 		}
 
 		button {
-			border: solid thin $coolGrey3;
+			border: $line;
 			border-radius: 100%;
 			width: 19px;
 			height: 19px;
 			padding: 0;
 			padding-bottom: 2px;
-			background-color: $coolGrey5;
-			color: $coolGrey3;
+			background-color: $primary5;
+			color: $primary3;
 			margin: 2px;
 			line-height: 0;
 		}
@@ -488,17 +393,14 @@ $line: solid thin $coolGrey4;
 		.AddColButton {
 			position: absolute;
 			right: 0;
-
 		}
 	}
-
-
 
 	.Resizer {
 		cursor: pointer;
 		width: 10px;
 		height: 10px;
-		background-color: $coolGrey3;
+		background-color: $primary3;
 		border-radius: 100%;
 		position: absolute;
 		bottom: 0;
@@ -508,11 +410,9 @@ $line: solid thin $coolGrey4;
 	}
 }
 
-
 @mixin Plotter {
 	.Plotter {
 		@include Card;
-		background-color: white;
 		display: block;
 		width: 85%;
 		height: 100%;
@@ -523,42 +423,68 @@ $line: solid thin $coolGrey4;
 
 		.PlotOutput {
 			@include CalculatorStyles;
+		}
 
-			.PlotWindow {
-				display: flex;
-				flex-direction: column;
+		.PlotWindow {
+			display: flex;
+			flex-direction: column;
 
-				.PlotRenderer {
-					height: 100%;
-				}
 
-				.PlotPanel {
-					width: 35%;
-					height: 40%;
-					z-index: 100;
-					position: absolute;
+		}
 
-					.PlotInputPanel {
-						@include PlotDataPanel;
-					}
+		.PlotRenderer {
+			height: 100%;
+		}
+
+		.CloseButton {
+			width: fit-content;
+			background: rgba(44, 44, 44);
+			border-radius: 100%;
+			padding: 0;
+			padding-bottom: 1px;
+			height: 1.2rem;
+			width: 1.2rem;
+			z-index: 500;
+		}
+
+		.PlotPanel {
+			width: 35%;
+			height: 40%;
+			z-index: 100;
+			position: absolute;
+			margin-top: 0.3rem;
+			margin-left: 0.3rem;
+		}
+
+		.PlotInputPanel {
+
+			@include PlotDataPanel;
+
+			.tableView {
+				padding: 2px;
+				width: 100%;
+			}
+
+			.tableHeader {
+				display: none;
+			}
+
+			.tableCell {
+				padding: 5px auto;
+				margin-top: 0.4rem;
+				margin-bottom: 0.4rem;
+				width: max-content;
+
+				&:nth-child(1) {
+					width: 15%;
 				}
 			}
 		}
-
 	}
 }
 
-@mixin TableStyles {
-	.Table {
-		.EntryInput {
-			border: $line;
-			background-color: lightgrey;
-		}
-		.AddEntryBtn {
-			background-color: red;
-		}
-	}
-}
+
+
 
 @mixin FlatButton($width: fit-content, $color: inherit) {
 	button {
@@ -566,10 +492,8 @@ $line: solid thin $coolGrey4;
 		padding: 0.3em 0.5em;
 		color: $color;
 		margin: 0 5px;
-		background-color: inherit;
-		font-family: 'Muli';
+		font-family: $mainFont;
 		border: 0;
-		cursor: pointer;
 	}
 }
 
@@ -600,14 +524,14 @@ $line: solid thin $coolGrey4;
 		font-size: 0.8rem;
 		height: fit-content;
 		box-shadow: none;
-		@include Hover($coolGrey4);
+		@include Hover($primary4);
 	}
 }
 
 @mixin DropdownActive {
-	height: 170px;
+	height: 220px;
 	background-color: white;
-	border: solid thin $coolGrey5;
+	border: $line;
 }
 
 @mixin DropdownList {
@@ -621,7 +545,6 @@ $line: solid thin $coolGrey4;
 	transition: height 0.3s ease;
 }
 
-
 @mixin NavBarStyles {
 	padding-right: 10px;
 	display: flex;
@@ -634,7 +557,7 @@ $line: solid thin $coolGrey4;
 		text-decoration: none;
 		padding: 0;
 		margin: 0 0.4em;
-		color: $coolGrey4;
+		color: $primary4;
 		font-size: 0.9rem;
 	}
 
@@ -657,7 +580,7 @@ $line: solid thin $coolGrey4;
 
 @mixin ActiveNoteBase {
 	background-color: $blue4;
-	color: $coolGrey5;
+	color: $primary5;
 
 	button {
 		color: $orange;
@@ -667,7 +590,7 @@ $line: solid thin $coolGrey4;
 }
 
 @mixin Smalltext {
-	font-size: 0.7rem;
+	font-size: $xxsmall;
 	display: block;
 	padding: 0.3em;
 }
@@ -689,7 +612,7 @@ $line: solid thin $coolGrey4;
 }
 
 @mixin NoteItemTitle {
-	font-size: 0.8em;
+	font-size: $xsmall;
 	max-width: 90%;
 	overflow: hidden;
 	white-space: nowrap;
@@ -697,12 +620,11 @@ $line: solid thin $coolGrey4;
 }
 
 @mixin NotelistToolbar {
-	@include FlexRow(flex-end, normal, nowrap);
 	@include ShadowButton(fit-content, inherit, 0);
-
-	button {
-		background-color: white;
-	}
+	display: flex;
+	flex-direction: row;
+	justify-content: flex-end;
+	flex-wrap: nowrap;
 
 	.ShowNotesButton {
 		margin-right: 5px;
@@ -716,12 +638,16 @@ $line: solid thin $coolGrey4;
 	padding: 4px 1px;
 	z-index: 10;
 	position: relative;
-	@include FlexRow(center, center, nowrap);
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+	align-items: center;
+	flex-wrap: nowrap;
 	@include Hover();
 	@include Shadow1(4);
 
 	.placeholder {
-		font-size: 0.8em;
+		font-size: $xsmall;
 		padding-left: 0.3em;
 	}
 
@@ -758,12 +684,8 @@ $line: solid thin $coolGrey4;
 		@include NoteItemHeader;
 	}
 
-	.DeleteButton {
-		cursor: pointer;
-	}
+	.DeleteButton {}
 }
-
-
 
 @mixin PackagesPage {
 	margin: 0;
@@ -788,4 +710,14 @@ $line: solid thin $coolGrey4;
 		padding: 0;
 		margin: 0.8em 0;
 	}
+}
+
+@mixin Button1 {
+	width: fit-content;
+	padding: 0 $pad2;
+	border-radius: $padtiny;
+	color: $primary3;
+	margin: 0;
+	font-family: $mainFont;
+	border: $line;
 }

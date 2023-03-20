@@ -1,7 +1,7 @@
 import { scaleLinear } from "@visx/scale";
 import { line, lineRadial } from "d3-shape";
 import { ReactNode, useEffect, useRef } from "react";
-import { algom } from "src/mathlang";
+import { algom } from "../../mathlang/index";
 import { Axis, AxisScale } from "@visx/axis";
 import { Canvas, useThree } from "@react-three/fiber";
 import { ParametricGeometry } from "three/examples/jsm/geometries/ParametricGeometry";
@@ -244,7 +244,9 @@ interface ParametricPlotProps extends FunctionPlotProps {
   fy: Function | string;
 }
 interface Plot1Props extends FunctionPlotProps {
-  f: Function | string;
+  fs?: Plot1Payload[];
+  uid?: string;
+  ref?: { current: null | HTMLDivElement };
 }
 
 interface ParametricPathProps {
@@ -388,8 +390,13 @@ export function PlotParametric({
   );
 }
 
-export function PlotXY({
-  f,
+export type Plot1Payload = {
+  variable: string;
+  expression: string;
+};
+
+export function Plot1({
+  fs,
   ticks = 10,
   domain = [-10, 10],
   range = [-10, 10],
@@ -399,16 +406,22 @@ export function PlotXY({
   cheight = height / width,
   margin = 30,
   margins = [margin, margin, margin, margin],
+  uid = nanoid(7),
+  ref = { current: null },
 }: Plot1Props) {
-  if (typeof f === "string") {
-    const fn = algom.makeFunction(f, ['x']);
-    if (typeof fn === "string") return <>{fn}</>;
-    f = fn;
+  const fx: Function[] = [];
+  if (fs) {
+    const L = fs.length;
+    for (let i = 0; i < L; i++) {
+      const fstring = fs[i];
+      const fn = algom.makeFunction(fstring.expression, [fstring.variable]);
+      if (typeof fn !== "string") fx.push(fn);
+    }
   }
-  const fx: Function = f;
   const [svg_width, svg_height] = svgDimensions(width, height, margins);
   const xScale = Scale.linear.x(domain, svg_width);
   const yScale = Scale.linear.y(range, svg_height);
+
   return (
     <SVG
       width={width}
@@ -416,18 +429,22 @@ export function PlotXY({
       cwidth={cwidth}
       cheight={cheight}
       margins={margins}
+      ref={ref}
     >
       <g style={{ transformOrigin: "center" }}>
         <Clip id={`plot`} width={svg_width} height={svg_height} />
         <Plane ticks={ticks} yScale={yScale} xScale={xScale} />
-        <XYPath
-          f={fx}
-          samples={500}
-          domain={domain}
-          range={range}
-          xScale={xScale}
-          yScale={yScale}
-        />
+        {fx.map((f, i) => (
+          <XYPath
+            f={f}
+            key={`${uid}fpath${i}`}
+            samples={500}
+            domain={domain}
+            range={range}
+            xScale={xScale}
+            yScale={yScale}
+          />
+        ))}
       </g>
     </SVG>
   );
@@ -498,6 +515,7 @@ interface SVGProps {
   cheight: number;
   margins: [number, number, number, number];
   children: ReactNode;
+  ref?: { current: null | HTMLDivElement };
 }
 function SVG({
   width,
@@ -506,6 +524,7 @@ function SVG({
   cheight = height / width,
   margins,
   children,
+  ref,
 }: SVGProps) {
   const [top, right, bottom, left] = margins;
   const svgWidth = width - left - right;
@@ -515,6 +534,7 @@ function SVG({
   const viewboxValue = `0 0 ${viewBoxWidth} ${viewBoxHeight}`;
   return (
     <div
+      ref={ref}
       style={{
         display: "block",
         position: "relative",

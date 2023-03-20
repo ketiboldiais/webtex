@@ -449,3 +449,15 @@ export function numToUpLatin(index: number): string {
   const char = String.fromCharCode(rem + 97).toUpperCase();
   return quot - 1 >= 0 ? numToUpLatin(quot - 1) + char : char;
 }
+
+export function isHexDigit(char: string) {
+  return (
+    (char >= "0" && char <= "9") ||
+    (char >= "a" && char <= "f") ||
+    (char >= "A" && char <= "F")
+  );
+}
+
+export function isDigit(char: string) {
+  return char >= '0' && char <= '9';
+}
