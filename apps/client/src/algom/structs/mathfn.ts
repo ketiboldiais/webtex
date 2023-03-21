@@ -1,4 +1,5 @@
-import { ASTNode, NUM, Num } from "../astnode.js";
+import { C } from "../ast/index.js";
+import { ASTNode } from "../ast/index.js";
 import { split } from "./stringfn.js";
 export type NativeArgType = "number" | "number-array";
 export type CalculiEntry = {
@@ -8,14 +9,14 @@ export type CalculiEntry = {
 };
 export type Calculi = { [key: string]: CalculiEntry };
 export const lib: Calculi = {
-  e: { val: Math.E, node: () => new Num(Math.E.toString(), NUM.FLOAT) },
-  pi: { val: Math.PI, node: () => new Num(Math.PI.toString(), NUM.FLOAT) },
-  LN2: { val: Math.LN2, node: () => new Num(Math.PI.toString(), NUM.FLOAT) },
-  LN10: { val: Math.LN10, node: () => new Num(Math.LN10.toString(), NUM.FLOAT) },
-  LOG2E: { val: Math.LOG2E, node: () => new Num(Math.LOG2E.toString(), NUM.FLOAT) },
-  LOG10E: { val: Math.LOG10E, node: () => new Num(Math.LOG10E.toString(), NUM.FLOAT) },
-  SQRT1_2: { val: Math.SQRT1_2, node: () => new Num(Math.SQRT1_2.toString(), NUM.FLOAT) },
-  SQRT2: { val: Math.SQRT2, node: () => new Num(Math.SQRT2.toString(), NUM.FLOAT) },
+  e: { val: Math.E, node: () => C.e },
+  pi: { val: Math.PI, node: () => C.pi },
+  LN2: { val: Math.LN2, node: () => C.ln2 },
+  LN10: { val: Math.LN10, node: () => C.ln10 },
+  LOG2E: { val: Math.LOG2E, node: () => C.log2e },
+  LOG10E: { val: Math.LOG10E, node: () => C.log10e },
+  SQRT1_2: { val: Math.SQRT1_2, node: () => C.sqrt1_2 },
+  SQRT2: { val: Math.SQRT2, node: () => C.sqrt2 },
   abs: { val: Math.abs },
   acos: { val: Math.acos },
   acosh: { val: Math.acosh },
@@ -62,7 +63,7 @@ export const lib: Calculi = {
 };
 
 export function avg(...nums: number[]) {
-  if (nums===undefined) {
+  if (nums === undefined) {
     return 0;
   }
   const L = nums.length;
@@ -71,7 +72,7 @@ export function avg(...nums: number[]) {
 }
 
 export function sum(...nums: number[]) {
-  if (nums===undefined) {
+  if (nums === undefined) {
     return 0;
   }
   const L = nums.length;
@@ -96,7 +97,7 @@ export const is = {
   string: (v: any): v is string => typeof v === "number",
   bool: (v: any): v is boolean => typeof v === "boolean",
   integer: (v: any) => {
-    if (typeof v === "number") return Number.isInteger(v);
+    if (typeof v === "number") return (v%1===0);
     return Number.parseInt(v);
   },
 };

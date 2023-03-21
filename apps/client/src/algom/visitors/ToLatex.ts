@@ -1,31 +1,42 @@
+import { Visitor } from "../ast/astnode.js";
 import {
-  Assignment,
   ASTNode,
-  BinaryExpr,
-  Block,
-  Bool,
-  CallExpr,
-  Chars,
-  CondExpr,
-  Errnode,
-  FunDeclaration,
-  Group,
-  Matrix,
-  Null,
-  Num,
+  AssignmentNode,
+  BinaryExprNode,
+  BlockNode,
+  BoolNode,
+  CallNode,
+  IfElseNode,
+  ErrorNode,
+  FunctionNode,
+  GroupNode,
+  Integer,
+  MatrixNode,
+  NullNode,
+  Rational,
+  Real,
   Root,
-  Sym,
-  Tuple,
-  UnaryExpr,
-  VarDeclaration,
-  Vector,
-  Visitor,
-  WhileNode
-} from "../algom/astnode.js";
+  StringNode,
+  SymbolNode,
+  TupleNode,
+  UnaryExprNode,
+  VarDeclareNode,
+  VectorNode,
+  WhileNode,
+} from "../ast/index.js";
 
 export class ToLatex implements Visitor<string> {
+  frac(node: Rational): string {
+    return node.val;
+  }
+  real(node: Real): string {
+    return node.val;
+  }
+  int(node: Integer): string {
+    return node.val;
+  }
   whileStmnt(node: WhileNode): string {
-    return ""
+    return "";
   }
   latexOf(node: ASTNode) {
     if (node !== undefined) {
@@ -33,23 +44,20 @@ export class ToLatex implements Visitor<string> {
     }
     return "";
   }
-  chars(node: Chars): string {
+  chars(node: StringNode): string {
     return `\\text{\\textquotedblleft}${node.value}\\text{\\textquotedblright}`;
   }
-  group(node: Group): string {
+  group(node: GroupNode): string {
     const content = this.latexOf(node.expression);
     return `\\left(${content}\\right)`;
   }
-  null(n: Null): string {
+  null(_: NullNode): string {
     return "";
   }
-  num(node: Num): string {
+  sym(node: SymbolNode): string {
     return node.latex;
   }
-  sym(node: Sym): string {
-    return node.latex;
-  }
-  tuple(node: Tuple): string {
+  tuple(node: TupleNode): string {
     const elements: string[] = [];
     node.value.forEach((n) => elements.push(this.latexOf(n)));
     const content = elements.join(", ");
@@ -66,13 +74,13 @@ export class ToLatex implements Visitor<string> {
     const es = str.join(sep);
     return delim[0] + es + delim[1];
   }
-  block(n: Block): string {
+  block(n: BlockNode): string {
     return this.latexes(n.body);
   }
-  vector(n: Vector): string {
+  vector(n: VectorNode): string {
     return this.latexes(n.elements, ", ", ["\\left[", "\\right]"]);
   }
-  matrix(node: Matrix): string {
+  matrix(node: MatrixNode): string {
     const matrix = node.matrix;
     const rows = node.rows;
     const cols = node.columns;
@@ -88,14 +96,14 @@ export class ToLatex implements Visitor<string> {
     const out = mtx.join(" \\\\ ");
     return `\\begin{bmatrix} ${out} \\end{bmatrix}`;
   }
-  unaryExpr(node: UnaryExpr): string {
+  unaryExpr(node: UnaryExprNode): string {
     const arg = this.latexOf(node.arg);
     if (node.op === "-" || node.op === "+") {
       return `${node.op}${arg}`;
     }
     return `${arg}${node.op}`;
   }
-  callExpr(node: CallExpr): string {
+  callExpr(node: CallNode): string {
     const args = this.latexes(node.args, ", ", ["", ""]);
     if (node.callee === "ceil") {
       return `\\lceil${args}\\rceil`;
@@ -115,7 +123,7 @@ export class ToLatex implements Visitor<string> {
     const name = node.latexFuncName;
     return `${name}\\left(${args}\\right)`;
   }
-  binaryExpr(node: BinaryExpr): string {
+  binaryExpr(node: BinaryExprNode): string {
     const op = node.op;
     if (
       (node.left.isNum() || node.left.isGroup()) && node.right.isSymbol() &&
@@ -132,10 +140,10 @@ export class ToLatex implements Visitor<string> {
     if (op === "*") return `${left} \\times ${right}`;
     return `${left} ${op} ${right}`;
   }
-  varDeclaration(n: VarDeclaration): string {
+  varDeclaration(n: VarDeclareNode): string {
     return "";
   }
-  funDeclaration(n: FunDeclaration): string {
+  funDeclaration(n: FunctionNode): string {
     return "";
   }
   root(node: Root): string {
@@ -145,16 +153,16 @@ export class ToLatex implements Visitor<string> {
     }
     return str;
   }
-  cond(n: CondExpr): string {
+  cond(n: IfElseNode): string {
     return "";
   }
-  assign(n: Assignment): string {
+  assign(n: AssignmentNode): string {
     return "";
   }
-  bool(node: Bool): string {
+  bool(node: BoolNode): string {
     return `\\text{${node.value}}`;
   }
-  error(node: Errnode): string {
+  error(node: ErrorNode): string {
     return "";
   }
 }

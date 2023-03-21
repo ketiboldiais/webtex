@@ -1,85 +1,93 @@
+import { Visitor } from "../ast/astnode.js";
 import {
-  Assignment,
   ASTNode,
-  BinaryExpr,
-  Block,
-  Bool,
-  CallExpr,
-  Chars,
-  CondExpr,
-  Errnode,
-  FunDeclaration,
-  Group,
-  Matrix,
-  Null,
-  Num,
+  AssignmentNode,
+  BinaryExprNode,
+  BlockNode,
+  BoolNode,
+  CallNode,
+  IfElseNode,
+  ErrorNode,
+  FunctionNode,
+  GroupNode,
+  Integer,
+  MatrixNode,
+  NullNode,
+  Rational,
+  Real,
   Root,
+  StringNode,
+  SymbolNode,
+  TupleNode,
+  UnaryExprNode,
+  VarDeclareNode,
+  VectorNode,
   WhileNode,
-  Sym,
-  Tuple,
-  UnaryExpr,
-  VarDeclaration,
-  Vector,
-  Visitor,
-} from "./astnode.js";
+} from "../ast/index.js";
 
 export class ToString implements Visitor<string> {
-  cond(n: CondExpr) {
+  cond(n: IfElseNode) {
     const test: string = this.toString(n.condition);
     const consequent: string = this.toString(n.consequent);
     const alternate: string = this.toString(n.alternate);
     return `if (${test}) {${consequent}} else {${alternate}}`;
   }
-  group(node: Group): string {
+  frac(node: Rational): string {
+    return node.val;
+  }
+  real(node: Real): string {
+    return node.val;
+  }
+  int(node: Integer): string {
+    return node.val;
+  }
+  group(node: GroupNode): string {
     const expr = this.toString(node.expression);
     return `(` + expr + `)`;
   }
   whileStmnt(node: WhileNode): string {
     return "";
   }
-  error(n: Errnode): string {
+  error(n: ErrorNode): string {
     return n.value;
   }
-  bool(n: Bool): string {
+  bool(n: BoolNode): string {
     return `${n.value}`;
   }
-  assign(n: Assignment): string {
+  assign(n: AssignmentNode): string {
     const name = n.name;
     const value = this.toString(n.value);
     return `${name} = ${value}`;
   }
-  chars(n: Chars): string {
+  chars(n: StringNode): string {
     return n.value;
   }
-  null(n: Null): string {
+  null(n: NullNode): string {
     return "null";
   }
-  num(n: Num): string {
+  sym(n: SymbolNode): string {
     return n.value;
   }
-  sym(n: Sym): string {
-    return n.value;
-  }
-  tuple(n: Tuple): string {
+  tuple(n: TupleNode): string {
     return this.stringify(n.value.array);
   }
-  block(n: Block): string {
+  block(n: BlockNode): string {
     let result = "";
     for (let i = 0; i < n.body.length; i++) {
       result += this.toString(n.body[i]) + "\n";
     }
     return result;
   }
-  vector(n: Vector): string {
+  vector(n: VectorNode): string {
     return this.stringify(n.elements, ", ", ["[", "]"]);
   }
-  unaryExpr(n: UnaryExpr): string {
+  unaryExpr(n: UnaryExprNode): string {
     let op = n.op;
     let result = this.toString(n.arg);
     const out = op + `(` + result + `)`;
     return out;
   }
-  binaryExpr(n: BinaryExpr): string {
+  binaryExpr(n: BinaryExprNode): string {
     if (n.op === "*" && n.left.isNum() && n.right.isSymbol()) {
       return n.left.value + n.right.value;
     }
@@ -88,7 +96,7 @@ export class ToString implements Visitor<string> {
     const op = (n.op !== "^" && n.op !== "/") ? ` ${n.op} ` : n.op;
     return left + op + right;
   }
-  varDeclaration(n: VarDeclaration): string {
+  varDeclaration(n: VarDeclareNode): string {
     return this.toString(n.value);
   }
   root(n: Root): string {
@@ -97,19 +105,19 @@ export class ToString implements Visitor<string> {
     const out = result.join("");
     return out;
   }
-  funDeclaration(node: FunDeclaration): string {
+  funDeclaration(node: FunctionNode): string {
     const name = node.name;
     const params = this.stringify(node.params, ", ", ["(", ")"]);
     const body = this.toString(node.body);
     return name + params + "{" + body + "}";
   }
-  matrix(n: Matrix): string {
+  matrix(n: MatrixNode): string {
     let elements: string[] = [];
     n.vectors.forEach((v) => elements.push("\t" + this.toString(v)));
     const Es = "[\n" + elements.join("\n") + "\n]";
     return Es;
   }
-  callExpr(n: CallExpr): string {
+  callExpr(n: CallNode): string {
     let fn = n.callee;
     let arglist = this.stringify(n.args);
     return fn + arglist;

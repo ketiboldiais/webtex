@@ -1,27 +1,30 @@
 import { Fn } from "../fn.js";
+import { Visitor } from "../ast/astnode.js";
 import {
-  Assignment,
+  abs,
+  AssignmentNode,
   ASTNode,
-  BinaryExpr,
-  Block,
-  Bool,
-  CallExpr,
-  Chars,
-  CondExpr,
-  Errnode,
-  FunDeclaration,
-  Group,
-  Matrix,
-  Num,
+  BinaryExprNode,
+  BlockNode,
+  BoolNode,
+  CallNode,
+  IfElseNode,
+  ErrorNode,
+  FunctionNode,
+  GroupNode,
+  Integer,
+  MatrixNode,
+  Rational,
+  Real,
   Root,
-  Sym,
-  Tuple,
-  UnaryExpr,
-  VarDeclaration,
-  Vector,
+  StringNode,
+  SymbolNode,
+  TupleNode,
+  UnaryExprNode,
+  VarDeclareNode,
+  VectorNode,
   WhileNode,
-  Visitor,
-} from "../astnode.js";
+} from "../ast/index.js";
 import { corelib, Scope } from "../scope.js";
 
 type RuntimeValue =
@@ -45,20 +48,28 @@ export class Compile implements Visitor<RuntimeValue> {
     this.scope = scope;
     this.err = "";
   }
-
+  int(node: Integer): RuntimeValue {
+    return node.value;
+  }
+  real(node: Real): RuntimeValue {
+    return node.value;
+  }
+  frac(node: Rational): RuntimeValue {
+    return node.value;
+  }
   setScope(scope: Scope) {
     this.scope = scope;
   }
-  
+
   whileStmnt(node: WhileNode): RuntimeValue {
-    let result:RuntimeValue = null;
+    let result: RuntimeValue = null;
     while (this.execute(node.condition)) {
       result = this.execute(node.body);
     }
     return result;
   }
 
-  group(n: Group): any {
+  group(n: GroupNode): any {
     return this.execute(n.expression);
   }
   interpret(nodes: ASTNode[]) {
@@ -69,19 +80,16 @@ export class Compile implements Visitor<RuntimeValue> {
   execute(n: ASTNode) {
     return n.accept(this);
   }
-  bool(n: Bool): boolean {
+  bool(n: BoolNode): boolean {
     return n.value;
   }
-  chars(n: Chars): string {
+  chars(n: StringNode): string {
     return n.value;
   }
   null(): null {
     return null;
   }
-  num(n: Num): number {
-    return n.raw;
-  }
-  sym(n: Sym) {
+  sym(n: SymbolNode) {
     if (corelib.hasConstant(n.value)) {
       const result = corelib.getNumericConstant(n.value);
       if (result !== undefined) return result;
@@ -90,16 +98,16 @@ export class Compile implements Visitor<RuntimeValue> {
     if (res instanceof ASTNode) res = this.execute(res);
     return res;
   }
-  error(n: Errnode): string {
+  error(n: ErrorNode): string {
     this.err = n.value;
     return n.value;
   }
-  tuple(n: Tuple) {
+  tuple(n: TupleNode) {
     const elements = n.value.map((node) => this.execute(node));
     const result: RuntimeValue[] = elements.array.map((n) => this.execute(n));
     return result;
   }
-  block(n: Block) {
+  block(n: BlockNode) {
     return this.executeBlock(n.body, this.scope);
   }
   execNodes(statements: ASTNode[], env: Scope): any {
@@ -122,17 +130,17 @@ export class Compile implements Visitor<RuntimeValue> {
     this.scope = previous;
     return result;
   }
-  vector(n: Vector) {
+  vector(n: VectorNode) {
     const elements: RuntimeValue[] = n.elements.map((node) =>
       this.execute(node)
     );
     return elements;
   }
-  matrix(n: Matrix) {
+  matrix(n: MatrixNode) {
     const matrix: RuntimeValue[][] = n.forall((n) => this.execute(n));
     return matrix;
   }
-  unaryExpr(n: UnaryExpr): RuntimeValue {
+  unaryExpr(n: UnaryExprNode): RuntimeValue {
     const arg = this.execute(n.arg);
     const op = n.op;
     switch (op) {
@@ -144,9 +152,9 @@ export class Compile implements Visitor<RuntimeValue> {
     this.err = `Could not evaluate ${n.op} at runtime.`;
     return null;
   }
-  callExpr(n: CallExpr) {
+  callExpr(n: CallNode) {
     if (n.callee === "abs" && n.length === 1 && n.args[0].isNum()) {
-      return n.args[0].abs;
+      return abs(n.args[0]);
     }
     const fn = this.scope.get(n.callee);
     let args: RuntimeValue[] = [];
@@ -219,7 +227,7 @@ export class Compile implements Visitor<RuntimeValue> {
     }
   }
 
-  binaryExpr(n: BinaryExpr): RuntimeValue {
+  binaryExpr(n: BinaryExprNode): RuntimeValue {
     const left: RuntimeValue = this.execute(n.left);
     const right: RuntimeValue = this.execute(n.right);
     const op = n.op;
@@ -232,7 +240,7 @@ export class Compile implements Visitor<RuntimeValue> {
     this.err = `Could not evaluate binary operator ${n.op} at runtime.`;
     return null;
   }
-  varDeclaration(node: VarDeclaration): RuntimeValue {
+  varDeclaration(node: VarDeclareNode): RuntimeValue {
     let value = null;
     if (!node.value.isNull()) {
       value = this.execute(node.value);
@@ -240,18 +248,18 @@ export class Compile implements Visitor<RuntimeValue> {
     return this.scope.define(node.name, value);
   }
 
-  funDeclaration(node: FunDeclaration): Fn {
+  funDeclaration(node: FunctionNode): Fn {
     const fn = new Fn(node.name, node.paramlist, node.body);
     this.scope.define(node.name, fn);
     return fn;
   }
 
-  cond(n: CondExpr): RuntimeValue {
+  cond(n: IfElseNode): RuntimeValue {
     if (this.execute(n.condition)) {
       return this.execute(n.consequent);
     } else return this.execute(n.alternate);
   }
-  assign(n: Assignment): RuntimeValue {
+  assign(n: AssignmentNode): RuntimeValue {
     const value = this.execute(n.value);
     this.scope.assign(n.name, value);
     return value;

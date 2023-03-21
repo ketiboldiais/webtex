@@ -1,10 +1,21 @@
-import { ToLatex } from "../hooks/ToLatex.js";
-import { ToString } from "./ToString.js";
-import { Compile, Runtimeval } from "./visitors/compiler.js";
+import {
+  Compile,
+  Interpreter,
+  Runtimeval,
+  ToLatex,
+  ToString,
+} from "./visitors/index.js";
 import { Fn } from "./fn.js";
-import { Interpreter } from "./visitors/interpreter.js";
-import { Atom, Num } from "./astnode.js";
-import { ast, ASTNode, Errnode, Root, Sym, Tuple, Vector } from "./astnode.js";
+import { ast, Atom } from "./ast/astnode.js";
+import {
+  ASTNode,
+  C,
+  ErrorNode,
+  Root,
+  SymbolNode,
+  TupleNode,
+  VectorNode,
+} from "./ast/index.js";
 import { corelib } from "./scope.js";
 import { Keyword, keywords, NODE, PREC, TOKEN } from "./structs/enums.js";
 import { List } from "./structs/list.js";
@@ -41,7 +52,7 @@ export class Parser {
   private line: number = 1;
   private numtype: TOKEN = TOKEN.INT;
   private peek: Token = Token.nil;
-  private error: Errnode | null;
+  private error: ErrorNode | null;
   private lastNode: NODE = NODE.NULL;
   private funcs: Set<string> = new Set();
   private strict: boolean = true;
@@ -484,7 +495,7 @@ export class Parser {
 
   private functionDeclaration(name: string) {
     this.funcs.add(name);
-    let params: Sym[] = [];
+    let params: SymbolNode[] = [];
     if (!this.peek.is(TOKEN.RPAREN) && this.error === null) {
       do {
         const n = this.eat(TOKEN.SYMBOL, "Expected function name.");
@@ -602,10 +613,10 @@ export class Parser {
         newnode = this.atom((lex) => ast.int(lex, 16));
         break;
       case TOKEN.INF:
-        newnode = this.atom(() => Num.INF);
+        newnode = this.atom(() => C.inf);
         break;
       case TOKEN.NAN:
-        newnode = this.atom(() => Num.NAN);
+        newnode = this.atom(() => C.nan);
         break;
       case TOKEN.SCINUM: {
         const token = this.tick();
@@ -620,8 +631,7 @@ export class Parser {
       }
       case TOKEN.COMPLEX:
         // TODO - should lookback to get the form `a + bi` rather than `bi`
-        newnode = this.atom((lex) => ast.complex(lex));
-        break;
+        throw new Error("Complex uimplemented.");
     }
     if (this.check(TOKEN.SYMBOL)) {
       if (this.isVariableName(this.peek.lexeme)) {
@@ -630,7 +640,7 @@ export class Parser {
       }
       if (corelib.hasFunction(this.peek.lexeme)) {
         const sym = this.atom((lex) => ast.symbol(lex));
-        const rhs = this.callexpr(sym as Sym);
+        const rhs = this.callexpr(sym as SymbolNode);
         newnode = ast.binex(newnode, "*", rhs);
       }
     }
@@ -684,7 +694,7 @@ export class Parser {
     return node;
   }
 
-  private callexpr(node: Sym): ASTNode {
+  private callexpr(node: SymbolNode): ASTNode {
     if (this.isVariableName(node.value)) {
       let rhs = this.group();
       return ast.binex(node, "*", rhs);
@@ -724,7 +734,7 @@ export class Parser {
     }
     let rows = 0;
     let cols = 0;
-    if (element instanceof Vector) {
+    if (element instanceof VectorNode) {
       cols = element.len;
       rows += 1;
       builder = "matrix";
@@ -735,7 +745,7 @@ export class Parser {
       if (builder === "matrix" && (!expr.isVector())) {
         this.panic("Only vectors permitted in matrices.");
       }
-      if (expr instanceof Vector) {
+      if (expr instanceof VectorNode) {
         builder = "matrix";
         rows += 1;
         if (cols !== expr.len) this.panic("Jagged arrays not permitted.");
@@ -745,7 +755,7 @@ export class Parser {
 
     this.eat(TOKEN.RBRACKET, "Expected ] in array.");
     return builder === "matrix"
-      ? ast.matrix(elements as Vector[], rows, cols)
+      ? ast.matrix(elements as VectorNode[], rows, cols)
       : ast.vector(elements);
   }
 
@@ -755,9 +765,9 @@ export class Parser {
     return n.stringify(out);
   }
 
-  toString(out: ASTNode) {
-    const s = new ToString();
-    return out.accept(s);
+  str(src: string) {
+    const p = this.parse(src);
+    return this.toString(p);
   }
 
   ast(src: string) {
@@ -768,8 +778,13 @@ export class Parser {
 
     return tree(res, (node) => {
       if (node instanceof ASTNode) node.kind = node.nkind as any;
-      if (node instanceof Tuple) node.value = node.value.array as any;
+      if (node instanceof TupleNode) node.value = node.value.array as any;
     });
+  }
+
+  private toString(out: ASTNode) {
+    const s = new ToString();
+    return out.accept(s);
   }
 
   private panic(messages: string) {
@@ -836,3 +851,10 @@ export class Parser {
     return this.parse(src).accept(new Compile());
   }
 }
+
+const p = new Parser();
+const expr = `
+let x = 5;
+x = 7;
+`;
+console.log(p.parse(expr));

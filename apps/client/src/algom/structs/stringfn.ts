@@ -356,6 +356,7 @@ export function verifyNumber(input: string): NumParsing {
   if (!res.err) return { num: res.res, kind: "integer" };
   return { num: "", kind: "unknown" };
 }
+
 export const match = {
   isInt: (s: string) => /^-?(0|[1-9]\d*)(?<!-0)$/.test(s),
   isFloat: (s: string) => /^(?!-0(\.0+)?$)-?(0|[1-9]\d*)(\.\d+)?$/.test(s),
@@ -459,5 +460,6 @@ export function isHexDigit(char: string) {
 }
 
 export function isDigit(char: string) {
-  return char >= '0' && char <= '9';
+  return char >= "0" && char <= "9";
 }
+

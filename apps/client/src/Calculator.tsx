@@ -1,4 +1,4 @@
-import { ast, ASTNode } from "./algom/astnode.js";
+import { ast, ASTNode } from "./algom/ast/astnode.js";
 import TeX from "@matejmazur/react-katex";
 import { nanoid } from "@reduxjs/toolkit";
 import { Counter } from "./Counter";

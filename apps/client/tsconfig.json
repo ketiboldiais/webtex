@@ -6,7 +6,7 @@
     "strict": true,
     "module": "ESNext",
     "noEmit": true,
-    "baseUrl": "./src",
+    "baseUrl": "./",
     "jsx": "react-jsx",
     "types": ["node"],
     "moduleResolution": "node",

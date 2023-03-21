@@ -1,37 +1,39 @@
-import { ToString } from "../ToString.js";
-import { Compile } from "../visitors/compiler.js";
+import { ToString } from "./ToString.js";
+import { Compile } from "./compiler.js";
 import { Fn } from "../fn.js";
+import { ast, Visitor } from "../ast/astnode.js";
 import {
-  Assignment,
-  ast,
+  AssignmentNode,
   ASTNode,
-  BinaryExpr,
-  Block,
-  Bool,
-  CallExpr,
-  Chars,
-  CondExpr,
-  Errnode,
-  FunDeclaration,
-  Group,
-  Matrix,
-  getNUM,
-  Null,
-  Num,
+  BinaryExprNode,
+  BlockNode,
+  BoolNode,
+  CallNode,
+  IfElseNode,
+  ErrorNode,
+  FunctionNode,
+  GroupNode,
+  Integer,
+  MatrixNode,
+  N,
+  NullNode,
+  num,
+  Rational,
+  Real,
   Root,
-  Sym,
-  Tuple,
-  UnaryExpr,
-  VarDeclaration,
-  Vector,
-  Visitor,
+  StringNode,
+  SymbolNode,
+  TupleNode,
+  UnaryExprNode,
+  VarDeclareNode,
+  VectorNode,
   WhileNode,
-} from "../astnode.js";
+} from "../ast/index.js";
 import { corelib, Scope } from "../scope.js";
 import { NODE } from "../structs/enums.js";
 import { List } from "../structs/list.js";
 
-function compute(left: Num, op: string, right: Num): ASTNode | undefined {
+function compute(left: N, op: string, right: N): ASTNode | undefined {
   switch (op) {
     case "+":
       return left.add(right);
@@ -40,7 +42,7 @@ function compute(left: Num, op: string, right: Num): ASTNode | undefined {
     case "*":
       return left.times(right);
     case "/":
-      return left.divide(right);
+      return left.div(right);
     case "^":
       return left.pow(right);
     case "%":
@@ -62,23 +64,23 @@ function compute(left: Num, op: string, right: Num): ASTNode | undefined {
       return left.equals(right);
   }
 }
-function mergeTuples(a: Tuple | ASTNode, b: Tuple | ASTNode) {
+function mergeTuples(a: TupleNode | ASTNode, b: TupleNode | ASTNode) {
   let L: List<ASTNode> = new List();
   switch (true) {
     case (a.isTuple() && b.isTuple()):
-      L = (a as Tuple).value.concat((b as Tuple).value);
+      L = (a as TupleNode).value.concat((b as TupleNode).value);
       break;
     case (a.isTuple() && !b.isTuple()):
-      L = (a as Tuple).value.push(b);
+      L = (a as TupleNode).value.push(b);
       break;
     case (!a.isTuple() && b.isTuple()):
-      L = (b as Tuple).value.push(a);
+      L = (b as TupleNode).value.push(a);
       break;
     case (!a.isTuple() && !b.isTuple()):
       L = List.of(a, b);
       break;
   }
-  return Tuple.of(L);
+  return TupleNode.of(L);
 }
 
 export class Interpreter implements Visitor<ASTNode> {
@@ -90,13 +92,22 @@ export class Interpreter implements Visitor<ASTNode> {
     this.scope = scope;
     this.compiler = new Compile(this.scope);
   }
+  real(node: Real): ASTNode {
+    return node;
+  }
+  frac(node: Rational): ASTNode {
+    return node;
+  }
+  int(node: Integer): ASTNode {
+    return node;
+  }
   stringify(n: ASTNode) {
     return n.accept(this.str);
   }
-  group(n: Group): ASTNode {
+  group(n: GroupNode): ASTNode {
     return this.exec(n.expression);
   }
-  error(n: Errnode): ASTNode {
+  error(n: ErrorNode): ASTNode {
     return n;
   }
   whileStmnt(node: WhileNode): ASTNode {
@@ -109,7 +120,7 @@ export class Interpreter implements Visitor<ASTNode> {
     return result;
   }
 
-  funDeclaration(node: FunDeclaration): ASTNode {
+  funDeclaration(node: FunctionNode): ASTNode {
     const fn = new Fn(node.name, node.paramlist, node.body);
     this.scope.define(node.name, fn);
     return ast.nil;
@@ -127,9 +138,8 @@ export class Interpreter implements Visitor<ASTNode> {
       return ast.argsErr(callee, L, arglen);
     }
     args.forEach((num, i) => {
-      num.kind === NODE.NUMBER && nargs.push((num as Num).raw);
+      num.kind === NODE.NUMBER && nargs.push((num as N).value);
     });
-    console.log(nargs);
     return native.apply(null, nargs);
   }
 
@@ -147,10 +157,9 @@ export class Interpreter implements Visitor<ASTNode> {
     args.forEach((vect, i) => {
       if (i < L && vect.kind === NODE.VECTOR) {
         const arg = this.compiler.execNodes(
-          (vect as Vector).elements,
+          (vect as VectorNode).elements,
           this.scope,
         );
-        console.log(arg);
         if (Array.isArray(arg) && typeof arg[0] === "number") {
           nargs.push(arg);
         }
@@ -160,7 +169,7 @@ export class Interpreter implements Visitor<ASTNode> {
     return native.apply(null, nargs);
   }
 
-  callExpr(node: CallExpr): ASTNode {
+  callExpr(node: CallNode): ASTNode {
     const args: ASTNode[] = [];
     const callee = node.callee;
     const arglen = node.length;
@@ -181,12 +190,12 @@ export class Interpreter implements Visitor<ASTNode> {
       if (Array.isArray(result) && typeof result[0] === "number") {
         const L = result.length;
         const elements: ASTNode[] = [];
-        for (let i = 0; i < L; i++) elements.push(getNUM(`${result[i]}`));
+        for (let i = 0; i < L; i++) elements.push(num(result[0]));
         return ast.vector(elements);
       }
       switch (typeof result) {
         case "number":
-          return getNUM(`${result}`);
+          return num(result);
         case "boolean":
           return ast.bool(result);
         case "string":
@@ -207,7 +216,7 @@ export class Interpreter implements Visitor<ASTNode> {
     return ast.nil;
   }
 
-  varDeclaration(node: VarDeclaration): ASTNode {
+  varDeclaration(node: VarDeclareNode): ASTNode {
     let value: ASTNode = ast.nil;
     if (!node.value.isNull()) {
       value = this.exec(node.value);
@@ -219,36 +228,33 @@ export class Interpreter implements Visitor<ASTNode> {
     return res;
   }
 
-  assign(node: Assignment): ASTNode {
+  assign(node: AssignmentNode): ASTNode {
     const value = this.exec(node.value);
     this.scope.assign(node.name, value);
     return value;
   }
-  sym(node: Sym): ASTNode {
+  sym(node: SymbolNode): ASTNode {
     const n = corelib.getNumericConstant(node.value);
-    if (n) return getNUM(n.toString());
+    if (n) return num(n);
     const value = this.scope.get(node.value);
     if (value === null || value === undefined) {
       return ast.resError(`No variable named ${node.value} exists.`);
     }
     return value;
   }
-  matrix(n: Matrix): ASTNode {
+  matrix(n: MatrixNode): ASTNode {
     return n;
   }
-  chars(n: Chars): ASTNode {
+  chars(n: StringNode): ASTNode {
     return n;
   }
-  bool(n: Bool): ASTNode {
+  bool(n: BoolNode): ASTNode {
     return n;
   }
-  null(n: Null): ASTNode {
+  null(n: NullNode): ASTNode {
     return n;
   }
-  num(n: Num): ASTNode {
-    return n;
-  }
-  cond(n: CondExpr): ASTNode {
+  cond(n: IfElseNode): ASTNode {
     const test = this.exec(n.condition);
     if (test.isBool() && test.value) {
       return this.exec(n.consequent);
@@ -256,11 +262,11 @@ export class Interpreter implements Visitor<ASTNode> {
     return this.exec(n.alternate);
   }
 
-  tuple(n: Tuple): ASTNode {
-    return Tuple.of(n.value.map((v) => this.exec(v)));
+  tuple(n: TupleNode): ASTNode {
+    return TupleNode.of(n.value.map((v) => this.exec(v)));
   }
 
-  block(node: Block): ASTNode {
+  block(node: BlockNode): ASTNode {
     return this.execBlock(node.body, this.scope);
   }
   execBlock(statements: ASTNode[], env: Scope) {
@@ -275,15 +281,15 @@ export class Interpreter implements Visitor<ASTNode> {
     return result;
   }
 
-  vector(n: Vector): ASTNode {
+  vector(n: VectorNode): ASTNode {
     return n;
   }
 
-  unaryExpr(n: UnaryExpr): ASTNode {
+  unaryExpr(n: UnaryExprNode): ASTNode {
     return n;
   }
 
-  binaryExpr(n: BinaryExpr): ASTNode {
+  binaryExpr(n: BinaryExprNode): ASTNode {
     const left = this.exec(n.left);
     if (left.erred) return left;
     const right = this.exec(n.right);
@@ -299,8 +305,6 @@ export class Interpreter implements Visitor<ASTNode> {
     }
     if (left.isMatrix() && right.isMatrix()) {
       switch (n.op) {
-        case "+":
-          return left.add(right);
         default:
           return ast.typeError(`Operand ${op} doesn’t work with matrices.`);
       }

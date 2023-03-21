@@ -1,7 +1,7 @@
 import { scaleLinear } from "@visx/scale";
 import { line, lineRadial } from "d3-shape";
 import { ReactNode, useEffect, useRef } from "react";
-import { algom } from "../../mathlang/index";
+import { algom } from "../../algom/index.js";
 import { Axis, AxisScale } from "@visx/axis";
 import { Canvas, useThree } from "@react-three/fiber";
 import { ParametricGeometry } from "three/examples/jsm/geometries/ParametricGeometry";
