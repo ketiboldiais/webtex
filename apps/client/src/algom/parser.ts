@@ -851,10 +851,3 @@ export class Parser {
     return this.parse(src).accept(new Compile());
   }
 }
-
-const p = new Parser();
-const expr = `
-let x = 5;
-x = 7;
-`;
-console.log(p.parse(expr));

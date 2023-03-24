@@ -1,0 +1,263 @@
+@import './base';
+
+.page {
+	flex: 10;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	margin: 0 2vw;
+}
+
+.toolbar {
+	display: flex;
+  button {
+		width: fit-content;
+		padding: 3px 5px;
+		color: inherit;
+		margin: 0 $margin1;
+		font-family: $mainFont;
+  }
+	margin-bottom: $margin1;
+  i { @include IconStyles; }
+}
+
+.body {
+	height: 90vh;
+	overflow-y: scroll;
+	border: solid thin #e4e4e4;
+	padding: 0;
+}
+
+.placeholder {
+	overflow: hidden;
+	position: absolute;
+	text-overflow: ellipsis;
+	top: 15px;
+	left: 10px;
+	font-size: 15px;
+	user-select: none;
+	display: inline-block;
+	pointer-events: none;
+}
+
+.input {
+	margin: 0;
+	padding: 0 5em;
+	display: block;
+	outline: none;
+	scrollbar-width: none;
+	font-size: 0.88em;
+	font-family: $cmu_text;
+	height: 100%;
+}
+
+.title {
+	font-family: $cmu_text;
+
+	input {
+		text-align: center;
+		font-size: 1.5rem;
+		font-weight: bold;
+	}
+
+	width: fit-content;
+	outline: none;
+	margin: auto;
+	margin-top: 2em;
+	margin-bottom: 0.4em;
+	border: none;
+}
+
+.quote {}
+.paragraph {}
+.ol, .ul {
+	padding: 0 1rem;
+}
+.ol {}
+.ul {}
+.li {}
+
+
+
+.link {}
+
+.bold {
+  font-weight: bold;
+}
+
+.italic {
+  font-style: italic;
+}
+
+.underline {
+  text-decoration: underline;
+}
+
+.strike {
+  text-decoration: line-through;
+}
+
+.ustrike {
+  text-decoration: underline line-through;
+}
+
+.editor-text-code {
+  background-color: rgb(240, 242, 245);
+  padding: 1px 0.25rem;
+  font-size: 94%;
+}
+
+.heading1 {
+  font-size: 28px;
+  color: rgb(5, 5, 5);
+  font-weight: 600;
+  margin: 0;
+  margin-bottom: 12px;
+  padding: 0;
+}
+.heading2 {
+  font-size: 23px;
+  color: rgb(5, 5, 5);
+  font-weight: 600;
+  margin: 0;
+  margin-bottom: 12px;
+  padding: 0;
+}
+.heading3 {
+  font-size: 20px;
+  color: rgb(5, 5, 5);
+  font-weight: 600;
+  margin: 0;
+  margin-bottom: 12px;
+  padding: 0;
+}
+.heading4 {
+  font-size: 18px;
+  color: rgb(5, 5, 5);
+  font-weight: 600;
+  margin: 0;
+  margin-bottom: 12px;
+  padding: 0;
+}
+.heading5 {
+  font-size: 17px;
+  color: rgb(5, 5, 5);
+  font-weight: 700;
+  margin: 0;
+  margin-bottom: 12px;
+  padding: 0;
+}
+.heading6 {
+  font-size: 16px;
+  color: rgb(5, 5, 5);
+  font-weight: 600;
+  margin: 0;
+  margin-bottom: 12px;
+  padding: 0;
+}
+span.image {
+	cursor: pointer;
+	display: inline-block;
+	position: relative;
+	user-select: none;
+}
+.image img {
+	max-width: 100%;
+	cursor: pointer;
+}
+.image img.focused {
+	outline: 2px solid rgb(60, 132, 244);
+	user-select: none;
+}
+.image img.focused.draggable {
+	cursor: grab;
+}
+.image img.focused.draggable.active {
+	cursor: grabbing;
+}
+.imageCaptionButton {
+	display: block;
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  width: 30%;
+  padding: 10px;
+  margin: 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 5px;
+  background-color: rgba(0, 0, 0, 0.5);
+  min-width: 100px;
+  color: #fff;
+  cursor: pointer;
+  user-select: none;
+}
+.imageCaptionContainer {
+	display: block;
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  right: 0;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid #fff;
+  background-color: rgba(255, 255, 255, 0.9);
+  min-width: 100px;
+  color: #000;
+  overflow: hidden;
+}
+.imageContentEditable {
+
+}
+.imageNodePlaceholder {}
+.resizer {
+	display: block;
+  width: 7px;
+  height: 7px;
+  position: absolute;
+  background-color: rgb(60, 132, 244);
+  border: 1px solid #fff;
+}
+.n {
+	top: -6px;
+  left: 48%;
+  cursor: n-resize;
+}
+.ne {
+	top: -6px;
+  right: -6px;
+  cursor: ne-resize;
+}
+.e {
+	bottom: 48%;
+  right: -6px;
+  cursor: e-resize;
+}
+.se {
+	bottom: -2px;
+  right: -6px;
+  cursor: nwse-resize;
+}
+.s {
+	bottom: -2px;
+  left: 48%;
+  cursor: s-resize;
+}
+.sw {
+	bottom: -2px;
+  left: -6px;
+  cursor: sw-resize;
+}
+.w {
+	bottom: 48%;
+  left: -6px;
+  cursor: w-resize;
+}
+.nw {
+	top: -6px;
+  left: -6px;
+  cursor: nw-resize;
+}
+.wrapperResizing {}
+.focused {}
+.draggable {}

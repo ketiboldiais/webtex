@@ -32,7 +32,7 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "paths": {
-      "@styles/*": ["./src/assets/styles/*"],
+      "@styles/*": ["./src/ui/styles/*"],
       "@components/*": ["./src/components/*"],
       "@chips/*": ["./src/components/chips/*"],
       "@hooks/*": ["./src/hooks/*"],

@@ -44,7 +44,8 @@ interface Note {
  *   the active note in Redux is undefined, as well
  *   as the note used when creating a new note.
  */
-import { EMPTY_NOTE, WELCOME_NOTE_CONTENT } from "./Defaults";
+import { command, concat, toggle, WELCOME_NOTE_CONTENT } from "./util/index.js";
+import { EMPTY_NOTE } from "./util/index.js";
 
 const WelcomeNote = makeNote(`webtexDOCS`, "Welcome", WELCOME_NOTE_CONTENT);
 const BlankNote = makeNote(id(0), "", EMPTY_NOTE);
@@ -299,11 +300,9 @@ import {
   ChangeEventHandler,
   createContext,
   Dispatch,
-  lazy,
   MouseEventHandler,
   ReactNode,
   SetStateAction,
-  Suspense,
   useCallback,
   useContext,
   useEffect,
@@ -312,7 +311,7 @@ import {
 } from "react";
 
 /** Application Styles. */
-import S from "@styles/App.module.css";
+import S from "./ui/styles/App.module.scss";
 import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
 
 export function App() {
@@ -359,12 +358,12 @@ function Page() {
   );
 }
 
-import { XyPlotter } from "./Plot.js";
-
 function Canvas() {
   return (
     <div className={S.Playground}>
-      <XyPlotter />
+      {/* <ModalBox title={"Latex Input"} ref={null}> */}
+      {/* <InsertPlotDialog/> */}
+      {/* </ModalBox> */}
     </div>
   );
 }
@@ -373,39 +372,39 @@ function Canvas() {
 
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-
+import editor from "./ui/styles/Editor.module.scss";
 const theme = {
   ltr: "ltr",
   rtl: "rtl",
-  placeholder: "editor-placeholder",
-  paragraph: "editor-paragraph",
-  quote: "editor-quote",
+  placeholder: editor.placeholder,
+  paragraph: editor.paragraph,
+  quote: editor.quote,
   heading: {
-    h1: "editor-heading-h1",
-    h2: "editor-heading-h2",
-    h3: "editor-heading-h3",
-    h4: "editor-heading-h4",
-    h5: "editor-heading-h5",
-    h6: "editor-heading-h6",
+    h1: editor.heading1,
+    h2: editor.heading2,
+    h3: editor.heading3,
+    h4: editor.heading4,
+    h5: editor.heading5,
+    h6: editor.heading6,
   },
   list: {
     nested: {
       listitem: "editor-nested-listitem",
     },
-    ol: "editor-list-ol",
-    ul: "editor-list-ul",
-    listitem: "editor-listitem",
+    ol: editor.ol,
+    ul: editor.ul,
+    listitem: editor.li,
   },
-  image: "editor-image",
-  link: "editor-link",
+  image: editor.image,
+  link: editor.link,
   text: {
-    bold: "editor-text-bold",
-    italic: "editor-text-italic",
+    bold: editor.bold,
+    italic: editor.italic,
     overflowed: "editor-text-overflowed",
     hashtag: "editor-text-hashtag",
-    underline: "editor-text-underline",
-    strikethrough: "editor-text-strikethrough",
-    underlineStrikethrough: "editor-text-underlineStrikethrough",
+    underline: editor.underline,
+    strikethrough: editor.strike,
+    underlineStrikethrough: editor.ustrike,
     code: "editor-text-code",
   },
   code: "editor-code",
@@ -442,8 +441,6 @@ const theme = {
     variable: "editor-tokenVariable",
   },
 };
-
-export default theme;
 
 interface IEditorContext {
   initEditor: LexicalEditor;
@@ -489,7 +486,15 @@ function Workspace() {
   const defaultConfig = {
     namespace: "editor",
     theme,
-    nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, EquationNode],
+    nodes: [
+      HeadingNode,
+      QuoteNode,
+      ListNode,
+      ListItemNode,
+      EquationNode,
+      ImageNode,
+      PlotNode,
+    ],
     onError(error: any) {
       throw error;
     },
@@ -562,6 +567,7 @@ function SideBar() {
  * This ensures that the note list is never empty, reducing the complexity
  * of keeping all the states in sync.
  */
+import noteStyles from "./ui/styles/Notes.module.scss";
 
 interface INoteItem {
   note: Note;
@@ -580,24 +586,27 @@ function NoteItem({ note, onDelete }: INoteItem) {
   }
   const noteTitle = note.id === activeNote.id ? activeNoteTitle : note.title;
   return (
-    <li onClick={switchNote} className={styleNoteItem(note, activeNote)}>
-      <div className={S.NoteItemHeader}>
+    <li
+      onClick={switchNote}
+      className={toggle(
+        concat(noteStyles.item, noteStyles.active),
+        noteStyles.item,
+      ).on(note.id === activeNote.id)}
+    >
+      <div className={noteStyles.noteHeader}>
         <Boldtext content={noteTitle} />
         {note.id !== `webtexDOCS` && (
-          <Button
-            label={"delete"}
-            click={(e) => onDelete(e, note)}
-            className={S.DeleteButton}
-          />
+          <button
+            className={noteStyles.delete}
+            onClick={(e) => onDelete(e, note)}
+          >
+            &times;
+          </button>
         )}
       </div>
       <Subtext content={note.date} />
     </li>
   );
-}
-
-function styleNoteItem(note1: Note, note2: Note) {
-  return note1.id === note2.id ? `${S.Item} ${S.Active}` : `${S.Item}`;
 }
 
 /* --------------------------------- EDITOR --------------------------------- */
@@ -621,34 +630,14 @@ import { useAutosave } from "./hooks/useAutosave";
 
 /** Type definitions provded by Lexical. */
 import {
-  $applyNodeReplacement,
   $createParagraphNode,
-  $getNodeByKey,
-  $isNodeSelection,
-  $isRootNode,
-  CLICK_COMMAND,
-  COMMAND_PRIORITY_CRITICAL,
-  COMMAND_PRIORITY_EDITOR,
-  COMMAND_PRIORITY_HIGH,
-  COMMAND_PRIORITY_LOW,
-  createCommand,
-  DecoratorNode,
-  DOMExportOutput,
-  DRAGSTART_COMMAND,
-  EditorConfig,
+  $isRootOrShadowRoot,
+  CAN_REDO_COMMAND,
+  CAN_UNDO_COMMAND,
   EditorState,
-  ElementNode,
-  GridSelection,
-  KEY_BACKSPACE_COMMAND,
-  KEY_DELETE_COMMAND,
   LexicalEditor,
-  LexicalNode,
-  NodeKey,
-  NodeSelection,
   RootNode,
   SELECTION_CHANGE_COMMAND,
-  SerializedLexicalNode,
-  Spread,
 } from "lexical";
 
 /** Error boundary handler for debugging, provided by Lexical. */
@@ -665,7 +654,11 @@ import {
   $patchStyleText,
   $wrapNodes,
 } from "@lexical/selection";
-import { $getNearestNodeOfType, mergeRegister } from "@lexical/utils";
+import {
+  $findMatchingParent,
+  $getNearestNodeOfType,
+  mergeRegister,
+} from "@lexical/utils";
 
 /** Returns the selected node. */
 function getSelectedNode(selection: RangeSelection) {
@@ -717,8 +710,7 @@ import { $isLinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
  * Custom plugin: Math Plugin
  * Enables inline-markdown KaTeX rendering.
  */
-import { EquationNode, MathPlugin } from "./Equation";
-import { useLexicalNodeSelection as useSelection } from "@lexical/react/useLexicalNodeSelection";
+import { EquationNode, EquationsPlugin, MathPlugin } from "./chips/Equation";
 
 function Editor() {
   const dispatch = useAppDispatch();
@@ -745,14 +737,14 @@ function Editor() {
   });
 
   return (
-    <div className={S.TextEditor}>
+    <div className={editor.page}>
       <Toolbar />
-      <div className={S.Lexical} onBlur={() => setIsEditing(false)}>
+      <div className={editor.body} onBlur={() => setIsEditing(false)}>
         <NoteTitle />
         <HistoryPlugin />
         <RichTextPlugin
-          contentEditable={<ContentEditable className={S.EditorInput} />}
-          placeholder={<div className={S.EditorPlaceholder}></div>}
+          contentEditable={<ContentEditable className={editor.input} />}
+          placeholder={<div className={editor.placeholder}></div>}
           ErrorBoundary={LexicalErrorBoundary}
         />
         <NodeEventPlugin
@@ -766,6 +758,9 @@ function Editor() {
         <OnChangePlugin onChange={(editorState) => doc.current = editorState} />
         <ListPlugin />
         <MathPlugin />
+        <EquationsPlugin />
+        <ImagePlugin />
+        <PlotPlugin />
       </div>
     </div>
   );
@@ -798,7 +793,7 @@ function NoteTitle() {
   }, [activeNote]);
 
   return (
-    <div className={S.NoteTitle}>
+    <div className={editor.title}>
       <input
         type={"text"}
         value={title}
@@ -862,12 +857,15 @@ const blocktypeMap = {
   quote: "Quote",
 };
 
+import { useModal } from "@hooks/useModal";
+import { InsertEquationDialog } from "./chips/Equation";
+import { InsertPlotDialog, PlotPlugin } from "./chips/FPlot.js";
+import icon from "./ui/styles/icons.module.scss";
+type StrNull = string | null;
 function Toolbar() {
   const { initEditor, activeEditor, setActiveEditor } = useEditor();
   const [blockType, setBlocktype] = useState<Blocktype>("paragraph");
-  const [selectedElementKey, setSelectedElementKey] = useState<string | null>(
-    null,
-  );
+  const [selectedElementKey, setSelectedElementKey] = useState<StrNull>(null);
   const [fontSize, setFontSize] = useState<string>("12px");
   const [fontColor, setFontColor] = useState<string>("black");
   const [fontFamily, setFontFamily] = useState<string>("CMU Serif");
@@ -879,6 +877,10 @@ function Toolbar() {
   const [isSubscript, setIsSubscript] = useState(false);
   const [isSuperscript, setIsSuperscript] = useState(false);
   const [isCode, setIsCode] = useState(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const [isRTL, setIsRTL] = useState(false);
+  const [isEditable, setIsEditable] = useState(() => initEditor.isEditable());
 
   /**
    * When the user makes a selection, we want to
@@ -888,10 +890,16 @@ function Toolbar() {
   const updateToolbar = useCallback(() => {
     const selection = $getSelection();
     if ($isRangeSelection(selection)) {
-      const anchor = selection.anchor.getNode();
-      const element = anchor.getKey() === "root"
-        ? anchor
-        : anchor.getTopLevelElementOrThrow();
+      const anchorNode = selection.anchor.getNode();
+      let element = anchorNode.getKey() === "root"
+        ? anchorNode
+        : $findMatchingParent(anchorNode, (e) => {
+          const parent = e.getParent();
+          return parent !== null && $isRootOrShadowRoot(parent);
+        });
+      if (element === null) {
+        element = anchorNode.getTopLevelElementOrThrow();
+      }
       const elementKey = element.getKey();
       const elementDOM = activeEditor.getElementByKey(elementKey);
 
@@ -913,7 +921,10 @@ function Toolbar() {
       if (elementDOM !== null) {
         setSelectedElementKey(elementKey);
         if ($isListNode(element)) {
-          const parentList = $getNearestNodeOfType<ListNode>(anchor, ListNode);
+          const parentList = $getNearestNodeOfType<ListNode>(
+            anchorNode,
+            ListNode,
+          );
           const type = parentList
             ? parentList.getListType()
             : element.getListType();
@@ -938,23 +949,55 @@ function Toolbar() {
         $getSelectionStyleValueForProperty(
           selection,
           "font-family",
-          "CMU Serif",
+          "inherit",
         ),
       );
     }
   }, [activeEditor]);
 
+  /**
+   * Ensure the selection stays highlighted
+   * when the user tries to change the format.
+   */
   useEffect(() => {
-    return initEditor.registerCommand(
+    const handleSelectionChange = command.priority.critical(
       SELECTION_CHANGE_COMMAND,
-      (_payload, newEditor) => {
+      (_, newEditor) => {
         updateToolbar();
         setActiveEditor(newEditor);
         return false;
       },
-      COMMAND_PRIORITY_CRITICAL,
     );
+    return initEditor.registerCommand(...handleSelectionChange);
   }, [initEditor, updateToolbar]);
+
+  useEffect(() => {
+    const handleUndo = command.priority.critical(
+      CAN_UNDO_COMMAND,
+      (payload) => {
+        setCanUndo(payload);
+        return false;
+      },
+    );
+    const handleRedo = command.priority.critical(
+      CAN_REDO_COMMAND,
+      (payload) => {
+        setCanRedo(payload);
+        return false;
+      },
+    );
+
+    return mergeRegister(
+      activeEditor.registerEditableListener((editable) => {
+        setIsEditable(editable);
+      }),
+      activeEditor.registerUpdateListener(({ editorState }) => {
+        editorState.read(() => updateToolbar());
+      }),
+      activeEditor.registerCommand(...handleUndo),
+      activeEditor.registerCommand(...handleRedo),
+    );
+  }, [activeEditor, initEditor, updateToolbar]);
 
   const applyStyleText = useCallback((styles: Record<string, string>) => {
     activeEditor.update(() => {
@@ -990,39 +1033,109 @@ function Toolbar() {
     selectedElementKey,
     blockType,
   };
-  const trigger = {
-    bold: () => activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold"),
-    strikethrough: () =>
-      activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, "strikethrough"),
-    italicize: () =>
-      activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic"),
-    underline: () =>
-      activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline"),
-    align: {
-      left: () => activeEditor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "left"),
-      center: () =>
-        activeEditor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "center"),
-      right: () =>
-        activeEditor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "right"),
-      justify: () =>
-        activeEditor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "justify"),
-    },
-  };
+
+  const strike = () =>
+    activeEditor.dispatchCommand(
+      FORMAT_TEXT_COMMAND,
+      "strikethrough",
+    );
+  const enbold = () =>
+    activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold");
+  const italicize = () =>
+    activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic");
+  const uline = () =>
+    activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline");
+  const aLeft = () =>
+    activeEditor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "left");
+  const aCenter = () =>
+    activeEditor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "center");
+  const aRight = () =>
+    activeEditor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "right");
+  const justify = () =>
+    activeEditor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "justify");
   return (
     <ToolbarContext.Provider value={ctxObject}>
-      <div className={S.EditorToolbar}>
-        <Button label={<BoldIcon />} click={trigger.bold} />
-        <Button label={<StrikeIcon />} click={trigger.strikethrough} />
-        <Button label={<ItalicIcon />} click={trigger.italicize} />
-        <Button label={<UnderlineIcon />} click={trigger.underline} />
-        <Button label={<AlignLeftIcon />} click={trigger.align.left} />
-        <Button label={<AlignCenterIcon />} click={trigger.align.center} />
-        <Button label={<AlignRightIcon />} click={trigger.align.right} />
-        <Button label={<JustifyIcon />} click={trigger.align.justify} />
+      <div className={editor.toolbar}>
+        <Button label={<Icon src={icon.bold} />} click={enbold} />
+        <Button label={<Icon src={icon.strike} />} click={strike} />
+        <Button label={<Icon src={icon.italic} />} click={italicize} />
+        <Button label={<Icon src={icon.underline} />} click={uline} />
+        <Button label={<Icon src={icon.alignLeft} />} click={aLeft} />
+        <Button label={<Icon src={icon.alignCenter} />} click={aCenter} />
+        <Button label={<Icon src={icon.alignRight} />} click={aRight} />
+        <Button label={<Icon src={icon.alignJustify} />} click={justify} />
         <BlockTypeDropdown />
-        <Button label={"Plot"} click={() => console.log("clicked")} />
+        <FigureDropdown />
       </div>
     </ToolbarContext.Provider>
+  );
+}
+
+import { ImageNode, ImagePlugin, InsertImageDialog } from "./chips/Image.js";
+import { PlotNode } from "./chips/FPlot.js";
+import { Dropdown } from "./chips/Dropdown.js";
+
+function FigureDropdown() {
+  const { activeEditor } = useEditor();
+  const [modal, showModal] = useModal();
+
+  const promptPlot = () =>
+    showModal(
+      "Plot 2D",
+      (onClose) => (
+        <InsertPlotDialog
+          activeEditor={activeEditor}
+          onClose={onClose}
+        />
+      ),
+    );
+
+  const promptImage = () =>
+    showModal("Insert Image", (onClose) => (
+      <InsertImageDialog
+        activeEditor={activeEditor}
+        onClose={onClose}
+      />
+    ));
+
+  const promptEquation = () =>
+    showModal(
+      "Insert Block Math",
+      (onClose) => (
+        <InsertEquationDialog
+          activeEditor={activeEditor}
+          onClose={onClose}
+        />
+      ),
+    );
+
+  return (
+    <>
+      <Dropdown
+        title={<Icon src={icon.plus} />}
+        options={[
+          {
+            label: "Plot2D",
+            click: promptPlot,
+            id: "fPlot2d",
+            icon: icon.plot1,
+          },
+          {
+            label: "Image",
+            click: promptImage,
+            id: "fImage",
+            icon: icon.image,
+          },
+          {
+            label: "Equation",
+            click: promptEquation,
+            id: "fEquation",
+            icon: icon.equation,
+          },
+        ]}
+      />
+      {modal}
+    </>
   );
 }
 
@@ -1031,21 +1144,30 @@ function BlockTypeDropdown() {
   const { blockType } = useContext(ToolbarContext);
 
   function formatParagraph() {
-    if (blockType !== "paragraph") {
-      initEditor.update(selectionUpdate(() => $createParagraphNode()));
-    }
+    if (blockType === "paragraph") return;
+    initEditor.update(() => {
+      const selection = $getSelection();
+      if (!$isRangeSelection(selection)) return;
+      $wrapNodes(selection, () => $createParagraphNode());
+    });
   }
 
-  function formatHeading(heading: HeadingTagType) {
-    if (blockType !== heading) {
-      initEditor.update(selectionUpdate(() => $createHeadingNode(heading)));
-    }
+  function H(heading: HeadingTagType) {
+    if (blockType === heading) return;
+    initEditor.update(() => {
+      const selection = $getSelection();
+      if (!$isRangeSelection(selection)) return;
+      $wrapNodes(selection, () => $createHeadingNode(heading));
+    });
   }
 
   function formatQuote() {
-    if (blockType !== "quote") {
-      initEditor.update(selectionUpdate(() => $createQuoteNode()));
-    }
+    if (blockType === "quote") return;
+    initEditor.update(() => {
+      const selection = $getSelection();
+      if (!$isRangeSelection(selection)) return;
+      $wrapNodes(selection, () => $createQuoteNode());
+    });
   }
 
   function formatBulletList() {
@@ -1062,72 +1184,34 @@ function BlockTypeDropdown() {
   }
 
   return (
-    <Dropdown title={blocktypeMap[blockType]}>
-      <Button label={"Paragraph"} click={formatParagraph} />
-      <Button label={"Quote"} click={formatQuote} />
-      <Button label={"Heading 1"} click={() => formatHeading("h1")} />
-      <Button label={"Heading 2"} click={() => formatHeading("h2")} />
-      <Button label={"Heading 3"} click={() => formatHeading("h3")} />
-      <Button label={"Heading 4"} click={() => formatHeading("h4")} />
-      <Button label={"Heading 5"} click={() => formatHeading("h5")} />
-      <Button label={"Numbered List"} click={formatNumberedList} />
-      <Button label={"Bulleted List"} click={formatBulletList} />
-    </Dropdown>
+    <Dropdown
+      fixedWidth={true}
+      title={blocktypeMap[blockType]}
+      options={[
+        { label: "Paragraph", click: formatParagraph, id: "fptag" },
+        { label: "Quote", click: formatQuote, id: "fquot" },
+        { label: "Heading 1", click: () => H("h1"), id: "h1" },
+        { label: "Heading 2", click: () => H("h2"), id: "h2" },
+        { label: "Heading 3", click: () => H("h3"), id: "h3" },
+        { label: "Heading 4", click: () => H("h4"), id: "h4" },
+        { label: "Heading 5", click: () => H("h5"), id: "h5" },
+        { label: "Heading 6", click: () => H("h6"), id: "h6" },
+        { label: "Numbered List", click: formatNumberedList, id: "fnl" },
+        { label: "Bulleted List", click: formatBulletList, id: "fbl" },
+      ]}
+    />
   );
 }
 
-function Dropdown({ title, children, className }: typeDropdown) {
-  const classname = className ? `${className} ${S.dropdown}` : S.dropdown;
-  const [open, setOpen] = useState(false);
-  const toggle: DivFn = (event) => {
-    event.stopPropagation();
-    setOpen(!open);
-  };
-  return (
-    <div onClick={toggle} className={classname}>
-      <div className={S.placeholder}>{title}</div>
-      <div className={open ? `${S.optionsList} ${S.active}` : S.optionsList}>
-        {children}
-      </div>
-    </div>
-  );
+interface IconProps {
+  src: string;
+}
+export function Icon({ src }: IconProps) {
+  return <i className={src} />;
 }
 
 function getContent(editor: EditorState | null) {
   return editor === null ? EMPTY_NOTE : JSON.stringify(editor);
-}
-
-import boldSVG from "./icons/bold.svg";
-function BoldIcon() {
-  return <img src={boldSVG} />;
-}
-import centerSVG from "./icons/alignCenter.svg";
-function AlignCenterIcon() {
-  return <img src={centerSVG} />;
-}
-import italicSVG from "./icons/italic.svg";
-function ItalicIcon() {
-  return <img src={italicSVG} />;
-}
-import strikeSVG from "./icons/strike.svg";
-function StrikeIcon() {
-  return <img src={strikeSVG} />;
-}
-import underlineSVG from "./icons/underline.svg";
-function UnderlineIcon() {
-  return <img src={underlineSVG} />;
-}
-import alignLeftSVG from "./icons/alignLeft.svg";
-function AlignLeftIcon() {
-  return <img src={alignLeftSVG} />;
-}
-import alignRightSVG from "./icons/alignRight.svg";
-function AlignRightIcon() {
-  return <img src={alignRightSVG} />;
-}
-import justifySVG from "./icons/justify.svg";
-function JustifyIcon() {
-  return <img src={justifySVG} />;
 }
 
 function Boldtext({ content }: { content: string }) {
@@ -1144,26 +1228,16 @@ export interface ButtonProps {
   className?: string;
 }
 export function Button({ click, label, className }: ButtonProps) {
-  return <button onClick={click} className={className}>{label}</button>;
+  return (
+    <button onClick={click} className={className}>
+      {label}
+    </button>
+  );
 }
 
-function selectionUpdate(callback: () => ElementNode) {
-  return () => {
-    const selection = $getSelection();
-    if ($isRangeSelection(selection)) {
-      $wrapNodes(selection, callback);
-    }
-  };
-}
 export type LiFn = MouseEventHandler<HTMLLIElement>;
 export type DivFn = MouseEventHandler<HTMLDivElement>;
 export type LiEvt = Parameters<LiFn>[0];
 export type InputFn = ChangeEventHandler<HTMLInputElement>;
 export type BtnFn = MouseEventHandler<HTMLButtonElement>;
 export type BtnEvt = Parameters<BtnFn>[0];
-
-interface typeDropdown {
-  title?: string;
-  children: ReactNode;
-  className?: string;
-}

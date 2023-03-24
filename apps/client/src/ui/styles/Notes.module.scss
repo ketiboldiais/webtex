@@ -1,0 +1,51 @@
+@import './base';
+
+.delete {
+	border: none;
+}
+
+.noteTitle {
+	font-size: $xsmall;
+	max-width: 90%;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.noteHeader {
+	margin-top: 5px;
+	padding: 4px;
+	display: grid;
+	grid-template-columns: 8fr 1fr;
+	font-size: $xxsmall;
+
+	strong {
+		font-size: $xsmall;
+		max-width: 90%;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+}
+
+.active {
+	background-color: $blue4;
+	color: $primary5;
+	button {
+		color: rgb(242, 172, 172);
+		border: 0;
+		background-color: inherit;
+		font-size: $xsmall;
+	}
+}
+
+.item {
+	@include Shadow1(5);
+	cursor: pointer;
+	small {
+		font-size: $xxsmall;
+		display: block;
+		padding: 0.3em;
+	}
+}
+

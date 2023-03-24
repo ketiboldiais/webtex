@@ -1,24 +1,21 @@
 import { NODE } from "../structs/enums";
-import {
-  Visitor,
-} from "./astnode.js";
-
+import { Visitor } from "./astnode.js";
 import {
   BinaryExprNode,
   BlockNode,
   BoolNode,
-  NullNode,
-  Root,
-  SymbolNode,
-  UnaryExprNode,
-  VarDeclareNode,
-  VectorNode,
-  StringNode,
   FunctionNode,
   GroupNode,
   MatrixNode,
-  TupleNode,
   N,
+  NullNode,
+  Root,
+  StringNode,
+  SymbolNode,
+  TupleNode,
+  UnaryExprNode,
+  VarDeclareNode,
+  VectorNode,
 } from "./index.js";
 
 export abstract class ASTNode {

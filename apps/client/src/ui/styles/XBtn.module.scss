@@ -1,0 +1,70 @@
+@import './base';
+
+@mixin cross($size: 20px, $color: currentColor, $thickness: 1px) {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	position: relative;
+	width: $size;
+	height: $size;
+
+	&:before,
+	&:after {
+		content: '';
+		position: absolute;
+		top: ($size - $thickness)/2 !important;
+		left: 0 !important;
+		right: 0 !important;
+		height: $thickness;
+		background: $color;
+		border-radius: $thickness;
+	}
+
+	&:before {
+		transform: rotate(45deg);
+	}
+
+	&:after {
+		transform: rotate(-45deg);
+	}
+}
+
+button.closeButton {
+	margin: 0;
+	padding-top: 1px;
+	background: rgb(231, 82, 77);
+	border-radius: 50%;
+	width: 16px;
+	height: 16px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	cursor: pointer;
+	transition: all 150ms;
+	span { display: block; }
+	&:hover {
+		.cross {
+			opacity: 1;
+			transition: opacity 0.3s ease-in;
+		}
+	}
+}
+
+.cross {
+	@include cross(8px, rgb(115, 29, 25), 1px);
+	opacity: 0;
+	transition: opacity 0.3s ease-out;
+}
+
+
+
+.hidden {
+	position: absolute !important;
+	clip: rect(1px 1px 1px 1px);
+	padding: 0 !important;
+	border: 0 !important;
+	height: 1px !important;
+	width: 1px !important;
+	overflow: hidden;
+}

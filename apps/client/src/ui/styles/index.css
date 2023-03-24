@@ -1,0 +1,28 @@
+:root {
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+}
+
+.canvas {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.katex {
+  font-size: 1em;
+}
+
+
+
+
+

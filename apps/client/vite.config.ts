@@ -14,7 +14,7 @@ export default defineConfig(async () => {
     },
     resolve: {
       alias: {
-        "@styles": path.resolve(__dirname, "./src/assets/styles"),
+        "@styles": path.resolve(__dirname, "./src/ui/styles"),
         "@components": path.resolve(__dirname, "./src/components"),
         "@chips": path.resolve(__dirname, "./src/components/chips"),
         "@hooks": path.resolve(__dirname, "./src/hooks"),
@@ -25,12 +25,12 @@ export default defineConfig(async () => {
     },
     server: {
       port: 5174,
-      host: "127.0.0.1",
+      host: "0.0.0.0",
     },
-    preview: {
-      host: "localhost",
-      strictPort: true,
-    },
+    // preview: {
+      // host: "localhost",
+      // strictPort: true,
+    // },
     build: {
       target: "esnext",
       minify: true,
