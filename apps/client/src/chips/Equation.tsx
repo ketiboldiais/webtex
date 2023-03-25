@@ -253,9 +253,7 @@ function EquationComponent({ equation, inline, nodeKey }: EquationProps) {
           <KatexRenderer
             equation={equationValue}
             inline={inline}
-            onClick={() => {
-              setShowEquationEditor(true);
-            }}
+            onClick={() => setShowEquationEditor(true)}
           />
         )}
     </>

@@ -1,5 +1,30 @@
 @import './base';
 
+
+.Sidebar {
+	display: flex;
+	flex-direction: column;
+	flex: 3;
+
+}
+
+
+
+.NoteList {
+	flex-grow: 1;
+	height: 95%;
+	width: 25vw;
+	margin-left: 1vw !important;
+	margin-top: -0.05vh !important;
+	@include UnstyledList(0, 10px 0);
+	@include NoScrollbar;
+	@include Shadow1(5);
+
+}
+
+
+
+
 .delete {
 	border: none;
 }
@@ -31,6 +56,7 @@
 .active {
 	background-color: $blue4;
 	color: $primary5;
+
 	button {
 		color: rgb(242, 172, 172);
 		border: 0;
@@ -42,6 +68,7 @@
 .item {
 	@include Shadow1(5);
 	cursor: pointer;
+
 	small {
 		font-size: $xxsmall;
 		display: block;
@@ -49,3 +76,80 @@
 	}
 }
 
+.Header {
+	margin: 0;
+	display: flex;
+	flex-direction: row;
+	justify-content: flex-end;
+	flex-wrap: nowrap;
+}
+
+.addNote {
+	border-radius: 3px;
+	margin-right: -1vw !important;
+	cursor: pointer;
+	padding: $pad1 !important;
+
+	&:hover {
+		background-color: $primary5 !important;
+	}
+}
+
+.addNote i {
+	display: block;
+	background-size: contain;
+	height: 23px;
+	width: 23px;
+	opacity: 0.35;
+}
+
+button.allNotes {
+	display: none;
+}
+
+.show,
+.hide {}
+
+@media (min-width:0px) and (max-width:600px) {
+	button.allNotes {
+		display: block;
+		margin-left: 4vw;
+		padding-bottom: 0;
+	}
+	.Sidebar {
+		display: none;
+	}
+	.Header {
+		position: fixed;
+		top: 0px;
+		left: 2.5%;
+	}
+
+	.NoteList {
+		position: fixed;
+		top: 0px;
+		left: 10%;
+		width: 50%;
+		background-color: $pageColor;
+		opacity: 1;
+		z-index: 1000;
+	}
+
+	.show,
+	.hide {
+		margin-top: $margin2;
+		transform: scaleY(0);
+		transform-origin: top;
+		transition: transform 0.26s ease;
+		z-index: 200;
+		position: absolute;
+		background: white;
+		@include Card;
+		padding: $pad2;
+		padding-bottom: $pad4;
+	}
+
+	.show {
+		transform: scaleY(1);
+	}
+}

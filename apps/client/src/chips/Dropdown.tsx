@@ -1,19 +1,15 @@
-import { Fragment, ReactNode, useEffect, useRef, useState } from "react";
-import { Button, ButtonProps, Icon } from "src/App";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import dropdown from "../ui/styles/dropdown.module.scss";
 import { createPortal } from "react-dom";
 import { concat } from "src/util";
 
-type Option = ButtonProps & { id: string; icon?: string };
-
 interface props {
   /** The title shown for the currently selected dropdown option. */
   title?: string | ReactNode;
-  
   children?: ReactNode;
 
+  /** Whether the title button should have the class `fixed` (which sets a constant width).  */
   fixedWidth?: boolean;
-
 
   /** Whether the dropdown should auto-close when an option is clicked. */
   selfClose?: boolean;
@@ -67,15 +63,6 @@ export function Dropdown({ title, children, selfClose, fixedWidth }: props) {
       </button>
       {dropdown_is_open && createPortal(
         <div ref={dropdownRef} className={dropdown.options}>
-          {/* {options.map((b, i) => ( */}
-            {/* <div key={b.id + i} className={dropdown.item}> */}
-              {/* {b.icon && <Icon src={b.icon} />} */}
-              {/* <Button */}
-                {/* label={b.label} */}
-                {/* click={b.click} */}
-              {/* /> */}
-            {/* </div> */}
-          {/* ))} */}
           {children}
         </div>,
         document.body,

@@ -1,6 +1,5 @@
 import table from "../ui/styles/Table.module.scss";
 import {
-  CSSProperties,
   Dispatch,
   ReactNode,
   SetStateAction,
@@ -174,17 +173,6 @@ export function Table<T extends Struct>(
     onUpdate(newEntries);
   };
 
-  // const style: CSSProperties = {
-  // display: "grid",
-  // gridTemplateColumns: `repeat(${headings.length + 1}, 1fr)`,
-  // };
-
-  // const controlStyle: CSSProperties = {
-  // display: "grid",
-  // gridTemplateColumns: `repeat(${extraControls.length + 3}, 1fr)`,
-  // gap: "0.2rem",
-  // };
-
   return (
     <div className={table.table}>
       <article className={concat(table.header, table.row)}>
@@ -211,7 +199,9 @@ export function Table<T extends Struct>(
             </div>
           </div>
         ))}
-        <div className={concat(table.cell, table.heading, table.hide)}>{"Control"}</div>
+        <div className={concat(table.cell, table.heading, table.hide)}>
+          {"Control"}
+        </div>
       </article>
       <article className={table.body}>
         {sortedData().map((item: T, i) => (

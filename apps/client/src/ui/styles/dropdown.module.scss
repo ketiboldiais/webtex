@@ -24,7 +24,12 @@ button.fixedWidth {
 	min-width: 110px;
 	min-height: 40px;
 	background-color: #fff;
+	button, button * {
+		cursor: pointer;
+	}
 }
+
+
 
 
 .item {
@@ -62,6 +67,8 @@ button.fixedWidth {
 	font-size: $xsmall;
 }
 
+
+
 .options .item:first-child {
 	margin-top: $margin2;
 }
@@ -79,7 +86,8 @@ button.fixedWidth {
 	height: 16px;
 	width: 16px;
 	margin-right: 7px;
-	margin-left: 2px;
+	margin-left: 0px;
+	margin-bottom: 0px;
 	margin-top: 1px;
 	color: inherit;
 	fill: inherit;
@@ -92,7 +100,24 @@ button.fixedWidth {
 	background-size: contain;
 	height: 16px;
 	width: 16px;
-	margin-top: 2px;
 	display: flex;
 	opacity: 0.6;
+}
+
+.btn {
+	display: flex;
+	justify-content: flex-start;
+	align-items: center;
+}
+
+@media (min-width:0px) and (max-width:600px) {
+	button.fixedWidth {
+		text-overflow: ellipsis;
+		overflow-x: hidden;
+		white-space: pre;
+		display: block;
+		padding: 0 1px;
+		text-align: left;
+		width: 50px;
+	}
 }

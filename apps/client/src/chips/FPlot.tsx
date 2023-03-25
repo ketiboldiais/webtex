@@ -11,20 +11,112 @@ import {
   SerializedLexicalNode,
   Spread,
 } from "lexical";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Table } from "./DataTable";
 import { nanoid } from "@reduxjs/toolkit";
 import plot from "../ui/styles/Plot.module.scss";
 import TeX from "@matejmazur/react-katex";
 import { algom } from "src/algom";
 import { Interval } from "./Interval";
-import { Plot1 } from "./Plot2";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { command } from "src/util";
 import { $wrapNodeInElement, mergeRegister } from "@lexical/utils";
+import {
+  Clip,
+  FunctionPlotProps,
+  Plane,
+  Plot1Payload,
+  Scale,
+  SVG,
+  svgDimensions,
+  XScale,
+  YScale,
+} from "./PlotUtils";
+import { line } from "d3-shape";
 
 const uid = nanoid(7);
+interface Plot1Props extends FunctionPlotProps {
+  fs?: Plot1Payload[];
+  uid?: string;
+  ref?: { current: null | HTMLDivElement };
+}
+interface XYPathProps {
+  f: Function;
+  samples: number;
+  domain: [number, number];
+  range: [number, number];
+  xScale: XScale;
+  yScale: YScale;
+}
+function XYPath({ f, samples, domain, range, xScale, yScale }: XYPathProps) {
+  let dataset = algom.getData.y(f, range, domain, samples);
+  const lineGenerator = line()
+    .y((d: any) => yScale(d.y))
+    .defined((d: any) => d.y !== null)
+    .x((d: any) => xScale(d.x))(dataset as any) as string;
+  return (
+    <g clipPath="url(#plot)">
+      <path
+        d={lineGenerator}
+        stroke={"red"}
+        shapeRendering={"geometricPrecision"}
+        fill={"none"}
+      />
+    </g>
+  );
+}
+export function Plot1({
+  fs,
+  ticks = 10,
+  domain = [-10, 10],
+  range = [-10, 10],
+  width = 500,
+  height = 500,
+  cwidth = 100,
+  cheight = height / width,
+  margin = 30,
+  margins = [margin, margin, margin, margin],
+  uid = nanoid(7),
+}: Plot1Props) {
+  const fx: Function[] = [];
+  if (fs) {
+    const L = fs.length;
+    for (let i = 0; i < L; i++) {
+      const fstring = fs[i];
+      const fn = algom.makeFunction(fstring.expression, [fstring.variable]);
+      if (typeof fn !== "string") fx.push(fn);
+    }
+  }
+  const [svg_width, svg_height] = svgDimensions(width, height, margins);
+  const xScale = Scale.linear.x(domain, svg_width);
+  const yScale = Scale.linear.y(range, svg_height);
 
+  return (
+    <SVG
+      width={width}
+      height={height}
+      cwidth={cwidth}
+      cheight={cheight}
+      margins={margins}
+    >
+      <g style={{ transformOrigin: "center" }}>
+        <Clip id={`plot`} width={svg_width} height={svg_height} />
+        <Plane ticks={ticks} yScale={yScale} xScale={xScale} />
+        {fx.map((f, i) => (
+          <XYPath
+            f={f}
+            key={`${uid}fpath${i}`}
+            samples={500}
+            domain={domain}
+            range={range}
+            xScale={xScale}
+            yScale={yScale}
+          />
+        ))}
+      </g>
+    </SVG>
+  );
+}
 type FuncExprPayload = {
   variable: string;
   expression: string;
@@ -156,17 +248,19 @@ export class PlotNode extends DecoratorNode<JSX.Element> {
   }
   decorate(): JSX.Element {
     return (
-      <Plot1
-        fs={this.__functions}
-        ticks={this.__ticks}
-        domain={this.__domain}
-        range={this.__range}
-        width={this.__width}
-        height={this.__height}
-        cwidth={this.__cwidth}
-        cheight={this.__cheight}
-        margins={this.__margins}
-      />
+      <Suspense fallback={null}>
+        <Plot1
+          fs={this.__functions}
+          ticks={this.__ticks}
+          domain={this.__domain}
+          range={this.__range}
+          width={this.__width}
+          height={this.__height}
+          cwidth={this.__cwidth}
+          cheight={this.__cheight}
+          margins={this.__margins}
+        />
+      </Suspense>
     );
   }
 }

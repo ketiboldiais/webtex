@@ -297,14 +297,14 @@ export function ImageComponent({
 
   const onResizeStart = () => setIsResizing(true);
 
-  const draggable = isSelected && $isNodeSelection(selection) && !isResizing;
-
   const isFocused = isSelected || isResizing;
 
   return (
     <Suspense fallback={null}>
       <>
-        <div draggable={draggable}>
+        <div
+          draggable={isSelected && $isNodeSelection(selection) && !isResizing}
+        >
           <LazyImage
             className={isFocused
               ? `${styles.focused} ${

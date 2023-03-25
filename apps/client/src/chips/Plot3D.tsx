@@ -13,7 +13,7 @@ import {
   SerializedLexicalNode,
   Spread,
 } from "lexical";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { algom } from "src/algom";
 import { AxesHelper, DoubleSide, GridHelper, Vector3 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
@@ -301,24 +301,26 @@ export class Plot3DNode extends DecoratorNode<JSX.Element> {
   }
   decorate(): JSX.Element {
     return (
-      <Plot3d
-        z_expression={this.__z_expression}
-        x_variable={this.__x_variable}
-        y_variable={this.__y_variable}
-        segments={this.__segments}
-        fov={this.__fov}
-        position={this.__position}
-        near={this.__near}
-        far={this.__far}
-        xMin={this.__xMin}
-        xMax={this.__xMax}
-        xRange={this.__xRange}
-        yRange={this.__yRange}
-        scale={this.__scale}
-        width={this.__width}
-        height={this.__height}
-        gridColor={this.__gridColor}
-      />
+      <Suspense fallback={null}>
+        <Plot3d
+          z_expression={this.__z_expression}
+          x_variable={this.__x_variable}
+          y_variable={this.__y_variable}
+          segments={this.__segments}
+          fov={this.__fov}
+          position={this.__position}
+          near={this.__near}
+          far={this.__far}
+          xMin={this.__xMin}
+          xMax={this.__xMax}
+          xRange={this.__xRange}
+          yRange={this.__yRange}
+          scale={this.__scale}
+          width={this.__width}
+          height={this.__height}
+          gridColor={this.__gridColor}
+        />
+      </Suspense>
     );
   }
 }

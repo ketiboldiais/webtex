@@ -334,9 +334,7 @@ function Navbar() {
     <nav className={S.NavBar}>
       <h1>Webtex</h1>
       <ul className={S.LinkList}>
-        <li>
-          <Link to="/">Workspace</Link>
-        </li>
+        {/* <li><Link to="/">Workspace</Link></li> */}
         {/* <li><Link to="/canvas">Canvas</Link></li> */}
       </ul>
     </nav>
@@ -521,6 +519,7 @@ function SideBar() {
   let notes = getNotes();
   const { activeEditor } = useEditor();
   const active = getActiveNote();
+  const [showNotes, setShowNotes] = useState(false);
 
   function createNote(event: BtnEvt) {
     event.stopPropagation();
@@ -548,11 +547,27 @@ function SideBar() {
     }
   }
   return (
-    <div className={S.Sidebar}>
-      <div className={S.Header}>
-        <Button label={"new"} click={createNote} />
+    <div className={noteStyles.sidebar}>
+      <div className={noteStyles.Header}>
+        <Button
+          btnTitle="Add new note"
+          label={<Icon src={icon.newNote} />}
+          click={createNote}
+          className={noteStyles.addNote}
+        />
+        <button
+          onClick={() => setShowNotes(!showNotes)}
+          className={noteStyles.allNotes}
+        >
+          Notes
+        </button>
       </div>
-      <ul className={S.NoteList}>
+      <ul
+        className={concat(
+          noteStyles.NoteList,
+          toggle(noteStyles.show, noteStyles.hide).on(showNotes),
+        )}
+      >
         {notes.map((note) => (
           <NoteItem key={note.id} note={note} onDelete={destroyNote} />
         ))}
@@ -863,7 +878,6 @@ import { ModalBox, useModal } from "@hooks/useModal";
 import { InsertEquationDialog } from "./chips/Equation";
 import { InsertPlotDialog, PlotPlugin } from "./chips/FPlot.js";
 import icon from "./ui/styles/icons.module.scss";
-type StrNull = string | null;
 function Toolbar() {
   const { initEditor, activeEditor, setActiveEditor } = useEditor();
   const [blockType, setBlocktype] = useState<Blocktype>("paragraph");
@@ -879,10 +893,6 @@ function Toolbar() {
   const [isSubscript, setIsSubscript] = useState(false);
   const [isSuperscript, setIsSuperscript] = useState(false);
   const [isCode, setIsCode] = useState(false);
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
-  const [isRTL, setIsRTL] = useState(false);
-  const [isEditable, setIsEditable] = useState(() => initEditor.isEditable());
 
   /**
    * When the user makes a selection, we want to
@@ -972,34 +982,6 @@ function Toolbar() {
     );
     return initEditor.registerCommand(...handleSelectionChange);
   }, [initEditor, updateToolbar]);
-
-  useEffect(() => {
-    const handleUndo = command.priority.critical(
-      CAN_UNDO_COMMAND,
-      (payload) => {
-        setCanUndo(payload);
-        return false;
-      },
-    );
-    const handleRedo = command.priority.critical(
-      CAN_REDO_COMMAND,
-      (payload) => {
-        setCanRedo(payload);
-        return false;
-      },
-    );
-
-    return mergeRegister(
-      activeEditor.registerEditableListener((editable) => {
-        setIsEditable(editable);
-      }),
-      activeEditor.registerUpdateListener(({ editorState }) => {
-        editorState.read(() => updateToolbar());
-      }),
-      activeEditor.registerCommand(...handleUndo),
-      activeEditor.registerCommand(...handleRedo),
-    );
-  }, [activeEditor, initEditor, updateToolbar]);
 
   const applyStyleText = useCallback((styles: Record<string, string>) => {
     activeEditor.update(() => {
@@ -1231,12 +1213,15 @@ export interface ButtonProps {
   label?: string | ReactNode;
   className?: string;
   icon?: string;
+  btnTitle?: string;
 }
 import dropdown from "./ui/styles/dropdown.module.scss";
+
 export function DropdownItem({ click, label, icon }: ButtonProps) {
   return (
     <div className={dropdown.item}>
       <Button
+        className={dropdown.btn}
         label={icon
           ? (
             <>
@@ -1250,9 +1235,10 @@ export function DropdownItem({ click, label, icon }: ButtonProps) {
     </div>
   );
 }
-export function Button({ click, label, className }: ButtonProps) {
+
+export function Button({ click, label, className, btnTitle }: ButtonProps) {
   return (
-    <button onClick={click} className={className}>
+    <button title={btnTitle} onClick={click} className={className}>
       {label}
     </button>
   );
