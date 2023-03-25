@@ -13,7 +13,7 @@
 	&:after {
 		content: '';
 		position: absolute;
-		top: ($size - $thickness)/2 !important;
+		top: calc(($size - $thickness)/2) !important;
 		left: 0 !important;
 		right: 0 !important;
 		height: $thickness;

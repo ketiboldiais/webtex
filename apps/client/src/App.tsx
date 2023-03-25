@@ -337,9 +337,7 @@ function Navbar() {
         <li>
           <Link to="/">Workspace</Link>
         </li>
-        <li>
-          {/* <Link to="/canvas">Canvas</Link> */}
-        </li>
+        {/* <li><Link to="/canvas">Canvas</Link></li> */}
       </ul>
     </nav>
   );
@@ -361,8 +359,8 @@ function Page() {
 function Canvas() {
   return (
     <div className={S.Playground}>
-      {/* <ModalBox title={"Latex Input"} ref={null}> */}
-      {/* <InsertPlotDialog/> */}
+      {/* <ModalBox title={"Plot3D"} ref={null}> */}
+      {/* <Plot3D_Dialog /> */}
       {/* </ModalBox> */}
     </div>
   );
@@ -474,8 +472,10 @@ function EditorContextProvider({ children }: { children: ReactNode }) {
     </EditorContext.Provider>
   );
 }
-const EditorContext = createContext<IEditorContext>({} as IEditorContext);
-const useEditor = () => useContext(EditorContext);
+export const EditorContext = createContext<IEditorContext>(
+  {} as IEditorContext,
+);
+export const useEditor = () => useContext(EditorContext);
 
 /* -------------------------------------------------------------------------- */
 /*                               PAGE: WORKSPACE                              */
@@ -494,6 +494,7 @@ function Workspace() {
       EquationNode,
       ImageNode,
       PlotNode,
+      Plot3DNode,
     ],
     onError(error: any) {
       throw error;
@@ -761,6 +762,7 @@ function Editor() {
         <EquationsPlugin />
         <ImagePlugin />
         <PlotPlugin />
+        <Plot3DPlugin />
       </div>
     </div>
   );
@@ -857,7 +859,7 @@ const blocktypeMap = {
   quote: "Quote",
 };
 
-import { useModal } from "@hooks/useModal";
+import { ModalBox, useModal } from "@hooks/useModal";
 import { InsertEquationDialog } from "./chips/Equation";
 import { InsertPlotDialog, PlotPlugin } from "./chips/FPlot.js";
 import icon from "./ui/styles/icons.module.scss";
@@ -1074,6 +1076,11 @@ function Toolbar() {
 import { ImageNode, ImagePlugin, InsertImageDialog } from "./chips/Image.js";
 import { PlotNode } from "./chips/FPlot.js";
 import { Dropdown } from "./chips/Dropdown.js";
+import {
+  InsertPlot3DDialog,
+  Plot3DNode,
+  Plot3DPlugin,
+} from "./chips/Plot3D.js";
 
 function FigureDropdown() {
   const { activeEditor } = useEditor();
@@ -1087,6 +1094,14 @@ function FigureDropdown() {
           activeEditor={activeEditor}
           onClose={onClose}
         />
+      ),
+    );
+
+  const promptPlot3d = () =>
+    showModal(
+      "Plot 3D",
+      (onClose) => (
+        <InsertPlot3DDialog activeEditor={activeEditor} onClose={onClose} />
       ),
     );
 
@@ -1119,6 +1134,12 @@ function FigureDropdown() {
             click: promptPlot,
             id: "fPlot2d",
             icon: icon.plot1,
+          },
+          {
+            label: "Plot3D",
+            click: promptPlot3d,
+            id: "fPlot3d",
+            icon: icon.plot3D,
           },
           {
             label: "Image",

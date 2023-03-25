@@ -1,0 +1,124 @@
+@import './base';
+
+.shell {
+	input {
+		border-bottom: $line;
+		margin-left: $margin2;
+	}
+}
+
+.row {
+	margin-top: $margin2;
+}
+
+.textInput {
+	display: flex;
+
+	input {
+		flex: 1;
+	}
+}
+
+.numberInput {
+	label {
+		font-size: $xsmall;
+	}
+
+	input {
+		width: 20%;
+		max-width: 100%;
+		display: inline-block;
+		text-align: center;
+		padding: 0;
+	}
+}
+
+.advanced {
+	.row {
+		display: grid;
+		grid-template-columns: 2fr 9fr;
+	}
+}
+
+.cameraPosition {
+	display: flex;
+	justify-content: flex-start;
+
+	label {
+		font-size: $xsmall;
+	}
+	.cameraRow {
+		display: flex;
+		flex-direction: row;
+		justify-content: flex-start;
+		width: 68%;
+		gap: 5%;
+	}
+	.numberInput {
+		display: flex;
+		flex-direction: column-reverse;
+		.texLabel {
+			width: fit-content;
+			margin: 0 auto;
+			font-size: $xsmall;
+			color: $primary3;
+		}
+		input {
+			width: 100%;
+		}
+	}
+}
+
+.turnstile {
+	font-size: $xxsmall;
+	color: $primary3;
+}
+.advancedLabel {
+	font-size: inherit;
+	color: $primary1;
+}
+
+.show,
+.hide {
+	margin-top: $margin2;
+	transform: scaleY(0);
+	transform-origin: top;
+	transition: transform 0.26s ease;
+	z-index: 200;
+	position: absolute;
+	background: white;
+	@include Card;
+	padding: $pad2;
+	padding-bottom: $pad4;
+}
+
+.show {
+	transform: scaleY(1);
+}
+
+.hide {}
+
+.showIcon,
+.hideIcon {
+	display: inline-block;
+	margin-right: $margin2;
+}
+
+.showIcon,
+.hideIcon {
+	transition: transform 0.05s ease-out;
+}
+
+.showIcon {
+	transform: rotate(90deg);
+}
+
+.footer {
+	display: flex;
+	justify-content: space-between;
+}
+
+button.save {
+	@include BlueButton;
+	font-size: $xsmall;
+}

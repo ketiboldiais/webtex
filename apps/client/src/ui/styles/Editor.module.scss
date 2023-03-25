@@ -16,6 +16,9 @@
 		color: inherit;
 		margin: 0 $margin1;
 		font-family: $mainFont;
+    &:hover {
+      background-color: $primary4;
+    }
   }
 	margin-bottom: $margin1;
   i { @include IconStyles; }

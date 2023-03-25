@@ -108,10 +108,6 @@ export class PlotNode extends DecoratorNode<JSX.Element> {
       node.__key,
     );
   }
-  jsonFunctions() {
-    const fs = this.__functions.map((d) => JSON.stringify(d));
-    return fs.toString();
-  }
   exportJSON(): SerializedPlotNode {
     return {
       functions: this.__functions,

@@ -45,7 +45,7 @@ import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
 import { LexicalNestedComposer } from "@lexical/react/LexicalNestedComposer";
 import { DOM_AVAILABLE } from "src/util";
-import { FileInput, TextInput } from "./TextInput";
+import { FileInput, TextInput } from "./Inputs";
 import { Resizer } from "./Resizer";
 declare global {
   interface DragEvent {
