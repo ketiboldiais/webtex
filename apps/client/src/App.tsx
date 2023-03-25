@@ -1085,76 +1085,63 @@ import {
 function FigureDropdown() {
   const { activeEditor } = useEditor();
   const [modal, showModal] = useModal();
-
-  const promptPlot = () =>
-    showModal(
-      "Plot 2D",
-      (onClose) => (
-        <InsertPlotDialog
-          activeEditor={activeEditor}
-          onClose={onClose}
-        />
-      ),
-    );
-
-  const promptPlot3d = () =>
-    showModal(
-      "Plot 3D",
-      (onClose) => (
-        <InsertPlot3DDialog activeEditor={activeEditor} onClose={onClose} />
-      ),
-    );
-
-  const promptImage = () =>
-    showModal("Insert Image", (onClose) => (
-      <InsertImageDialog
-        activeEditor={activeEditor}
-        onClose={onClose}
-      />
-    ));
-
-  const promptEquation = () =>
-    showModal(
-      "Insert Block Math",
-      (onClose) => (
-        <InsertEquationDialog
-          activeEditor={activeEditor}
-          onClose={onClose}
-        />
-      ),
-    );
-
   return (
     <>
-      <Dropdown
-        title={<Icon src={icon.plus} />}
-        options={[
-          {
-            label: "Plot2D",
-            click: promptPlot,
-            id: "fPlot2d",
-            icon: icon.plot1,
-          },
-          {
-            label: "Plot3D",
-            click: promptPlot3d,
-            id: "fPlot3d",
-            icon: icon.plot3D,
-          },
-          {
-            label: "Image",
-            click: promptImage,
-            id: "fImage",
-            icon: icon.image,
-          },
-          {
-            label: "Equation",
-            click: promptEquation,
-            id: "fEquation",
-            icon: icon.equation,
-          },
-        ]}
-      />
+      <Dropdown title={<Icon src={icon.plus} />}>
+        <DropdownItem
+          label={"Plot2D"}
+          icon={icon.plot1}
+          click={() =>
+            showModal(
+              "Plot 2D",
+              (onClose) => (
+                <InsertPlotDialog
+                  activeEditor={activeEditor}
+                  onClose={onClose}
+                />
+              ),
+            )}
+        />
+        <DropdownItem
+          label={"Plot3D"}
+          icon={icon.plot3D}
+          click={() =>
+            showModal(
+              "Plot 3D",
+              (onClose) => (
+                <InsertPlot3DDialog
+                  activeEditor={activeEditor}
+                  onClose={onClose}
+                />
+              ),
+            )}
+        />
+        <DropdownItem
+          label={"Image"}
+          icon={icon.image}
+          click={() =>
+            showModal("Insert Image", (onClose) => (
+              <InsertImageDialog
+                activeEditor={activeEditor}
+                onClose={onClose}
+              />
+            ))}
+        />
+        <DropdownItem
+          label={"Equation"}
+          icon={icon.equation}
+          click={() =>
+            showModal(
+              "Insert Block Math",
+              (onClose) => (
+                <InsertEquationDialog
+                  activeEditor={activeEditor}
+                  onClose={onClose}
+                />
+              ),
+            )}
+        />
+      </Dropdown>
       {modal}
     </>
   );
@@ -1205,22 +1192,18 @@ function BlockTypeDropdown() {
   }
 
   return (
-    <Dropdown
-      fixedWidth={true}
-      title={blocktypeMap[blockType]}
-      options={[
-        { label: "Paragraph", click: formatParagraph, id: "fptag" },
-        { label: "Quote", click: formatQuote, id: "fquot" },
-        { label: "Heading 1", click: () => H("h1"), id: "h1" },
-        { label: "Heading 2", click: () => H("h2"), id: "h2" },
-        { label: "Heading 3", click: () => H("h3"), id: "h3" },
-        { label: "Heading 4", click: () => H("h4"), id: "h4" },
-        { label: "Heading 5", click: () => H("h5"), id: "h5" },
-        { label: "Heading 6", click: () => H("h6"), id: "h6" },
-        { label: "Numbered List", click: formatNumberedList, id: "fnl" },
-        { label: "Bulleted List", click: formatBulletList, id: "fbl" },
-      ]}
-    />
+    <Dropdown fixedWidth={true} title={blocktypeMap[blockType]}>
+      <DropdownItem label={"Paragraph"} click={formatParagraph} />
+      <DropdownItem label={"Quote"} click={formatQuote} />
+      <DropdownItem label={"Heading 1"} click={() => H("h1")} />
+      <DropdownItem label={"Heading 2"} click={() => H("h2")} />
+      <DropdownItem label={"Heading 3"} click={() => H("h3")} />
+      <DropdownItem label={"Heading 4"} click={() => H("h4")} />
+      <DropdownItem label={"Heading 5"} click={() => H("h5")} />
+      <DropdownItem label={"Heading 6"} click={() => H("h6")} />
+      <DropdownItem label={"Numbered List"} click={formatNumberedList} />
+      <DropdownItem label={"Bulleted List"} click={formatBulletList} />
+    </Dropdown>
   );
 }
 
@@ -1247,6 +1230,25 @@ export interface ButtonProps {
   click: BtnFn;
   label?: string | ReactNode;
   className?: string;
+  icon?: string;
+}
+import dropdown from "./ui/styles/dropdown.module.scss";
+export function DropdownItem({ click, label, icon }: ButtonProps) {
+  return (
+    <div className={dropdown.item}>
+      <Button
+        label={icon
+          ? (
+            <>
+              <Icon src={icon} />
+              <span>{label}</span>
+            </>
+          )
+          : label}
+        click={click}
+      />
+    </div>
+  );
 }
 export function Button({ click, label, className }: ButtonProps) {
   return (

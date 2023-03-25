@@ -4,6 +4,10 @@
 	height: 100%;
 }
 
+.item button i {
+	display: inline-block !important;
+}
+
 
 button.fixedWidth {
 	width: 100px;
@@ -65,14 +69,16 @@ button.fixedWidth {
 .options .item:last-child {
 	margin-bottom: $margin2;
 }
+
 .title i {
 	margin: 0 !important;
 }
+
 .item i {
 	background-size: contain;
-	height: 15px;
-	width: 19px;
-	margin-right: 10px;
+	height: 16px;
+	width: 16px;
+	margin-right: 7px;
 	margin-left: 2px;
 	margin-top: 1px;
 	color: inherit;

@@ -9,15 +9,16 @@ type Option = ButtonProps & { id: string; icon?: string };
 interface props {
   /** The title shown for the currently selected dropdown option. */
   title?: string | ReactNode;
+  
+  children?: ReactNode;
 
   fixedWidth?: boolean;
 
-  options: Option[];
 
   /** Whether the dropdown should auto-close when an option is clicked. */
   selfClose?: boolean;
 }
-export function Dropdown({ title, options, selfClose, fixedWidth }: props) {
+export function Dropdown({ title, children, selfClose, fixedWidth }: props) {
   const [dropdown_is_open, open_dropdown] = useState(false);
 
   const dropdownRef = useRef<HTML_DIV_REF>(null);
@@ -66,15 +67,16 @@ export function Dropdown({ title, options, selfClose, fixedWidth }: props) {
       </button>
       {dropdown_is_open && createPortal(
         <div ref={dropdownRef} className={dropdown.options}>
-          {options.map((b, i) => (
-            <div key={b.id + i} className={dropdown.item}>
-              {b.icon && <Icon src={b.icon} />}
-              <Button
-                label={b.label}
-                click={b.click}
-              />
-            </div>
-          ))}
+          {/* {options.map((b, i) => ( */}
+            {/* <div key={b.id + i} className={dropdown.item}> */}
+              {/* {b.icon && <Icon src={b.icon} />} */}
+              {/* <Button */}
+                {/* label={b.label} */}
+                {/* click={b.click} */}
+              {/* /> */}
+            {/* </div> */}
+          {/* ))} */}
+          {children}
         </div>,
         document.body,
       )}
