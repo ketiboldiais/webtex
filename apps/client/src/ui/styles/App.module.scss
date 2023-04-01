@@ -1,61 +1,986 @@
 @import './base';
 
 
-
 .App {
-	@include AppBase;
+	font-family: $mainFont;
 	display: grid;
-	grid-template-columns: 1fr;
-	grid-template-rows: 0.8fr 50fr;
-	background-color: $pageColor;
-	color: $textColor;
+	grid-template-rows: 1fr 50fr;
+	@include Scrollbar;
+	font-family: $mainFont;
 
-	.katex {
-		color: $textColor !important;
-	}
-
-	.NavBar {
-		@include NavBarStyles;
-	}
-
-	input,
-	button {
-		color: inherit;
+	input {
 		background-color: inherit;
-		border: inherit;
-		font-family: inherit;
-		cursor: pointer;
+	}
+}
+
+
+
+.App .main {
+	position: fixed;
+	width: 98vw;
+	height: 98vh;
+}
+
+.atom_row {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+}
+
+.delete_button {
+	font-size: $small;
+	color: $orange4;
+	background-color: inherit;
+	border: none;
+	padding: 0;
+	margin: 0;
+	height: 20px;
+	width: 20px;
+	position: fixed;
+	right: 0;
+}
+
+.note_header {
+	height: 25px;
+}
+
+
+
+
+.sidebar {
+	font-family: $mainFont;
+}
+
+.notes_control {
+	display: flex;
+	justify-content: flex-start;
+	gap: $margin1;
+	margin-left: $margin2;
+	margin-right: $margin2;
+	margin-bottom: $margin1;
+	margin-top: $margin2;
+	height: 100%;
+}
+
+// class togglers that show/hide the note list on narrow screen sizes.
+.visible,
+.hidden {
+	position: absolute;
+	margin-top: $margin2;
+	padding: $pad2;
+	padding-bottom: $pad4;
+	transform: scaleY(0);
+	transform-origin: top;
+	transition: transform 0.26s ease-in;
+}
+
+.visible {
+	transform: scaleY(1);
+}
+
+
+.notelist {
+	position: fixed;
+	left: $margin2;
+	width: fit-content;
+	z-index: 5;
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}
+
+
+
+.note_details small {
+	font-size: 0.6em;
+}
+
+.note {
+	background-color: $pageColor;
+	padding: $padtiny $pad6;
+	padding-left: $pad2;
+	margin: 0;
+	@include Card;
+	width: 100%;
+	border-radius: 3px;
+	height: 50px;
+	margin: $margin1 0;
+
+	strong {
+		font-size: 0.7em;
+		margin: 0;
+		padding: 0;
+	}
+}
+
+.activeNote {
+	background-color: $blue5;
+	color: $white;
+}
+
+.svgIcon {
+	fill: currentColor;
+	background-size: contain;
+	display: block;
+	height: 16px;
+	width: 16px;
+	margin-top: 2px;
+	margin-bottom: 2px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.editor.toolbar {
+	display: flex;
+	justify-content: flex-start;
+	align-items: center;
+	gap: $margin1;
+	margin-left: $margin2;
+	margin-right: $margin2;
+}
+
+.doc {
+	position: fixed;
+	width: 100%;
+	height: 100%;
+}
+
+
+.page {
+	height: 92vh;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	font-family: $cmu_text;
+	background-color: inherit;
+	margin: $margin2;
+	padding: $pad4 $pad4;
+	padding-bottom: $pad6;
+	@include Card;
+}
+
+@media (max-height:700px) {
+	.page {
+		height: 88vh;
+	}
+}
+
+.docTitle input {
+	font-family: inherit;
+	font-size: inherit;
+	color: inherit;
+	text-align: center;
+	border: 0;
+	background-color: inherit;
+	outline: none;
+}
+
+// lexical input
+.pageContent {
+	overflow-y: auto;
+	@include Scrollbar;
+	width: 98%;
+	height: 100%;
+	outline: none;
+}
+
+button.defaultButton {
+	border: $line3;
+	border-radius: 2px;
+	color: $bray3;
+	font-size: $xsmall;
+	background-color: $pageColor;
+}
+
+.figBox,
+.text_format_box {
+	padding: auto $pad2;
+	height: 20px;
+	line-height: 1.5;
+	text-align: center;
+	cursor: pointer;
+	width: 8vw;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+
+
+
+
+@media (min-width:700px) {
+	.notesButton {
+		display: none;
+	}
+
+	.main {
+		position: fixed;
+		display: grid;
+		grid-template-columns: 3fr 9fr;
+		margin-left: 2px;
+		margin-top: 0;
+		width: 98vw;
+		height: 98vh;
+	}
+
+	.sidebar {
+		position: relative;
+		padding: $pad2;
+		margin: $margin2 $margin1;
+	}
+
+	.notes_control {
+		display: flex;
+		height: 3vh;
+		padding: 0;
+		margin: 2px 0;
+		margin-bottom: $margin2;
+	}
+
+	.notelist {
+		display: flex;
+		width: fit-content;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		background-color: none;
 		padding: 0;
 		margin: 0;
-		display: block;
+		left: 0;
 	}
 
-	main {
-		height: 100vh;
-		width: 100vw;
-		position: absolute;
-		top: 28px;
+	.doc {
+		position: relative;
+		margin-top: $margin3;
+	}
+
+	.visible,
+	.hidden {
+		position: relative;
+		transform: scaleY(1);
+		margin: 0;
 		padding: 0;
-
-		.Playground {
-			display: flex;
-			justify-content: center;
-			align-items: center;
-			height: 90%;
-		}
-
-		.Workspace {
-			display: flex;
-			justify-content: center;
-
-		}
+		width: 100%;
+		cursor: pointer;
 	}
-
 }
 
-@media (min-width:0px) and (max-width:600px) {
-	.App {
+
+// § Modal
+
+.modal_overlay {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	position: fixed;
+	flex-direction: column;
+	top: 0px;
+	bottom: 0px;
+	left: 0px;
+	right: 0px;
+	flex-grow: 0px;
+	flex-shrink: 1px;
+	z-index: 100;
+}
+
+.modal_main {
+	@include Card;
+	padding: $pad6 $pad3;
+	min-height: 100px;
+	min-width: 300px;
+	max-width: 99vw;
+	display: flex;
+	flex-grow: 10px;
+	flex-direction: column;
+	position: relative;
+	border-color: transparent;
+	border-radius: 5px;
+	background-color: $pageColor;
+	max-height: 99vh;
+}
+
+.modal_control_bar {
+	background: $gray1;
+	width: 100%;
+	height: 30px;
+	position: absolute;
+	top: 0;
+	right: 0;
+	border-radius: 5px 5px 0 0;
+}
+
+.modal_close_button {
+	position: absolute;
+	margin: $margin1;
+	left: 2px;
+	top: 0px;
+	border-radius: 50%;
+	width: 18px;
+	height: 18px;
+	font-size: 14px;
+	text-align: center;
+	padding: 0;
+	line-height: 0;
+	letter-spacing: 0;
+	color: #872626;
+	border: 0;
+	background-color: #f17575;
+	cursor: pointer;
+	transition: all 0.15s ease-in;
+
+	&:hover {
+		background-color: #da2727;
+	}
+}
+
+.modal_content {
+	margin-top: $margin3;
+}
+
+.modal_save {
+	@include BlueButton;
+}
+
+// § Dropdown
+.dropdown_options {
+	z-index: 10;
+	display: block;
+	position: absolute;
+	@include Card;
+	border-radius: 8px;
+	min-width: 110px;
+	min-height: 40px;
+	margin-top: $margin2;
+	color: inherit;
+	background-color: $pageColor;
+}
+
+
+
+.dropdown_item {
+	margin: 0;
+	padding: 2px 5px;
+	cursor: pointer;
+	text-align: center;
+	line-height: 16px;
+	display: flex;
+	justify-content: center;
+	align-content: center;
+	flex-direction: row;
+	flex-shrink: 0;
+	border-radius: 0;
+	border: 0;
+	width: 98%;
+
+	button {
+		border: none;
+		text-align: left;
+		color: inherit;
+		width: 100%;
+		background-color: inherit;
+	}
+
+	&:hover {
+		background-color: $blue5;
+		color: white;
+		fill: white;
+	}
+}
+
+.dropdown_label {
+	width: 100%;
+	cursor: pointer;
+	display: flex;
+	gap: $margin2;
+
+	.dropdown_item_title {
+		display: block;
+		width: 100%;
+		font-size: $xsmall;
+		margin: $margin1 0;
+	}
+}
+
+.dropdown_options .dropdown_item:first-child {
+	margin-top: $margin2;
+}
+
+.dropdown_options .dropdown_item:last-child {
+	margin-bottom: $margin2;
+}
+
+// inputs
+.number {
+	border-radius: $medium;
+	padding: $padtiny 0;
+	width: fit-content;
+	font-family: $cmu_text;
+}
+
+.number_input_field {
+	text-align: center;
+	font-size: $xsmall;
+	width: 3vw;
+	color: inherit;
+}
+
+.number_input_body {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.number_input_button {
+	border: 0;
+	background-color: inherit;
+	color: $bray2;
+}
+
+div.canvas {
+	background-color: $pageColor;
+	width: 100%;
+	height: 100vh;
+}
+
+// § Grid
+div.grid_table {
+	font-family: $mainFont;
+}
+
+.grid_header {}
+
+.grid_row,
+.grid_edit_row {
+	display: flex;
+	border-bottom: $line3;
+	width: 100%;
+}
+
+.grid_cell {
+	padding: $pad1;
+	margin: 0;
+	height: inherit;
+	width: 100%;
+
+	&:not(:last-child) {
+		border-right: $line3;
+	}
+}
+
+.grid_header div.grid_heading {
+	font-size: $small;
+	border: 0;
+}
+
+.grid_descend_icon {}
+
+.grid_ascend_icon {}
+
+.grid_hide {
+	visibility: hidden;
+}
+
+.grid_body {}
+
+.grid_footer {}
+
+
+input.grid_cell_input {
+	width: 100%;
+	margin: 0;
+	padding: 2px;
+	border: 0;
+	background-color: inherit;
+}
+
+button.grid_delete {
+	background-color: inherit;
+	padding: 0;
+	border: 0;
+	color: $orange3;
+	font-size: $small;
+}
+
+button.grid_save {}
+
+button.grid_cancel {}
+
+button.grid_add {
+	@include PlainButton;
+}
+
+button.grid_add,
+button.grid_delete,
+button.grid_save,
+button.grid_cancel {
+	margin-left: $margin1;
+}
+
+.interval_chip {
+	width: fit-content;
+}
+
+.interval_body {
+	font-size: $xsmall;
+	margin: $margin2 0;
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+}
+
+.interval_label {
+	display: block;
+	font-family: $mainFont;
+	width: 70px;
+	height: 100%;
+}
+
+.interval_input_label {
+	font-size: $xsmall;
+}
+
+.interval_counters {
+	display: flex;
+}
+
+.interval_row {
+	display: flex;
+	margin: $margin1;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}
+
+
+
+.plot3d_shell {
+	label {
+		font-size: $xsmall;
+	}
+}
+
+.advanced {
+	background-color: inherit;
+	width: fit-content;
+	@include Card;
+	padding: $pad2;
+	padding-right: $pad4;
+	margin-top: $margin1;
+	border-radius: 5px;
+}
+
+
+
+.advanced .atom_row {
+	margin: $margin2 0;
+	justify-content: flex-start;
+	width: 100%;
+
+	label {
+		position: absolute;
+		padding-top: 2px;
+	}
+
+	.atom_row {
 		display: flex;
-		flex-direction: column;
+		margin-left: 4.2rem;
+		justify-content: flex-start;
+		gap: $margin1;
+
+		.number {
+			margin-left: 0;
+		}
 	}
 }
+
+.parametric_shell {
+	font-size: $xsmall;
+
+	.interval_chip {
+		margin: $margin5 0;
+
+		label {
+			font-size: $xsmall;
+		}
+	}
+}
+
+.advanced .atom_row .number {
+	margin-left: 4.2rem;
+}
+
+.camera_label {
+	margin-top: $margin2;
+}
+
+.parametric_footer,
+.plot3d_footer {
+	.modal_save {
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		margin-right: $margin4;
+		margin-bottom: $margin4;
+	}
+}
+
+
+
+
+.detail_shell {
+	width: 100%;
+	font-family: $mainFont;
+}
+
+.detail_body {
+	width: 100%;
+}
+
+.detail_triangle {
+	font-size: $xxsmall;
+	color: $bray3;
+}
+
+.detail_vertical,
+.detail_horizontal {
+	display: inline-block;
+	margin-right: $margin2;
+	transition: transform 0.05s ease-out;
+}
+
+.detail_vertical {
+	transform: rotate(90deg);
+}
+
+.detail_advance_button {
+	background-color: inherit;
+	border: 0;
+}
+
+.detail_show {}
+
+.detail_hide {}
+
+.detail_show,
+.detail_hide {
+	transform: scaleY(0);
+	transform-origin: top;
+	transition: transform 0.26s ease;
+	z-index: 200;
+	position: absolute;
+	margin-left: -$margin1;
+}
+
+.detail_show {
+	transform: scaleY(1);
+}
+
+.text_input_shell {
+	.text_input_field input {
+		border: 0;
+		padding: $padtiny;
+		font-family: monospace;
+		outline: none;
+
+		&::placeholder {
+			font-family: $cmu_text;
+		}
+	}
+}
+
+.text_input_field {
+	margin: $margin3 0;
+	margin-left: $margin2;
+	border-bottom: $line3;
+	display: inline-block;
+}
+
+.text_input_hidden_span {
+	position: absolute;
+	opacity: 0;
+	min-width: 40%;
+}
+
+.draw_modal_overlay {
+	display: flex;
+	align-items: center;
+	position: fixed;
+	flex-direction: column;
+	top: 0px;
+	bottom: 0px;
+	left: 0px;
+	right: 0px;
+	flex-grow: 0px;
+	flex-shrink: 0px;
+	z-index: 750;
+}
+
+.draw_modal_box {
+	position: relative;
+	z-index: 150;
+	top: 12px;
+	width: auto;
+	left: 0;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background-color: inherit;
+	@include Card;
+	border-radius: 5px;
+}
+
+.draw_canvas {
+	border-radius: 5px;
+}
+
+.draw_modal_row {
+	position: relative;
+	padding: 40px 0 0 0;
+	width: 90vw;
+	height: 95vh;
+	padding-left: 0;
+	padding-right: 0;
+}
+
+.draw_modal_actions {
+	position: absolute;
+	top: 5px;
+	left: 5px;
+	z-index: 130;
+	display: flex;
+	justify-content: space-around;
+	width: 100%;
+	padding-left: 0;
+	padding-right: 0;
+}
+
+
+.draw_save_button {
+	@include BlueButton;
+	position: absolute;
+	right: 0;
+	margin-right: $margin3;
+}
+
+// § Equation Editor
+
+.katex_input_shell {
+	font-family: $mainFont;
+	background-color: inherit;
+
+	label {
+		font-size: $xsmall;
+	}
+}
+
+.katex_input_options {
+	.atom_row {
+		width: 50%;
+		justify-content: flex-start;
+	}
+
+	label {
+		margin-top: 2px;
+	}
+}
+
+.katex_input_main,
+.katex_input_footer,
+.katex_input_options {
+	margin: $margin2 0;
+}
+
+
+
+.katex_input_main {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	width: 100%;
+
+	label {
+		text-align: left;
+		width: 100%;
+	}
+}
+
+.katex_input_preview {}
+
+.katex_input_preview_box {
+	width: 100%;
+	border: $line3;
+}
+
+textarea.katex_input_text_area {
+	max-width: 100%;
+	min-width: 100%;
+	width: 100%;
+	padding: $pad2;
+	border: $line3;
+	outline: none;
+	min-height: 100px;
+	max-height: 50vh;
+}
+
+.katex_input_inline_input {}
+
+.katex_input_footer {
+	margin-top: $margin4;
+}
+
+.image {}
+
+.image_prompt {
+	font-family: $mainFont;
+	font-size: $xsmall;
+}
+
+.image_dialog {
+	margin-top: $margin2;
+	height: 150px;
+}
+
+.image_focused {}
+
+.image_draggable {}
+
+.image_caption_container {}
+
+.image_content_editable {}
+
+.image_placeholder {}
+
+
+.file_upload {
+	margin: $margin4 0;
+
+	input[type="file"] {
+		display: none;
+	}
+}
+
+.image_prompt label {
+	padding: $pad1 0;
+}
+
+.image_prompt .file_upload_label {
+	border: solid thin $blue5;
+	padding: $pad1 $pad2;
+	color: $blue5;
+	border-radius: 2px;
+	cursor: pointer;
+}
+
+
+
+
+
+.switch_shell {
+	position: relative;
+	display: inline-block;
+	width: 60px;
+	height: 25px;
+}
+
+.switch_checkbox {
+	display: none;
+}
+
+.switch_slider {
+	position: absolute;
+	cursor: pointer;
+	border-radius: $margin3;
+	background-color: $bray0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+
+	&::before {
+		position: absolute;
+		content: "";
+		left: 2px;
+		top: 2px;
+		width: 20px;
+		height: 20px;
+		background-color: $bray1;
+		border-radius: $margin3;
+		transition: transform 0.3s ease;
+	}
+}
+
+.switch_shell .switch_checkbox:checked+.switch_slider::before {
+	transform: translateX(35px);
+}
+
+
+
+.switch_on,
+.switch_off {
+	font-size: $xxsmall;
+	font-family: $mainFont;
+	color: $bray4;
+	display: inline-block;
+	position: absolute;
+	top: 49px;
+	cursor: pointer;
+}
+
+.switch_off {
+	left: 53px;
+}
+
+.switch_on {
+	left: 34px;
+}
+
+// § Sheet
+.sheet_prompt {
+	font-family: $mainFont;
+}
+
+.sheet_prompt_row {
+	display: flex;
+	justify-content: flex-start;
+	align-items: center;
+}
+
+.sheet_prompt_row label,
+.sheet_prompt_row .number {
+	height: 25px;
+	padding: 2px $pad1;
+}
+
+.sheet_prompt_row label {
+	font-size: $xsmall;
+	border: $line3;
+	border-right: 0;
+	width: 80px;
+}
+
+.sheet_prompt_row .number {
+	border-radius: 0;
+	border: $line3;
+}
+
+.sheet_prompt .modal_save {
+	position: absolute;
+	bottom: 0;
+	right: 0;
+	margin-right: $margin2;
+	margin-bottom: $margin1;
+}
+
+button.write_button {
+	border: none;
+}
+
+

@@ -1,7 +1,7 @@
 import { Compile } from "./visitors/compiler.js";
 import { Interpreter } from "./visitors/interpreter.js";
-import { ASTNode } from "./ast/index.js";
 import { Scope } from "./scope.js";
+import { ASTNode } from "./ast/base.js";
 
 export class Fn {
   name: string;

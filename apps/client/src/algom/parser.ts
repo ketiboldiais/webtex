@@ -7,15 +7,6 @@ import {
 } from "./visitors/index.js";
 import { Fn } from "./fn.js";
 import { ast, Atom } from "./ast/astnode.js";
-import {
-  ASTNode,
-  C,
-  ErrorNode,
-  Root,
-  SymbolNode,
-  TupleNode,
-  VectorNode,
-} from "./ast/index.js";
 import { corelib } from "./scope.js";
 import { Keyword, keywords, NODE, PREC, TOKEN } from "./structs/enums.js";
 import { List } from "./structs/list.js";
@@ -28,6 +19,13 @@ import {
   tree,
 } from "./structs/stringfn.js";
 import { Token, TokenStream } from "./structs/token.js";
+import { Root } from "./ast/RootNode.js";
+import { ASTNode } from "./ast/base.js";
+import { ErrorNode } from "./ast/ErrNode.js";
+import { C } from "./ast/Numerics.js";
+import { SymbolNode } from "./ast/SymbolNode.js";
+import { TupleNode } from "./ast/TupleNode.js";
+import { VectorNode } from "./ast/VectorNode.js";
 
 export interface Parser {
   /**

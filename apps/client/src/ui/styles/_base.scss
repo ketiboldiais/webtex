@@ -1,61 +1,45 @@
-@font-face {
-	font-family: 'Muli';
-	font-style: normal;
-	font-weight: normal;
-	src: url('../fonts/Muli-Regular.ttf');
-}
-
-@font-face {
-	font-family: 'Muli';
-	font-style: italic;
-	font-weight: normal;
-	src: url('../fonts/Muli-Italic.ttf');
-}
-
-@font-face {
-	font-family: 'Muli';
-	font-style: normal;
-	font-weight: bold;
-	src: url('../fonts/Muli-Bold.ttf');
-}
-
-@font-face {
-	font-family: 'Muli';
-	font-style: italic;
-	font-weight: bold;
-	src: url('../fonts/Muli-BoldItalic.ttf');
-}
-
 $mainFont: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-// $mainFont: 'SF Pro Display';
-// $mainFont: 'Muli';
-$textColor: #3a3a3a;
+$textColor: black;
+$pageColor: white;
 $cmu_text: 'KaTeX_Main';
 $cmu_math: 'KaTeX_Math';
 $cmu_mono: 'KaTeX_Typewriter';
-$xxsmall: 0.7rem;
-$xsmall: 0.8rem;
-$small: 1rem;
-$medium: 1.2rem;
-$large: 1.4rem;
-$xlarge: 1.8rem;
-$xxlarge: 2.6rem;
-$huge: 4.2rem;
-$pageColor: white;
-$orange: #ffab6a;
-$red: #e87566;
-$primary1: #3d4852;
-$primary2: #606f7b;
-$primary3: #8795a1;
-$primary4: #b8c2cc;
-$primary5: #dae1e7;
-$primary6: #f2f5f8;
-$blue: #0066ff;
-$blue1: #072145;
-$blue2: #0d3772;
-$blue3: #1964cc;
-$blue4: #367ee2;
-$blue5: #719dda;
+$monospace: monospace;
+
+$blue0: #e3f2fd;
+$blue1: #bbdefb;
+$blue2: #90caf9;
+$blue3: #42a5f5;
+$blue4: #218de6;
+$blue5: #197ad0;
+$blue6: #155eb1;
+
+$orange0: #fbe9e7;
+$orange1: #ffccbc;
+$orange2: #ffab91;
+$orange3: #ff8a65;
+$orange4: #ff7043;
+$orange5: #ff5722;
+$orange6: #bf360c;
+
+$gray0: #eeeeee;
+$gray1: #bdbdbd;
+$gray2: #9e9e9e;
+$gray3: #757575;
+$gray4: #616161;
+$gray5: #424242;
+$gray6: #212121;
+
+$bray0: #cfd8dc;
+$bray1: #90a4ae;
+$bray2: #78909c;
+$bray3: #607d8b;
+$bray4: #455a64;
+$bray5: #37474f;
+$bray6: #263238;
+
+$black: #000000;
+$white: #ffffff;
 
 $padtiny: 2px;
 $pad1: 0.25rem;
@@ -71,6 +55,7 @@ $pad10: 8rem;
 $pad11: 12rem;
 $pad12: 16rem;
 $pad13: 24rem;
+
 $margin1: 0.25rem;
 $margin2: 0.5rem;
 $margin3: 0.75rem;
@@ -84,502 +69,92 @@ $margin10: 8rem;
 $margin11: 12rem;
 $margin12: 16rem;
 $margin13: 24rem;
-$line: solid thin $primary4;
-$lightBorder: solid thin $primary5;
 
-@mixin CircleButton {
-	border-radius: 100%;
-	font-size: 14px;
-	width: 19px;
-	height: 19px;
-	line-height: 0;
-	text-align: center;
-	padding: 0;
-	padding-bottom: 2px;
-}
+$xxsmall: 0.7rem;
+$xsmall: 0.8rem;
+$small: 1rem;
+$medium: 1.2rem;
+$large: 1.4rem;
+$xlarge: 1.8rem;
+$xxlarge: 2.6rem;
+$huge: 4.2rem;
 
-@mixin l($color: black, $bg: inherit) {
-	border: 1px solid $color;
-	background-color: $bg;
-}
+$line1: solid thin $bray3;
+$line2: solid thin $bray1;
+$line3: solid thin $bray0;
 
-@mixin GreyBox {
-	background: rgba(58, 58, 58, 0.357);
-	border-radius: 3px;
-}
+@mixin Card {
+	box-shadow: 0px 1px 3px 1px rgba(0, 0, 0, 0.152);
 
-@mixin Indent {
-	box-shadow: inset -4px -4px 6px -1px rgb(249, 249, 249), inset 2px 2px 8px -1px rgba(72, 79, 96, 0.205);
-}
-
-@mixin Shadow1($COLOR) {
-	box-shadow: rgba(9, 30, 66, 0.25) 0px 4px 8px -2px, rgba(9, 30, 66, 0.08) 0px 0px 0px 1px;
-}
-
-@mixin Card($radius: 5px) {
-	box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
-	transition: 0.3s;
-	border-radius: $radius;
-
-	&:hover {
-		box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
+	@media (prefers-color-scheme: dark) {
+		box-shadow: 0 4px 8px 1px rgba(0, 0, 0, 0.35);
 	}
-}
-
-@mixin AppBase {
-	font-size: 1em;
-	font-family: $mainFont;
-	margin: 0;
-	padding: 0;
-}
-
-@mixin UnstyledList($padding: 0, $margin: 0) {
-	list-style: none;
-	padding: 0.2em 0.4em;
-	margin: $margin;
 }
 
 @mixin Scrollbar {
-	scrollbar-color: $primary4 transparent;
+	scrollbar-color: $bray0 transparent;
 	scrollbar-width: thin;
 
 	&::-webkit-scrollbar {
-		width: thin;
+		width: 2px;
+		border: none;
+		background-color: transparent;
 	}
 
 	&::-webkit-scrollbar-track {
-		background: $pageColor;
+		background-color: transparent;
+		border: none;
 	}
 
 	&::-webkit-scrollbar-thumb {
-		background-color: $primary4;
+		background-color: $bray0;
 		border-radius: 1px;
 	}
 }
 
-@mixin Hover($bg: inherit) {
-	&:hover {
-		cursor: pointer;
-		background-color: $bg;
-	}
+@mixin StateBox {
+	padding: auto $pad2;
+	height: 20px;
+	min-width: 80px;
+	line-height: 1.5;
+	text-align: center;
+	cursor: pointer;
 }
 
-@mixin ShadowButton($width: fit-content, $color: inherit, $margin: 0 5px) {
-	button {
-		width: $width;
-		padding: 3px 5px;
-		color: $color;
-		margin: $margin;
-		font-family: $mainFont;
-	}
-}
-
-@mixin Plot_Control {
-	padding: 4px 0.8em;
-	display: flex;
-	justify-content: space-evenly;
-	background-color: rgb(220, 220, 220);
-	border: solid thin rgb(202, 202, 205);
-
-	button {
-		label {
-			display: block;
-			font-size: 0.7rem;
-		}
-
-		img {
-			padding: 4px;
-			border-radius: 10px;
-		}
-
-		border: none;
-		color: rgb(79, 79, 79);
-		border-radius: 5px;
-
-		:hover {
-			background-color: rgb(202, 202, 205);
-		}
-	}
-}
-
-
-@mixin PlotDataPanel {
-	color: $primary6;
-	padding: 0.3em;
-	background: rgba(44, 44, 44, 0.61);
-	display: flex;
-	margin: 2px;
-	border-radius: 4px;
-	flex-direction: column;
-	backdrop-filter: blur(2px);
-	-webkit-backdrop-filter: blur(2px);
-	border: 1px solid rgba(255, 255, 255, 0.271);
-	box-shadow: 0 4px 30px rgba(0, 0, 0, 0.174);
-
-	label {
-		font-size: 0.8rem;
-	}
-
-	.Prompt {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-
-		.Label {
-			font-size: 0.8rem;
-		}
-
-		.FunctionInput {
-			font-family: monospace;
-			margin: 5px;
-			width: 100%;
-			height: 50%;
-			padding: 0.4em 3px;
-			outline: none;
-			border: none;
-			@include GreyBox;
-		}
-	}
-
-	.PlotInputOption {
-		height: 15%;
-		width: 100%;
-		margin: 2px 0;
-	}
-
-	.MinMaxLabel {
-		padding: 5%;
-		margin: auto;
-		font-size: 0.7rem;
-		text-align: center;
-		line-height: 0;
-	}
-
-	.MinMaxInput {
-		display: flex;
-		justify-content: space-evenly;
-		padding: 0.2em;
-	}
-
-	.AddPlotButton {
-		margin: 10% 0;
-		@include GreyBox;
-		border: 0;
-		height: 10%;
-		padding: 4px 0;
-	}
-}
-
-@mixin CalculatorStyles {
-	.Calculator {
-		padding: 0.5em;
-		font-family: monospace;
-
-		.Screen {
-			color: white;
-			width: 100%;
-			height: 20vh;
-			display: flex;
-			flex-direction: column;
-			align-items: flex-end;
-			justify-content: space-around;
-			padding: 0.7rem;
-			word-wrap: break-word;
-			word-break: break-all;
-			background-color: $primary2;
-		}
-
-		.Keyboard {
-			display: flex;
-			flex-direction: column;
-
-			.NumberPad {
-				width: fit-content;
-			}
-
-			.Trig {
-				width: fit-content;
-			}
-
-			.Clear {
-				width: 100%;
-			}
-
-			button {
-				width: 50px;
-				height: 50px;
-				margin: 10px;
-				background-color: $primary5;
-				color: $primary2;
-				border-radius: 100%;
-				font-size: 1.3em;
-			}
-
-			.Trig button {
-				font-size: 1em;
-				background-color: $red;
-				color: white;
-			}
-
-			.Clear button {
-				width: 100%;
-				margin: 0 auto;
-				border-radius: 5px;
-			}
-		}
-	}
-}
-
-@mixin SpreadsheetStyles {
-	.Spreadsheet {
-		position: relative;
-		color: $primary1;
-		@include Card;
-		padding: 5px;
-		padding-bottom: 20px;
-		margin: 5px;
-		text-align: center;
-
-		header {
-			color: $primary4;
-			border-bottom: $line;
-		}
-
-		input {
-			border-left: $line;
-			border-bottom: $line;
-			width: 100%;
-
-			&::placeholder {
-				color: rgb(188, 205, 211);
-			}
-		}
-
-		button {
-			border: $line;
-			border-radius: 100%;
-			width: 19px;
-			height: 19px;
-			padding: 0;
-			padding-bottom: 2px;
-			background-color: $primary5;
-			color: $primary3;
-			margin: 2px;
-			line-height: 0;
-		}
-
-		.AddColButton {
-			position: absolute;
-			right: 0;
-		}
-	}
-
-	.Resizer {
-		cursor: pointer;
-		width: 10px;
-		height: 10px;
-		background-color: $primary3;
-		border-radius: 100%;
-		position: absolute;
-		bottom: 0;
-		right: 0;
-		margin-bottom: -5px;
-		margin-right: -4px;
-	}
-}
-
-@mixin Plotter {
-	.Plotter {
-		@include Card;
-		display: block;
-		width: 85%;
-		height: 100%;
-
-		.PlotControl {
-			@include Plot_Control;
-		}
-
-		.PlotOutput {
-			@include CalculatorStyles;
-		}
-
-		.PlotWindow {
-			display: flex;
-			flex-direction: column;
-
-
-		}
-
-		.PlotRenderer {
-			height: 100%;
-		}
-
-		.CloseButton {
-			width: fit-content;
-			background: rgba(44, 44, 44);
-			border-radius: 100%;
-			padding: 0;
-			padding-bottom: 1px;
-			height: 1.2rem;
-			width: 1.2rem;
-			z-index: 500;
-		}
-
-		.PlotPanel {
-			width: 35%;
-			height: 40%;
-			z-index: 100;
-			position: absolute;
-			margin-top: 0.3rem;
-			margin-left: 0.3rem;
-		}
-
-		.PlotInputPanel {
-
-			@include PlotDataPanel;
-
-			.tableView {
-				padding: 2px;
-				width: 100%;
-			}
-
-			.tableHeader {
-				display: none;
-			}
-
-			.tableCell {
-				padding: 5px auto;
-				margin-top: 0.4rem;
-				margin-bottom: 0.4rem;
-				width: max-content;
-
-				&:nth-child(1) {
-					width: 15%;
-				}
-			}
-		}
-	}
-}
-
-
-
-
-@mixin FlatButton($width: fit-content, $color: inherit) {
-	button {
-		width: $width;
-		padding: 0.3em 0.5em;
-		color: $color;
-		margin: 0 5px;
-		font-family: $mainFont;
-		border: 0;
-	}
-}
-
-@mixin NavBarStyles {
-	padding-right: 10px;
-	display: flex;
-	flex-direction: row-reverse;
-	li,
-	a,
-	h1 {
-		display: block;
-		text-decoration: none;
-		padding: 0;
-		margin: 0 0.4em;
-		color: $primary4;
-		font-size: 0.9rem;
-	}
-	.LinkList {
-		display: flex;
-		justify-content: flex-end;
-		list-style: none;
-		margin: 0;
-		padding: 0;
-	}
-}
-
-@mixin NoScrollbar {
-	scrollbar-width: none;
-
-	&::-webkit-scrollbar {
-		display: none;
-	}
-}
-
-
-@mixin ClearMarginPadding {
-	margin: 0;
-	padding: 0;
-}
-
-
-
-
-
-@mixin PackagesPage {
-	margin: 0;
-	padding: 2em;
-	padding-bottom: 50%;
-	overflow-y: scroll;
-	@include Scrollbar;
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-
-	ol li {
-		padding: 0.4em;
-	}
-
-	h2 {
-		padding: 0;
-		margin: 1em 0 0 0;
-	}
-
-	p {
-		padding: 0;
-		margin: 0.8em 0;
-	}
-}
-
-@mixin Button1 {
-	width: fit-content;
-	padding: 0 $pad2;
-	border-radius: $padtiny;
-	color: $primary3;
-	margin: 0;
-	font-family: $mainFont;
-	border: $line;
-}
-
-@mixin BlueButton {
-	background-color: $blue;
-	color: $primary5;
-	font-size: $xxsmall;
-	border: 0;
-	width: fit-content;
-	padding: $pad1 $pad2;
-	border-radius: 2px;
-}
-
-@mixin WhiteButton {
-	background-color: white;
+@mixin PlainButton {
+	background-color: inherit;
 	color: $blue4;
-	font-size: $xxsmall;
+	font-size: $xsmall;
 	border: solid thin $blue5;
 	width: fit-content;
 	padding: $padtiny $pad2;
 	border-radius: 2px;
 }
 
-@mixin IconStyles {
-	background-size: contain;
-	display: block;
-	height: 16px;
-	width: 16px;
-	margin-top: 2px;
-	margin-bottom: 2px;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	opacity: 0.6;
+@mixin BlueButton {
+	background-color: $blue4;
+	color: $blue0;
+	font-size: $xxsmall;
+	border: 0;
+	width: fit-content;
+	padding: $pad2;
+	border-radius: 3px;
+	letter-spacing: 1px;
+	&:hover {
+		background-color: $blue5;
+	}
+	transition: all 0.15s ease-in;
+}
+/* Box Shadows */
+$box-shadow: 0px 1px 0 #bbbbbbdd, 1px 1px 2px #8686862d;
+$drop-shadow: 3px 3px 2px rgba(0, 0, 0, .7);
+$box-shadow-hover: 1px 1px 2px rgba(228, 228, 228, 0.54);
+$box-shadow-border: 1px solid #ececec;
+$box-shadow-pressed: inset 0.063rem 0.063rem 0.125rem #85858561,
+	inset -0.063rem -0.063rem 0.125rem rgba(237, 237, 237, 0.696);
+$box-shadow-active: 1px 1px 2px rgb(104, 104, 104);
+$page-box-shadow: 0px 1px 1px #b5b5b5, 1px 1px 4px #c6c6c6;
+
+@mixin ShortShadow {
+	box-shadow: 0.6px 1.3px 1.3px $bray0;
 }

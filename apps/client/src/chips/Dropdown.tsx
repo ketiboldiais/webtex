@@ -1,22 +1,17 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
-import dropdown from "../ui/styles/dropdown.module.scss";
+import app from "../ui/styles/App.module.scss";
 import { createPortal } from "react-dom";
-import { concat } from "src/util";
+import { Button, ButtonProps, HTML_BUTTON_REF, HTML_DIV_REF } from "../App";
+import { Conditioned } from "./Inputs";
 
 interface props {
-  /** The title shown for the currently selected dropdown option. */
   title?: string | ReactNode;
   children?: ReactNode;
-
-  /** Whether the title button should have the class `fixed` (which sets a constant width).  */
-  fixedWidth?: boolean;
-
-  /** Whether the dropdown should auto-close when an option is clicked. */
   selfClose?: boolean;
+  className?: string;
 }
-export function Dropdown({ title, children, selfClose, fixedWidth }: props) {
+export function Dropdown({ title, children, selfClose, className }: props) {
   const [dropdown_is_open, open_dropdown] = useState(false);
-
   const dropdownRef = useRef<HTML_DIV_REF>(null);
   const btnRef = useRef<HTML_BUTTON_REF>(null);
 
@@ -49,24 +44,38 @@ export function Dropdown({ title, children, selfClose, fixedWidth }: props) {
   const open = () => open_dropdown(!dropdown_is_open);
 
   return (
-    <div className={dropdown.dropdown}>
+    <div>
       <button
-        className={concat(
-          dropdown.item,
-          dropdown.title,
-          fixedWidth ? dropdown.fixedWidth : "",
-        )}
+        className={app.defaultButton}
         onClick={open}
         ref={btnRef}
       >
         {title}
       </button>
       {dropdown_is_open && createPortal(
-        <div ref={dropdownRef} className={dropdown.options}>
+        <div ref={dropdownRef} className={app.dropdown_options}>
           {children}
         </div>,
         document.body,
       )}
+    </div>
+  );
+}
+
+export function DropdownItem({ click, label, icon }: ButtonProps) {
+  return (
+    <div className={app.dropdown_item}>
+      <Button
+        label={
+          <div className={app.dropdown_label}>
+            <Conditioned on={icon !== undefined}>
+              {icon}
+            </Conditioned>
+            <span className={app.dropdown_item_title}>{label}</span>
+          </div>
+        }
+        click={click}
+      />
     </div>
   );
 }

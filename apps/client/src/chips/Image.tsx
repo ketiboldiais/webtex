@@ -1,5 +1,6 @@
-import styles from "../ui/styles/Editor.module.scss";
 type HTMLdydx = "inherit" | number;
+import app from "../ui/styles/App.module.scss";
+import docstyle from '../ui/styles/Editor.module.scss';
 import {
   $applyNodeReplacement,
   $createParagraphNode,
@@ -36,7 +37,14 @@ import {
   SerializedLexicalNode,
   Spread,
 } from "lexical";
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLexicalNodeSelection } from "@lexical/react/useLexicalNodeSelection";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $wrapNodeInElement, mergeRegister } from "@lexical/utils";
@@ -44,8 +52,8 @@ import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
 import { LexicalNestedComposer } from "@lexical/react/LexicalNestedComposer";
-import { DOM_AVAILABLE } from "src/util";
-import { FileInput, TextInput } from "./Inputs";
+import { concat, DOM_AVAILABLE, joinRest, toggle } from "src/util";
+import { Conditioned, FileInput, Switch, Ternary, TextInput } from "./Inputs";
 import { Resizer } from "./Resizer";
 declare global {
   interface DragEvent {
@@ -273,25 +281,19 @@ export function ImageComponent({
   const setShowCaption = () => {
     editor.update(() => {
       const node = $getNodeByKey(nodeKey);
-      if ($isImageNode(node)) {
-        node.setShowCaption(true);
-      }
+      if (!$isImageNode(node)) return;
+      node.setShowCaption(true);
     });
   };
 
-  const onResizeEnd = (
-    nxWidth: HTMLdydx,
-    nxHeight: HTMLdydx,
-  ) => {
+  const onResizeEnd = (nxw: HTMLdydx, nxh: HTMLdydx) => {
     setTimeout(() => {
       setIsResizing(false);
     }, 200);
-
     editor.update(() => {
       const node = $getNodeByKey(nodeKey);
-      if ($isImageNode(node)) {
-        node.setWidthAndHeight(nxWidth, nxHeight);
-      }
+      if (!$isImageNode(node)) return;
+      node.setWidthAndHeight(nxw, nxh);
     });
   };
 
@@ -299,57 +301,52 @@ export function ImageComponent({
 
   const isFocused = isSelected || isResizing;
 
+  const lazyImgClass = useMemo(() => {
+    return toggle(
+      joinRest(app.image_focused, app.image_draggable)
+        .on($isNodeSelection(selection)),
+    ).on(isFocused);
+  }, [selection, isFocused, isSelected, isResizing]);
+
   return (
     <Suspense fallback={null}>
-      <>
-        <div
-          draggable={isSelected && $isNodeSelection(selection) && !isResizing}
-        >
-          <LazyImage
-            className={isFocused
-              ? `${styles.focused} ${
-                $isNodeSelection(selection) ? styles.draggable : ""
-              }`
-              : null}
-            src={src}
-            altText={altText}
-            imageRef={imageRef}
-            width={width}
-            height={height}
-            maxWidth={maxWidth}
-          />
+      <div draggable={isSelected && $isNodeSelection(selection) && !isResizing}>
+        <LazyImage
+          className={lazyImgClass}
+          src={src}
+          altText={altText}
+          imageRef={imageRef}
+          width={width}
+          height={height}
+          maxWidth={maxWidth}
+        />
+      </div>
+      <Conditioned on={showCaption}>
+        <div className={docstyle.image_caption_container}>
+          <LexicalNestedComposer initialEditor={caption}>
+            <RichTextPlugin
+              contentEditable={
+                <ContentEditable className={docstyle.image_content_editable} />
+              }
+              placeholder={<div className={docstyle.image_placeholder}></div>}
+              ErrorBoundary={LexicalErrorBoundary}
+            />
+          </LexicalNestedComposer>
         </div>
-        {showCaption && (
-          <div className={styles.imageCaptionContainer}>
-            <LexicalNestedComposer initialEditor={caption}>
-              <RichTextPlugin
-                contentEditable={
-                  <ContentEditable
-                    className={styles.imageContentEditable}
-                  />
-                }
-                placeholder={
-                  <div className={styles.imageNodePlaceholder}></div>
-                }
-                ErrorBoundary={LexicalErrorBoundary}
-              />
-            </LexicalNestedComposer>
-          </div>
-        )}
-        {resizable && $isNodeSelection(selection) && isFocused && (
-          <Resizer
-            showCaption={showCaption}
-            setShowCaption={setShowCaption}
-            editor={editor}
-            buttonRef={btnRef}
-            imageRef={imageRef}
-            maxWidth={maxWidth}
-            onResizeStart={onResizeStart}
-            onResizeEnd={onResizeEnd}
-            captionsEnabled={captionsEnabled}
-          />
-        )}
-      </>
+      </Conditioned>
+      <Conditioned on={resizable && $isNodeSelection(selection) && isFocused}>
+        <Resizer
+          showCaption={showCaption}
+          setShowCaption={setShowCaption}
+          editor={editor}
+          buttonRef={btnRef}
+          imageRef={imageRef}
+          maxWidth={maxWidth}
+          onResizeStart={onResizeStart}
+          onResizeEnd={onResizeEnd}
+          captionsEnabled={captionsEnabled}
+        />
+      </Conditioned>
     </Suspense>
   );
 }
@@ -592,29 +589,21 @@ export function PromptImageLink({ onClick }: ImagePrompt) {
   const isDisabled = src === "";
   const save = () => onClick({ altText, src });
   return (
-    <>
+    <div className={app.image_prompt}>
       <TextInput
         label="Image URL"
-        placeholder="e.g., https://source.unsplash.com/random"
         onChange={setSrc}
         value={src}
-        data-test-id="image-modal-url-input"
       />
       <TextInput
-        label="Alt Text"
-        placeholder="Descrie the image."
+        label="Description"
         onChange={setAltText}
         value={altText}
-        data-test-id="image-modal-alt-text-input"
       />
-      <button
-        data-test-id="image-modal-confirm-btn"
-        disabled={isDisabled}
-        onClick={save}
-      >
-        Confirm
+      <button disabled={isDisabled} onClick={save} className={app.modal_save}>
+        Save
       </button>
-    </>
+    </div>
   );
 }
 
@@ -634,28 +623,20 @@ export function PromptImageUpload({ onClick }: ImagePrompt) {
   const save = () => onClick({ altText, src });
 
   return (
-    <>
+    <div className={app.image_prompt}>
       <FileInput
-        label="Image Upload"
         onChange={loadImage}
         accept="image/*"
-        data-test-id="image-modal-file-upload"
       />
       <TextInput
-        label="Alt Text"
-        placeholder="Descriptive alternative text"
+        label="Description"
         onChange={setAltText}
         value={altText}
-        data-test-id="image-modal-alt-text-input"
       />
-      <button
-        data-test-id="image-modal-file-upload-btn"
-        disabled={isDisabled}
-        onClick={save}
-      >
+      <button disabled={isDisabled} onClick={save} className={app.modal_save}>
         Save
       </button>
-    </>
+    </div>
   );
 }
 
@@ -663,10 +644,11 @@ interface ImageDialogProps {
   activeEditor: LexicalEditor;
   onClose: () => void;
 }
-type InsertType = "url" | "file" | null;
 export function InsertImageDialog({ activeEditor, onClose }: ImageDialogProps) {
-  const [mode, setMode] = useState<InsertType>(null);
+  const [isFile, setIsFile] = useState(false);
+
   const hasModifier = useRef(false);
+
   useEffect(() => {
     hasModifier.current = false;
     const handler = (e: KeyboardEvent) => {
@@ -681,24 +663,21 @@ export function InsertImageDialog({ activeEditor, onClose }: ImageDialogProps) {
     activeEditor.dispatchCommand(INSERT_IMAGE_COMMAND, payload);
     onClose();
   };
-  const setModeTo = (mode: InsertType) => () => setMode(mode);
   return (
-    <>
-      <button
-        data-test-id="image-modal-option-url"
-        onClick={setModeTo("url")}
-      >
-        URL
-      </button>
-      <button
-        data-test-id="image-modal-option-file"
-        onClick={setModeTo("file")}
-      >
-        File
-      </button>
-      {mode === "url" && <PromptImageLink onClick={onClick} />}
-      {mode === "file" && <PromptImageUpload onClick={onClick} />}
-    </>
+    <div className={app.image_dialog}>
+      <Switch
+        onToggle={() => setIsFile(!isFile)}
+        value={isFile}
+        trueLabel={"File"}
+        falseLabel={"URL"}
+      />
+      <Conditioned on={!isFile}>
+        <PromptImageLink onClick={onClick} />
+      </Conditioned>
+      <Conditioned on={isFile}>
+        <PromptImageUpload onClick={onClick} />
+      </Conditioned>
+    </div>
   );
 }
 
@@ -748,6 +727,7 @@ export function ImagePlugin({ captionsEnabled }: ImagePluginProps) {
 }
 
 import { TRANSPARENT_IMAGE } from "src/util";
+
 const img = document.createElement("img");
 img.src = TRANSPARENT_IMAGE;
 

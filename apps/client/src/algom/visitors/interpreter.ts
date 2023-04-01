@@ -2,36 +2,30 @@ import { ToString } from "./ToString.js";
 import { Compile } from "./compiler.js";
 import { Fn } from "../fn.js";
 import { ast, Visitor } from "../ast/astnode.js";
-import {
-  AssignmentNode,
-  ASTNode,
-  BinaryExprNode,
-  BlockNode,
-  BoolNode,
-  CallNode,
-  IfElseNode,
-  ErrorNode,
-  FunctionNode,
-  GroupNode,
-  Integer,
-  MatrixNode,
-  N,
-  NullNode,
-  num,
-  Rational,
-  Real,
-  Root,
-  StringNode,
-  SymbolNode,
-  TupleNode,
-  UnaryExprNode,
-  VarDeclareNode,
-  VectorNode,
-  WhileNode,
-} from "../ast/index.js";
 import { corelib, Scope } from "../scope.js";
 import { NODE } from "../structs/enums.js";
 import { List } from "../structs/list.js";
+import { Root } from "../ast/RootNode.js";
+import { ASTNode } from "../ast/base.js";
+import { BinaryExprNode } from "../ast/BinaryExprNode.js";
+import { BlockNode } from "../ast/BlockNode.js";
+import { BoolNode } from "../ast/BoolNode.js";
+import { CallNode } from "../ast/CallNode.js";
+import { IfElseNode } from "../ast/CondNode.js";
+import { ErrorNode } from "../ast/ErrNode.js";
+import { FunctionNode } from "../ast/FunctionNode.js";
+import { GroupNode } from "../ast/GroupNode.js";
+import { MatrixNode } from "../ast/MatrixNode.js";
+import { NullNode } from "../ast/NullNode.js";
+import { Integer, N, num, Rational, Real } from "../ast/Numerics.js";
+import { StringNode } from "../ast/StringNode.js";
+import { SymbolNode } from "../ast/SymbolNode.js";
+import { TupleNode } from "../ast/TupleNode.js";
+import { UnaryExprNode } from "../ast/UnaryExprNode.js";
+import { AssignmentNode } from "../ast/VarAssignNode.js";
+import { VarDeclareNode } from "../ast/VarDeclareNode.js";
+import { VectorNode } from "../ast/VectorNode.js";
+import { WhileNode } from "../ast/WhileNode.js";
 
 function compute(left: N, op: string, right: N): ASTNode | undefined {
   switch (op) {

@@ -1,5 +1,5 @@
-import { C } from "../ast/index.js";
-import { ASTNode } from "../ast/index.js";
+import { ASTNode } from "../ast/base.js";
+import { C } from "../ast/Numerics.js";
 import { split } from "./stringfn.js";
 export type NativeArgType = "number" | "number-array";
 export type CalculiEntry = {
@@ -97,7 +97,7 @@ export const is = {
   string: (v: any): v is string => typeof v === "number",
   bool: (v: any): v is boolean => typeof v === "boolean",
   integer: (v: any) => {
-    if (typeof v === "number") return (v%1===0);
+    if (typeof v === "number") return (v % 1 === 0);
     return Number.parseInt(v);
   },
 };

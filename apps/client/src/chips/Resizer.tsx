@@ -2,7 +2,9 @@ import { LexicalEditor } from "lexical";
 import { nanoid } from "nanoid";
 import { PointerEvent, useRef } from "react";
 import { concat } from "src/util";
-import styles from "../ui/styles/Editor.module.scss";
+// import styles from "../ui/styles/Editor.module.scss";
+import docstyle from '../ui/styles/Editor.module.scss';
+import {Conditioned} from "./Inputs";
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
@@ -143,7 +145,7 @@ export function Resizer({
     pos.direction = direction;
     setStartCursor(direction);
     onResizeStart();
-    controlWrapper.classList.add(styles.wrapperResizing);
+    controlWrapper.classList.add(docstyle.image_control_wrapper_resizing);
     image.style.height = `${height}px`;
     image.style.width = `${width}px`;
     document.addEventListener("pointermove", handlePointerMove as any);
@@ -201,39 +203,36 @@ export function Resizer({
     pos.currentWidth = 0;
     pos.currentHeight = 0;
     pos.isResizing = false;
-    controlWrapper.classList.remove(styles.wrapperResizing);
+    controlWrapper.classList.remove(docstyle.image_control_wrapper_resizing);
     setEndCursor();
     onResizeEnd(width, height);
     document.removeEventListener("pointermove", handlePointerMove as any);
     document.removeEventListener("pointerup", handlePointerUp);
   };
 
-  const C = (subclass: string) => concat(styles.resizer, subclass);
+  const C = (subclass: string) => concat(docstyle.resizer, subclass);
   const recap = () => setShowCaption(!showCaption);
   const move = (dir: number) => (event: PointerEvent<HTMLDivElement>) =>
     handlePointerDown(event, dir);
   const handleSpec = [
-    { css: C(styles.n), action: move(To.north) },
-    { css: C(styles.ne), action: move(To.north | To.east) },
-    { css: C(styles.e), action: move(To.east) },
-    { css: C(styles.se), action: move(To.south | To.east) },
-    { css: C(styles.s), action: move(To.south) },
-    { css: C(styles.sw), action: move(To.south | To.west) },
-    { css: C(styles.w), action: move(To.west) },
-    { css: C(styles.nw), action: move(To.north | To.west) },
+    { css: C(docstyle.n), action: move(To.north) },
+    { css: C(docstyle.ne), action: move(To.north | To.east) },
+    { css: C(docstyle.e), action: move(To.east) },
+    { css: C(docstyle.se), action: move(To.south | To.east) },
+    { css: C(docstyle.s), action: move(To.south) },
+    { css: C(docstyle.sw), action: move(To.south | To.west) },
+    { css: C(docstyle.w), action: move(To.west) },
+    { css: C(docstyle.nw), action: move(To.north | To.west) },
   ];
   const shouldShowButton = !showCaption && captionsEnabled;
   return (
     <div ref={controlWrapperRef}>
-      {shouldShowButton && (
-        <button
-          className={styles.imageCaptionButton}
-          ref={buttonRef}
-          onClick={recap}
-        >
+      <Conditioned on={shouldShowButton}>
+        <button className={docstyle.image_caption_button} ref={buttonRef} onClick={recap}>
           Add Caption
         </button>
-      )}
+      </Conditioned>
+      k
       {handleSpec.map((spec, i) => (
         <div
           className={spec.css}

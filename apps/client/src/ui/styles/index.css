@@ -1,28 +1,22 @@
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-}
-
-.canvas {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-}
-
 * {
-  box-sizing: border-box;
+	box-sizing: border-box;
 }
+
+html {
+	overflow: hidden;
+}
+
 body {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
+	margin: 0;
+	padding: 0;
+	overflow: overlay;
 }
+
 .katex {
-  font-size: 1em;
+	font-size: inherit;
 }
 
-
-
-
-
+input,
+button {
+	cursor: pointer !important;
+}

@@ -1,4 +1,4 @@
-import table from "../ui/styles/Table.module.scss";
+import app from "../ui/styles/App.module.scss";
 import {
   Dispatch,
   ReactNode,
@@ -37,7 +37,7 @@ function FieldEdit<T extends Struct>({ keyOfT, value, onChange }: tField<T>) {
     <input
       type={"text"}
       onChange={handleEdit}
-      className={table.cellInput}
+      className={app.grid_cell_input}
       value={val}
       name={String(keyOfT)}
     />
@@ -49,17 +49,17 @@ interface iBtn {
 }
 function Close({ click }: iBtn) {
   return (
-    <button className={table.delete} onClick={click}>
+    <button className={app.grid_delete} onClick={click}>
       &times;
     </button>
   );
 }
 
 function Save({ click }: iBtn) {
-  return <button className={table.save} onClick={click}>Save</button>;
+  return <button className={app.grid_save} onClick={click}>Save</button>;
 }
 function Cancel({ click }: iBtn) {
-  return <button className={table.abort} onClick={click}>Cancel</button>;
+  return <button className={app.grid_cancel} onClick={click}>Cancel</button>;
 }
 
 type Struct = { [key: string]: string };
@@ -72,16 +72,30 @@ interface TbProps<T extends Struct> {
   cell?: (v: string, k: keyof T) => ReactNode;
   schema?: {
     [k in keyof T]: {
-      label: string;
+      label: string | ReactNode;
+      placeholder?: string;
       sort?: boolean;
     };
   };
   extraControls?: ReactNode[];
+  headerClassName?: string;
+  headingClassName?: string;
+  cellClassName?: string;
 }
 type Order = "ascending" | "descending";
 
 export function Table<T extends Struct>(
-  { data, onUpdate, uid, schema, keys, cell, extraControls = [] }: TbProps<T>,
+  {
+    data,
+    onUpdate,
+    uid,
+    schema,
+    keys,
+    cell,
+    headerClassName = "",
+    cellClassName = "",
+    headingClassName = "",
+  }: TbProps<T>,
 ) {
   const blank = createObj(keys);
   const headings = schema ? Object.values(schema).map((v) => v.label) : keys;
@@ -174,21 +188,30 @@ export function Table<T extends Struct>(
   };
 
   return (
-    <div className={table.table}>
-      <article className={concat(table.header, table.row)}>
+    <div className={app.grid_table}>
+      <article
+        className={concat(headerClassName, app.grid_header, app.grid_row)}
+      >
         {headings.map((header, h) => (
           <div
-            className={concat(table.cell, table.heading)}
-            key={concat(String(header), uid)}
+            className={concat(
+              headingClassName,
+              app.grid_heading,
+              app.grid_cell,
+            )}
+            key={concat("header", uid, h)}
             onClick={() =>
               schema && schema[keys[h]].sort && updateSort(keys[h])}
           >
             <div>
-              {String(header)}
+              {typeof header === "symbol" ? String(header) : header}
               <span>
                 {Render(
                   <button
-                    className={toggle(table.descendIcon, table.ascendIcon).on(
+                    className={toggle(
+                      app.grid_descend_icon,
+                      app.grid_ascend_icon,
+                    ).on(
                       keys[h] === sortKey && sortOrder === "descending",
                     )}
                   >
@@ -199,20 +222,23 @@ export function Table<T extends Struct>(
             </div>
           </div>
         ))}
-        <div className={concat(table.cell, table.heading, table.hide)}>
+        <div className={concat(app.grid_cell, app.grid_heading, app.grid_hide)}>
           {"Control"}
         </div>
       </article>
-      <article className={table.body}>
+      <article className={app.grid_body}>
         {sortedData().map((item: T, i) => (
           <div
             key={concat("row", i)}
-            className={toggle(table.editRow, table.row).on(
+            className={toggle(app.grid_edit_row, app.grid_row).on(
               i === editIndex,
             )}
           >
             {keyOf(item).map((p, j) => (
-              <div key={concat(i, "cell", uid, j)} className={table.cell}>
+              <div
+                key={concat(i, "cell", uid, j)}
+                className={concat(cellClassName, app.grid_cell)}
+              >
                 {Iff(i === editIndex).Then(
                   <FieldEdit
                     keyOfT={p}
@@ -221,15 +247,14 @@ export function Table<T extends Struct>(
                   />,
                 ).Else(
                   <div
-                    onClick={() =>
-                      focus(i)}
+                    onClick={() => focus(i)}
                   >
                     {cell ? cell(item[p], p) : item[p]}
                   </div>,
                 )}
               </div>
             ))}
-            <div className={table.cell}>
+            <div className={app.grid_cell}>
               {Render(
                 <Close click={() => deleteEntry(i)} />,
               ).OnlyIf(notEditing || i !== editIndex)}
@@ -243,21 +268,22 @@ export function Table<T extends Struct>(
           </div>
         ))}
       </article>
-      <article className={concat(table.footer, table.row)}>
+      <article className={concat(app.grid_footer, app.grid_row)}>
         {keys.map((h, i) => (
-          <div key={concat(uid, String(h), i)} className={table.cell}>
+          <div key={concat("foot", uid, i)} className={app.grid_cell}>
             <input
               value={newEntry[keys[i]]}
               type={"text"}
               onChange={setEntryField}
               name={String(keys[i])}
-              placeholder={String(headings[i])}
+              placeholder={schema ? schema[keys[i]].placeholder : ""}
+              className={app.grid_cell_input}
             />
           </div>
         ))}
-        <div className={concat(table.cell, table.push)}>
+        <div className={concat(app.grid_cell, app.grid_push)}>
           <button
-            className={table.push}
+            className={app.grid_add}
             disabled={!notEditing}
             onClick={addEntry}
             key={concat("add", uid)}

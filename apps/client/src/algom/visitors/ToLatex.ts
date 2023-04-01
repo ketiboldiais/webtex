@@ -1,29 +1,25 @@
+import { Root } from "../ast/RootNode.js";
 import { Visitor } from "../ast/astnode.js";
-import {
-  ASTNode,
-  AssignmentNode,
-  BinaryExprNode,
-  BlockNode,
-  BoolNode,
-  CallNode,
-  IfElseNode,
-  ErrorNode,
-  FunctionNode,
-  GroupNode,
-  Integer,
-  MatrixNode,
-  NullNode,
-  Rational,
-  Real,
-  Root,
-  StringNode,
-  SymbolNode,
-  TupleNode,
-  UnaryExprNode,
-  VarDeclareNode,
-  VectorNode,
-  WhileNode,
-} from "../ast/index.js";
+import { ASTNode } from "../ast/base.js";
+import { BinaryExprNode } from "../ast/BinaryExprNode.js";
+import { BlockNode } from "../ast/BlockNode.js";
+import { BoolNode } from "../ast/BoolNode.js";
+import { CallNode } from "../ast/CallNode.js";
+import { IfElseNode } from "../ast/CondNode.js";
+import { ErrorNode } from "../ast/ErrNode.js";
+import { FunctionNode } from "../ast/FunctionNode.js";
+import { GroupNode } from "../ast/GroupNode.js";
+import { MatrixNode } from "../ast/MatrixNode.js";
+import { NullNode } from "../ast/NullNode.js";
+import { Integer, Rational, Real } from "../ast/Numerics.js";
+import { StringNode } from "../ast/StringNode.js";
+import { SymbolNode } from "../ast/SymbolNode.js";
+import { TupleNode } from "../ast/TupleNode.js";
+import { UnaryExprNode } from "../ast/UnaryExprNode.js";
+import { AssignmentNode } from "../ast/VarAssignNode.js";
+import { VarDeclareNode } from "../ast/VarDeclareNode.js";
+import { VectorNode } from "../ast/VectorNode.js";
+import { WhileNode } from "../ast/WhileNode.js";
 
 export class ToLatex implements Visitor<string> {
   frac(node: Rational): string {

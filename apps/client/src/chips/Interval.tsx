@@ -1,6 +1,6 @@
-import intervalStyles from '../ui/styles/Interval.module.scss';
 import { ReactNode, useState } from "react";
-import { Counter } from "./Counter";
+import { NumberInput } from "./Inputs";
+import app from '../ui/styles/App.module.scss';
 
 interface IntervalProps {
   label: string | ReactNode;
@@ -20,57 +20,32 @@ export function Interval(
 ) {
   const [interval, updateInterval] = useState(value);
 
-  const minDecrement = () => {
-    const [min, max] = interval;
-    onChange([min - 1, max]);
-    updateInterval([min - 1, max]);
-    return min - 1;
-  };
-
-  const minIncrement = () => {
-    const [min, max] = interval;
-    if (min < max - 1) {
-      onChange([min + 1, max]);
-      updateInterval([min + 1, max]);
-      return min + 1;
+  const updateMin = (newMin: number) => {
+    if (newMin < interval[1]) {
+      onChange([newMin, interval[1]]);
+      updateInterval([newMin, interval[1]]);
     }
-    return min;
   };
-
-  const maxIncrement = () => {
-    const [min, max] = interval;
-    onChange([min, max + 1]);
-    updateInterval([min, max + 1]);
-    return max + 1;
-  };
-
-  const maxDecrement = () => {
-    const [min, max] = interval;
-    if (max > min + 1) {
-      onChange([min, max - 1]);
-      updateInterval([min, max - 1]);
-      return max - 1;
+  const updateMax = (newMax: number) => {
+    if (newMax > interval[0]) {
+      onChange([interval[0], newMax]);
+      updateInterval([interval[0], newMax]);
     }
-    return max;
   };
 
   return (
-    <div className={intervalStyles.component}>
-      <div className={intervalStyles.body}>
-        <label className={intervalStyles.label}>{label}</label>
-        <section className={intervalStyles.counters}>
-          <Counter
-            onDecrement={minDecrement}
-            onIncrement={minIncrement}
-            initialValue={value[0]}
-            label={minLabel}
-          />
-          <Counter
-            onDecrement={maxDecrement}
-            onIncrement={maxIncrement}
-            initialValue={value[1]}
-            label={maxLabel}
-          />
+    <div className={app.interval_chip}>
+      <div className={app.interval_body}>
+        <label className={app.interval_label}>{label}</label>
+        <section className={app.interval_counters}>
+          <div className={app.interval_row}>
+            <NumberInput value={interval[0]} onChange={updateMin} />
+            {minLabel && <label className={app.interval_input_label}>{minLabel}</label>}
+          </div>
+          <div className={app.interval_row}>
+            <NumberInput value={interval[1]} onChange={updateMax} />
+            {maxLabel && <label className={app.interval_input_label}>{maxLabel}</label>}
+          </div>
         </section>
       </div>
     </div>

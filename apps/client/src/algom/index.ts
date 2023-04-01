@@ -1,10 +1,10 @@
 import { parametric, polar, xy, y } from "./structs/mathfn.js";
-import { ASTNode } from "./ast/index.js";
 import { Compile, Runtimeval } from "./visitors/compiler.js";
 import { Fn } from "./fn.js";
 import { Parser } from "./parser.js";
 import { Interpreter } from "./visitors/interpreter.js";
 import { ToLatex } from "./visitors/ToLatex.js";
+import { ASTNode } from "./ast/base.js";
 
 export namespace algom {
   export const getData = {
