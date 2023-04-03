@@ -19,10 +19,10 @@ interface props {
 export function Dropdown({
   title,
   children,
-  selfClose,
+  selfClose = true,
   open = false,
   className = "",
-  buttonClass = app.defaultButton,
+  buttonClass = app.default_button,
   topOffset = 25,
   leftOffset = 20,
   containerClass="",
@@ -50,7 +50,7 @@ export function Dropdown({
     if (!dropdown_is_open) return;
     const handle = (event: MouseEvent) => {
       const target = event.target;
-      if (selfClose && dropdownRef.current?.contains(target as Node)) return;
+      if (!selfClose && dropdownRef.current?.contains(target as Node)) return;
       if (!button.contains(target as Node)) open_dropdown(false);
     };
     document.addEventListener("click", handle);

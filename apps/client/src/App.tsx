@@ -1,5 +1,5 @@
 import "katex/dist/katex.css";
-import { ChangeEvent } from "react";
+import { ChangeEvent, CSSProperties } from "react";
 import app from "./ui/styles/App.module.scss";
 import { ChangeEventHandler, MouseEventHandler, ReactNode } from "react";
 import { Provider } from "react-redux";
@@ -25,8 +25,7 @@ export function App() {
 
 function Canvas() {
   return (
-    <div className={app.canvas}>
-      {/* <Sheet rows={makeRows(5, 5)} devmode /> */}
+    <div id={app.canvas}>
       <ColorPicker />
     </div>
   );
@@ -38,13 +37,23 @@ export interface ButtonProps {
   className?: string;
   icon?: string | JSX.Element;
   btnTitle?: string;
+  style?: CSSProperties;
 }
 
-export function Button(
-  { click, label, className = app.defaultButton, btnTitle }: ButtonProps,
-) {
+export function Button({
+  click,
+  label,
+  className = app.default_button,
+  btnTitle,
+  style,
+}: ButtonProps) {
   return (
-    <button title={btnTitle} onClick={click} className={className}>
+    <button
+      style={style}
+      title={btnTitle}
+      onClick={click}
+      className={className}
+    >
       {label}
     </button>
   );

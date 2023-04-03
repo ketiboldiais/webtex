@@ -78,6 +78,7 @@ import { ParametricPlotPrompt } from "./PlotParametric/parametric.prompt";
 import { SheetPrompt } from "./Sheet/sheet.prompt";
 import { schema } from "./EditorConfig";
 import { range } from "src/algom";
+import { ColorPicker } from "./colorpicker.chip";
 
 /* ------------------------ Substate: Toolbar Context ----------------------- */
 type FontVariant = "normal" | "small-caps";
@@ -92,7 +93,6 @@ interface ToolbarCtx {
   isSubscript: boolean;
   isSuperscript: boolean;
   smallcaps: FontVariant;
-  isCode: boolean;
   insertLink: () => void;
   fontFamily: string;
   fontSize: string;
@@ -164,7 +164,6 @@ export function ToolbarPlugin({
   const [isCrossed, setIsCrossed] = useState(false);
   const [isSubscript, setIsSubscript] = useState(false);
   const [isSuperscript, setIsSuperscript] = useState(false);
-  const [isCode, setIsCode] = useState(false);
 
   const [bgColor, setBgColor] = useState(defaultBgColor);
   const [fontColor, setFontColor] = useState(defaultFontColor);
@@ -196,7 +195,6 @@ export function ToolbarPlugin({
       setIsCrossed(selection.hasFormat("strikethrough"));
       setIsSubscript(selection.hasFormat("subscript"));
       setIsSuperscript(selection.hasFormat("superscript"));
-      setIsCode(selection.hasFormat("code"));
 
       /** Handle link selection type */
       const node = getSelectedNode(selection);
@@ -298,7 +296,6 @@ export function ToolbarPlugin({
     isBold,
     isItalic,
     isUnderline,
-    isCode,
     isLink,
     smallcaps,
     enstyle,
@@ -319,11 +316,52 @@ export function ToolbarPlugin({
       <div className={concat(app.editor, app.toolbar)}>
         <CoreFormat />
         <FontSizer />
+        <FontColor />
         <FontFamilyFormat />
         <BlockTypeDropdown />
         <FigureDropdown />
       </div>
     </ToolbarContext.Provider>
+  );
+}
+
+type pSlotLabel = {
+  children: JSX.Element[];
+};
+
+function SlotLabel({ children }: pSlotLabel) {
+  return (
+    <div className={app.slot_label}>
+      <label className={app.slot_left}>{children[0]}</label>
+      {children[1]}
+    </div>
+  );
+}
+
+function FontColor() {
+  const { fontColor, enstyle } = useContext(ToolbarContext);
+
+  const setColor = useCallback(
+    (color: string) => enstyle({ color }),
+    [enstyle],
+  );
+
+  return (
+    <Dropdown
+      selfClose={false}
+      className={app.fontcolor_dropdown}
+      title={
+        <SlotLabel>
+          <label>Color</label>
+          <div
+            className={app.fontcolor_dropdown_preview}
+            style={{ backgroundColor: fontColor }}
+          />
+        </SlotLabel>
+      }
+    >
+      <ColorPicker onChange={setColor} />
+    </Dropdown>
   );
 }
 
@@ -345,12 +383,12 @@ function FontSizer() {
     <Dropdown
       className={app.fontsize_dropdown}
       title={
-        <div className={app.fontsize_box}>
+        <SlotLabel>
           <label>Font Size</label>
-          <div className={app.fontsize_value}>
+          <div>
             {fontSizes[fontSize].slice(0, 2)}
           </div>
-        </div>
+        </SlotLabel>
       }
     >
       {Object.entries(fontSizes).map(([k, v]) => (
@@ -371,7 +409,14 @@ function FontFamilyFormat() {
   return (
     <Dropdown
       className={app.fontfam_dropdown}
-      title={schema.fontFamilies[fontFamily]}
+      title={
+        <SlotLabel>
+          <span>{"Font family"}</span>
+          <span style={{ fontFamily }}>
+            {schema.fontFamilies[fontFamily]}
+          </span>
+        </SlotLabel>
+      }
     >
       {Object.entries(schema.fontFamilies).map(([k]) => (
         <Option

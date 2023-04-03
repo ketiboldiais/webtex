@@ -92,11 +92,11 @@ $line3: solid thin $bray0;
 }
 
 @mixin Scrollbar {
-	scrollbar-color: $bray0 transparent;
+	scrollbar-color: $bray2 transparent;
 	scrollbar-width: thin;
 
 	&::-webkit-scrollbar {
-		width: 2px;
+		width: 3px;
 		border: none;
 		background-color: transparent;
 	}
@@ -107,7 +107,7 @@ $line3: solid thin $bray0;
 	}
 
 	&::-webkit-scrollbar-thumb {
-		background-color: $bray0;
+		background-color: $bray2;
 		border-radius: 1px;
 	}
 }

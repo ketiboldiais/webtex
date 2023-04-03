@@ -1,16 +1,26 @@
 @import './base';
 
+:root {
+	--page: #{$pageColor};
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--page: #{$pageColor};
+	}
+}
 
 .App {
 	font-family: $mainFont;
 	display: grid;
 	grid-template-rows: 1fr 50fr;
 	@include Scrollbar;
-	font-family: $mainFont;
+	background-color: var(--page);
 
 	input {
 		background-color: inherit;
 	}
+
 }
 
 
@@ -19,6 +29,7 @@
 	position: fixed;
 	width: 98vw;
 	height: 98vh;
+	background-color: var(--page);
 }
 
 .atom_row {
@@ -102,7 +113,7 @@
 }
 
 .note {
-	background-color: $pageColor;
+	background-color: var(--page);
 	padding: $padtiny $pad6;
 	padding-left: $pad2;
 	margin: 0;
@@ -140,6 +151,7 @@
 .editor.toolbar {
 	display: flex;
 	justify-content: flex-start;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: $margin1;
 	margin-left: $margin2;
@@ -147,6 +159,7 @@
 	padding-bottom: 2px;
 	overflow-x: scroll;
 	@include Scrollbar;
+
 	&::-webkit-scrollbar {
 		height: 2px;
 	}
@@ -201,21 +214,17 @@
 	outline: none;
 }
 
-button.defaultButton {
+button.default_button {
 	border: $line3;
-	border-radius: 2px;
 	color: $bray3;
-	font-size: $xsmall;
-	background-color: $pageColor;
-	overflow: hidden;
-	min-width: 25px;
-	padding: 0 $pad1;
+	background-color: var(--page);
 }
 
 .fontsize_box {
 	display: grid;
 	grid-template-columns: 8fr 2fr;
 	gap: 2px;
+
 	label {
 		font-size: 0.65rem;
 		line-height: 1.6;
@@ -224,6 +233,7 @@ button.defaultButton {
 		padding-right: 2px;
 		border-right: solid thin $bray0;
 	}
+
 	.fontsize_value {
 		margin-left: 3px;
 	}
@@ -234,6 +244,7 @@ button.defaultButton {
 	overflow-x: scroll;
 	@include Scrollbar;
 }
+
 .fontsize_dropdown {
 	max-height: 20vh;
 	min-width: 90px;
@@ -277,6 +288,7 @@ button.defaultButton {
 		margin-top: 0;
 		width: 98vw;
 		height: 98vh;
+		background-color: var(--page);
 	}
 
 	.sidebar {
@@ -351,7 +363,7 @@ button.defaultButton {
 	position: relative;
 	border-color: transparent;
 	border-radius: 5px;
-	background-color: $pageColor;
+	background-color: var(--page);
 	max-height: 99vh;
 }
 
@@ -395,14 +407,14 @@ button.defaultButton {
 	margin-top: $margin3;
 }
 
-.modal_save{
+.modal_save {
 	@include BlueButton;
 
-		position: absolute;
-		right: 0;
-		bottom: 0;
-		margin-right: $margin4;
-		margin-bottom: $margin4;
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	margin-right: $margin4;
+	margin-bottom: $margin4;
 }
 
 // § Dropdown
@@ -416,7 +428,7 @@ button.defaultButton {
 	min-height: 40px;
 	margin-top: $margin2;
 	color: inherit;
-	background-color: $pageColor;
+	background-color: var(--page);
 }
 
 
@@ -434,6 +446,7 @@ button.defaultButton {
 	border-radius: 0;
 	border: 0;
 	width: 98%;
+	color: $bray3;
 
 	button {
 		border: none;
@@ -500,10 +513,14 @@ button.defaultButton {
 	color: $bray2;
 }
 
-div.canvas {
-	background-color: $pageColor;
+#canvas {
+	background-color: var(--page);
 	width: 100%;
 	height: 100vh;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-direction: column;
 }
 
 // § Grid
@@ -624,7 +641,7 @@ button.grid_cancel {
 }
 
 .advanced {
-	background-color: $pageColor;
+	background-color: var(--page);
 	width: fit-content;
 	@include Card;
 	padding: $pad2;
@@ -678,9 +695,7 @@ button.grid_cancel {
 }
 
 .parametric_footer,
-.plot3d_footer {
-	
-}
+.plot3d_footer {}
 
 
 
@@ -1023,14 +1038,6 @@ textarea.katex_input_text_area {
 	border: $line3;
 }
 
-// .sheet_prompt .modal_save {
-	// position: absolute;
-	// bottom: 0;
-	// right: 0;
-	// margin-right: $margin2;
-	// margin-bottom: $margin1;
-// }
-
 button.write_button {
 	border: none;
 }
@@ -1064,7 +1071,7 @@ button.write_button {
 }
 
 .draw_button {
-	background-color: $pageColor;
+	background-color: var(--page);
 	border: 0;
 }
 
@@ -1084,4 +1091,270 @@ button.write_button {
 	color: $bray3;
 }
 
+.color_picker {
+	padding: 0.8rem;
+	display: block;
+	margin: 0 auto;
+}
 
+.color_picker_shell {
+	padding: 0;
+	font-family: $mainFont;
+	font-size: $xxsmall;
+}
+
+.hex_input {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	color: $bray1;
+	margin-bottom: $margin3;
+}
+
+.color_picker_text_input {
+	border: 0;
+	border-bottom: $line2;
+	color: $bray1;
+	margin-left: $margin2;
+	width: 70px;
+	text-align: center;
+	font-family: $monospace;
+	background-color: inherit;
+}
+
+.starter_palette {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin: 0;
+	padding: 0;
+}
+
+.starter_palette .default_button {
+	border: 0;
+	border-radius: 3px;
+	height: 12px;
+	width: 12px;
+	box-shadow: $box-shadow;
+}
+
+.color_picker {
+	background-color: rgb(248, 248, 248);
+}
+
+
+
+.color_picker_saturation {
+	width: 100%;
+	position: relative;
+	margin-top: 15px;
+	height: 150px;
+	background-image: linear-gradient(transparent, black),
+		linear-gradient(to right, white, transparent);
+	user-select: none;
+	@include Card;
+}
+
+.saturation_cursor {
+	position: absolute;
+	width: 20px;
+	height: 20px;
+	border: 2px solid #ffffff;
+	border-radius: 50%;
+	box-shadow: 0 0 15px #00000026;
+	box-sizing: border-box;
+	transform: translate(-10px, -10px);
+	cursor: grab;
+}
+
+.hue_cursor {
+	position: absolute;
+	width: 15px;
+	height: 15px;
+	border: 2px solid #ffffff;
+	border-radius: 50%;
+	box-shadow: #0003 0 0 0 0.5px;
+	box-sizing: border-box;
+	transform: translate(-10px, -2px);
+	cursor: grab;
+}
+
+.color_picker_hue {
+	width: 100%;
+	position: relative;
+	margin-top: 15px;
+	height: 12px;
+	background-image: linear-gradient(to right,
+			rgb(255, 0, 0),
+			rgb(255, 255, 0),
+			rgb(0, 255, 0),
+			rgb(0, 255, 255),
+			rgb(0, 0, 255),
+			rgb(255, 0, 255),
+			rgb(255, 0, 0));
+	user-select: none;
+	border-radius: 12px;
+}
+
+.color_picker_color {
+	border: 1px solid #ccc;
+	margin-top: 15px;
+	width: 100%;
+	height: 20px;
+}
+
+.editor.toolbar .default_button:hover {
+	background-color: $gray0;
+}
+
+.slot_label {
+	display: flex;
+	justify-content: flex-start;
+	align-items: center;
+	gap: $pad1;
+
+	.slot_left {
+		border-right: $line3;
+		padding-right: 5px;
+		font-size: $xxsmall;
+		line-height: 1.5;
+		color: $bray1;
+	}
+
+	* {
+		cursor: pointer;
+	}
+}
+
+.fontcolor_dropdown_preview {
+	height: 16px;
+	width: 16px;
+	border-radius: 3px;
+	margin-left: 2px;
+}
+
+.trashed_notes_list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-evenly;
+	align-items: center;
+	gap: $margin1;
+	margin-bottom: $margin8;
+}
+
+.trashed_note {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}
+
+.trashed_note_doc {
+	background-color: white;
+	@include Card;
+	width: 80px;
+	height: 100px;
+	padding: $pad1;
+	font-family: $mainFont;
+	font-size: $xxsmall;
+	text-align: center;
+	color: $bray2;
+	display: grid;
+	grid-template-rows: 9fr 1fr;
+	cursor: pointer;
+}
+
+
+
+.trashed_note_date {
+	font-size: $xxsmall;
+	font-family: $mainFont;
+	margin-top: $margin2;
+	color: $bray0;
+}
+
+.action_footer {
+	position: absolute;
+	margin: $margin2;
+	bottom: 0;
+	right: 0;
+	display: flex;
+	justify-content: space-evenly;
+	align-items: flex-end;
+	gap: $margin1;
+}
+
+.destroy_button {
+	background-color: inherit;
+	border: solid thin tomato;
+	color: tomato;
+	font-size: $xsmall;
+	border-radius: 2px;
+}
+
+.recover_button {
+	background-color: inherit;
+	border: solid thin $blue5;
+	color: $blue5;
+	font-size: $xsmall;
+	border-radius: 2px;
+}
+
+.checkmark {
+	display: inline-block;
+	transform: rotate(45deg);
+	height: 12px;
+	width: 6px;
+	border-bottom: 2px solid white;
+	border-right: 2px solid white;
+}
+
+.trashed_note_title {
+	width: 100%;
+	display: block;
+}
+
+.trashed_note_doc .trash_note_checkmark {
+	display: block;
+	margin: 0 auto;
+	background-color: $blue5;
+	padding: $pad1;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+}
+
+button.destroy_button:not(:disabled):hover {
+	background-color: tomato;
+	color: white;
+	transition: all 0.2s ease-in;
+}
+button.recover_button:not(:disabled):hover {
+	background-color: $blue4;
+	color: white;
+	transition: all 0.2s ease-in;
+}
+
+button.recover_button:disabled,
+button.recover_button[disabled],
+button.destroy_button:disabled,
+button.destroy_button[disabled] {
+	border: solid thin $gray1;
+	color: $gray1;
+	cursor:not-allowed !important;
+}
+
+.comment_box {
+	font-family: $mainFont;
+	color: rgb(174, 188, 190);
+	font-size: 0.7rem;
+	margin-bottom: $margin6;
+	p {
+		padding: 0;
+		margin: 0;
+		font-style: italic;
+	}
+}

@@ -1,21 +1,26 @@
 import app from "../ui/styles/App.module.scss";
 import { useEditor } from "@hooks/useEditor";
 import { nanoid } from "nanoid";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BtnEvt, LiEvt } from "src/App";
 import { Button } from "src/App";
 import {
   addNote,
   deleteNote,
+  destroyNote,
   getActiveNote,
   getNotes,
+  getTrashedNotes,
   makeNote,
   Note,
   setActiveNote,
+  untrashNote,
   useAppDispatch,
 } from "src/state/state";
 import { concat, EMPTY_NOTE, toggle } from "src/util";
-import { WriteIcon } from "./Icon";
+import { Checkmark, TrashIcon, WriteIcon } from "./Icon";
+import { useModal } from "@hooks/useModal";
+import { Conditioned } from "./Inputs";
 
 export function SideBar() {
   const dispatch = useAppDispatch();
@@ -49,17 +54,27 @@ export function SideBar() {
       }
     }
   }
+
+  const [modal, showModal] = useModal();
+
   return (
     <div className={app.sidebar}>
       <div className={app.notes_control}>
         <Button
-          btnTitle="Add new note"
+          btnTitle={"Add new note"}
           label={<WriteIcon />}
           click={createNote}
-          className={concat(app.defaultButton, app.write_button)}
+          className={concat(app.default_button, app.write_button)}
         />
         <Button
-          className={concat(app.defaultButton, app.formatBox, app.notesButton)}
+          btnTitle={"Recently deleted"}
+          label={<TrashIcon />}
+          click={() =>
+            showModal((close) => <TrashedNotesList onClose={close} />)}
+          className={concat(app.default_button, app.write_button)}
+        />
+        <Button
+          className={concat(app.default_button, app.formatBox, app.notesButton)}
           label={"Notes"}
           click={() => setShowNotes(!showNotes)}
         />
@@ -69,7 +84,116 @@ export function SideBar() {
           <NoteItem key={note.id} note={note} onDelete={destroyNote} />
         ))}
       </ul>
+      {modal}
     </div>
+  );
+}
+
+type pTrashNotesList = {
+  onClose: () => void;
+};
+
+function TrashedNotesList({ onClose }: pTrashNotesList) {
+  const dispatch = useAppDispatch();
+  let notes = getTrashedNotes();
+  const [notelist, setNotelist] = useState<Note[]>([]);
+  const { activeEditor } = useEditor();
+
+  const addToNoteList = (note: Note) => {
+    setNotelist((notes) => [...notes, note]);
+  };
+
+  const removeFromNoteList = (note: Note) => {
+    setNotelist((notes) => notes.filter((n) => n.id !== note.id));
+  };
+
+  const recoverNotes = () => {
+    notelist.forEach((n) => {
+      dispatch(addNote(n));
+      dispatch(untrashNote(n));
+    });
+    const newstate = activeEditor.parseEditorState(
+      notelist[notelist.length - 1].content,
+    );
+    activeEditor.setEditorState(newstate);
+    onClose();
+  };
+
+  const destroyNotes = () => {
+    notelist.forEach((n) => dispatch(destroyNote(n)));
+    onClose();
+  };
+
+  return (
+    <div>
+      {notes.length > 0 && (
+        <div className={app.comment_box}>
+          <p>Destroyed notes cannot be recovered.</p>
+        </div>
+      )}
+      <ul className={app.trashed_notes_list}>
+        {notes.map((note) => (
+          <TrashedNote
+            key={note.id}
+            note={note}
+            onAdd={addToNoteList}
+            onRemove={removeFromNoteList}
+          />
+        ))}
+      </ul>
+      <div className={app.action_footer}>
+        <button
+          disabled={notelist.length === 0}
+          className={app.recover_button}
+          onClick={recoverNotes}
+        >
+          Recover
+        </button>
+        <button
+          disabled={notelist.length === 0}
+          className={app.destroy_button}
+          onClick={destroyNotes}
+        >
+          Destroy
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type pTrashedNote = {
+  note: Note;
+  onAdd: (n: Note) => void;
+  onRemove: (n: Note) => void;
+};
+function TrashedNote({
+  note,
+  onAdd,
+  onRemove,
+}: pTrashedNote) {
+  const [checked, setChecked] = useState(false);
+  return (
+    <li className={app.trashed_note}>
+      <div
+        className={app.trashed_note_doc}
+        onClick={() => {
+          setChecked(!checked);
+          (!checked ? onAdd : onRemove)(note);
+        }}
+      >
+        <div className={app.trashed_note_title}>
+          {note.title}
+        </div>
+        <Conditioned on={checked}>
+          <div className={app.trash_note_checkmark}>
+            <Checkmark />
+          </div>
+        </Conditioned>
+      </div>
+      <div className={app.trashed_note_date}>
+        {note.date.slice(0, -10)}
+      </div>
+    </li>
   );
 }
 

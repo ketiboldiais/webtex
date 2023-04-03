@@ -1,27 +1,145 @@
-import { ReactNode, useState } from "react";
+import app from "../ui/styles/App.module.scss";
+import { point, PointXY } from "@hooks/useBoxSelect";
+import {
+  CSSProperties,
+  ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { TextInput } from "./Inputs";
+import { schema } from "./EditorConfig";
+import { Button } from "src/App";
+import { clamp } from "src/algom";
 
-const WIDTH = 214;
+const WIDTH = 200;
 const HEIGHT = 150;
 
 type pColorPicker = {
-  disabled?: boolean;
-  children?: ReactNode;
   onChange?: (color: string) => void;
-  autoclose?: boolean;
   color?: string;
 };
 
 export function ColorPicker({
-  disabled = false,
-  children,
   onChange,
-  autoclose,
   color = "#000",
 }: Readonly<pColorPicker>) {
-  const [currentColor, setCurrentColor] = useState(
+  const [selfColor, setSelfColor] = useState(
     colorTransform("hex", color),
   );
-  return <div>color picker</div>;
+  const [inputColor, setInputColor] = useState(color);
+  const innerDivRef = useRef(null);
+  const saturationPosition = useMemo(
+    () => ({
+      x: (selfColor.hsv.s / 100) * WIDTH,
+      y: ((100 - selfColor.hsv.v) / 100) * HEIGHT,
+    }),
+    [selfColor.hsv.s, selfColor.hsv.v],
+  );
+
+  const huePosition = useMemo(() => ({
+    x: (selfColor.hsv.h / 360) * WIDTH,
+  }), [selfColor.hsv]);
+
+  const onSetHex = (hex: string) => {
+    setInputColor(hex);
+    hex = hex.trimStart().trimEnd();
+    hex = (hex.startsWith("#") ? "" : "#") + hex.toUpperCase();
+    if (/^#[0-9A-F]{6}$/) {
+      setSelfColor(colorTransform("hex", hex));
+    }
+  };
+
+  const onMoveSaturation = ({ x, y }: { x: number; y: number }) => {
+    const newHSV = {
+      ...selfColor.hsv,
+      s: (x / WIDTH) * 100,
+      v: 100 - (y / HEIGHT) * 100,
+    };
+    const updatedColor = colorTransform("hsv", newHSV);
+    setSelfColor(updatedColor);
+    setInputColor(updatedColor.hex);
+  };
+
+  const onMoveHue = ({ x }: { x: number }) => {
+    const newHSV = { ...selfColor.hsv, h: (x / WIDTH) * 360 };
+    const updatedColor = colorTransform("hsv", newHSV);
+    setSelfColor(updatedColor);
+    setInputColor(updatedColor.hex);
+  };
+
+  useEffect(() => {
+    if (innerDivRef.current && onChange) {
+      onChange(selfColor.hex);
+      setInputColor(selfColor.hex);
+    }
+  }, [selfColor, onChange]);
+
+  useEffect(() => {
+    if (!color) return;
+    const updatedColor = colorTransform("hex", color);
+    setSelfColor(updatedColor);
+    setInputColor(updatedColor.hex);
+  }, [color]);
+
+  return (
+    <div className={app.color_picker}>
+      <div
+        className={app.color_picker_shell}
+        style={{ width: WIDTH }}
+        ref={innerDivRef}
+      >
+        <div className={app.hex_input}>
+          <span className={app.hex_input_label}>Hex</span>
+          <input
+            value={inputColor}
+            onChange={(e) => setInputColor(e.target.value)}
+            className={app.color_picker_text_input}
+          />
+        </div>
+        <div className={app.starter_palette}>
+          {schema.colors.map((color) => (
+            <Button
+              key={color}
+              style={{ backgroundColor: color }}
+              click={() => {
+                setInputColor(color);
+                setSelfColor(colorTransform("hex", color));
+              }}
+            />
+          ))}
+        </div>
+        <Spectrum
+          className={app.color_picker_saturation}
+          style={{ backgroundColor: `hsl(${selfColor.hsv.h}, 100%, 50%)` }}
+          onChange={onMoveSaturation}
+        >
+          <div
+            className={app.saturation_cursor}
+            style={{
+              backgroundColor: selfColor.hex,
+              left: saturationPosition.x,
+              top: saturationPosition.y,
+            }}
+          />
+        </Spectrum>
+        <Spectrum className={app.color_picker_hue} onChange={onMoveHue}>
+          <div
+            className={app.hue_cursor}
+            style={{
+              backgroundColor: `hsl(${selfColor.hsv.h}, 100%, 50%)`,
+              left: huePosition.x,
+            }}
+          />
+        </Spectrum>
+        <div
+          className={app.color_picker_color}
+          style={{ backgroundColor: selfColor.hex }}
+        />
+      </div>
+    </div>
+  );
 }
 
 /* Helpers ------------------------------------------------------------------ */
@@ -142,4 +260,53 @@ function colorTransform<f extends keyof Color, c extends Color[f]>(
     }
   }
   return newColor(hex, hsv, rgb);
+}
+
+type pSpectrumPlane = {
+  className?: string;
+  style?: CSSProperties;
+  onChange: (position: PointXY) => void;
+  children: JSX.Element;
+};
+
+function Spectrum({
+  className,
+  style,
+  onChange,
+  children,
+}: pSpectrumPlane) {
+  const divRef = useRef<HTMLDivElement>(null);
+
+  const move = (e: React.MouseEvent | MouseEvent) => {
+    if (divRef.current) {
+      const { current: div } = divRef;
+      const { width, height, left, top } = div.getBoundingClientRect();
+      const x = clamp(e.clientX - left, width, 0);
+      const y = clamp(e.clientY - top, height, 0);
+      onChange({ x, y });
+    }
+  };
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    move(e);
+    const onMouseMove = (evt: MouseEvent) => move(evt);
+    const onMouseUp = (evt2: MouseEvent) => {
+      document.removeEventListener("mousemove", onMouseMove, false);
+      document.removeEventListener("mouseup", onMouseUp, false);
+      move(evt2);
+    };
+    document.addEventListener("mousemove", onMouseMove, false);
+    document.addEventListener("mouseup", onMouseUp, false);
+  };
+  return (
+    <div
+      ref={divRef}
+      className={className}
+      style={style}
+      onMouseDown={onMouseDown}
+    >
+      {children}
+    </div>
+  );
 }

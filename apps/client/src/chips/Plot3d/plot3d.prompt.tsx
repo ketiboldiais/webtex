@@ -28,7 +28,6 @@ export function Plot3DPrompt({ activeEditor, onClose }: DialogProps) {
   const [xDomain, setXDomain] = useState<Pair<number>>([-10, 10]);
   const [yDomain, setYDomain] = useState<Pair<number>>([-10, 10]);
   const [scale, setScale] = useState(0.3);
-  const [showExtra, setShowExtra] = useState(false);
   const save = () => {
     const payload: InsertPlot3DPayload = {
       z_expression: z,

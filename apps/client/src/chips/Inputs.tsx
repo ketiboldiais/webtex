@@ -4,11 +4,13 @@ import { concat, toggle } from "src/util";
 import app from "../ui/styles/App.module.scss";
 
 type TextInputProps = Readonly<{
-  label: string | ReactNode;
+  label?: string | ReactNode;
   onChange: (val: string) => void;
   placeholder?: string;
   className?: string;
   value: string;
+  defaultWidth?:number;
+  grow?:boolean;
 }>;
 
 export function TextInput({
@@ -17,12 +19,14 @@ export function TextInput({
   onChange,
   placeholder = "",
   className = "",
+  defaultWidth = 0,
+  grow=true,
 }: TextInputProps) {
   const [content, setContent] = useState("");
-  const [width, setWidth] = useState(0);
+  const [width, setWidth] = useState(defaultWidth);
   const span = useRef<null | HTMLSpanElement>(null);
   useEffect(() => {
-    if (span.current) {
+    if (span.current && grow) {
       setWidth(span.current.offsetWidth);
     }
   }, [content]);
@@ -33,7 +37,9 @@ export function TextInput({
   };
   return (
     <div className={className ? className : app.text_input_shell}>
-      {typeof label === "string" ? <label>{label}</label> : label}
+      <Conditioned on={label !== undefined}>
+        {typeof label === "string" ? <label>{label}</label> : label}
+      </Conditioned>
       <span className={app.text_input_hidden_span} ref={span}>{content}</span>
       <div className={app.text_input_field}>
         <input
@@ -169,4 +175,3 @@ export function Switch({
     </div>
   );
 }
-

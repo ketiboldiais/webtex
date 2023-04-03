@@ -73,8 +73,7 @@ export function id(noteCount: number) {
 /**
  * We use Redux to manage the global state.
  */
-import { nanoid, PayloadAction } from "@reduxjs/toolkit";
-import { Provider } from "react-redux";
+import { PayloadAction } from "@reduxjs/toolkit";
 
 /* ------------------------ Initial Note Slice State ------------------------ */
 
@@ -85,6 +84,7 @@ interface NoteState {
   notes: Note[];
   activeNote: Note;
   noteCount: number;
+  trash: Note[];
 }
 
 let noteListArray: Note[] = [];
@@ -99,10 +99,19 @@ const initNoteList = await db_getNotes().then((notes) => {
   return init;
 }).catch(() => ({ [WelcomeNote.id]: WelcomeNote }));
 
+let trashListArray: Note[] = [];
+
+await db_getTrashedNotes().then((notes) => {
+  notes.forEach((note) => {
+    trashListArray.push(note);
+  });
+});
+
 const initialState: NoteState = {
   notelist: initNoteList,
   activeNote: noteListArray.length !== 0 ? noteListArray[0] : WelcomeNote,
   notes: [...noteListArray, WelcomeNote],
+  trash: trashListArray,
   noteCount: Object.values(initNoteList).length,
 };
 
@@ -131,6 +140,7 @@ const noteSlice = createSlice({
         } else {
           state.activeNote = BlankNote;
         }
+        state.trash.push(action.payload);
       } else {
         state.activeNote = BlankNote;
       }
@@ -147,6 +157,14 @@ const noteSlice = createSlice({
       state.notes = state.notes.map((n) => n.id === note.id ? note : n);
       state.activeNote = note;
     },
+    destroyNote(state, action: PayloadAction<Note>) {
+      const argnote = action.payload;
+      state.trash = state.trash.filter((note) => note.id !== argnote.id);
+    },
+    untrashNote(state, action: PayloadAction<Note>) {
+      const argnote = action.payload;
+      state.trash = state.trash.filter((note) => note.id !== argnote.id);
+    },
   },
 });
 
@@ -155,6 +173,8 @@ export const {
   addNote,
   setActiveNote,
   deleteNote,
+  untrashNote,
+  destroyNote,
 } = noteSlice.actions;
 
 /* --------------------------- Listener Middleware -------------------------- */
@@ -165,6 +185,14 @@ export const {
  * slice reducer to function.
  */
 import { createListenerMiddleware } from "@reduxjs/toolkit";
+import {
+  db_addNote,
+  db_deleteNote,
+  db_destroyNote,
+  db_getNotes,
+  db_getTrashedNotes,
+  db_saveNote,
+} from "src/db/db";
 
 const noteListenerMiddleware = createListenerMiddleware();
 
@@ -203,6 +231,13 @@ noteListenerMiddleware.startListening({
   },
 });
 
+noteListenerMiddleware.startListening({
+  actionCreator: destroyNote,
+  effect: async (action) => {
+    await db_destroyNote(action.payload);
+  },
+});
+
 /**
  * Pointer to all the listeners.
  * We concatenate the pointee to
@@ -229,13 +264,21 @@ export const store = configureStore({
 /* -------------------------------- Selectors ------------------------------- */
 
 import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
-import { db_addNote, db_deleteNote, db_getNotes, db_saveNote } from "src/db/db";
 import { EMPTY_NOTE, WELCOME_NOTE_CONTENT } from "src/util";
 
 type RootState = ReturnType<typeof store.getState>;
 type AppDispatch = typeof store.dispatch;
 export const useAppDispatch = () => useDispatch<AppDispatch>();
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
-export const getNotes = (): Note[] => useAppSelector((state) => state.notes.notes);
+export const getNotes = (): Note[] =>
+  useAppSelector(
+    (state) => state.notes.notes,
+  );
 export const getActiveNote = (): Note =>
-  useAppSelector((state) => state.notes.activeNote);
+  useAppSelector(
+    (state) => state.notes.activeNote,
+  );
+export const getTrashedNotes = (): Note[] =>
+  useAppSelector(
+    (state) => state.notes.trash,
+  );

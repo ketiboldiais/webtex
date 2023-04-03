@@ -69,9 +69,7 @@ function PortalImpl({
     <div className={app.modal_overlay}>
       <div className={app.modal_main} tabIndex={-1} ref={ref}>
         <div className={app.modal_control_bar}>
-          <button className={app.modal_close_button} onClick={onClose}>
-            &times;
-          </button>
+          <button className={app.modal_close_button} onClick={onClose}/>
         </div>
         <div className={app.modal_content}>
           {children}
@@ -83,7 +81,7 @@ function PortalImpl({
 
 type ModalBoxProps = {
   children: ReactNode;
-  ref: RefObject<HTMLDivElement> | null;
+  ref?: RefObject<HTMLDivElement> | null;
   onClose?: () => void;
 };
 
@@ -92,8 +90,7 @@ export function ModalBox({ children, ref = null, onClose }: ModalBoxProps) {
     <div className={app.modal_overlay}>
       <div className={app.modal_main} tabIndex={-1} ref={ref}>
         <div className={app.modal_control_bar} />
-        <button className={app.modal_close_button} onClick={onClose}>
-        </button>
+        <button className={app.modal_close_button} onClick={onClose}/>
         <div className={app.modal_content}>
           {children}
         </div>
@@ -144,10 +141,7 @@ export function useModal(): ModalReturn {
     }
     const { content, closeOnClickOutside } = modalContent;
     return (
-      <Modal
-        onClose={onClose}
-        closeOnClickOutside={closeOnClickOutside}
-      >
+      <Modal onClose={onClose} closeOnClickOutside={closeOnClickOutside}>
         {content}
       </Modal>
     );

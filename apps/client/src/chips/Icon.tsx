@@ -1,3 +1,4 @@
+import { concat } from "src/util";
 import app from "../ui/styles/App.module.scss";
 
 export function BoldIcon() {
@@ -142,8 +143,18 @@ export function ParametricIcon() {
       className={app.svgIcon}
     >
       <g strokeLinecap="round" strokeLinejoin="round">
-        <path fill="currentColor" stroke="currentColor" strokeWidth="1.6" d="M23 3v41" />
-        <path fill="currentColor" stroke="currentColor" strokeWidth="1.5" d="M0 21h45" />
+        <path
+          fill="currentColor"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          d="M23 3v41"
+        />
+        <path
+          fill="currentColor"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          d="M0 21h45"
+        />
         <path
           fill="none"
           stroke="currentColor"
@@ -256,4 +267,27 @@ export function DrawIcon() {
       />
     </svg>
   );
+}
+
+export function TrashIcon() {
+  return (
+    <svg
+      className={app.svgIcon}
+      width="800"
+      height="800"
+      viewBox="0 0 429.5 429.5"
+    >
+      <g fill="currentColor">
+        <path d="M373 49h-80V8c0-4-3-8-8-8H142c-4 0-8 4-8 8v41H56c-4 0-8 3-8 8v364c0 5 4 8 8 8h317c5 0 8-3 8-8V57c0-5-3-8-8-8zM151 16h126v33H151V16zm214 397H64V101h301v312zm0-329H64V65h301v19z" />
+        <path d="M285 388c5 0 8-4 8-8V136a8 8 0 1 0-16 0v244c0 4 4 8 8 8zm-143 0c5 0 9-4 9-8V136a8 8 0 0 0-17 0v244c0 4 4 8 8 8zm72 0c4 0 8-4 8-8V136a8 8 0 1 0-16 0v244c0 4 3 8 8 8z" />
+      </g>
+    </svg>
+  );
+}
+
+type pCheckmark = {
+  className?: string;
+};
+export function Checkmark({ className = "" }: pCheckmark) {
+  return <div className={concat(app.checkmark, className)} />;
 }
