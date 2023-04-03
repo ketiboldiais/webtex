@@ -1,4 +1,4 @@
-import { CSSProperties, useMemo } from "react";
+import { CSSProperties, ForwardedRef, forwardRef, useMemo } from "react";
 import {
   createContext,
   Dispatch,
@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Button, InputFn } from "src/App.js";
+import { Button, HTML_DIV_REF, InputFn } from "src/App.js";
 import { Rows, Spreadsheet } from "./sheet.aux.js";
 import { Row } from "./sheet.aux.js";
 import styles from "../../ui/styles/Editor.module.scss";
@@ -23,7 +23,7 @@ import {
 import { Cell } from "./sheet.aux.js";
 import { tree } from "src/algom/structs/stringfn.js";
 import { concat, joinRest, strung } from "src/util/index.js";
-import { Conditioned } from "../Inputs.js";
+import { Conditioned, Ternary } from "../Inputs.js";
 
 function css(x: CSSProperties): CSSProperties {
   return (x);
@@ -60,9 +60,11 @@ type CtxProps = {
   devmode: boolean;
 };
 
-export function SheetContextProvider(
-  { children, initialRows, devmode }: CtxProps,
-) {
+export function SheetContextProvider({
+  children,
+  initialRows,
+  devmode,
+}: CtxProps) {
   const sheet = useRef(Spreadsheet.preload(initialRows));
   const [cols, setCols] = useState(sheet.current.__colCount);
   const [rows, setRows] = useState(sheet.current.__rowCount);
@@ -144,8 +146,9 @@ function MAIN() {
   return (
     <>
       <div ref={cref} className={styles.spreadsheet}>
-        <TOOLBAR />
+        {/* <TOOLBAR /> */}
         <BODY />
+        <MENU />
       </div>
       {devmode && <Debugger />}
     </>
@@ -157,11 +160,23 @@ function TOOLBAR() {
   const { addCol, addRow } = useSheet();
   return (
     <div className={styles.table_toolbar}>
-      <Button className={styles.table_button} label={"add column"} click={addCol} />
-      <Button className={styles.table_button} label={"add row"} click={addRow} />
+      <Button
+        className={styles.table_button}
+        label={"add column"}
+        click={addCol}
+      />
+      <Button
+        className={styles.table_button}
+        label={"add row"}
+        click={addRow}
+      />
     </div>
   );
 }
+
+import app from "../../ui/styles/App.module.scss";
+import { createPortal } from "react-dom";
+import { Dropdown, Option } from "../Dropdown.js";
 
 function BODY() {
   const { sheet } = useSheet();
@@ -216,10 +231,41 @@ function CELL({ colIndex, rowIndex, cell }: pCELL) {
         colIndex={colIndex}
         rowIndex={rowIndex}
       />
+      <div className={styles.table_cell_action_button_container}>
+        <MENU />
+      </div>
     </td>
   );
 }
 
+const Chevron = () => <i className={strung([app.chevron, app.bottom]).all()} />;
+
+function MENU() {
+  const { addCol, addRow } = useSheet();
+  const f = (message: string) => () => console.log(message + " unimplemented");
+
+  const [showExtra, setShowExtra] = useState(false);
+
+  return (
+    <Dropdown
+      buttonClass={styles.table_cell_action_button}
+      className={app.table_action_menu}
+      title={<Chevron />}
+      topOffset={5}
+      leftOffset={25}
+      selfClose={false}
+    >
+      <Option label={"Add right column"} click={addRow} />
+      <Option label={"Delete right column"} click={addRow} />
+      <Option label={"Add left column"} click={addRow} />
+      <Option label={"Delete left column"} click={addRow} />
+      <Option label={"Add top row"} click={addRow} />
+      <Option label={"Delete top row"} click={addRow} />
+      <Option label={"Add bottom row"} click={addRow} />
+      <Option label={"Delete bottom row"} click={addRow} />
+    </Dropdown>
+  );
+}
 type pContent = {
   id: string;
   value: string;
@@ -258,8 +304,8 @@ function CONTENT({ id, value, rowIndex, colIndex }: pContent) {
     return () => document.removeEventListener("click", onClickOut);
   }, []);
 
-  return isEditMode
-    ? (
+  return (
+    <Ternary on={isEditMode}>
       <input
         value={val}
         onChange={updateValue}
@@ -267,27 +313,40 @@ function CONTENT({ id, value, rowIndex, colIndex }: pContent) {
         ref={inputRef}
         data-cell-id={id}
       />
-    )
-    : (
-      <div
-        className={styles.table_cell_content}
-        data-cell-id={id}
-        onClick={write}
-      >
-        {`${val}`}
-      </div>
-    );
+      <TEXT value={val} id={id} click={write} />
+    </Ternary>
+  );
+}
+
+type pTEXT = {
+  click: () => void;
+  value: string;
+  id: string;
+};
+
+function TEXT({ click, value, id }: pTEXT) {
+  return (
+    <div
+      className={styles.table_cell_content}
+      data-cell-id={id}
+      onClick={click}
+    >
+      {value}
+    </div>
+  );
 }
 
 function Debugger() {
   const { sheet } = useSheet();
   const { selection } = useRect();
-  const [show, setShow] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  const show = useMemo(() => open, [open]);
 
   return (
     <div className={styles.sheet_debugger}>
       <div>
-        <button onClick={() => setShow(!show)}>
+        <button onClick={() => setOpen(!open)}>
           {show ? "_" : "^"}
         </button>
       </div>

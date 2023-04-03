@@ -63,3 +63,19 @@ export namespace algom {
     return parser.EVAL(input);
   }
 }
+
+export function range(start: number, end: number, step: number = 1) {
+  let out: number[] = [];
+  step = step === 0 ? (step * (step < 0 ? -1 : 1)) : (step);
+  let i = start <= end ? start : end;
+  let max = start <= end ? end : start;
+  while (i < max) {
+    out.push(i);
+    i += step;
+  }
+  return out;
+}
+
+export function clamp(value: number, max: number, min: number) {
+  return value > max ? (max) : (value < min ? min : value);
+}

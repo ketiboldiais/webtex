@@ -8,6 +8,7 @@ import { Workspace } from "./chips/Workspace.js";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Sheet from "./chips/Sheet/sheet.chip";
 import { makeRows } from "./chips/Sheet/sheet.aux";
+import { ColorPicker } from "./chips/colorpicker.chip";
 
 export function App() {
   return (
@@ -25,7 +26,8 @@ export function App() {
 function Canvas() {
   return (
     <div className={app.canvas}>
-      <Sheet rows={makeRows(5, 5)} devmode />
+      {/* <Sheet rows={makeRows(5, 5)} devmode /> */}
+      <ColorPicker />
     </div>
   );
 }

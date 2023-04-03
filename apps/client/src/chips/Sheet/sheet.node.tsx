@@ -20,7 +20,6 @@ type SerialBase = {
   rows: Rows;
   type: "spreadsheet";
   version: typeof schema["version"];
-  key?: NodeKey;
 };
 
 type SpreadsheetNodeType = "spreadsheet";
@@ -47,8 +46,7 @@ export class SpreadsheetNode extends DecoratorNode<JSX.Element> {
     serializedNode: SerializedSpreadsheetNode,
   ): SpreadsheetNode {
     const rows = serializedNode.rows;
-    const key = serializedNode.key;
-    return new SpreadsheetNode(rows, key);
+    return new SpreadsheetNode(rows);
   }
 
   exportJSON(): SerializedSpreadsheetNode {
@@ -58,7 +56,6 @@ export class SpreadsheetNode extends DecoratorNode<JSX.Element> {
       rows,
       type: "spreadsheet",
       version: schema.version,
-      key,
     };
   }
 
@@ -94,9 +91,8 @@ export function $isSpreadsheetNode(
 
 export function $createSpreadsheetNode(
   rows: Rows,
-  key?: NodeKey,
 ): SpreadsheetNode {
-  return new SpreadsheetNode(rows, key);
+  return new SpreadsheetNode(rows);
 }
 
 export type SpreadsheetPayload = Readonly<{ rows: Rows }>;

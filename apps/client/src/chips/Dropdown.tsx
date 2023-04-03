@@ -3,15 +3,31 @@ import app from "../ui/styles/App.module.scss";
 import { createPortal } from "react-dom";
 import { Button, ButtonProps, HTML_BUTTON_REF, HTML_DIV_REF } from "../App";
 import { Conditioned } from "./Inputs";
+import { concat } from "src/util";
 
 interface props {
   title?: string | ReactNode;
   children?: ReactNode;
   selfClose?: boolean;
+  open?: boolean;
   className?: string;
+  buttonClass?: string;
+  topOffset?: number;
+  leftOffset?: number;
+  containerClass?: string;
 }
-export function Dropdown({ title, children, selfClose, className }: props) {
-  const [dropdown_is_open, open_dropdown] = useState(false);
+export function Dropdown({
+  title,
+  children,
+  selfClose,
+  open = false,
+  className = "",
+  buttonClass = app.defaultButton,
+  topOffset = 25,
+  leftOffset = 20,
+  containerClass="",
+}: props) {
+  const [dropdown_is_open, open_dropdown] = useState(open);
   const dropdownRef = useRef<HTML_DIV_REF>(null);
   const btnRef = useRef<HTML_BUTTON_REF>(null);
 
@@ -22,9 +38,9 @@ export function Dropdown({ title, children, selfClose, className }: props) {
     if (dropdown === null) return;
 
     const { top, left } = button.getBoundingClientRect();
-    dropdown.style.top = `${top + 25}px`;
+    dropdown.style.top = `${top + topOffset}px`;
     dropdown.style.left = `${
-      Math.min(left, window.innerWidth - dropdown.offsetWidth - 20)
+      Math.min(left, window.innerWidth - dropdown.offsetWidth - leftOffset)
     }px`;
   }, [dropdownRef, btnRef, dropdown_is_open]);
 
@@ -41,30 +57,38 @@ export function Dropdown({ title, children, selfClose, className }: props) {
     return () => document.removeEventListener("click", handle);
   }, [dropdownRef, btnRef, dropdown_is_open, selfClose]);
 
-  const open = () => open_dropdown(!dropdown_is_open);
+  const setOpen = () => open_dropdown(!dropdown_is_open);
 
   return (
-    <div>
-      <button
-        className={app.defaultButton}
-        onClick={open}
-        ref={btnRef}
-      >
-        {title}
+    <div className={concat(app.dropdown_shell, containerClass)}>
+      <button className={buttonClass} onClick={setOpen} ref={btnRef}>
+        <span className={app.dropdown_current}>{title}</span>
       </button>
-      {dropdown_is_open && createPortal(
-        <div ref={dropdownRef} className={app.dropdown_options}>
-          {children}
-        </div>,
-        document.body,
-      )}
+      <Conditioned on={dropdown_is_open}>
+        {createPortal(
+          <div
+            ref={dropdownRef}
+            className={concat(app.dropdown_options, className)}
+          >
+            {children}
+          </div>,
+          document.body,
+        )}
+      </Conditioned>
     </div>
   );
 }
 
-export function DropdownItem({ click, label, icon }: ButtonProps) {
+type pDropdownItem = ButtonProps & {
+  className?: string;
+  children?: ReactNode;
+};
+
+export function Option(
+  { click, label, icon, children, className = "" }: pDropdownItem,
+) {
   return (
-    <div className={app.dropdown_item}>
+    <div className={concat(app.dropdown_item, className)}>
       <Button
         label={
           <div className={app.dropdown_label}>
@@ -76,6 +100,7 @@ export function DropdownItem({ click, label, icon }: ButtonProps) {
         }
         click={click}
       />
+      {children}
     </div>
   );
 }

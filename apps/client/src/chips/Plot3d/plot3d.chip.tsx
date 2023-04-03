@@ -1,7 +1,7 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { algom } from "src/algom";
-import { AxesHelper, DoubleSide, GridHelper, Vector3 } from "three";
+import { AxesHelper, DoubleSide, GridHelper, ShapeGeometry, Vector3 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { ParametricGeometry } from "three/examples/jsm/geometries/ParametricGeometry";
 
@@ -88,8 +88,9 @@ export default function Plot3d({
     x = xRange * x + xMin;
     y = yRange * y + yMin;
     let zVal = Z(x, y);
-    if (isNaN(zVal)) return target.set(0, 0, 0);
-    else return target.set(x, zVal, y);
+    if (Number.isNaN(zVal)) return target.set(0.001, 0.001, 0.001);
+    const z = target.set(x, zVal, y);
+    return z;
   };
   return (
     <div style={{ ...canvasSize, margin: "auto", padding: "1.2em" }}>

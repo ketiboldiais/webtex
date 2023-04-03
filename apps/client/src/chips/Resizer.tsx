@@ -2,7 +2,6 @@ import { LexicalEditor } from "lexical";
 import { nanoid } from "nanoid";
 import { PointerEvent, useRef } from "react";
 import { concat } from "src/util";
-// import styles from "../ui/styles/Editor.module.scss";
 import docstyle from '../ui/styles/Editor.module.scss';
 import {Conditioned} from "./Inputs";
 function clamp(value: number, min: number, max: number) {
@@ -232,7 +231,6 @@ export function Resizer({
           Add Caption
         </button>
       </Conditioned>
-      k
       {handleSpec.map((spec, i) => (
         <div
           className={spec.css}

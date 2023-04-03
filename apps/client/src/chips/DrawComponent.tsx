@@ -160,7 +160,7 @@ export default function ExcalidrawComponent(
       {elements.length > 0 && (
         <button
           ref={btnRef}
-          className={`excalidraw-button ${isSelected ? "selected" : ""}`}
+          className={`${app.draw_button} ${isSelected ? "selected" : ""}`}
         >
           <ExcalidrawImage
             imageContainerRef={imageContainerRef}

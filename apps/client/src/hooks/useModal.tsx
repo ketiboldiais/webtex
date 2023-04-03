@@ -93,7 +93,6 @@ export function ModalBox({ children, ref = null, onClose }: ModalBoxProps) {
       <div className={app.modal_main} tabIndex={-1} ref={ref}>
         <div className={app.modal_control_bar} />
         <button className={app.modal_close_button} onClick={onClose}>
-          &times;
         </button>
         <div className={app.modal_content}>
           {children}

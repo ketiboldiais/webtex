@@ -104,7 +104,7 @@ export function NumberInput({
 }
 
 interface CP {
-  on: boolean|string|undefined|null;
+  on: boolean | string | undefined | null;
   children: ReactNode;
 }
 export function Conditioned({ on, children }: CP) {
@@ -141,9 +141,12 @@ interface SwitchProps {
   trueLabel?: string;
   falseLabel?: string;
 }
-export function Switch(
-  { onToggle, value, trueLabel = "", falseLabel = "" }: SwitchProps,
-) {
+export function Switch({
+  onToggle,
+  value,
+  trueLabel = "",
+  falseLabel = "",
+}: SwitchProps) {
   return (
     <div>
       <label className={app.switch_shell}>
@@ -153,7 +156,6 @@ export function Switch(
           checked={value}
           className={app.switch_checkbox}
         />
-
         <div className={app.switch_slider} />
       </label>
       <Conditioned on={trueLabel && falseLabel}>
@@ -167,3 +169,4 @@ export function Switch(
     </div>
   );
 }
+

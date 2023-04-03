@@ -62,6 +62,8 @@
 	height: 100%;
 }
 
+
+
 // class togglers that show/hide the note list on narrow screen sizes.
 .visible,
 .hidden {
@@ -142,6 +144,12 @@
 	gap: $margin1;
 	margin-left: $margin2;
 	margin-right: $margin2;
+	padding-bottom: 2px;
+	overflow-x: scroll;
+	@include Scrollbar;
+	&::-webkit-scrollbar {
+		height: 2px;
+	}
 }
 
 .doc {
@@ -152,13 +160,14 @@
 
 
 .page {
-	height: 92vh;
+	height: 90vh;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
 	align-items: center;
-	font-family: $cmu_text;
+	font-size: 14px;
 	background-color: inherit;
+	font-family: $cmu_text;
 	margin: $margin2;
 	padding: $pad4 $pad4;
 	padding-bottom: $pad6;
@@ -169,6 +178,8 @@
 	.page {
 		height: 88vh;
 	}
+
+
 }
 
 .docTitle input {
@@ -196,29 +207,67 @@ button.defaultButton {
 	color: $bray3;
 	font-size: $xsmall;
 	background-color: $pageColor;
-}
-
-.figBox,
-.text_format_box {
-	padding: auto $pad2;
-	height: 20px;
-	line-height: 1.5;
-	text-align: center;
-	cursor: pointer;
-	width: 8vw;
-	white-space: nowrap;
 	overflow: hidden;
-	text-overflow: ellipsis;
+	min-width: 25px;
+	padding: 0 $pad1;
+}
+
+.fontsize_box {
+	display: grid;
+	grid-template-columns: 8fr 2fr;
+	gap: 2px;
+	label {
+		font-size: 0.65rem;
+		line-height: 1.6;
+		padding: 0;
+		margin: 0;
+		padding-right: 2px;
+		border-right: solid thin $bray0;
+	}
+	.fontsize_value {
+		margin-left: 3px;
+	}
+}
+
+.fontfam_dropdown {
+	max-height: 40vh;
+	overflow-x: scroll;
+	@include Scrollbar;
+}
+.fontsize_dropdown {
+	max-height: 20vh;
+	min-width: 90px;
+	overflow-x: scroll;
+	@include Scrollbar;
 }
 
 
 
+.fontsize_option>label {
+	display: none;
+}
 
 
 @media (min-width:700px) {
 	.notesButton {
 		display: none;
 	}
+
+
+	.editor.toolbar {
+		overflow: hidden;
+	}
+
+	.dropdown_item:hover {
+		.toolbar_action_label {
+			position: absolute;
+			top: -13px;
+			font-size: 0.6rem;
+			opacity: 1;
+		}
+	}
+
+
 
 	.main {
 		position: fixed;
@@ -258,7 +307,7 @@ button.defaultButton {
 
 	.doc {
 		position: relative;
-		margin-top: $margin3;
+		margin-top: $margin2;
 	}
 
 	.visible,
@@ -319,14 +368,16 @@ button.defaultButton {
 .modal_close_button {
 	position: absolute;
 	margin: $margin1;
-	left: 2px;
-	top: 0px;
+	left: 0;
+	top: 0;
 	border-radius: 50%;
 	width: 18px;
 	height: 18px;
 	font-size: 14px;
 	text-align: center;
 	padding: 0;
+	padding-left: 0;
+	padding-bottom: 3px;
 	line-height: 0;
 	letter-spacing: 0;
 	color: #872626;
@@ -344,8 +395,14 @@ button.defaultButton {
 	margin-top: $margin3;
 }
 
-.modal_save {
+.modal_save{
 	@include BlueButton;
+
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		margin-right: $margin4;
+		margin-bottom: $margin4;
 }
 
 // § Dropdown
@@ -361,7 +418,6 @@ button.defaultButton {
 	color: inherit;
 	background-color: $pageColor;
 }
-
 
 
 .dropdown_item {
@@ -407,6 +463,7 @@ button.defaultButton {
 		margin: $margin1 0;
 	}
 }
+
 
 .dropdown_options .dropdown_item:first-child {
 	margin-top: $margin2;
@@ -475,7 +532,7 @@ div.grid_table {
 }
 
 .grid_header div.grid_heading {
-	font-size: $small;
+	font-size: 0.85rem;
 	border: 0;
 }
 
@@ -567,7 +624,7 @@ button.grid_cancel {
 }
 
 .advanced {
-	background-color: inherit;
+	background-color: $pageColor;
 	width: fit-content;
 	@include Card;
 	padding: $pad2;
@@ -622,13 +679,7 @@ button.grid_cancel {
 
 .parametric_footer,
 .plot3d_footer {
-	.modal_save {
-		position: absolute;
-		right: 0;
-		bottom: 0;
-		margin-right: $margin4;
-		margin-bottom: $margin4;
-	}
+	
 }
 
 
@@ -747,6 +798,7 @@ button.grid_cancel {
 	height: 95vh;
 	padding-left: 0;
 	padding-right: 0;
+	background-color: $gray1;
 }
 
 .draw_modal_actions {
@@ -930,16 +982,16 @@ textarea.katex_input_text_area {
 	color: $bray4;
 	display: inline-block;
 	position: absolute;
-	top: 49px;
+	top: 5.1em;
 	cursor: pointer;
 }
 
 .switch_off {
-	left: 53px;
+	left: 3.5em;
 }
 
 .switch_on {
-	left: 34px;
+	left: 2em;
 }
 
 // § Sheet
@@ -971,16 +1023,65 @@ textarea.katex_input_text_area {
 	border: $line3;
 }
 
-.sheet_prompt .modal_save {
-	position: absolute;
-	bottom: 0;
-	right: 0;
-	margin-right: $margin2;
-	margin-bottom: $margin1;
-}
+// .sheet_prompt .modal_save {
+	// position: absolute;
+	// bottom: 0;
+	// right: 0;
+	// margin-right: $margin2;
+	// margin-bottom: $margin1;
+// }
 
 button.write_button {
 	border: none;
+}
+
+
+.chevron::before {
+	border-style: solid;
+	border-width: 0.15em 0.15em 0 0;
+	color: $bray0;
+	content: '';
+	display: block;
+	margin: auto;
+	height: $margin1;
+	width: $margin1;
+	position: relative;
+	transform: rotate(-45deg);
+}
+
+.chevron.bottom::before {
+	top: -1px;
+	transform: rotate(135deg);
+}
+
+.table_action_menu .dropdown_item {
+	padding: 2px;
+}
+
+.table_action_menu .dropdown_item .dropdown_label .dropdown_item_title {
+	font-size: 0.6rem;
+	margin: 0;
+}
+
+.draw_button {
+	background-color: $pageColor;
+	border: 0;
+}
+
+.dropdown_current {
+	padding: 1.5px 0;
+	display: block;
+	white-space: nowrap;
+}
+
+.small_caps {
+	font-variant: small-caps;
+	font-size: 0.75rem;
+	white-space: nowrap;
+	display: block;
+	padding: 2.2px 0;
+	text-align: center;
+	color: $bray3;
 }
 
 
