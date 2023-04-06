@@ -27,7 +27,6 @@ export function toggle(a: string = "", b: string = "") {
   };
 }
 
-
 export const strung = (
   elements: (string | number | undefined)[],
   separator: string = " ",
@@ -42,8 +41,6 @@ export const strung = (
       condition ? strings[0] : strings.slice(1).join(separator),
   };
 };
-
-
 
 export function concat(...elements: (string | number | undefined)[]) {
   return elements.map((s) => s === undefined ? "" : s).join(" ");
@@ -172,3 +169,33 @@ export const plainTextJSON = (text: string) =>
   text === ""
     ? emptyEditorJSON
     : `{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":${text},"type":"text","version":1}],"direction":"ltr","format":"","indent":0,"type":"paragraph","version":1}],"direction":"ltr","format":"","indent":0,"type":"root","version":1}}`;
+
+export enum KEYCODE {
+  SHIFT = 16,
+  ESC = 27,
+  TAB = 9,
+  ARROW_LEFT = 37,
+  ARROW_UP = 38,
+  ARROW_RIGHT = 39,
+  ARROW_DOWN = 40,
+  BACKSPACE = 8,
+  DELETE = 46,
+  ENTER = 13,
+  C_KEY = 67,
+  X_KEY = 88,
+  V_KEY = 86,
+}
+
+export type KeyName =
+  | "Shift"
+  | "Escape"
+  | "Tab"
+  | "ArrowDown"
+  | "ArrowLeft"
+  | "ArrowRight"
+  | "ArrowUp"
+  | "Backspace"
+  | "Enter"
+  | "Delete";
+
+export type KBCom = LexicalCommand<KeyboardEvent | ClipboardEvent>;

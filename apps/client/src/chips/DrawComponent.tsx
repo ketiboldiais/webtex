@@ -1,7 +1,8 @@
 import app from "../ui/styles/App.module.scss";
 import { Excalidraw, exportToSvg } from "@excalidraw/excalidraw";
-import { Button, SVG_REF } from "src/App";
+import { Button } from "./Inputs";
 import { Modal } from "@hooks/useModal";
+import { SVG_REF } from "src/App";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalNodeSelection } from "@lexical/react/useLexicalNodeSelection";
 import { mergeRegister } from "@lexical/utils";

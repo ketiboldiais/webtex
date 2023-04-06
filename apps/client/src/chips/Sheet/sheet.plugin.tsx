@@ -1,37 +1,36 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { $wrapNodeInElement, mergeRegister } from "@lexical/utils";
-import {
-  $createParagraphNode,
-  $insertNodes,
-  $isRootOrShadowRoot,
-} from "lexical";
+import { $insertNodes, COMMAND_PRIORITY_EDITOR } from "lexical";
 import { useEffect } from "react";
-import { command } from "src/util";
+import { CellEditorConfig, useSheet } from "./sheet.component.js";
 import {
   $createSpreadsheetNode,
   INSERT_SHEET_COMMAND,
   SpreadsheetNode,
 } from "./sheet.node.js";
 
-export function SheetPlugin() {
+type Props = {
+  config: CellEditorConfig;
+  children: JSX.Element | JSX.Element[];
+};
+
+export function SpreadsheetPlugin({ config, children }: Props) {
   const [editor] = useLexicalComposerContext();
+  const { set } = useSheet();
+
   useEffect(() => {
     if (!editor.hasNodes([SpreadsheetNode])) {
       throw new Error("SheetPlugin: SpreadsheetNode unregistered.");
     }
-    const insertSpreadsheet = command.priority.editor(
+    set(config, children);
+    return editor.registerCommand(
       INSERT_SHEET_COMMAND,
       ({ rows }) => {
         const node = $createSpreadsheetNode(rows);
         $insertNodes([node]);
-        if ($isRootOrShadowRoot(node.getParentOrThrow())) {
-          $wrapNodeInElement(node, $createParagraphNode).selectEnd();
-        }
         return true;
       },
+      COMMAND_PRIORITY_EDITOR,
     );
-    return mergeRegister(editor.registerCommand(...insertSpreadsheet));
-  }, [editor]);
-
+  }, [editor, config, children]);
   return null;
 }

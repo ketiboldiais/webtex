@@ -1,9 +1,10 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import app from "../ui/styles/App.module.scss";
 import { createPortal } from "react-dom";
-import { Button, ButtonProps, HTML_BUTTON_REF, HTML_DIV_REF } from "../App";
+import { HTML_BUTTON_REF, HTML_DIV_REF } from "../App";
 import { Conditioned } from "./Inputs";
 import { concat } from "src/util";
+import { Button, ButtonProps } from "./Inputs";
 
 interface props {
   title?: string | ReactNode;
@@ -15,6 +16,7 @@ interface props {
   topOffset?: number;
   leftOffset?: number;
   containerClass?: string;
+  noPropogation?: boolean;
 }
 export function Dropdown({
   title,
@@ -26,6 +28,7 @@ export function Dropdown({
   topOffset = 25,
   leftOffset = 20,
   containerClass="",
+  noPropogation=false
 }: props) {
   const [dropdown_is_open, open_dropdown] = useState(open);
   const dropdownRef = useRef<HTML_DIV_REF>(null);
@@ -60,7 +63,13 @@ export function Dropdown({
   const setOpen = () => open_dropdown(!dropdown_is_open);
 
   return (
-    <div className={concat(app.dropdown_shell, containerClass)}>
+    <div 
+      className={concat(app.dropdown_shell, containerClass)}
+      onPointerMove={(e)=> noPropogation && e.stopPropagation()}
+      onPointerDown={(e)=> noPropogation && e.stopPropagation()}
+      onPointerUp={(e)=> noPropogation && e.stopPropagation()}
+      onClick={(e) => noPropogation && e.stopPropagation()}
+    >
       <button className={buttonClass} onClick={setOpen} ref={btnRef}>
         <span className={app.dropdown_current}>{title}</span>
       </button>

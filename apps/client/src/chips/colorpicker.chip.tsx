@@ -1,16 +1,8 @@
 import app from "../ui/styles/App.module.scss";
-import { point, PointXY } from "@hooks/useBoxSelect";
-import {
-  CSSProperties,
-  ReactNode,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { TextInput } from "./Inputs";
+import { PointXY } from "@hooks/useBoxSelect";
+import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "./Inputs";
 import { schema } from "./EditorConfig";
-import { Button } from "src/App";
 import { clamp } from "src/algom";
 
 const WIDTH = 200;

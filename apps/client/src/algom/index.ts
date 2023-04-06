@@ -79,3 +79,24 @@ export function range(start: number, end: number, step: number = 1) {
 export function clamp(value: number, max: number, min: number) {
   return value > max ? (max) : (value < min ? min : value);
 }
+
+export function dedupe<t>(arr: t[]): t[] {
+  return [...new Set(arr)];
+}
+
+export function uid(length: number = 4, base = 36) {
+  return Math
+    .random()
+    .toString(base)
+    .replace(/[^a-z]+/g, "")
+    .substring(0, length + 1);
+}
+
+
+export function AND(...conditions:boolean[]) {
+  for (let i = 0; i < conditions.length; i++) {
+    if (!conditions[i]) return false;
+  }
+  return true;
+}
+

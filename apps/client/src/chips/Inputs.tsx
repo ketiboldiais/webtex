@@ -1,7 +1,35 @@
-import { ReactNode, useEffect, useRef, useState } from "react";
-import { InputFn } from "src/App";
+import { CSSProperties, ReactNode, useEffect, useRef, useState } from "react";
+import { BtnFn, InputFn } from "src/App";
 import { concat, toggle } from "src/util";
 import app from "../ui/styles/App.module.scss";
+
+export interface ButtonProps {
+  click: BtnFn;
+  label?: string | ReactNode;
+  className?: string;
+  icon?: string | JSX.Element;
+  btnTitle?: string;
+  style?: CSSProperties;
+}
+
+export function Button({
+  click,
+  label,
+  className = app.default_button,
+  btnTitle,
+  style,
+}: ButtonProps) {
+  return (
+    <button
+      style={style}
+      title={btnTitle}
+      onClick={click}
+      className={className}
+    >
+      {label}
+    </button>
+  );
+}
 
 type TextInputProps = Readonly<{
   label?: string | ReactNode;
@@ -9,8 +37,8 @@ type TextInputProps = Readonly<{
   placeholder?: string;
   className?: string;
   value: string;
-  defaultWidth?:number;
-  grow?:boolean;
+  defaultWidth?: number;
+  grow?: boolean;
 }>;
 
 export function TextInput({
@@ -20,7 +48,7 @@ export function TextInput({
   placeholder = "",
   className = "",
   defaultWidth = 0,
-  grow=true,
+  grow = true,
 }: TextInputProps) {
   const [content, setContent] = useState("");
   const [width, setWidth] = useState(defaultWidth);
@@ -40,7 +68,9 @@ export function TextInput({
       <Conditioned on={label !== undefined}>
         {typeof label === "string" ? <label>{label}</label> : label}
       </Conditioned>
-      <span className={app.text_input_hidden_span} ref={span}>{content}</span>
+      <span className={app.text_input_hidden_span} ref={span}>
+        {content}
+      </span>
       <div className={app.text_input_field}>
         <input
           type={"text"}

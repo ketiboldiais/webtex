@@ -1,0 +1,74 @@
+@mixin layout700 {
+	.notesButton {
+		display: none;
+	}
+
+
+	.editor.toolbar {
+		flex-wrap: wrap;
+		overflow: hidden;
+	}
+
+	.dropdown_item:hover {
+		.toolbar_action_label {
+			position: absolute;
+			top: -13px;
+			font-size: 0.6rem;
+			opacity: 1;
+		}
+	}
+
+
+
+	.main {
+		position: fixed;
+		display: grid;
+		grid-template-columns: 3fr 9fr;
+		margin-left: 2px;
+		margin-top: 0;
+		width: 98vw;
+		height: 98vh;
+		background-color: var(--page);
+	}
+
+	.sidebar {
+		position: relative;
+		padding: $pad2;
+		margin: $margin2 $margin1;
+	}
+
+	.notes_control {
+		display: flex;
+		height: 3vh;
+		padding: 0;
+		margin: 2px 0;
+		margin-bottom: $margin2;
+	}
+
+	.notelist {
+		display: flex;
+		width: fit-content;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		background-color: none;
+		padding: 0;
+		margin: 0;
+		left: 0;
+	}
+
+	.doc {
+		position: relative;
+		margin-top: $margin2;
+	}
+
+	.visible,
+	.hidden {
+		position: relative;
+		transform: scaleY(1);
+		margin: 0;
+		padding: 0;
+		width: 100%;
+		cursor: pointer;
+	}
+}

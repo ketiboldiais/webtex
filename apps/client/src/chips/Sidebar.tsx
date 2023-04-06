@@ -3,7 +3,6 @@ import { useEditor } from "@hooks/useEditor";
 import { nanoid } from "nanoid";
 import { useEffect, useState } from "react";
 import { BtnEvt, LiEvt } from "src/App";
-import { Button } from "src/App";
 import {
   addNote,
   deleteNote,
@@ -20,7 +19,7 @@ import {
 import { concat, EMPTY_NOTE, toggle } from "src/util";
 import { Checkmark, TrashIcon, WriteIcon } from "./Icon";
 import { useModal } from "@hooks/useModal";
-import { Conditioned } from "./Inputs";
+import { Conditioned, Button } from "./Inputs";
 
 export function SideBar() {
   const dispatch = useAppDispatch();

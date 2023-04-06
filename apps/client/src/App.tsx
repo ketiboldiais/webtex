@@ -6,9 +6,7 @@ import { Provider } from "react-redux";
 import { store } from "./state/state.js";
 import { Workspace } from "./chips/Workspace.js";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import Sheet from "./chips/Sheet/sheet.chip";
-import { makeRows } from "./chips/Sheet/sheet.aux";
-import { ColorPicker } from "./chips/colorpicker.chip";
+import { Canvas } from "./test/test.canvas.js";
 
 export function App() {
   return (
@@ -23,41 +21,6 @@ export function App() {
   );
 }
 
-function Canvas() {
-  return (
-    <div id={app.canvas}>
-      <ColorPicker />
-    </div>
-  );
-}
-
-export interface ButtonProps {
-  click: BtnFn;
-  label?: string | ReactNode;
-  className?: string;
-  icon?: string | JSX.Element;
-  btnTitle?: string;
-  style?: CSSProperties;
-}
-
-export function Button({
-  click,
-  label,
-  className = app.default_button,
-  btnTitle,
-  style,
-}: ButtonProps) {
-  return (
-    <button
-      style={style}
-      title={btnTitle}
-      onClick={click}
-      className={className}
-    >
-      {label}
-    </button>
-  );
-}
 
 export type LiFn = MouseEventHandler<HTMLLIElement>;
 export type DivFn = MouseEventHandler<HTMLDivElement>;

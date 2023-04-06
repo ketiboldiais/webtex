@@ -1,4 +1,5 @@
 @import './base';
+@import './width700';
 
 :root {
 	--page: #{$pageColor};
@@ -151,7 +152,7 @@
 .editor.toolbar {
 	display: flex;
 	justify-content: flex-start;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
 	align-items: center;
 	gap: $margin1;
 	margin-left: $margin2;
@@ -191,8 +192,6 @@
 	.page {
 		height: 88vh;
 	}
-
-
 }
 
 .docTitle input {
@@ -259,79 +258,7 @@ button.default_button {
 }
 
 
-@media (min-width:700px) {
-	.notesButton {
-		display: none;
-	}
 
-
-	.editor.toolbar {
-		overflow: hidden;
-	}
-
-	.dropdown_item:hover {
-		.toolbar_action_label {
-			position: absolute;
-			top: -13px;
-			font-size: 0.6rem;
-			opacity: 1;
-		}
-	}
-
-
-
-	.main {
-		position: fixed;
-		display: grid;
-		grid-template-columns: 3fr 9fr;
-		margin-left: 2px;
-		margin-top: 0;
-		width: 98vw;
-		height: 98vh;
-		background-color: var(--page);
-	}
-
-	.sidebar {
-		position: relative;
-		padding: $pad2;
-		margin: $margin2 $margin1;
-	}
-
-	.notes_control {
-		display: flex;
-		height: 3vh;
-		padding: 0;
-		margin: 2px 0;
-		margin-bottom: $margin2;
-	}
-
-	.notelist {
-		display: flex;
-		width: fit-content;
-		flex-direction: column;
-		justify-content: center;
-		align-items: center;
-		background-color: none;
-		padding: 0;
-		margin: 0;
-		left: 0;
-	}
-
-	.doc {
-		position: relative;
-		margin-top: $margin2;
-	}
-
-	.visible,
-	.hidden {
-		position: relative;
-		transform: scaleY(1);
-		margin: 0;
-		padding: 0;
-		width: 100%;
-		cursor: pointer;
-	}
-}
 
 
 // § Modal
@@ -518,7 +445,7 @@ button.default_button {
 	width: 100%;
 	height: 100vh;
 	display: flex;
-	justify-content: center;
+	justify-content: flex-start;
 	align-items: center;
 	flex-direction: column;
 }
@@ -1066,7 +993,7 @@ button.write_button {
 }
 
 .table_action_menu .dropdown_item .dropdown_label .dropdown_item_title {
-	font-size: 0.6rem;
+	font-size: 0.75rem;
 	margin: 0;
 }
 
@@ -1332,6 +1259,7 @@ button.destroy_button:not(:disabled):hover {
 	color: white;
 	transition: all 0.2s ease-in;
 }
+
 button.recover_button:not(:disabled):hover {
 	background-color: $blue4;
 	color: white;
@@ -1344,7 +1272,7 @@ button.destroy_button:disabled,
 button.destroy_button[disabled] {
 	border: solid thin $gray1;
 	color: $gray1;
-	cursor:not-allowed !important;
+	cursor: not-allowed !important;
 }
 
 .comment_box {
@@ -1352,9 +1280,87 @@ button.destroy_button[disabled] {
 	color: rgb(174, 188, 190);
 	font-size: 0.7rem;
 	margin-bottom: $margin6;
+
 	p {
 		padding: 0;
 		margin: 0;
 		font-style: italic;
 	}
+}
+
+.graph_prompt_shell {
+	@include Card;
+	padding: $pad2;
+}
+
+.graph_prompt {
+	border-collapse: collapse;
+	font-family: $mainFont;
+	font-size: $xsmall;
+}
+
+.graph_prompt_add {
+	width: 100%;
+}
+
+.graph_prompt td {
+	border: 0;
+	text-align: center;
+}
+
+.graph_prompt .value_cell {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-start;
+	align-items: center;
+	gap: 2px;
+	border: 0;
+	div {
+		flex: 1;
+	}
+}
+
+.literal_value {
+	box-shadow: $box-shadow;
+	border: solid thin $gray0;
+	padding: 2px 10px;
+	width: 100%;
+	display: block;
+	text-align: center;
+}
+
+.graph_prompt tfoot {
+	input {
+		border: 0;
+		border-bottom: $line3;
+		width: 100%;
+		outline: none;
+		text-align: left;
+	}
+
+	button {
+		background-color: inherit;
+		@include PlainButton;
+		width: 100%;
+	}
+}
+
+.graph_prompt .new_cell_input {
+	box-shadow: $box-shadow;
+	border: solid thin $gray0;
+	outline: none;
+	height: 100%;
+	display: inline-block;
+}
+.graph_prompt .add_button {
+	border-radius: 50%;
+	border: 0;
+	width: 20px;
+	height: 20px;
+	background-color: $blue5;
+	color: $blue0;
+}
+
+@media (min-width:700px) {
+	@include layout700;
 }

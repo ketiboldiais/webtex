@@ -1,5 +1,6 @@
 import { PlotPlugin } from "./Plot2d";
 import app from "../ui/styles/App.module.scss";
+import docstyles from "../ui/styles/Editor.module.scss";
 import { ImagePlugin } from "./Image.js";
 import { Plot3DPlugin } from "./Plot3d/plot3d.plugin.js";
 import { useEditor } from "@hooks/useEditor";
@@ -25,8 +26,9 @@ import { LatexPlugin } from "./Latex.js";
 import { useAutosave } from "../hooks/useAutosave";
 import { EditorState, RootNode } from "lexical";
 import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
-import { SheetPlugin } from "./Sheet/sheet.plugin";
+import { SpreadsheetPlugin } from "./Sheet/sheet.plugin";
 import { ToolbarPlugin } from "./toolbar.plugin";
+import { CellEditorConfig } from "./Sheet/sheet.component";
 
 /* --------------------------------- EDITOR --------------------------------- */
 /**
@@ -49,7 +51,7 @@ function getContent(editor: EditorState | null) {
   return editor === null ? EMPTY_NOTE : JSON.stringify(editor);
 }
 
-export function Editor() {
+export function Editor({ sheetConfig }: { sheetConfig: CellEditorConfig }) {
   const dispatch = useAppDispatch();
   const doc = useRef<EditorState | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -76,6 +78,7 @@ export function Editor() {
   return (
     <div className={app.doc}>
       <ToolbarPlugin />
+      <button onClick={() => save()}>save</button>
       <div className={app.page} onBlur={() => setIsEditing(false)}>
         <NoteTitle onSave={save} />
         <HistoryPlugin />
@@ -98,17 +101,24 @@ export function Editor() {
         <ParametricPlotPlugin />
         <ExcalidrawPlugin />
         <MarkdownPlugin />
-        <SheetPlugin />
+        <SpreadsheetPlugin config={sheetConfig}>
+          <TextPlugin className={docstyles.table_node_content_editable} />
+          <ImagePlugin />
+          <ListPlugin />
+          <LatexPlugin />
+          <HistoryPlugin />
+        </SpreadsheetPlugin>
       </div>
     </div>
   );
 }
 
-export function TextPlugin() {
+type pTextPlugin = { className?: string };
+export function TextPlugin({ className = app.pageContent }: pTextPlugin) {
   return (
     <RichTextPlugin
       contentEditable={
-        <ContentEditable spellCheck={false} className={app.pageContent} />
+        <ContentEditable spellCheck={false} className={className} />
       }
       placeholder={null}
       ErrorBoundary={LexicalErrorBoundary}

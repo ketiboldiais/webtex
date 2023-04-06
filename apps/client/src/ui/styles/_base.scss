@@ -129,6 +129,11 @@ $line3: solid thin $bray0;
 	width: fit-content;
 	padding: $padtiny $pad2;
 	border-radius: 2px;
+	&:hover {
+		background-color: $blue5;
+		color: white;
+	}
+	transition: all 0.15s ease-in;
 }
 
 @mixin BlueButton {

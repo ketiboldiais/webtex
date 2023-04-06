@@ -9,7 +9,6 @@
  */
 import docstyle from "../ui/styles/Editor.module.scss";
 import app from "../ui/styles/App.module.scss";
-import { Button } from "src/App";
 import { useEditor } from "@hooks/useEditor";
 import { useModal } from "@hooks/useModal";
 import { $isLinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
@@ -79,6 +78,7 @@ import { SheetPrompt } from "./Sheet/sheet.prompt";
 import { schema } from "./EditorConfig";
 import { range } from "src/algom";
 import { ColorPicker } from "./colorpicker.chip";
+import { Button } from "./Inputs";
 
 /* ------------------------ Substate: Toolbar Context ----------------------- */
 type FontVariant = "normal" | "small-caps";

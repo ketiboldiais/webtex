@@ -291,3 +291,7 @@ type pCheckmark = {
 export function Checkmark({ className = "" }: pCheckmark) {
   return <div className={concat(app.checkmark, className)} />;
 }
+
+export function Chevron() {
+  return <i className={concat(app.chevron, app.bottom)} />;
+}
