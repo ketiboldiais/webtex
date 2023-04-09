@@ -11,10 +11,8 @@ import { ExcalidrawNode } from "./Draw";
 import { ImageNode } from "./Image";
 import { LatexNode } from "./Latex";
 import { PlotNode } from "./Plot2d";
-import { SpreadsheetNode } from "./Sheet/sheet.node";
 import { ParametricPlotNode } from "./PlotParametric/parametric.node.js";
 import { Plot3DNode } from "./Plot3d/plot3d.node.js";
-import { CellEditorConfig, SheetContext } from "./Sheet/sheet.component";
 
 export function Workspace() {
   const activeNote = getActiveNote();
@@ -31,7 +29,6 @@ export function Workspace() {
       ParametricPlotNode,
       Plot3DNode,
       ExcalidrawNode,
-      SpreadsheetNode
     ],
     theme,
     onError(error: any) {
@@ -40,30 +37,13 @@ export function Workspace() {
     editorState: activeNote.content,
     editable: true,
   };
-  
-  const sheetConfig: CellEditorConfig = {
-    namespace: defaultConfig.namespace,
-    theme,
-    onError: defaultConfig.onError,
-    nodes: [
-      HeadingNode,
-      ListNode,
-      ListItemNode,
-      QuoteNode,
-      LatexNode,
-      ImageNode,
-    ],
-    readOnly: false,
-  }
-  
+
   return (
     <section className={app.main}>
       <LexicalComposer initialConfig={defaultConfig}>
         <EditorContextProvider>
           <SideBar />
-          <SheetContext>
-            <Editor sheetConfig={sheetConfig}/>
-          </SheetContext>
+          <Editor />
         </EditorContextProvider>
       </LexicalComposer>
     </section>

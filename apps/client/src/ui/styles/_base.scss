@@ -96,19 +96,20 @@ $line3: solid thin $bray0;
 	scrollbar-width: thin;
 
 	&::-webkit-scrollbar {
-		width: 3px;
+		width: 1px;
 		border: none;
 		background-color: transparent;
 	}
 
 	&::-webkit-scrollbar-track {
 		background-color: transparent;
-		border: none;
+		border: 0;
 	}
 
 	&::-webkit-scrollbar-thumb {
 		background-color: $bray2;
 		border-radius: 1px;
+		border: transparent;
 	}
 }
 
@@ -129,10 +130,12 @@ $line3: solid thin $bray0;
 	width: fit-content;
 	padding: $padtiny $pad2;
 	border-radius: 2px;
+
 	&:hover {
 		background-color: $blue5;
 		color: white;
 	}
+
 	transition: all 0.15s ease-in;
 }
 
@@ -145,11 +148,14 @@ $line3: solid thin $bray0;
 	padding: $pad2;
 	border-radius: 3px;
 	letter-spacing: 1px;
+
 	&:hover {
 		background-color: $blue5;
 	}
+
 	transition: all 0.15s ease-in;
 }
+
 /* Box Shadows */
 $box-shadow: 0px 1px 0 #bbbbbbdd, 1px 1px 2px #8686862d;
 $drop-shadow: 3px 3px 2px rgba(0, 0, 0, .7);
@@ -162,4 +168,27 @@ $page-box-shadow: 0px 1px 1px #b5b5b5, 1px 1px 4px #c6c6c6;
 
 @mixin ShortShadow {
 	box-shadow: 0.6px 1.3px 1.3px $bray0;
+}
+
+@mixin PlusSign(
+	$thickness: 2px, 
+	$size: 15px, 
+	$outspace: 0px,
+	$crossColor: $bray1, 
+	$background: $pageColor, 
+	$radius: 0%,
+) {
+  width: $size;
+  aspect-ratio: 1;
+  border: $outspace solid $background;
+  background:
+    conic-gradient(
+			from 90deg at $thickness $thickness, 
+			$background 90deg,
+			$crossColor 0
+		) 
+    calc(100% + $thickness/2) calc(100% + $thickness/2)/
+    calc(50%  + $thickness)   calc(50%  + $thickness);
+  display: inline-block;
+	border-radius: $radius;
 }

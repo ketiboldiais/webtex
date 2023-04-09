@@ -1,5 +1,4 @@
 import app from "../ui/styles/App.module.scss";
-import { PointXY } from "@hooks/useBoxSelect";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "./Inputs";
 import { schema } from "./EditorConfig";
@@ -257,7 +256,7 @@ function colorTransform<f extends keyof Color, c extends Color[f]>(
 type pSpectrumPlane = {
   className?: string;
   style?: CSSProperties;
-  onChange: (position: PointXY) => void;
+  onChange: (position: {x:number, y:number}) => void;
   children: JSX.Element;
 };
 

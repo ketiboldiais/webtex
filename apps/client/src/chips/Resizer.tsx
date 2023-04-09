@@ -2,8 +2,7 @@ import { LexicalEditor } from "lexical";
 import { nanoid } from "nanoid";
 import { PointerEvent, useRef } from "react";
 import { concat } from "src/util";
-import docstyle from '../ui/styles/Editor.module.scss';
-import {Conditioned} from "./Inputs";
+import docstyle from "../ui/styles/Editor.module.scss";
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
@@ -226,11 +225,14 @@ export function Resizer({
   const shouldShowButton = !showCaption && captionsEnabled;
   return (
     <div ref={controlWrapperRef}>
-      <Conditioned on={shouldShowButton}>
-        <button className={docstyle.image_caption_button} ref={buttonRef} onClick={recap}>
-          Add Caption
-        </button>
-      </Conditioned>
+      {shouldShowButton && (
+        <button
+          className={docstyle.image_caption_button}
+          ref={buttonRef}
+          onClick={recap}
+          children={"Add caption"}
+        />
+      )}
       {handleSpec.map((spec, i) => (
         <div
           className={spec.css}

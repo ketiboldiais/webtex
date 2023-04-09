@@ -1,6 +1,6 @@
 type HTMLdydx = "inherit" | number;
 import app from "../ui/styles/App.module.scss";
-import docstyle from '../ui/styles/Editor.module.scss';
+import docstyle from "../ui/styles/Editor.module.scss";
 import {
   $applyNodeReplacement,
   $createParagraphNode,
@@ -52,8 +52,8 @@ import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
 import { LexicalNestedComposer } from "@lexical/react/LexicalNestedComposer";
-import { concat, DOM_AVAILABLE, joinRest, toggle } from "src/util";
-import { Conditioned, FileInput, Switch, Ternary, TextInput } from "./Inputs";
+import { DOM_AVAILABLE, joinRest, toggle } from "src/util";
+import { FileInput, Switch, TextInput } from "./Inputs";
 import { Resizer } from "./Resizer";
 declare global {
   interface DragEvent {
@@ -321,7 +321,7 @@ export function ImageComponent({
           maxWidth={maxWidth}
         />
       </div>
-      <Conditioned on={showCaption}>
+      {showCaption && (
         <div className={docstyle.image_caption_container}>
           <LexicalNestedComposer initialEditor={caption}>
             <RichTextPlugin
@@ -333,8 +333,8 @@ export function ImageComponent({
             />
           </LexicalNestedComposer>
         </div>
-      </Conditioned>
-      <Conditioned on={resizable && $isNodeSelection(selection) && isFocused}>
+      )}
+      {resizable && $isNodeSelection(selection) && isFocused && (
         <Resizer
           showCaption={showCaption}
           setShowCaption={setShowCaption}
@@ -346,7 +346,7 @@ export function ImageComponent({
           onResizeEnd={onResizeEnd}
           captionsEnabled={captionsEnabled}
         />
-      </Conditioned>
+      )}
     </Suspense>
   );
 }
@@ -671,12 +671,8 @@ export function InsertImageDialog({ activeEditor, onClose }: ImageDialogProps) {
         trueLabel={"File"}
         falseLabel={"URL"}
       />
-      <Conditioned on={!isFile}>
-        <PromptImageLink onClick={onClick} />
-      </Conditioned>
-      <Conditioned on={isFile}>
-        <PromptImageUpload onClick={onClick} />
-      </Conditioned>
+      {!isFile && <PromptImageLink onClick={onClick} />}
+      {isFile && <PromptImageUpload onClick={onClick} />}
     </div>
   );
 }

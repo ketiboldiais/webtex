@@ -65,9 +65,7 @@ export function TextInput({
   };
   return (
     <div className={className ? className : app.text_input_shell}>
-      <Conditioned on={label !== undefined}>
-        {typeof label === "string" ? <label>{label}</label> : label}
-      </Conditioned>
+      {label && (typeof label === "string" ? <label>{label}</label> : label)}
       <span className={app.text_input_hidden_span} ref={span}>
         {content}
       </span>
@@ -139,27 +137,6 @@ export function NumberInput({
   );
 }
 
-interface CP {
-  on: boolean | string | undefined | null;
-  children: ReactNode;
-}
-export function Conditioned({ on, children }: CP) {
-  return <>{on && children}</>;
-}
-
-interface TP {
-  on: boolean;
-  children: ReactNode[];
-}
-export function Ternary({ on, children }: TP) {
-  return on ? <>{children[0]}</> : <>{children[1]}</>;
-}
-interface RP {
-  html: string;
-}
-export function DIV({ html }: RP) {
-  return <div dangerouslySetInnerHTML={{ __html: html }} />;
-}
 interface RowProps {
   children: JSX.Element[];
 }
@@ -194,14 +171,15 @@ export function Switch({
         />
         <div className={app.switch_slider} />
       </label>
-      <Conditioned on={trueLabel && falseLabel}>
+      {trueLabel && falseLabel && (
         <div className={toggle(app.switch_on, app.switch_off).on(value)}>
-          <Ternary on={value}>
-            <span onClick={() => onToggle()}>{trueLabel}</span>
-            <span onClick={() => onToggle()}>{falseLabel}</span>
-          </Ternary>
+          <span
+            onClick={() =>
+              onToggle()}
+            children={value ? trueLabel : falseLabel}
+          />
         </div>
-      </Conditioned>
+      )}
     </div>
   );
 }

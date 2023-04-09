@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
 import { useState } from "react";
-import { algom } from "src/algom";
+import { toLatex } from "src/algom";
 import { Pair } from "src/App";
 import { Table } from "../DataTable";
 import { Interval } from "../Interval";
@@ -35,7 +35,7 @@ export function PlotPrompt({ activeEditor, onClose }: InsertPlotProps) {
         onUpdate={setData}
         uid={nanoid(7)}
         keys={["variable", "expression"]}
-        cell={(c) => <TeX math={algom.toLatex(c)} />}
+        cell={(c) => <TeX math={toLatex(c)} />}
         schema={{
           variable: { label: "Variable" },
           expression: { label: "Expression" },

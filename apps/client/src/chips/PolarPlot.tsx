@@ -1,8 +1,9 @@
 import { scaleLinear } from "d3";
 import { lineRadial } from "d3-shape";
 import { nanoid } from "nanoid";
-import { algom } from "src/algom";
+import { compfn } from "src/algom";
 import { SVG, svgDimensions } from "./PlotUtils";
+import { polar } from "src/algom/structs/mathfn";
 
 interface PolarPlotProps {
   f: Function | string;
@@ -32,11 +33,11 @@ export function PolarPlot({
   let Fx: Function;
   const id = nanoid(8);
   if (typeof f === "string") {
-    const fn = algom.compfn(f, "f", "(x)");
+    const fn = compfn(f, "f", "(x)");
     if (typeof fn === "string") return <>{fn}</>;
     Fx = fn;
   } else Fx = f;
-  const data = algom.getData.polar(Fx, domain);
+  const data = polar(Fx, domain);
   const [svgWidth, svgHeight] = svgDimensions(width, height, margins);
   const rScale = scaleLinear().domain([0, 0.5]).range([0, radius]);
   function r(d: any) {

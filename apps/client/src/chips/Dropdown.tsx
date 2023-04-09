@@ -2,7 +2,6 @@ import { ReactNode, useEffect, useRef, useState } from "react";
 import app from "../ui/styles/App.module.scss";
 import { createPortal } from "react-dom";
 import { HTML_BUTTON_REF, HTML_DIV_REF } from "../App";
-import { Conditioned } from "./Inputs";
 import { concat } from "src/util";
 import { Button, ButtonProps } from "./Inputs";
 
@@ -27,8 +26,8 @@ export function Dropdown({
   buttonClass = app.default_button,
   topOffset = 25,
   leftOffset = 20,
-  containerClass="",
-  noPropogation=false
+  containerClass = "",
+  noPropogation = false,
 }: props) {
   const [dropdown_is_open, open_dropdown] = useState(open);
   const dropdownRef = useRef<HTML_DIV_REF>(null);
@@ -39,7 +38,6 @@ export function Dropdown({
     if (button === null) return;
     const dropdown = dropdownRef.current;
     if (dropdown === null) return;
-
     const { top, left } = button.getBoundingClientRect();
     dropdown.style.top = `${top + topOffset}px`;
     dropdown.style.left = `${
@@ -63,47 +61,50 @@ export function Dropdown({
   const setOpen = () => open_dropdown(!dropdown_is_open);
 
   return (
-    <div 
-      className={concat(app.dropdown_shell, containerClass)}
-      onPointerMove={(e)=> noPropogation && e.stopPropagation()}
-      onPointerDown={(e)=> noPropogation && e.stopPropagation()}
-      onPointerUp={(e)=> noPropogation && e.stopPropagation()}
+    <div
+      className={containerClass || "dropdown"}
+      onPointerMove={(e) => noPropogation && e.stopPropagation()}
+      onPointerDown={(e) => noPropogation && e.stopPropagation()}
+      onPointerUp={(e) => noPropogation && e.stopPropagation()}
       onClick={(e) => noPropogation && e.stopPropagation()}
     >
       <button className={buttonClass} onClick={setOpen} ref={btnRef}>
         <span className={app.dropdown_current}>{title}</span>
       </button>
-      <Conditioned on={dropdown_is_open}>
-        {createPortal(
+      {dropdown_is_open &&
+        createPortal(
           <div
             ref={dropdownRef}
-            className={concat(app.dropdown_options, className)}
+            className={className ? className : app.dropdown_options}
           >
             {children}
           </div>,
           document.body,
         )}
-      </Conditioned>
     </div>
   );
 }
 
-type pDropdownItem = ButtonProps & {
+export type OpSpec<t = {}> = (pOPTION & t)[];
+
+type pOPTION = ButtonProps & {
   className?: string;
   children?: ReactNode;
 };
 
-export function Option(
-  { click, label, icon, children, className = "" }: pDropdownItem,
-) {
+export function Option({
+  click,
+  label,
+  icon,
+  children,
+  className = "",
+}: pOPTION) {
   return (
     <div className={concat(app.dropdown_item, className)}>
       <Button
         label={
           <div className={app.dropdown_label}>
-            <Conditioned on={icon !== undefined}>
-              {icon}
-            </Conditioned>
+            {icon && icon}
             <span className={app.dropdown_item_title}>{label}</span>
           </div>
         }

@@ -129,58 +129,7 @@ export function xy(
   }
   return xys;
 }
-export function parametric(
-  fx: Function,
-  fy: Function,
-  domain: [number, number],
-  samples: number,
-) {
-  const dataset: Point[] = [];
-  const xMax = domain[1] * Math.PI;
-  for (let i = -samples; i < samples; i++) {
-    let t = (((i) * Math.PI) / samples) * xMax;
-    let x = fx(t);
-    let y = fy(t);
-    let point: Point = { x, y };
-    if (isNaN(y)) {
-      point.y = null;
-    }
-    if (isNaN(x)) {
-      point.x = null;
-    }
-    dataset.push(point);
-  }
-  return dataset;
-}
 export type Point = { x: number | null; y: number | null };
-export function y(
-  f: Function,
-  range: [number, number],
-  domain: [number, number],
-  samples: number,
-) {
-  let dataset: Point[] = [];
-  let x: number;
-  let y: number;
-  const yMin = range[0] * 2;
-  const yMax = range[1] * 2;
-  const xMax = domain[1];
-  for (let i = -samples; i < samples; i++) {
-    x = (i / samples) * xMax;
-    y = f(x);
-    const point: Point = { x, y };
-    if (Number.isNaN(y) || y <= yMin || y >= yMax) {
-      point.y = null;
-    }
-    if (x < domain[0] || domain[1] < x) {
-      continue;
-    } else {
-      dataset.push(point);
-    }
-  }
-  return dataset;
-}
-
 export function even(n: number) {
   return n % 2 === 0 ? 1 : 0;
 }

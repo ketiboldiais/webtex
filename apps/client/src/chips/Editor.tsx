@@ -26,9 +26,7 @@ import { LatexPlugin } from "./Latex.js";
 import { useAutosave } from "../hooks/useAutosave";
 import { EditorState, RootNode } from "lexical";
 import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
-import { SpreadsheetPlugin } from "./Sheet/sheet.plugin";
 import { ToolbarPlugin } from "./toolbar.plugin";
-import { CellEditorConfig } from "./Sheet/sheet.component";
 
 /* --------------------------------- EDITOR --------------------------------- */
 /**
@@ -51,7 +49,7 @@ function getContent(editor: EditorState | null) {
   return editor === null ? EMPTY_NOTE : JSON.stringify(editor);
 }
 
-export function Editor({ sheetConfig }: { sheetConfig: CellEditorConfig }) {
+export function Editor() {
   const dispatch = useAppDispatch();
   const doc = useRef<EditorState | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -78,7 +76,6 @@ export function Editor({ sheetConfig }: { sheetConfig: CellEditorConfig }) {
   return (
     <div className={app.doc}>
       <ToolbarPlugin />
-      <button onClick={() => save()}>save</button>
       <div className={app.page} onBlur={() => setIsEditing(false)}>
         <NoteTitle onSave={save} />
         <HistoryPlugin />
@@ -101,13 +98,6 @@ export function Editor({ sheetConfig }: { sheetConfig: CellEditorConfig }) {
         <ParametricPlotPlugin />
         <ExcalidrawPlugin />
         <MarkdownPlugin />
-        <SpreadsheetPlugin config={sheetConfig}>
-          <TextPlugin className={docstyles.table_node_content_editable} />
-          <ImagePlugin />
-          <ListPlugin />
-          <LatexPlugin />
-          <HistoryPlugin />
-        </SpreadsheetPlugin>
       </div>
     </div>
   );

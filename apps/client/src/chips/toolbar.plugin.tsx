@@ -74,7 +74,6 @@ import { InsertLatexDialog } from "./Latex";
 import { PlotPrompt } from "./Plot2d";
 import { Plot3DPrompt } from "./Plot3d/plot3d.prompt";
 import { ParametricPlotPrompt } from "./PlotParametric/parametric.prompt";
-import { SheetPrompt } from "./Sheet/sheet.prompt";
 import { schema } from "./EditorConfig";
 import { range } from "src/algom";
 import { ColorPicker } from "./colorpicker.chip";
@@ -491,13 +490,6 @@ function FigureDropdown() {
                 activeEditor={activeEditor}
                 onClose={close}
               />
-            ))}
-        />
-        <Option
-          label={"Sheet"}
-          click={() =>
-            showModal((close) => (
-              <SheetPrompt activeEditor={activeEditor} onClose={close} />
             ))}
         />
         <Option

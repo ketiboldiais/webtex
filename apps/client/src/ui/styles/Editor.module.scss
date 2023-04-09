@@ -340,58 +340,53 @@
 // § Table
 
 .spreadsheet {
-  // margin: $margin5;
-  // padding: $pad1;
+  margin: $margin5;
+  padding: $pad1;
 }
 
 .table {
   border-collapse: collapse;
   border-spacing: 0;
-  max-width: 100%;
   overflow-y: scroll;
   table-layout: fixed;
-  width: calc(100% - 25px);
-  margin: 30px 0;
+  width: calc(100% - 15px);
+  max-width: 100%;
+  margin: 2vh auto;
 }
 
-
-
 .table_selected {
-  outline: 2px solid rgb(60, 132, 244);
+  outline: 1px solid $blue1;
 }
 
 
 
 .table_cell {
-  border: 1px solid #bbb;
+  border: 1px solid $bray0;
   min-width: 75px;
   vertical-align: top;
   text-align: start;
-  padding: 0;
-  margin: 0;
+  padding: 1px;
   position: relative;
-  cursor: default;
+  cursor: pointer;
   outline: none;
-}
-
-.table_cell .paragraph {
-  padding: 0;
-  margin: 0;
+  height: fit-content;
+  font-family: $mainFont;
+  font-size: $xsmall;
 }
 
 .table_cell_content {
-  // margin: 0;
-  // padding: 0;
-  // min-height: 2vh;
+  margin: 0;
+  padding: 0;
+  min-height: 2vh;
 }
 
 .table_cell input {
-  // width: 100%;
-  // size: 1ch;
-  // margin: 0;
-  // padding: 0;
-  // outline: none;
-  // border: none;
+  width: 100%;
+  size: 1ch;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: none;
 }
 
 .table_cell_sorted_indicator {
@@ -422,27 +417,23 @@
 }
 
 .table_cell_selected {
-  background-color: #c9dbf041;
+  background-color: rgba(210, 255, 255, 0.602);
+  border: 2px solid rgb(146, 204, 237);
 }
 
 .table_cell_primary_selected {
-  border: 2px solid rgba(60, 220, 244, 0.226);
+  border: 1px solid $blue2;
   display: block;
-  height: 100%;
+  height: calc(100% - 2px);
   position: absolute;
-  width: 100%;
-  left: 0;
-  top: 0;
+  width: calc(100% - 2px);
+  left: -1px;
+  top: -1px;
   z-index: 2;
 }
 
-.table_cell .paragraph {
-  // margin: 0 !important;
-  // padding: 0 !important;
-}
-
 .table_cell_editing {
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.223);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.4);
   border-radius: 3px;
 }
 
@@ -474,7 +465,7 @@
   display: block;
   position: absolute;
   width: 1px;
-  background-color: rgba(60, 131, 244, 0.408);
+  background-color: rgb(60, 132, 244);
   height: 100%;
   top: 0;
 }
@@ -515,7 +506,6 @@
 
 .table_node_content_editable {
   min-height: 20px;
-  background-color: rgb(220, 236, 234);
   border: 0px;
   resize: none;
   cursor: text;

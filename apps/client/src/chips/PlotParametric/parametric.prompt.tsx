@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
 import { useState } from "react";
-import { algom } from "src/algom";
+import { toLatex } from "src/algom";
 import { Pair } from "src/App";
 import { concat } from "src/util";
 import { Table } from "../DataTable";
@@ -44,7 +44,7 @@ export function ParametricPlotPrompt({ activeEditor, onClose }: IPPD) {
         keys={["x_of_t", "y_of_t"]}
         cell={(c, k) => (
           <TeX
-            math={(k === "x_of_t" ? "x(t)" : "y(t)") + "=" + algom.toLatex(c)}
+            math={(k === "x_of_t" ? "x(t)" : "y(t)") + "=" + toLatex(c)}
           />
         )}
         schema={{

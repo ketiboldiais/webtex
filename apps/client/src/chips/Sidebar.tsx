@@ -1,7 +1,7 @@
 import app from "../ui/styles/App.module.scss";
 import { useEditor } from "@hooks/useEditor";
 import { nanoid } from "nanoid";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BtnEvt, LiEvt } from "src/App";
 import {
   addNote,
@@ -19,7 +19,7 @@ import {
 import { concat, EMPTY_NOTE, toggle } from "src/util";
 import { Checkmark, TrashIcon, WriteIcon } from "./Icon";
 import { useModal } from "@hooks/useModal";
-import { Conditioned, Button } from "./Inputs";
+import { Button } from "./Inputs";
 
 export function SideBar() {
   const dispatch = useAppDispatch();
@@ -180,14 +180,15 @@ function TrashedNote({
           (!checked ? onAdd : onRemove)(note);
         }}
       >
-        <div className={app.trashed_note_title}>
-          {note.title}
-        </div>
-        <Conditioned on={checked}>
+        <div
+          className={app.trashed_note_title}
+          children={note.title}
+        />
+        {checked && (
           <div className={app.trash_note_checkmark}>
             <Checkmark />
           </div>
-        </Conditioned>
+        )}
       </div>
       <div className={app.trashed_note_date}>
         {note.date.slice(0, -10)}

@@ -1,0 +1,184 @@
+@import './base';
+
+.sheet_shell {
+	font-family: $mainFont;
+	margin: 0 auto;
+	max-width: 97vw;
+	background-color: $pageColor;
+	font-size: 0.85rem;
+	color: $gray5;
+}
+
+
+.sheet_main {
+	display: flex;
+	justify-content: space-around;
+	align-items: center;
+	width: 100%;
+}
+
+.sidecontrol {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin: $margin1;
+	padding: 0;
+}
+
+.plus_button {
+	@include PlusSign(
+		$outspace: 5px, 
+		$background: $pageColor, 
+		$size: 20px, 
+		$crossColor: $gray1, 
+		$radius: 50%
+	);
+	box-shadow: $box-shadow;
+}
+
+
+.new_col_button,
+.new_row_button {
+	border: 0;
+	margin: $margin1;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	width: fit-content;
+	padding: 2px;
+	margin: 0;
+	border-radius: 50%;
+	&:hover {
+		box-shadow: $box-shadow-pressed;
+	}
+}
+
+.sheet_table_wrapper {
+	overflow: auto;
+}
+
+.sheet_table {
+	background-color: $pageColor;
+	width: 100%;
+	border-collapse: collapse;
+	border-spacing: 0;
+	margin: 0;
+	padding: 0;
+}
+
+.sheet_selected {
+	background-color: $blue0;
+	border: solid thin $blue5;
+}
+
+.sheet_focus {
+	background-color: $blue1;
+	border: solid thin $blue4;
+}
+
+.sheet_cell_content {
+	display: grid;
+	grid-template-columns: 20fr 1fr;
+}
+
+.sheet_header,
+.sheet_cell {
+	border: thin solid $bray0;
+	border-collapse: collapse;
+	min-width: 80px;
+}
+
+
+.sheet_text {
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	display: block;
+}
+
+.sheet_readonly {
+	height: 100%;
+	padding: $padtiny;
+}
+
+.sheet_writable {
+	width: 100%;
+	height: 100%;
+	outline: none;
+	appearance: none;
+	border: 0;
+}
+
+.sheet_menu {
+	padding: $pad1;
+	opacity: 0;
+	transition: all 0.1s ease-in;
+}
+
+.sheet_table td:hover {
+	.sheet_menu {
+		opacity: 1;
+		transition: all 0.1s ease-out;
+	}
+}
+
+.sheet_menu>button {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background-color: inherit;
+}
+
+.sheet_axis_cell {
+	font-size: $xsmall;
+	font-weight: normal;
+	color: $bray1;
+	padding: $padtiny $pad3;
+	text-align: center;
+	width: fit-content;
+	border: thin solid $bray0;
+}
+
+
+.sheet_toolbar {
+	display: flex;
+	gap: $margin1;
+	justify-content: flex-start;
+	align-items: center;
+	padding: $pad1;
+}
+
+.sheet_toolbar button {
+	background-color: $pageColor;
+	border: thin solid lightgrey;
+	box-shadow: $box-shadow;
+	padding: $padtiny $pad3;
+	border-radius: 2px;
+	color: $gray4;
+
+	&:hover {
+		box-shadow: $box-shadow-hover;
+	}
+}
+
+.sheet_toolbar input {
+	border: thin solid lightgrey;
+	border-radius: 1px;
+	padding: $padtiny $pad1;
+
+	&::placeholder {
+		color: $gray1;
+		font-style: italic;
+	}
+}
+
+.debug {
+	height: 500px;
+	margin-bottom: 5vh;
+	padding: 1em 0.8em;
+	background-color: $gray6;
+	color: $blue2;
+	font-family: 'Fira Code';
+	overflow-y: scroll;
+	font-size: 0.8rem;
+}

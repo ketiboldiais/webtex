@@ -1,11 +1,9 @@
-export class LRU<K, V> {
+export class LRU<K,V> {
   capacity: number;
   cache: Map<K, V>;
-  fallback: V;
-  constructor(capacity: number, fallback: V) {
+  constructor(capacity: number) {
     this.capacity = capacity;
     this.cache = new Map();
-    this.fallback = fallback;
   }
   hasKey(key: K) {
     return this.cache.has(key);
@@ -16,7 +14,7 @@ export class LRU<K, V> {
       this.cache.delete(key);
       this.cache.set(key, item);
     }
-    return item ? item : this.fallback;
+    return item;
   }
   put(key: K, val: V) {
     if (this.cache.has(key)) {
@@ -31,4 +29,4 @@ export class LRU<K, V> {
   }
 }
 
-export const cacheLRU = <v,>(fb: v, cap = 50) => new LRU<string, v>(cap, fb);
+export const cacheLRU = <v,>(cap = 50) => new LRU<string,v>(cap);

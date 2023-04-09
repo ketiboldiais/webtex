@@ -1,7 +1,6 @@
 import "katex/dist/katex.css";
-import { ChangeEvent, CSSProperties } from "react";
-import app from "./ui/styles/App.module.scss";
-import { ChangeEventHandler, MouseEventHandler, ReactNode } from "react";
+import { ChangeEvent } from "react";
+import { ChangeEventHandler, MouseEventHandler } from "react";
 import { Provider } from "react-redux";
 import { store } from "./state/state.js";
 import { Workspace } from "./chips/Workspace.js";

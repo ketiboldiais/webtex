@@ -349,10 +349,10 @@ button.default_button {
 	z-index: 10;
 	display: block;
 	position: absolute;
+	padding: $pad1;
 	@include Card;
-	border-radius: 8px;
+	border-radius: 5px;
 	min-width: 110px;
-	min-height: 40px;
 	margin-top: $margin2;
 	color: inherit;
 	background-color: var(--page);
@@ -361,7 +361,7 @@ button.default_button {
 
 .dropdown_item {
 	margin: 0;
-	padding: 2px 5px;
+	padding: $padtiny $pad1;
 	cursor: pointer;
 	text-align: center;
 	line-height: 16px;
@@ -372,7 +372,7 @@ button.default_button {
 	flex-shrink: 0;
 	border-radius: 0;
 	border: 0;
-	width: 98%;
+	width: 100%;
 	color: $bray3;
 
 	button {
@@ -406,11 +406,11 @@ button.default_button {
 
 
 .dropdown_options .dropdown_item:first-child {
-	margin-top: $margin2;
+	margin-top: 2px;
 }
 
 .dropdown_options .dropdown_item:last-child {
-	margin-bottom: $margin2;
+	margin-bottom: 2px;
 }
 
 // inputs
@@ -441,21 +441,19 @@ button.default_button {
 }
 
 #canvas {
-	background-color: var(--page);
-	width: 100%;
+	width: 100vw;
 	height: 100vh;
 	display: flex;
-	justify-content: flex-start;
+	justify-content: center;
 	align-items: center;
-	flex-direction: column;
 }
+
 
 // § Grid
 div.grid_table {
 	font-family: $mainFont;
 }
 
-.grid_header {}
 
 .grid_row,
 .grid_edit_row {
@@ -480,17 +478,11 @@ div.grid_table {
 	border: 0;
 }
 
-.grid_descend_icon {}
-
-.grid_ascend_icon {}
 
 .grid_hide {
 	visibility: hidden;
 }
 
-.grid_body {}
-
-.grid_footer {}
 
 
 input.grid_cell_input {
@@ -509,9 +501,6 @@ button.grid_delete {
 	font-size: $small;
 }
 
-button.grid_save {}
-
-button.grid_cancel {}
 
 button.grid_add {
 	@include PlainButton;
@@ -622,7 +611,6 @@ button.grid_cancel {
 }
 
 .parametric_footer,
-.plot3d_footer {}
 
 
 
@@ -657,9 +645,6 @@ button.grid_cancel {
 	border: 0;
 }
 
-.detail_show {}
-
-.detail_hide {}
 
 .detail_show,
 .detail_hide {
@@ -806,7 +791,6 @@ button.grid_cancel {
 	}
 }
 
-.katex_input_preview {}
 
 .katex_input_preview_box {
 	width: 100%;
@@ -824,13 +808,11 @@ textarea.katex_input_text_area {
 	max-height: 50vh;
 }
 
-.katex_input_inline_input {}
 
 .katex_input_footer {
 	margin-top: $margin4;
 }
 
-.image {}
 
 .image_prompt {
 	font-family: $mainFont;
@@ -841,17 +823,6 @@ textarea.katex_input_text_area {
 	margin-top: $margin2;
 	height: 150px;
 }
-
-.image_focused {}
-
-.image_draggable {}
-
-.image_caption_container {}
-
-.image_content_editable {}
-
-.image_placeholder {}
-
 
 .file_upload {
 	margin: $margin4 0;
@@ -973,7 +944,6 @@ button.write_button {
 .chevron::before {
 	border-style: solid;
 	border-width: 0.15em 0.15em 0 0;
-	color: $bray0;
 	content: '';
 	display: block;
 	margin: auto;
@@ -981,6 +951,7 @@ button.write_button {
 	width: $margin1;
 	position: relative;
 	transform: rotate(-45deg);
+	color: $bray3;
 }
 
 .chevron.bottom::before {
@@ -988,8 +959,13 @@ button.write_button {
 	transform: rotate(135deg);
 }
 
+.table_action_menu {
+	margin: 0;
+}
+
 .table_action_menu .dropdown_item {
-	padding: 2px;
+	padding: 0px;
+	margin: 0;
 }
 
 .table_action_menu .dropdown_item .dropdown_label .dropdown_item_title {
@@ -1315,6 +1291,7 @@ button.destroy_button[disabled] {
 	align-items: center;
 	gap: 2px;
 	border: 0;
+
 	div {
 		flex: 1;
 	}
@@ -1352,6 +1329,7 @@ button.destroy_button[disabled] {
 	height: 100%;
 	display: inline-block;
 }
+
 .graph_prompt .add_button {
 	border-radius: 50%;
 	border: 0;
@@ -1363,4 +1341,99 @@ button.destroy_button[disabled] {
 
 @media (min-width:700px) {
 	@include layout700;
+}
+
+
+.vstack {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}
+
+.hstack {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-evenly;
+	align-items: center;
+}
+
+
+.demo {
+	background-color: beige;
+	border: solid thin brown;
+}
+
+.resizer {
+	display: inline-block;
+	position: relative;
+}
+
+.n,
+.ne,
+.e,
+.se,
+.s,
+.sw,
+.w,
+.nw {
+	display: block;
+	width: 10px;
+	height: 10px;
+	position: absolute;
+	background-color: $blue3;
+	border: 1px solid #fff;
+	border-radius: 50%;
+}
+
+.n {
+	top: -5px;
+	left: 48%;
+	cursor: n-resize;
+}
+
+.ne {
+	top: -5px;
+	right: -5px;
+	cursor: ne-resize;
+}
+
+.e {
+	bottom: 48%;
+	right: -5px;
+	cursor: e-resize;
+}
+
+.se {
+	bottom: -3px;
+	right: -5px;
+	cursor: nwse-resize;
+}
+
+.s {
+	bottom: -4px;
+	left: 48%;
+	cursor: s-resize;
+}
+
+.sw {
+	bottom: -3px;
+	left: -5px;
+	cursor: sw-resize;
+}
+
+.w {
+	bottom: 48%;
+	left: -4px;
+	cursor: w-resize;
+}
+
+.nw {
+	top: -5px;
+	left: -4px;
+	cursor: nw-resize;
+}
+
+.resizeFocus {
+	border: solid 2px $blue4;
 }

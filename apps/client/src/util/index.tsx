@@ -7,7 +7,7 @@ import {
   LexicalCommand,
 } from "lexical";
 import { CommandListener } from "lexical/LexicalEditor";
-import { MouseEvent, PointerEvent, ReactNode } from "react";
+import { Dispatch, MouseEvent, PointerEvent, ReactNode, SetStateAction } from "react";
 
 export function joinRest(...classes: (string | undefined)[]) {
   return {
@@ -199,3 +199,5 @@ export type KeyName =
   | "Delete";
 
 export type KBCom = LexicalCommand<KeyboardEvent | ClipboardEvent>;
+export type StateSetter<T> = Dispatch<SetStateAction<T>>
+export type Html = HTMLElement;

@@ -1,6 +1,6 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
-import { algom } from "src/algom";
+import { makeFunction } from "src/algom";
 import { AxesHelper, DoubleSide, GridHelper, ShapeGeometry, Vector3 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { ParametricGeometry } from "three/examples/jsm/geometries/ParametricGeometry";
@@ -76,7 +76,7 @@ export default function Plot3d({
   gridColor = "lightgrey",
 }: Plot3dProps) {
   const canvasSize = { width, height };
-  const ZFN: Function | string = algom.makeFunction(z_expression, [
+  const ZFN: Function | string = makeFunction(z_expression, [
     x_variable,
     y_variable,
   ]);

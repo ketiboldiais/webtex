@@ -240,7 +240,7 @@ export function LatexComponent({ latex, inline, nodeKey }: LCP) {
 }
 
 import LatexEditor from "./LatexEditor";
-import { Row, Ternary } from "./Inputs";
+import { Row } from "./Inputs";
 
 type LR = Readonly<{ latex: string; inline: boolean; onClick: VoidFunction }>;
 
@@ -332,18 +332,21 @@ export function LatexModifier({ initLatex = "", onConfirm }: LMP) {
       </div>
       <div className={app.katex_input_main}>
         <label>LaTeX Input</label>
-        <Ternary on={inline}>
-          <input
-            className={app.katex_input_inline_input}
-            onChange={(e) => setLatex(e.target.value)}
-            value={latex}
-          />
-          <textarea
-            onChange={(e) => setLatex(e.target.value)}
-            value={latex}
-            className={app.katex_input_text_area}
-          />
-        </Ternary>
+        {inline
+          ? (
+            <input
+              className={app.katex_input_inline_input}
+              onChange={(e) => setLatex(e.target.value)}
+              value={latex}
+            />
+          )
+          : (
+            <textarea
+              onChange={(e) => setLatex(e.target.value)}
+              value={latex}
+              className={app.katex_input_text_area}
+            />
+          )}
       </div>
       <div className={app.katex_input_preview}>
         <label>Preview</label>

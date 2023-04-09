@@ -1,5 +1,4 @@
 import { line } from "d3-shape";
-import { algom } from "src/algom";
 import {
   Clip,
   Plane,
@@ -12,6 +11,31 @@ import {
 import { Pair, Quad } from "src/App";
 import { NodeKey, SerializedLexicalNode, Spread } from "lexical";
 import { nanoid } from "nanoid";
+import { makeFunction } from "src/algom";
+
+function parametric(
+  fx: Function,
+  fy: Function,
+  domain: [number, number],
+  samples: number,
+) {
+  const dataset: Point[] = [];
+  const xMax = domain[1] * Math.PI;
+  for (let i = -samples; i < samples; i++) {
+    let t = (((i) * Math.PI) / samples) * xMax;
+    let x = fx(t);
+    let y = fy(t);
+    let point: Point = { x, y };
+    if (isNaN(y)) {
+      point.y = null;
+    }
+    if (isNaN(x)) {
+      point.x = null;
+    }
+    dataset.push(point);
+  }
+  return dataset;
+}
 
 interface tPath {
   fx: Function;
@@ -23,7 +47,7 @@ interface tPath {
 }
 
 function ParametricPath({ fx, fy, xScale, yScale, samples, domain }: tPath) {
-  const dataset = algom.getData.parametric(fx, fy, domain, samples);
+  const dataset = parametric(fx, fy, domain, samples);
   const lineGenerator = line()
     .y((d: any) => yScale(d.y))
     .defined((d: any) => d.y !== null)
@@ -55,10 +79,10 @@ export default function PlotParametric({
   const FUNCS: ([Function, Function])[] = [];
   for (let i = 0; i < functions.length; i++) {
     const F = functions[i];
-    let fn = algom.makeFunction(F.x_of_t, ["t"]);
+    let fn = makeFunction(F.x_of_t, ["t"]);
     if (typeof fn === "string") return <>{fn}</>;
     const Fx = fn;
-    fn = algom.makeFunction(F.y_of_t, ["t"]);
+    fn = makeFunction(F.y_of_t, ["t"]);
     if (typeof fn === "string") return <>{fn}</>;
     const Fy = fn;
     FUNCS.push([Fx, Fy]);
@@ -119,4 +143,5 @@ export type SerializedParametricPlotNode = Spread<
   SerializedLexicalNode
 >;
 
-import { PARAMETRIC_TYPE } from "./parametric.node";
+import { PARAMETRIC_TYPE } from "./parametric.node";import {Point} from "../Plot2d/plot2d.chip";
+

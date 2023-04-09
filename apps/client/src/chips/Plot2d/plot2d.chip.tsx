@@ -6,7 +6,6 @@ import {
   Spread,
 } from "lexical";
 import { nanoid } from "@reduxjs/toolkit";
-import { algom } from "src/algom";
 import {
   Clip,
   FunctionPlotProps,
@@ -20,12 +19,15 @@ import {
 } from "../PlotUtils";
 import { line } from "d3-shape";
 import { Pair } from "../../App";
+import { makeFunction } from "src/algom";
 
 interface Plot1Props extends FunctionPlotProps {
   fs?: Plot1Payload[];
   uid?: string;
   ref?: { current: null | HTMLDivElement };
 }
+
+
 
 interface XYPathProps {
   f: Function;
@@ -35,8 +37,37 @@ interface XYPathProps {
   xScale: XScale;
   yScale: YScale;
 }
+export type Point = { x: number | null; y: number | null };
+function y(
+  f: Function,
+  range: [number, number],
+  domain: [number, number],
+  samples: number,
+) {
+  let dataset: Point[] = [];
+  let x: number;
+  let y: number;
+  const yMin = range[0] * 2;
+  const yMax = range[1] * 2;
+  const xMax = domain[1];
+  for (let i = -samples; i < samples; i++) {
+    x = (i / samples) * xMax;
+    y = f(x);
+    const point: Point = { x, y };
+    if (Number.isNaN(y) || y <= yMin || y >= yMax) {
+      point.y = null;
+    }
+    if (x < domain[0] || domain[1] < x) {
+      continue;
+    } else {
+      dataset.push(point);
+    }
+  }
+  return dataset;
+}
+
 function XYPath({ f, samples, domain, range, xScale, yScale }: XYPathProps) {
-  let dataset = algom.getData.y(f, range, domain, samples);
+  let dataset = y(f, range, domain, samples);
   const lineGenerator = line()
     .y((d: any) => yScale(d.y))
     .defined((d: any) => d.y !== null)
@@ -70,7 +101,7 @@ export default function Plot1({
     const L = fs.length;
     for (let i = 0; i < L; i++) {
       const fstring = fs[i];
-      const fn = algom.makeFunction(fstring.expression, [fstring.variable]);
+      const fn = makeFunction(fstring.expression, [fstring.variable]);
       if (typeof fn !== "string") fx.push(fn);
     }
   }
