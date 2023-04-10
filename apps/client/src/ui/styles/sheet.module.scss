@@ -72,8 +72,8 @@
 }
 
 .sheet_focus {
-	background-color: $blue1;
-	border: solid thin $blue4;
+	background-color: rgb(225, 243, 194);
+	border: solid thin $blue6;
 }
 
 .sheet_cell_content {
@@ -174,6 +174,7 @@
 
 .debug {
 	height: 500px;
+	width: 50vw;
 	margin-bottom: 5vh;
 	padding: 1em 0.8em;
 	background-color: $gray6;

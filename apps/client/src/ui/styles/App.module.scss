@@ -238,19 +238,6 @@ button.default_button {
 	}
 }
 
-.fontfam_dropdown {
-	max-height: 40vh;
-	overflow-x: scroll;
-	@include Scrollbar;
-}
-
-.fontsize_dropdown {
-	max-height: 20vh;
-	min-width: 90px;
-	overflow-x: scroll;
-	@include Scrollbar;
-}
-
 
 
 .fontsize_option>label {
@@ -356,6 +343,9 @@ button.default_button {
 	margin-top: $margin2;
 	color: inherit;
 	background-color: var(--page);
+	max-height: 50vh;
+	overflow-x: auto;
+	@include Scrollbar;
 }
 
 
@@ -425,7 +415,8 @@ button.default_button {
 	text-align: center;
 	font-size: $xsmall;
 	width: 3vw;
-	color: inherit;
+	// border: $line2;
+	// border-radius: 3px;
 }
 
 .number_input_body {
@@ -437,13 +428,14 @@ button.default_button {
 .number_input_button {
 	border: 0;
 	background-color: inherit;
-	color: $bray2;
+	color: inherit;
 }
 
 #canvas {
 	width: 100vw;
 	height: 100vh;
 	display: flex;
+	flex-direction: column;
 	justify-content: center;
 	align-items: center;
 }
@@ -1042,7 +1034,7 @@ button.write_button {
 }
 
 .color_picker {
-	background-color: rgb(248, 248, 248);
+	width: inherit;
 }
 
 
@@ -1437,3 +1429,5 @@ button.destroy_button[disabled] {
 .resizeFocus {
 	border: solid 2px $blue4;
 }
+
+

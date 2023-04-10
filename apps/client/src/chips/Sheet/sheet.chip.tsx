@@ -16,6 +16,7 @@ import css from "../../ui/styles/sheet.module.scss";
 import app from "../../ui/styles/App.module.scss";
 import { Dropdown, Option } from "../Dropdown";
 import { Chevron } from "../Icon";
+import { InputFn } from "src/App";
 
 type CellType = "td" | "th";
 type CellMap = Map<string, [number, number]>;
@@ -23,13 +24,17 @@ type Cell = {
   type: CellType;
   value: string;
   id: string;
+  column: string;
+  row: number;
 };
 type Cells = Cell[];
 
 const newCell = (
   type: CellType = "td",
   value: string = "",
-): Cell => ({ value, type, id: uid() });
+  column: string = "",
+  row: number = 0,
+): Cell => ({ value, type, id: uid(), column, row });
 
 const makeCells = (count: number) => {
   const out: Cell[] = [];
@@ -57,22 +62,38 @@ type Rows = Row[];
 
 const makeRows = (rowCount: number, colCount: number) => {
   const out: Rows = [];
-  for (let i = 0; i < rowCount; i++) {
-    out.push(newRow(makeCells(colCount)));
+  for (let r = 0; r < rowCount; r++) {
+    const cells: Cell[] = [];
+    for (let c = 0; c < colCount; c++) {
+      const cell = newCell();
+      cell.row = r;
+      cell.column = rebase(c);
+      cells.push(cell);
+    }
+    out.push(newRow(cells));
   }
   return out;
 };
 
 class Spreadsheet {
-  rows: Rows;
+  columnCount: number;
+  rowCount: number;
   lastEditedCell: string | null;
+  selection: IDPayload[] = [];
+  rows: Rows;
   constructor(rows: Rows) {
     this.rows = rows;
     this.lastEditedCell = null;
+    this.rowCount = rows.length;
+    this.columnCount = rows[0].cells.length;
   }
 
   getWritable() {
     return this;
+  }
+  updateSelection(ids: IDPayload[]) {
+    const self = this.getWritable();
+    self.selection = [...ids];
   }
 
   static preload(rows: Rows) {
@@ -147,15 +168,23 @@ class Spreadsheet {
       const cells: Cells = [];
       for (let x = 0; x < cellCount; x++) {
         const type = previousRow.cells[x].type;
-        cells.push(newCell(type));
+        const column = previousRow.cells[x].column;
+        const cell = newCell(type);
+        cell.column = column;
+        cell.row = self.rowCount;
+        cells.push(cell);
       }
       rows.push(newRow(cells));
     }
+    self.rowCount += count;
     return this;
   }
 
+  updateCellRows() {}
+
   insertRowAt(rowIndex: number) {
     const self = this.getWritable();
+    self.rowCount += 1;
     const rows = self.rows;
     const prevRow = rows[rowIndex] || rows[rowIndex - 1];
     const cellCount = prevRow.cells.length;
@@ -192,6 +221,22 @@ class Spreadsheet {
     return this;
   }
 }
+type IDPayload = {
+  id: string;
+  rowIndex: number;
+  columnIndex: number;
+};
+type IDPayloadFty = (
+  id: string,
+  rowIndex: number,
+  columnIndex: number,
+) => IDPayload;
+
+const newIDPayload: IDPayloadFty = (id, rowIndex, columnIndex) => ({
+  id,
+  rowIndex,
+  columnIndex,
+});
 
 type pSheetContext = {
   children: ReactNode;
@@ -213,10 +258,16 @@ type SheetState = {
   push: (kind: "col" | "row", index: number) => void;
   pop: (kind: "col" | "row", index: number) => void;
   cellmap: CellMap;
-  getSelectedCellIDs: (startID: string, endID: string) => string[];
+  getSelectedCellIDs: (startID: string, endID: string) => IDPayload[];
+  selection: string[];
+  updateSelection: React.Dispatch<React.SetStateAction<string[]>>;
   sheet: Spreadsheet;
+  asciiRows: string[];
+  primarySelectedID: string;
+  setPrimarySelectedID: (x: string | null) => void;
+  
 };
-
+type CellFn = (rowIndex: number, colIndex: number, value: string) => void;
 const SheetContextProvider = ({
   children,
   initialRows,
@@ -226,21 +277,42 @@ const SheetContextProvider = ({
   const sheet = useRef(Spreadsheet.preload(initialRows));
   const [rowCount, setRowCount] = useState(minRowCount);
   const [colCount, setColCount] = useState(minColCount);
-  const [lastUpdate, setLastUpdate] = useState("");
+
+  const [
+    lastUpdatedCell,
+    setLastUpdatedCell,
+  ] = useState<string | null>(null);
+  
+  
+  
+  const primarySelectedID = useRef<string>("")
+  
+  const setPrimarySelectedID = (x:string|null) => {
+    primarySelectedID.current = x === null ? "" : x;
+  }
+  
+
+  const asciiRows = useMemo(() => {
+    return range(0, colCount + 1).map((n) => rebase(n - 1));
+  }, [colCount]);
+
+  const [
+    selection,
+    updateSelection,
+  ] = useState<string[]>([]);
+
   const lastEditedCell = useRef<string | null>(null);
 
-  const updateValue = (
-    rowIndex: number,
-    colIndex: number,
-    value: string,
-  ) => {
-    sheet.current.updateCellValue(rowIndex, colIndex, value);
-  };
+  const updateValue: CellFn = (rowIndex, colIndex, value) =>
+    sheet
+      .current
+      .updateCellValue(rowIndex, colIndex, value);
 
   const updateLastEditedCell = (id: string | null) => {
     lastEditedCell.current = id;
     if (id !== null) {
       sheet.current.lastEditedCell = id;
+      setLastUpdatedCell(id);
     }
   };
 
@@ -314,11 +386,12 @@ const SheetContextProvider = ({
     const rect = getSelectedRect(startID, endID);
     if (rect === null) return [];
     const { startX, startY, endX, endY } = rect;
-    const ids: string[] = [];
+    const ids: IDPayload[] = [];
     for (let x = startX; x <= endX; x++) {
       for (let y = startY; y <= endY; y++) {
         const cell = sheet.current.getCellAt(x, y);
-        cell && ids.push(cell.id);
+        if (cell === null) continue;
+        ids.push(newIDPayload(cell.id, x, y));
       }
     }
     return ids;
@@ -341,6 +414,11 @@ const SheetContextProvider = ({
         cellmap,
         getSelectedCellIDs,
         sheet: sheet.current,
+        selection,
+        updateSelection,
+        asciiRows,
+        primarySelectedID: primarySelectedID.current,
+        setPrimarySelectedID
       }}
     >
       {children}
@@ -356,9 +434,10 @@ type pSheetProps = Partial<
     "initialRows" | "minColCount" | "minRowCount"
   >
 >;
+
 export default function Sheet({
-  minRowCount = 5,
-  minColCount = 5,
+  minRowCount = 3,
+  minColCount = 2,
   initialRows = makeRows(minRowCount, minColCount),
 }: pSheetProps) {
   return (
@@ -369,29 +448,26 @@ export default function Sheet({
     >
       <div className={css.sheet_shell}>
         <TOOLBAR />
-        <div className={app.vstack}>
-          <div className={css.sheet_main}>
-            <TABLE />
-            <NewColumnButton />
-          </div>
-          <NewRowButton />
-        </div>
+        <MAIN />
       </div>
-      {/* <DEBUGGER /> */}
+      <DEBUGGER />
     </SheetContextProvider>
   );
 }
 
-const DEBUGGER = () => {
-  const { sheet } = useSheet();
+const MAIN = () => {
   return (
-    <div className={css.debug}>
-      <pre>
-        {JSON.stringify(sheet,null,4)}
-      </pre>
+    <div className={app.vstack}>
+      <div className={css.sheet_main}>
+        <TABLE />
+        <NewColumnButton />
+      </div>
+      <NewRowButton />
     </div>
   );
 };
+
+
 
 const TOOLBAR = () => {
   return (
@@ -403,12 +479,13 @@ const TOOLBAR = () => {
 };
 
 const EXPRINPUT = () => {
+  const {lastEditedCell} = useSheet();
   const [formula, setFormula] = useState("");
   return (
     <input
       type={"text"}
       value={formula}
-      placeholder={"Expression"}
+      placeholder={""}
       onChange={(E) => setFormula(E.target.value)}
     />
   );
@@ -447,22 +524,39 @@ const TABLE = () => {
     colCount,
     cellmap,
     getSelectedCellIDs,
-  } = useSheet();
-  const tableRef = useRef<null | HTMLTableElement>(null);
-  const mouseDown = useRef(false);
-  const [
+    sheet,
     primarySelectedID,
-    setPrimarySelectedID,
-  ] = useState<string | null>(null);
+    setPrimarySelectedID
+  } = useSheet();
+
+  const tableRef = useRef<null | HTMLTableElement>(null);
+
+  const mouseDown = useRef(false);
+
+  // const [
+    // primarySelectedID,
+    // setPrimarySelectedID,
+  // ] = useState<string | null>(null);
+  
+  // const primarySelectedID = useRef<string>("")
+  
+  // const setPrimarySelectedID = (x:string|null) => {
+    // primarySelectedID.current = x === null ? "" : x;
+  // }
+
   const [isSelected, setSelected] = useState(false);
+
   const [isEditing, setIsEditing] = useState(false);
+
   const [
     selectedCellIDs,
     setSelectedCellIDs,
-  ] = useState<string[]>([]);
+  ] = useState<IDPayload[]>([]);
+
   const selectedCellSet = useMemo(() => {
-    return new Set(selectedCellIDs);
+    return new Set(selectedCellIDs.map((v) => v.id));
   }, [selectedCellIDs]);
+
   const selectTable = useCallback(() => {
     setTimeout(() => {
       const tableElement = tableRef.current;
@@ -472,6 +566,7 @@ const TABLE = () => {
       }
     }, 20);
   }, [mouseDown.current]);
+
   useEffect(() => {
     const tableElement = tableRef.current;
     if (tableElement === null) return;
@@ -479,6 +574,7 @@ const TABLE = () => {
       tableElement.focus();
     }
   }, [isSelected]);
+
   useEffect(() => {
     const tableElement = tableRef.current;
     if (tableElement === null) return;
@@ -498,6 +594,8 @@ const TABLE = () => {
         setSelected(false);
         mouseDown.current = true;
         let lastID: string | null = null;
+        // if (primarySelectedID !== pid) {
+        // if (primarySelectedID.current !== pid) {
         if (primarySelectedID !== pid) {
           setPrimarySelectedID(pid);
           setIsEditing(false);
@@ -505,6 +603,7 @@ const TABLE = () => {
         }
         updateLastEditedCell(lastID);
         setSelectedCellIDs([]);
+        sheet.updateSelection([]);
         return;
       }
       if (primarySelectedID !== null && !targetOnControl(e.target as Html)) {
@@ -512,6 +611,7 @@ const TABLE = () => {
         mouseDown.current = false;
         setPrimarySelectedID(null);
         setSelectedCellIDs([]);
+        sheet.updateSelection([]);
         setIsEditing(false);
         updateLastEditedCell(null);
       }
@@ -526,8 +626,11 @@ const TABLE = () => {
       if (selectedCellIDs.length === 0) {
         tableElement.style.userSelect = "none";
       }
+      // const ids = getSelectedCellIDs(primarySelectedID, pid);
+      // const ids = getSelectedCellIDs(primarySelectedID.current, pid);
       const ids = getSelectedCellIDs(primarySelectedID, pid);
       setSelectedCellIDs(ids.length === 1 ? [] : ids);
+      sheet.updateSelection(ids.length === 1 ? [] : ids);
       updateLastEditedCell(pid);
     };
     const handlePointerUp = () => {
@@ -553,6 +656,8 @@ const TABLE = () => {
   useEffect(() => {
     const handleDblClick = (event: MouseEvent) => {
       const pid = getCellID(event.target as Html);
+      // if (pid === primarySelectedID) {
+      // if (pid === primarySelectedID.current) {
       if (pid === primarySelectedID) {
         setIsEditing(true);
         setSelectedCellIDs([]);
@@ -580,28 +685,14 @@ const TABLE = () => {
         <tbody>
           {rows.map((row, rowIndex) => (
             <Fragment key={row.id + rowIndex}>
-              {rowIndex === 0 && (
-                <tr>
-                  {range(0, colCount + 1).map((n, i) => (
-                    <Fragment key={`ci${n}`}>
-                      {i === 0
-                        ? <th className={css.sheet_axis_cell} />
-                        : (
-                          <th className={css.sheet_axis_cell}>
-                            {rebase(n - 1)}
-                          </th>
-                        )}
-                    </Fragment>
-                  ))}
-                </tr>
-              )}
+              {rowIndex === 0 && <RowIndices />}
               <tr>
                 {row.cells.map((cell, columnIndex) => (
                   <Fragment key={cell.id + columnIndex}>
                     {columnIndex === 0 && (
                       <td className={css.sheet_axis_cell}>{rowIndex}</td>
                     )}
-                    <CELL
+                    <CellProvider
                       type={cell.type}
                       value={cell.value}
                       id={cell.id}
@@ -610,7 +701,13 @@ const TABLE = () => {
                       isSelected={selectedCellSet.has(cell.id)}
                       isEditing={isEditing}
                       isPrimarySelected={primarySelectedID === cell.id}
-                    />
+                    >
+                      <CELL>
+                        <INPUT />
+                        <TEXT />
+                        <MENU />
+                      </CELL>
+                    </CellProvider>
                   </Fragment>
                 ))}
               </tr>
@@ -622,7 +719,42 @@ const TABLE = () => {
   );
 };
 
+const RowIndices = () => {
+  const { asciiRows } = useSheet();
+  return (
+    <tr>
+      {asciiRows.map((letter, i) => (
+        <Fragment key={`ci${letter}`}>
+          {i === 0
+            ? <th className={css.sheet_axis_cell} />
+            : (
+              <th className={css.sheet_axis_cell}>
+                {letter}
+              </th>
+            )}
+        </Fragment>
+      ))}
+    </tr>
+  );
+};
+
+interface CellCtx {
+  type: CellType;
+  value: string;
+  rowIndex: number;
+  columnIndex: number;
+  isSelected: boolean;
+  isPrimarySelected: boolean;
+  isEditing: boolean;
+  id: string;
+  setCurrentType: React.Dispatch<React.SetStateAction<"td" | "th">>;
+  updateCellValue: InputFn;
+}
+
+const CellContext = createContext<CellCtx>({} as CellCtx);
+
 type pCELL = {
+  children: ReactNode;
   type: CellType;
   value: string;
   rowIndex: number;
@@ -633,7 +765,8 @@ type pCELL = {
   id: string;
 };
 
-const CELL = ({
+const CellProvider = ({
+  children,
   type,
   value,
   rowIndex,
@@ -643,71 +776,95 @@ const CELL = ({
   isEditing,
   id,
 }: pCELL) => {
-  const { updateValue } = useSheet();
+  const { sheet } = useSheet();
   const [val, setVal] = useState(value);
   const [currentType, setCurrentType] = useState(type);
-  const Box = currentType;
 
-  useEffect(() => {
-    isEditing && isPrimarySelected && updateValue(rowIndex, columnIndex, val);
-  }, [val]);
+  const updateCellValue: InputFn = (event) => {
+    event.stopPropagation();
+    sheet.updateCellValue(rowIndex, columnIndex, event.target.value);
+    setVal(event.target.value);
+  };
 
+  return (
+    <CellContext.Provider
+      value={{
+        type: currentType,
+        value: val,
+        rowIndex,
+        columnIndex,
+        isSelected,
+        isPrimarySelected,
+        isEditing,
+        id,
+        setCurrentType,
+        updateCellValue,
+      }}
+    >
+      {children}
+    </CellContext.Provider>
+  );
+};
+
+const useCell = () => useContext(CellContext);
+
+type CellAPI = {
+  children: ReactNode;
+};
+
+function CELL({
+  children,
+}: CellAPI) {
+  const {
+    id,
+    type,
+    isSelected,
+    isPrimarySelected,
+  } = useCell();
+  const Box = type;
   return (
     <Box
       data-id={id}
       tabIndex={-1}
-      className={(currentType === "td" ? css.sheet_cell : css.sheet_header) +
+      className={(type === "td" ? css.sheet_cell : css.sheet_header) +
         (isSelected ? " " + css.sheet_selected : "") +
         (isPrimarySelected ? " " + css.sheet_focus : "")}
     >
       <div className={css.sheet_cell_content}>
-        {(isPrimarySelected && isEditing)
-          ? <INPUT value={val} onWrite={setVal} />
-          : <TEXT value={value} />}
-        <MENU
-          updateType={setCurrentType}
-          type={type}
-          rowIndex={rowIndex}
-          columnIndex={columnIndex}
-        />
+        {children}
       </div>
     </Box>
   );
+}
+
+const TEXT = () => {
+  const { value, isPrimarySelected, isEditing, id } = useCell();
+  return (!(isPrimarySelected && isEditing))
+    ? (
+      <div className={css.sheet_text + " " + css.sheet_readonly}>
+        {value || id}
+      </div>
+    )
+    : (null);
 };
 
-const TEXT = ({ value }: { value: string }) => (
-  <div className={css.sheet_text + " " + css.sheet_readonly}>
-    {value}
-  </div>
-);
-
-type pINPUT = {
-  value: string;
-  onWrite: (feed: string) => void;
-};
-const INPUT = ({ value, onWrite }: pINPUT) => (
-  <input
-    value={value}
-    onChange={(e) => onWrite(e.target.value)}
-    autoFocus
-    className={css.sheet_writable}
-  />
-);
-
-type pMENU = {
-  rowIndex: number;
-  columnIndex: number;
-  type: CellType;
-  updateType: (type: CellType) => void;
+const INPUT = () => {
+  const { value, updateCellValue, isPrimarySelected, isEditing } = useCell();
+  return isPrimarySelected && isEditing
+    ? (
+      <input
+        value={value}
+        onChange={updateCellValue}
+        autoFocus
+        className={css.sheet_writable}
+      />
+    )
+    : null;
 };
 
-const MENU = ({
-  rowIndex,
-  columnIndex,
-  type,
-  updateType,
-}: pMENU) => {
+const MENU = () => {
   const { toggleType, push, pop, rowCount, colCount } = useSheet();
+  const { rowIndex, columnIndex, type, setCurrentType } = useCell();
   return (
     <Dropdown
       title={<Chevron />}
@@ -719,7 +876,7 @@ const MENU = ({
         label={type === "td" ? "Set header" : "Unset header"}
         click={() => {
           toggleType(rowIndex, columnIndex);
-          updateType(type === "td" ? "th" : "td");
+          setCurrentType(type === "td" ? "th" : "td");
         }}
       />
       <Option
@@ -784,6 +941,17 @@ const NewRowButton = () => {
       <button className={css.new_row_button} onClick={pushRow}>
         <div className={css.plus_button} />
       </button>
+    </div>
+  );
+};
+
+const DEBUGGER = () => {
+  const { sheet } = useSheet();
+  return (
+    <div className={css.debug}>
+      <pre>
+        {JSON.stringify(sheet,null,4)}
+      </pre>
     </div>
   );
 };

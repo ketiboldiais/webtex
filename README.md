@@ -1,36 +1,33 @@
 # Webtex Monorepo
-This is the root directory for the Webtex monorepo. All of Webtex's packages are ESM-only. For development details, [_see_ Development](#development).
+This is the root directory for the Webtex monorepo. All of Webtex's packages are ESM-only.
 
-## Outline
-This section outlines the subdirectories and packages used by Webtex.
+## Overview
+Webtex is a note-taking application geared towards technical subjects. Rich text-editing is done through Lexical, global state management through Redux, local data persistence through IndexedDB, and UI through React. A previous version of Webtex (viewable on the `main` branch) used an Express backend for data persistence. Because of security-related issues stemming from Webtex’s built-in compiler, that approach has been put on hold indefinitely.
 
-### Subdirectory: `apps`
-Contains Webtex's major components.
+## Subcomponents
+The following sections outline Webtex subcomponents. Because Webtex attempts to reuse components as much as possible while maintaining type-safety, many of the subcomponents are designed with (1) Webtex’s overall architecture in mind, and (2) the fact that there are several "DOMs" at play —the native DOM, React’s DOM, and the Lexical editor’s DOM. All together, such high reusability entails potentially steep technical debt. To mitigate that risk, many of Webtex’s subcomponents are implemented from scratch rather than using existing libraries. That said, Webtex’s major UI-related dependencies include:
 
-#### @webtex/client
-- Webtex's frontend, a React application via Vite.
+1. D3
+2. ThreeJS
+3. Katex
+4. Excalidraw
 
-#### @webtex/server
-- Webtex's backend, via Express server.
+### Algom
+Webtex uses a custom language called Algom for handling certain user inputs. Designed specifically for Webtex, user inputs are fed to the Algom compiler where they are ultimately compiled to either (a) JavaScript functions executing only within the Algom namespace, or (b) plain JavaScript values to be consumed by the relevant React component. A few components that use Algom:
 
-#### @webtex/lib
-- Utility functions shared between `@webtex/client` and `@webtex/server`.
+1. The various plotter components—Plot2d, Plot3d, PlotParametric, PlotPolar—all use Algom to handle user inputs.
+2. The Sheet component uses Algom to evaluate mathematical expressions, loops, and recursive functions.
+3. The LatexEditor and DataTable components use Algom to transform user input expressions into Latex, to be rendered by Katex.
 
-#### @webtex/shared
-- Type definitions and interfaces shared between `@webtex/client` and `@webtex/server`.
-
-
-### Subdirectory: `structs`
-Contains various data structures used by Webtex.
-
-### Subdirectory: `utils`
-Contains utility methods used by packages in `apps` and `structs`.
+### StringFn
 
 
-## Development
-All development and testing over a network is done with Caddy for automatic HTTPS. Because domain names are preconfigured, in development, the system's `hosts` file must be edited to resolve `webtex.cloud` and `api.webtex.cloud` to the local host IP. The `Caddy run` command expects there to be a Caddy configuration file in the root directory. _See_ [Caddy's Documentation for more details.](https://caddyserver.com/docs/) 
+### Helper Components
+#### Fig
+| Dependencies | Description |
+| ------------ | ----------- |
+| None         |             |
 
-The Webtex server uses Redis for cache management. Accordingly, for any given development pipeline, the Redis server must finish starting before the server starts. Because the client and the server are completely decoupled, they're free to run concurrently. Caddy, however, will run faster than either the client or the server. Accordingly, development is done with `tmux`, preconfigured with the `webtex.yml` file. The `webtex.yml` contains a command `js`. This is a Bash alias for `pnpm`. For more details on `tmux`, [_see_ the tmux documentation](https://tmuxguide.readthedocs.io/en/latest/tmux/tmux.html). For a `tmux` session manager, [_see_ tmuxinator](https://github.com/tmuxinator/tmuxinator).
+The `Fig` component provides a resizable `div` element. While there are several React-resizer libraries, Webtex requires more stringent control over the DOM to maintain proper data flow to the editor.
 
-## Algom
-The Webtex editor uses a small scripting language called Algom to parse mathematical expressions. _See_ the `client/src/algom` directory for further documentation.
+

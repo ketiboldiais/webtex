@@ -1,4 +1,11 @@
-import { CSSProperties, ReactNode, useEffect, useRef, useState } from "react";
+import {
+  CSSProperties,
+  forwardRef,
+  ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { BtnFn, InputFn } from "src/App";
 import { concat, toggle } from "src/util";
 import app from "../ui/styles/App.module.scss";
@@ -122,7 +129,7 @@ export function NumberInput({
   const plus = () => onChange(value + 1);
   const minus = () => onChange(value - 1);
   return (
-    <div className={concat(className, app.number)}>
+    <div className={concat(app.number, className)}>
       {label && typeof label === "string" ? <label>{label}</label> : label}
       <div className={app.number_input_body}>
         <button className={app.number_input_button} onClick={minus}>
@@ -180,6 +187,103 @@ export function Switch({
           />
         </div>
       )}
+    </div>
+  );
+}
+
+type TextRef = HTMLElement;
+
+type TextProps = {
+  of: string | number | null;
+};
+
+export const Text = forwardRef<TextRef, TextProps>((props, ref) => {
+  return <var ref={ref}>{props.of}</var>;
+});
+
+
+
+const RangeTest = () => {
+  return <Range />;
+};
+
+interface RangeAPI {
+  initialValue?: number;
+  maxValue?: number;
+  minValue?: number;
+  onChange?: (x: number) => void;
+}
+
+const percentToNum = (percent: number, max: number) => (max / 100) * percent;
+
+import { scaleLinear } from "d3";
+import {percentage} from "src/algom";
+import css from "../ui/styles/slider.module.scss";
+
+function Range({
+  initialValue = -10,
+  maxValue = 10,
+  minValue = -10,
+  onChange,
+}: RangeAPI) {
+  const sliderRef = useRef<null | HTMLDivElement>(null);
+  const thumbRef = useRef<null | HTMLDivElement>(null);
+  const displayValue = useRef<null | HTMLElement>(null);
+  const diff = useRef(0);
+  const value = useRef(initialValue);
+
+  const onPtrMove = (event: PointerEvent) => {
+    const elem = sliderRef.current;
+    if (!elem) return;
+    const { left } = elem.getBoundingClientRect();
+    const d = diff.current;
+    let newX = event.clientX - d - left;
+    const thumb = thumbRef.current;
+    if (!thumb) return;
+    const end = elem.offsetWidth - thumb.offsetWidth;
+    const start = 0;
+    newX = (newX < start) ? 0 : (newX > end ? end : newX);
+    const newPercent = percentage(newX, end);
+    thumb.style.left = `calc(${newPercent}% - 5px)`;
+    const displayElem = displayValue.current;
+    if (!displayElem) return;
+    const newValue = scaleLinear()
+      .domain([0, 100])
+      .range([minValue, maxValue])(newPercent);
+    value.current = newValue;
+    displayElem.textContent = `${value.current}`;
+    onChange && onChange(newValue);
+  };
+
+  const onPtrUp = () => {
+    document.removeEventListener("pointerup", onPtrUp);
+    document.removeEventListener("pointermove", onPtrMove);
+  };
+
+  const onPtrDown = (event: React.PointerEvent) => {
+    const thumb = thumbRef.current;
+    if (!thumb) return;
+    diff.current = event.clientX - thumb.getBoundingClientRect().left;
+    document.addEventListener("pointermove", onPtrMove);
+    document.addEventListener("pointerup", onPtrUp);
+  };
+
+  return (
+    <div className={app.vstack + " " + css.main}>
+      <header>
+        <Text ref={displayValue} of={value.current} />
+      </header>
+      <div className={app.hstack + " " + css.range}>
+        <Text of={minValue} />
+        <div ref={sliderRef} className={css.track}>
+          <div
+            ref={thumbRef}
+            className={css.thumb}
+            onPointerDown={onPtrDown}
+          />
+        </div>
+        <Text of={maxValue} />
+      </div>
     </div>
   );
 }

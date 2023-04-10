@@ -1,6 +1,7 @@
 import { scaleLinear } from "@visx/scale";
-import { ReactNode } from "react";
+import { ReactNode, useRef, useState } from "react";
 import { Axis, AxisScale } from "@visx/axis";
+import {HTML_DIV_REF} from "src/App";
 
 export const Scale = {
   linear: {
@@ -131,11 +132,10 @@ export function Plane({ ticks, yScale, xScale }: PlaneProps) {
 interface SVGProps {
   width: number;
   height: number;
-  cwidth: number;
-  cheight: number;
+  cwidth?: number;
+  cheight?: number;
   margins: [number, number, number, number];
   children: ReactNode;
-  ref?: { current: null | HTMLDivElement };
 }
 export function SVG({
   width,
@@ -144,7 +144,6 @@ export function SVG({
   cheight = height / width,
   margins,
   children,
-  ref,
 }: SVGProps) {
   const [top, right, bottom, left] = margins;
   const svgWidth = width - left - right;
@@ -154,7 +153,6 @@ export function SVG({
   const viewboxValue = `0 0 ${viewBoxWidth} ${viewBoxHeight}`;
   return (
     <div
-      ref={ref}
       style={{
         display: "block",
         position: "relative",
@@ -178,3 +176,310 @@ export function SVG({
     </div>
   );
 }
+
+
+
+type divref = null | HTMLDivElement;
+interface FigAPI {
+  children: ReactNode;
+  width: number;
+  height: number;
+  minWidth?: number;
+  minHeight?: number;
+  maxWidth: number;
+  maxHeight: number;
+}
+export function Figure({
+  children,
+  width,
+  height,
+  minWidth = width,
+  minHeight = height,
+  maxWidth,
+  maxHeight,
+}: FigAPI) {
+  const container = useRef<divref>(null);
+  const [isResizing, setIsResizing] = useState(false);
+  const [isSelected, setIsSelected] = useState(false);
+
+  const onResizeStart = () => {
+    setIsResizing(true);
+  };
+
+  const onResizeEnd = () => {
+    setTimeout(() => {
+      setIsResizing(false);
+      setIsSelected(false);
+    }, 200);
+  };
+
+  return (
+    <>
+      <div className={core.resizer}>
+        <div
+          ref={container}
+          className={isSelected ? core.resizeFocus : ""}
+          style={{
+            width: `${width}px`,
+            height: `${height}px`,
+            overflow: "hidden",
+          }}
+          onClick={() => setIsSelected(!isSelected)}
+        >
+          {children}
+        </div>
+        {(isSelected || isResizing) && (
+          <Resizer
+            targetRef={container}
+            onResizeStart={onResizeStart}
+            onResizeEnd={onResizeEnd}
+            minWidth={minWidth}
+            minHeight={minHeight}
+            maxWidth={maxWidth}
+            maxHeight={maxHeight}
+          />
+        )}
+      </div>
+    </>
+  );
+}
+
+interface ResizerAPI {
+  targetRef: { current: null | HTMLElement };
+  maxWidth: number;
+  maxHeight: number;
+  minWidth: number;
+  minHeight: number;
+  onResizeStart: () => void;
+  onResizeEnd: () => void;
+}
+
+enum D {
+  east = 1 << 0,
+  north = 1 << 3,
+  south = 1 << 1,
+  west = 1 << 2,
+}
+
+type Pos = {
+  currentHeight: number;
+  currentWidth: number;
+  direction: number;
+  isResizing: boolean;
+  ratio: number;
+  startHeight: number;
+  startWidth: number;
+  startX: number;
+  startY: number;
+};
+
+type Ptr = React.PointerEvent<HTMLDivElement>;
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+import core from "../ui/styles/App.module.scss";
+
+function Resizer({
+  targetRef,
+  maxWidth = 800,
+  maxHeight = 800,
+  minWidth = 200,
+  minHeight = 200,
+  onResizeStart,
+  onResizeEnd,
+}: ResizerAPI) {
+  const ctrlWrapper = useRef<HTML_DIV_REF>(null);
+  const userSelect = useRef({
+    priority: "",
+    value: "default",
+  });
+
+  const positioningRef = useRef<Pos>({
+    currentHeight: 0,
+    currentWidth: 0,
+    direction: 0,
+    isResizing: false,
+    ratio: 0,
+    startHeight: 0,
+    startWidth: 0,
+    startX: 0,
+    startY: 0,
+  });
+
+  const setStartCursor = (direction: number) => {
+    const elem = targetRef.current;
+    const cursorDir = getCursorPos(direction);
+    if (elem !== null) {
+      elem
+        .style
+        .setProperty("cursor", `${cursorDir}-resize`, "important");
+    }
+    if (document.body !== null) {
+      document
+        .body
+        .style
+        .setProperty("cursor", `${cursorDir}-resize`, "important");
+      userSelect.current.value = document
+        .body
+        .style
+        .getPropertyValue("-webkit-user-select");
+      userSelect.current.priority = document
+        .body
+        .style
+        .getPropertyPriority("-webkit-user-select");
+      document
+        .body
+        .style
+        .setProperty("-webkit-user-select", `none`, "important");
+    }
+  };
+
+  const setEndCursor = () => {
+    const elem = targetRef.current;
+    if (elem !== null) elem.style.setProperty("cursor", "default");
+    if (document.body !== null) {
+      document.body.style.setProperty("cursor", "default");
+      document.body.style.setProperty(
+        "-webkit-user-select",
+        userSelect.current.value,
+        userSelect.current.priority,
+      );
+    }
+  };
+
+  const startResize = (event: Ptr, direction: number) => {
+    const target = targetRef.current;
+    const controlWrapper = ctrlWrapper.current;
+    if (target === null || controlWrapper === null) return;
+    const { width, height } = target.getBoundingClientRect();
+    const positioning = positioningRef.current;
+    positioning.startWidth = width;
+    positioning.startHeight = height;
+    positioning.ratio = width / height;
+    positioning.currentWidth = width;
+    positioning.currentHeight = height;
+    positioning.startX = event.clientX;
+    positioning.startY = event.clientY;
+    positioning.isResizing = true;
+    positioning.direction = direction;
+    setStartCursor(direction);
+    onResizeStart();
+    target.style.height = `${height}px`;
+    target.style.width = `${width}px`;
+    document.addEventListener("pointermove", resize);
+    document.addEventListener("pointerup", stopResize);
+  };
+
+  const resize = (event: PointerEvent) => {
+    const target = targetRef.current;
+    const positioning = positioningRef.current;
+    const isHorizontal = positioning.direction & (D.east | D.west);
+    const isVertical = positioning.direction & (D.south | D.north);
+    if (target === null || !positioning.isResizing) return;
+    if (isHorizontal && isVertical) {
+      let diff = Math.floor(positioning.startX - event.clientX);
+      diff = positioning.direction & D.east ? -diff : diff;
+      const width = clamp(
+        positioning.startWidth + diff,
+        minWidth,
+        maxWidth,
+      );
+      const height = width / positioning.ratio;
+      target.style.width = `${width}px`;
+      target.style.height = `${height}px`;
+      positioning.currentHeight = height;
+      positioning.currentWidth = width;
+      return;
+    }
+    if (isVertical) {
+      let diff = Math.floor(positioning.startY - event.clientY);
+      diff = positioning.direction & D.south ? -diff : diff;
+      const height = clamp(
+        positioning.startHeight + diff,
+        minHeight,
+        maxHeight,
+      );
+      target.style.height = `${height}px`;
+      positioning.currentHeight = height;
+      return;
+    }
+    let diff = Math.floor(positioning.startX - event.clientX);
+    diff = positioning.direction & D.east ? -diff : diff;
+    const width = clamp(
+      positioning.startWidth + diff,
+      minWidth,
+      maxWidth,
+    );
+    target.style.width = `${width}px`;
+    positioning.currentWidth = width;
+  };
+  const stopResize = () => {
+    const target = targetRef.current;
+    const positioning = positioningRef.current;
+    const controlWrapper = ctrlWrapper.current;
+    if (target !== null && controlWrapper !== null && positioning.isResizing) {
+      positioning.startWidth = 0;
+      positioning.startHeight = 0;
+      positioning.ratio = 0;
+      positioning.startX = 0;
+      positioning.startY = 0;
+      positioning.currentWidth = 0;
+      positioning.currentHeight = 0;
+      positioning.isResizing = false;
+      setEndCursor();
+      onResizeEnd();
+      document.removeEventListener("pointermove", resize);
+      document.removeEventListener("pointerup", stopResize);
+    }
+  };
+
+  return (
+    <div ref={ctrlWrapper}>
+      <div
+        onPointerDown={(e) => startResize(e, D.north)}
+        className={core.n}
+      />
+      <div
+        onPointerDown={(e) => startResize(e, D.north | D.east)}
+        className={core.ne}
+      />
+      <div
+        onPointerDown={(e) => startResize(e, D.east)}
+        className={core.e}
+      />
+      <div
+        onPointerDown={(e) => startResize(e, D.south | D.east)}
+        className={core.se}
+      />
+      <div
+        onPointerDown={(e) => startResize(e, D.south)}
+        className={core.s}
+      />
+      <div
+        onPointerDown={(e) => startResize(e, D.south | D.west)}
+        className={core.sw}
+      />
+      <div
+        onPointerDown={(e) => startResize(e, D.west)}
+        className={core.w}
+      />
+      <div
+        onPointerDown={(e) => startResize(e, D.north | D.west)}
+        className={core.nw}
+      />
+    </div>
+  );
+}
+
+function getCursorPos(dir: number) {
+  const ew = dir === D.east || dir === D.west;
+  const ns = dir === D.north || dir === D.south;
+  const nw = dir & D.north && dir & D.west;
+  const se = dir & D.south && dir & D.east;
+  const nwse = nw || se;
+  return ew ? "ew" : ns ? "ns" : nwse ? "nwse" : "nesw";
+}
+
+export const translate = (x:number, y:number) => `translate(${x}, ${y})`;
+type FontUnit = 'px'|'em'|'rem'
+export const fontSize = (x:number, unit:FontUnit='px') => `${x}${unit}`

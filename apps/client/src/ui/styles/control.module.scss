@@ -1,0 +1,63 @@
+@import './base';
+
+.main {
+	background-color: $pageColor;
+	font-family: $mainFont;
+	font-size: 0.7rem;
+	padding: $pad1;
+	background-color: $gray0;
+	border: thin solid lightgray;
+	display: flex;
+}
+
+.item {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	width: fit-content;
+	padding: $padtiny;
+
+	label,
+	.counter {
+		border: thin solid $gray1;
+		border-radius: 0;
+		height: 25px;
+		background-color: $pageColor;
+	}
+
+	label {
+		padding: 5px 4px;
+		border-right: 0;
+		vertical-align: middle;
+		text-align: center;
+		cursor: pointer;
+	}
+
+	.counter {
+		padding: 3px 1px;
+	}
+
+}
+
+.color_label {
+	display: flex;
+	cursor: pointer;
+}
+
+.color_preview {
+	height: 24px;
+	width: 25px;
+	display: inline-block;
+	border: thin solid $gray1;
+	cursor: pointer;
+}
+
+.modal {
+	background-color: $pageColor;
+	@include ShortShadow;
+	position: absolute;
+	border: solid thin $gray1;
+	top: 20%;
+	z-index: 2;
+	border-radius: 5px;
+}

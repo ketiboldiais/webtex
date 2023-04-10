@@ -380,7 +380,6 @@ function FontSizer() {
 
   return (
     <Dropdown
-      className={app.fontsize_dropdown}
       title={
         <SlotLabel>
           <label>Font Size</label>
@@ -407,7 +406,6 @@ function FontFamilyFormat() {
   };
   return (
     <Dropdown
-      className={app.fontfam_dropdown}
       title={
         <SlotLabel>
           <span>{"Font family"}</span>

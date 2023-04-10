@@ -88,6 +88,56 @@ export function SideBar() {
   );
 }
 
+/* -------------------------------- NOTE ITEM ------------------------------- */
+/**
+ * Each note item in the sidebar is rendered as a NoteItem component.
+ * Every note can be deleted except the documentation page.
+ * This ensures that the note list is never empty, reducing the complexity
+ * of keeping all the states in sync.
+ */
+
+interface INoteItem {
+  note: Note;
+  onDelete: (event: BtnEvt, note: Note) => void;
+}
+function NoteItem({ note, onDelete }: INoteItem) {
+  const dispatch = useAppDispatch();
+  const activeNote = getActiveNote();
+  const { activeNoteTitle } = useEditor();
+  const { activeEditor } = useEditor();
+  function switchNote(event: LiEvt) {
+    event.stopPropagation();
+    dispatch(setActiveNote(note));
+    const newstate = activeEditor.parseEditorState(note.content);
+    activeEditor.setEditorState(newstate);
+  }
+  const title = note.id === activeNote.id ? activeNoteTitle : note.title;
+  return (
+    <li
+      onClick={switchNote}
+      className={concat(
+        app.note,
+        toggle(app.activeNote, app.note).on(note.id === activeNote.id),
+      )}
+    >
+      <div className={app.note_header}>
+        <strong>{title}</strong>
+        {note.id !== `webtexDOCS` && (
+          <button
+            className={app.delete_button}
+            onClick={(e) => onDelete(e, note)}
+          >
+            &times;
+          </button>
+        )}
+      </div>
+      <div className={app.note_details}>
+        <small>{note.date}</small>
+      </div>
+    </li>
+  );
+}
+
 type pTrashNotesList = {
   onClose: () => void;
 };
@@ -192,56 +242,6 @@ function TrashedNote({
       </div>
       <div className={app.trashed_note_date}>
         {note.date.slice(0, -10)}
-      </div>
-    </li>
-  );
-}
-
-/* -------------------------------- NOTE ITEM ------------------------------- */
-/**
- * Each note item in the sidebar is rendered as a NoteItem component.
- * Every note can be deleted except the documentation page.
- * This ensures that the note list is never empty, reducing the complexity
- * of keeping all the states in sync.
- */
-
-interface INoteItem {
-  note: Note;
-  onDelete: (event: BtnEvt, note: Note) => void;
-}
-function NoteItem({ note, onDelete }: INoteItem) {
-  const dispatch = useAppDispatch();
-  const activeNote = getActiveNote();
-  const { activeNoteTitle } = useEditor();
-  const { activeEditor } = useEditor();
-  function switchNote(event: LiEvt) {
-    event.stopPropagation();
-    dispatch(setActiveNote(note));
-    const newstate = activeEditor.parseEditorState(note.content);
-    activeEditor.setEditorState(newstate);
-  }
-  const noteTitle = note.id === activeNote.id ? activeNoteTitle : note.title;
-  return (
-    <li
-      onClick={switchNote}
-      className={concat(
-        app.note,
-        toggle(app.activeNote, app.note).on(note.id === activeNote.id),
-      )}
-    >
-      <div className={app.note_header}>
-        <strong>{noteTitle}</strong>
-        {note.id !== `webtexDOCS` && (
-          <button
-            className={app.delete_button}
-            onClick={(e) => onDelete(e, note)}
-          >
-            &times;
-          </button>
-        )}
-      </div>
-      <div className={app.note_details}>
-        <small>{note.date}</small>
       </div>
     </li>
   );

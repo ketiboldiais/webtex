@@ -33,15 +33,6 @@ export function ColorPicker({
     x: (selfColor.hsv.h / 360) * WIDTH,
   }), [selfColor.hsv]);
 
-  const onSetHex = (hex: string) => {
-    setInputColor(hex);
-    hex = hex.trimStart().trimEnd();
-    hex = (hex.startsWith("#") ? "" : "#") + hex.toUpperCase();
-    if (/^#[0-9A-F]{6}$/) {
-      setSelfColor(colorTransform("hex", hex));
-    }
-  };
-
   const onMoveSaturation = ({ x, y }: { x: number; y: number }) => {
     const newHSV = {
       ...selfColor.hsv,
@@ -65,14 +56,14 @@ export function ColorPicker({
       onChange(selfColor.hex);
       setInputColor(selfColor.hex);
     }
-  }, [selfColor, onChange]);
+  }, [selfColor]);
 
-  useEffect(() => {
-    if (!color) return;
-    const updatedColor = colorTransform("hex", color);
-    setSelfColor(updatedColor);
-    setInputColor(updatedColor.hex);
-  }, [color]);
+  // useEffect(() => {
+    // if (!color) return;
+    // const updatedColor = colorTransform("hex", color);
+    // setSelfColor(updatedColor);
+    // setInputColor(updatedColor.hex);
+  // }, [color]);
 
   return (
     <div className={app.color_picker}>
@@ -256,7 +247,7 @@ function colorTransform<f extends keyof Color, c extends Color[f]>(
 type pSpectrumPlane = {
   className?: string;
   style?: CSSProperties;
-  onChange: (position: {x:number, y:number}) => void;
+  onChange: (position: { x: number; y: number }) => void;
   children: JSX.Element;
 };
 

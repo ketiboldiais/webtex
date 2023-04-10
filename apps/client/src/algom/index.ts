@@ -88,9 +88,12 @@ export function uid(length: number = 4, base = 36) {
     .substring(0, length + 1);
 }
 
-export function AND(...conditions: boolean[]) {
-  for (let i = 0; i < conditions.length; i++) {
-    if (!conditions[i]) return false;
-  }
-  return true;
+export function percentage(current: number, max: number) {
+  return (100 * current) / max;
 }
+
+
+
+
+
+

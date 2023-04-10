@@ -1,0 +1,49 @@
+@import './base';
+
+.main {
+	font-family: $mainFont;
+	header {
+		display: block;
+		color: $bray1;
+	}
+	var {
+		display: block;
+		margin: 0;
+		padding: 0;
+		font-weight: normal;
+		font-style: normal;
+	}
+}
+
+.range {
+	gap: $margin2;
+}
+
+.track {
+	position: relative;
+	border-radius: 3px;
+	background-color: #ddd;
+	height: 5px;
+	width: 50vh;
+}
+
+.thumb {
+	width: 15px;
+	height: 15px;
+	border-radius: 50%;
+	position: relative;
+	top: -5px;
+	opacity: 0.5;
+	background-color: #823eb7;
+	cursor: pointer;
+}
+
+.display {
+	font-family: $mainFont;
+	font-size: $small;
+	color: $bray3;
+	border: $line2;
+	padding: $pad1;
+	margin: $margin1;
+	border-radius: $pad1;
+}
