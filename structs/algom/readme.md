@@ -56,7 +56,7 @@ Observations:
 1. Algom is semicolon-delimited.
 2. On the final line, `2/4 = 1/2`, whereas `2 / 4 = 0.5`. To provide greater control over floating point arithmetic and round-off errors, Algom treats expressions such as `2/4` as fractions, reducing them to floating point numbers only when specifically instructed. This ensures that expressions such as `pi/2 + pi/2` evaluate to a symbolic `pi`, rather than the floating point value of `pi`. 
 3. Algom distinguishes between the `%` operator and the `rem` operator. The `%` operator works as expected in a language like JavaScript. The `rem` operator follows the mathematical definition of the remainder operator (in some texts, the `mod` operator).
-4. The `div` operator returns the integer quotient of a divison. This is equivalent to ${\lfloor{ x/y \rfloor},}$ where ${x, y \in \Z.}$
+4. The `div` operator returns the integer quotient of a divison. This is equivalent to ${\lfloor{ x/y \rfloor},}$ where ${x, y \in \mathbb{Z}.}$
 
 ### Precedence Rules
 The Algom compiler uses Pratt parser to enforce a defined precedence scheme. The Pratt parser operates by comparing the binding power of each scanned token (in the parser’s source code, the token property `bp`). A binding power is an element of the following ordered poset (listed from least to greatest):
