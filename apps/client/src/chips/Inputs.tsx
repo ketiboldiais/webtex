@@ -2,7 +2,9 @@ import {
   CSSProperties,
   forwardRef,
   ReactNode,
+  useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -119,12 +121,14 @@ type NumberInputProps = Readonly<{
   onChange: (val: number) => void;
   className?: string;
   label?: string | ReactNode;
+  noPropogate?: boolean;
 }>;
 export function NumberInput({
   label,
   value,
   onChange,
   className = "",
+  noPropogate = false,
 }: NumberInputProps) {
   const plus = () => onChange(value + 1);
   const minus = () => onChange(value - 1);
@@ -132,11 +136,23 @@ export function NumberInput({
     <div className={concat(app.number, className)}>
       {label && typeof label === "string" ? <label>{label}</label> : label}
       <div className={app.number_input_body}>
-        <button className={app.number_input_button} onClick={minus}>
+        <button
+          className={app.number_input_button}
+          onClick={(event) => {
+            noPropogate && event.stopPropagation();
+            minus();
+          }}
+        >
           &minus;
         </button>
         <div className={app.number_input_field}>{value}</div>
-        <button className={app.number_input_button} onClick={plus}>
+        <button
+          className={app.number_input_button}
+          onClick={(event) => {
+            noPropogate && event.stopPropagation();
+            plus();
+          }}
+        >
           &#43;
         </button>
       </div>
@@ -201,36 +217,50 @@ export const Text = forwardRef<TextRef, TextProps>((props, ref) => {
   return <var ref={ref}>{props.of}</var>;
 });
 
-
-
-const RangeTest = () => {
-  return <Range />;
-};
-
 interface RangeAPI {
   initialValue?: number;
   maxValue?: number;
   minValue?: number;
   onChange?: (x: number) => void;
+  step?: number;
 }
 
-const percentToNum = (percent: number, max: number) => (max / 100) * percent;
-
 import { scaleLinear } from "d3";
-import {percentage} from "src/algom";
+import { percentage } from "@webtex/algom";
 import css from "../ui/styles/slider.module.scss";
 
-function Range({
-  initialValue = -10,
+const getLeft = (x: number) => `calc(${x}% - 8px)`;
+
+export function Range({
+  initialValue = 0,
   maxValue = 10,
   minValue = -10,
   onChange,
+  step=0,
 }: RangeAPI) {
+  const initialPercent = percentage(initialValue, maxValue, minValue);
   const sliderRef = useRef<null | HTMLDivElement>(null);
   const thumbRef = useRef<null | HTMLDivElement>(null);
   const displayValue = useRef<null | HTMLElement>(null);
   const diff = useRef(0);
   const value = useRef(initialValue);
+
+  const scale = useCallback((x: number) =>
+    scaleLinear()
+      .domain([0, 100])
+      .range([minValue, maxValue])(x), [initialValue, maxValue, minValue]);
+
+  const onUpdate = (value: number, percent: number) => {
+    const thumb = thumbRef.current;
+    const display = displayValue.current;
+    if (!thumb || !display) return;
+    thumb.style.left = getLeft(percent);
+    display.textContent = `${value}`;
+  };
+
+  useLayoutEffect(() => {
+    onUpdate(initialValue, initialPercent);
+  }, [initialValue, onUpdate]);
 
   const onPtrMove = (event: PointerEvent) => {
     const elem = sliderRef.current;
@@ -244,12 +274,10 @@ function Range({
     const start = 0;
     newX = (newX < start) ? 0 : (newX > end ? end : newX);
     const newPercent = percentage(newX, end);
-    thumb.style.left = `calc(${newPercent}% - 5px)`;
+    thumb.style.left = getLeft(newPercent);
     const displayElem = displayValue.current;
     if (!displayElem) return;
-    const newValue = scaleLinear()
-      .domain([0, 100])
-      .range([minValue, maxValue])(newPercent);
+    const newValue = scale(newPercent);
     value.current = newValue;
     displayElem.textContent = `${value.current}`;
     onChange && onChange(newValue);
@@ -269,10 +297,10 @@ function Range({
   };
 
   return (
-    <div className={app.vstack + " " + css.main}>
-      <header>
+    <div className={css.main}>
+      <div className={css.header}>
         <Text ref={displayValue} of={value.current} />
-      </header>
+      </div>
       <div className={app.hstack + " " + css.range}>
         <Text of={minValue} />
         <div ref={sliderRef} className={css.track}>

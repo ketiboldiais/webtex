@@ -1,5 +1,4 @@
-import css from "../../ui/styles/graph.module.scss";
-import ctrl from "../../ui/styles/control.module.scss";
+import CONTROL from "../controller.chip";
 import {
   forceCenter,
   forceCollide,
@@ -13,14 +12,12 @@ import {
   SimulationLinkDatum,
   SimulationNodeDatum,
 } from "d3-force";
-import { createContext, ReactNode, useContext, useMemo, useState } from "react";
-import { uid } from "src/algom";
+import { createContext, useContext, useMemo, useState } from "react";
+import { uid } from "@webtex/algom";
 import { Quad } from "src/App";
-import { NumberInput } from "../Inputs";
 import { Figure, fontSize, SVG, svgDimensions, translate } from "../PlotUtils";
-import { ColorPicker } from "../colorpicker.chip";
 
-interface GraphNode extends SimulationNodeDatum {
+export interface GraphNode extends SimulationNodeDatum {
   id: string;
   value: string;
 }
@@ -29,9 +26,9 @@ function isNodeObject<T>(node: number | string | T): node is T {
   return typeof node !== "number" && typeof node !== "string";
 }
 
-type Link = SimulationLinkDatum<GraphNode>;
+export type Link = SimulationLinkDatum<GraphNode>;
 
-type Edge = {
+export type Edge = {
   source: GraphNode;
   target: GraphNode;
   id: string;
@@ -46,11 +43,11 @@ const defaultNodes: GraphNode[] = [
 ];
 
 const testEdges: Link[] = [
-  { source: 0, target: 1 },
-  { source: 2, target: 0 },
-  { source: 3, target: 2 },
-  { source: 4, target: 0 },
-  { source: 4, target: 2 },
+  { source: "A", target: "M" },
+  { source: "M", target: "A" },
+  { source: "D", target: "M" },
+  { source: "B", target: "A" },
+  { source: "P", target: "M" },
 ];
 
 const centerForce = (x: number, y: number) => forceCenter().x(x / 2).y(y / 2);
@@ -208,24 +205,37 @@ export default function GRAPH({
   const [radius, setRadius] = useState(nodeRadius);
   const [NodeFontSize, setNodeFontSize] = useState(nodeFontsize);
   const [NodeFillColor, setNodeFillColor] = useState(nodeFillColor);
-
   const [svgWidth, svgHeight] = svgDimensions(width, height, margins);
-  const manyBody = forceManyBody()
-    .strength(nodeForceStrength)
-    .distanceMax(maxNodeSeparation);
-  const graphCenter = centerForce(svgWidth, svgHeight);
-  const forceX: FX = newForce("x", svgWidth, forceXStrength);
-  const forceY: FY = newForce("y", svgHeight, forceYStrength);
-  const linkForce = forceLink(links).distance(edgeLength).iterations(1);
-  const graphForce = forceSimulation(nodes)
-    .force("charge", manyBody)
-    .force("link", linkForce)
-    .force("center", graphCenter)
-    .force("x", forceX)
-    .force("y", forceY)
-    .force("collision", forceCollide().radius(repulsion))
-    .stop();
-  graphForce.tick(200);
+  const data = useMemo(() => {
+    const map: Record<string, GraphNode> = {};
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      map[node.id] = node;
+    }
+    const edges: Link[] = [];
+    for (let l = 0; l < links.length; l++) {
+      const link = links[l];
+      const sourceID = link.source as string;
+      const targetID = link.target as string;
+      const source = map[sourceID];
+      const target = map[targetID];
+      edges.push({ source, target });
+    }
+    forceSimulation(nodes)
+      .force(
+        "charge",
+        forceManyBody()
+          .strength(nodeForceStrength)
+          .distanceMax(maxNodeSeparation),
+      )
+      .force("link", forceLink(edges).distance(edgeLength).iterations(1))
+      .force("center", centerForce(svgWidth, svgHeight))
+      .force("x", newForce("x", svgWidth, forceXStrength))
+      .force("y", newForce("y", svgHeight, forceYStrength))
+      .force("collision", forceCollide().radius(repulsion))
+      .stop().tick(200);
+    return { nodes, edges };
+  }, [nodes, links]);
 
   return (
     <GraphCtx.Provider
@@ -233,8 +243,8 @@ export default function GRAPH({
         height,
         width,
         margins,
-        links,
-        vertices: nodes,
+        links: data.edges,
+        vertices: data.nodes,
         nodeStrokeColor,
         nodeFillColor: NodeFillColor,
         nodeRadius: radius,
@@ -249,33 +259,16 @@ export default function GRAPH({
         setNodeFillColor,
       }}
     >
-      <MAIN />
+      <TOOLBAR />
+      <SVG width={width} height={height} margins={margins}>
+        <EDGES />
+        <VERTICES />
+      </SVG>
     </GraphCtx.Provider>
   );
 }
 
 const useGraph = () => useContext(GraphCtx);
-const MAIN = () => {
-  const { width, height, margins } = useGraph();
-  return (
-    <div>
-      <TOOLBAR />
-      <Figure
-        width={width}
-        height={height}
-        minWidth={width - 200}
-        minHeight={height - 200}
-        maxWidth={800}
-        maxHeight={800}
-      >
-        <SVG width={width} height={height} margins={margins}>
-          <EDGES />
-          <VERTICES />
-        </SVG>
-      </Figure>
-    </div>
-  );
-};
 
 function TOOLBAR() {
   const {
@@ -301,88 +294,6 @@ function TOOLBAR() {
         },
       ]}
     />
-  );
-}
-
-type Ticker = {
-  value: number;
-  handler: (val: number) => void;
-  label?: string;
-};
-
-type ColorSetter = {
-  value: string;
-  handler: (val: string) => void;
-  label?: string;
-};
-
-interface ControlAPI {
-  tickers?: Ticker[];
-  colorPickers?: ColorSetter[];
-  name: string;
-}
-
-function CONTROL({
-  name,
-  tickers,
-  colorPickers,
-}: ControlAPI) {
-  return (
-    <div className={ctrl.main}>
-      {tickers &&
-        (tickers.map((spec, i) => (
-          <div className={ctrl.item} key={`${name}-ticker-${i}`}>
-            {spec.label && <label>{spec.label}</label>}
-            <NumberInput
-              value={spec.value}
-              onChange={spec.handler}
-              className={ctrl.counter}
-            />
-          </div>
-        )))}
-      {colorPickers &&
-        (colorPickers.map((spec, i) => (
-          <ConditionalControl
-            label={spec.label}
-            value={spec.value}
-            key={`${name}-color${i}`}
-            containerClass={ctrl.color_label}
-            previewClass={ctrl.color_preview}
-          >
-            <ColorPicker color={spec.value} onChange={spec.handler} />
-          </ConditionalControl>
-        )))}
-    </div>
-  );
-}
-
-type CondCtrl = {
-  children: ReactNode;
-  label?: string;
-  value: string;
-  containerClass: string;
-  previewClass?: string;
-};
-function ConditionalControl({
-  children,
-  label,
-  value,
-  containerClass,
-  previewClass = "",
-}: CondCtrl) {
-  const [show, setShow] = useState(false);
-  return (
-    <div className={ctrl.item}>
-      <div className={containerClass}>
-        {label && <label>{label}</label>}
-        <div
-          className={previewClass}
-          style={{ backgroundColor: value }}
-          onClick={()=>setShow(!show)}
-        />
-      </div>
-      {show ? <div className={ctrl.modal}>{children}</div> : null}
-    </div>
   );
 }
 
@@ -479,5 +390,3 @@ function newPath(d: Edge) {
   }
   return `M${x1},${y1}A${drx},${dry} ${xRotation},${arc},${sweep} ${x2},${y2}`;
 }
-
-

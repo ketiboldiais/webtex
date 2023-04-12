@@ -75,7 +75,7 @@ import { PlotPrompt } from "./Plot2d";
 import { Plot3DPrompt } from "./Plot3d/plot3d.prompt";
 import { ParametricPlotPrompt } from "./PlotParametric/parametric.prompt";
 import { schema } from "./EditorConfig";
-import { range } from "src/algom";
+import { range } from "@webtex/algom";
 import { ColorPicker } from "./colorpicker.chip";
 import { Button } from "./Inputs";
 

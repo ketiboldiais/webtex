@@ -13,6 +13,7 @@ export const getData = {
 
 export const parser = new Parser();
 
+
 export function evalLatex(src: string) {
   return parser.compute(src);
 }
@@ -22,8 +23,8 @@ export function evalNode(node: ASTNode) {
   return n;
 }
 
-export function toLatex(src: string) {
-  const parsing = parser.latex(src);
+export function toLatex(src: string, parsingFunctions:boolean=false) {
+  const parsing = parser.latex(src, parsingFunctions);
   return parsing;
 }
 
@@ -54,6 +55,10 @@ export function compfn(input: string, fname = "f", params = "(x)") {
   if (err) return err;
   if (result instanceof Fn) return (...args: any[]) => result.call(c, args);
   return `Input ${input} did not compile to a function.`;
+}
+
+export function createFunction(expr:string) {
+  return parser.createFunction(expr);
 }
 
 export function evaluate(input: string) {
@@ -88,12 +93,39 @@ export function uid(length: number = 4, base = 36) {
     .substring(0, length + 1);
 }
 
-export function percentage(current: number, max: number) {
-  return (100 * current) / max;
+export function percentage(current: number, max: number, min:number=0) {
+  return ( ((current-min) / ((max-min))) * 100 );
 }
 
+export function latinize(num: number): string {
+  const div = Math.floor(num / 26);
+  const rem = Math.floor(num % 26);
+  const char = String.fromCharCode(rem + 97).toUpperCase();
+  return div - 1 >= 0 ? latinize(div - 1) + char : char;
+}
 
+export function digitize26(chars: string) {
+  return chars.split("")
+    .reverse()
+    .map((letter, index) =>
+      index === 0
+        ? letter.toLowerCase().charCodeAt(0) - 97
+        : letter.toLowerCase().charCodeAt(0) - 97 + 1
+    ).map((base26Num, pos) => base26Num * 26 ** pos)
+    .reduce((sum, num) => sum + num, 0);
+}
 
+type RowCol = { columnIndex: number; rowIndex: number };
 
+export function getRowCol(id: string): RowCol {
+  const res = /([A-Z]+)([\d]+)/.exec(id);
+  if (res) {
+    const col = res[1];
+    const rowIndex = (res[2] as any) * 1;
+    const columnIndex = digitize26(col);
+    return { columnIndex, rowIndex };
+  }
+  return { columnIndex: -1, rowIndex: -1 };
+}
 
 

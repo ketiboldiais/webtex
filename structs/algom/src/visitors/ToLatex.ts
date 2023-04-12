@@ -140,7 +140,10 @@ export class ToLatex implements Visitor<string> {
     return "";
   }
   funDeclaration(n: FunctionNode): string {
-    return "";
+    const name = n.name;
+    const body = this.latexOf(n.body);
+    const params = this.latexes(n.params);
+    return `${name}${params} = ${body}`;
   }
   root(node: Root): string {
     let str = "";

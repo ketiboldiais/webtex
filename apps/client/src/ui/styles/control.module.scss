@@ -4,10 +4,16 @@
 	background-color: $pageColor;
 	font-family: $mainFont;
 	font-size: 0.7rem;
-	padding: $pad1;
+	padding: 0 $pad1;
 	background-color: $gray0;
 	border: thin solid lightgray;
 	display: flex;
+	min-width: 200px;
+	width: fit-content;
+	max-width: 400px;
+	margin: $margin1 0;
+	overflow-x: auto;
+	@include Scrollbar;
 }
 
 .item {
@@ -15,26 +21,29 @@
 	justify-content: center;
 	align-items: center;
 	width: fit-content;
+	height: fit-content;
 	padding: $padtiny;
 
 	label,
 	.counter {
 		border: thin solid $gray1;
 		border-radius: 0;
-		height: 25px;
 		background-color: $pageColor;
 	}
 
 	label {
-		padding: 5px 4px;
+		padding: 3px $padtiny;
 		border-right: 0;
 		vertical-align: middle;
-		text-align: center;
+		text-align: left;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		overflow: hidden;
 		cursor: pointer;
 	}
 
 	.counter {
-		padding: 3px 1px;
+		padding: 3px;
 	}
 
 }
@@ -45,7 +54,7 @@
 }
 
 .color_preview {
-	height: 24px;
+	height: 25px;
 	width: 25px;
 	display: inline-block;
 	border: thin solid $gray1;
@@ -57,7 +66,34 @@
 	@include ShortShadow;
 	position: absolute;
 	border: solid thin $gray1;
-	top: 20%;
+	bottom: 1%;
+	right: 1%;
 	z-index: 2;
 	border-radius: 5px;
+}
+
+.close_modal {
+	border-radius: 50%;
+	padding: 0;
+	margin: 2px;
+	width: 20px;
+	height: 20px;
+	border: 0;
+	background-color: $gray0;
+	color: $gray4;
+}
+
+
+.interval>label {
+	text-align: center;
+	border: 0;
+	padding: $padtiny $pad1;
+	border: solid thin lightgrey;
+}
+
+.interval_counters_wrapper {
+	display: flex;
+	background-color: $pageColor;
+	padding: 2px;
+	border: solid thin lightgrey;
 }

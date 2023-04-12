@@ -1,22 +1,33 @@
 import {
   createContext,
   Fragment,
-  MutableRefObject,
   ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from "react";
-import { range, uid } from "src/algom";
+import {
+  digitize26,
+  evaluate,
+  getRowCol,
+  latinize,
+  range,
+  uid,
+} from "@webtex/algom";
 import { Html } from "src/util";
 import css from "../../ui/styles/sheet.module.scss";
 import app from "../../ui/styles/App.module.scss";
 import { Dropdown, Option } from "../Dropdown";
 import { Chevron } from "../Icon";
 import { InputFn } from "src/App";
+import GRAPH, { GraphNode, Link } from "../Graph/graph.chip";
+import { UserFunc } from "../Plot2d/plot2d.chip";
+import { Button, Range } from "../Inputs";
+import { Interval } from "../Interval";
 
 type CellType = "td" | "th";
 type CellMap = Map<string, [number, number]>;
@@ -36,21 +47,6 @@ const newCell = (
   row: number = 0,
 ): Cell => ({ value, type, id: uid(), column, row });
 
-const makeCells = (count: number) => {
-  const out: Cell[] = [];
-  for (let i = 0; i < count; i++) {
-    out.push(newCell());
-  }
-  return out;
-};
-
-const rebase = (num: number): string => {
-  const div = Math.floor(num / 26);
-  const rem = Math.floor(num % 26);
-  const char = String.fromCharCode(rem + 97).toUpperCase();
-  return div - 1 >= 0 ? rebase(div - 1) + char : char;
-};
-
 type Row = {
   cells: Cell[];
   id: string;
@@ -67,7 +63,7 @@ const makeRows = (rowCount: number, colCount: number) => {
     for (let c = 0; c < colCount; c++) {
       const cell = newCell();
       cell.row = r;
-      cell.column = rebase(c);
+      cell.column = latinize(c);
       cells.push(cell);
     }
     out.push(newRow(cells));
@@ -75,15 +71,30 @@ const makeRows = (rowCount: number, colCount: number) => {
   return out;
 };
 
+function graphNodesFromCells(cells: Cell[]) {
+  const C = cells.length;
+  const uids = new Set<string>();
+  const nodes: GraphNode[] = [];
+  for (let i = 0; i < C; i++) {
+    const cell = cells[i];
+    if (!cell.value) continue;
+    if (!uids.has(cell.id)) {
+      nodes.push({ id: cell.id, value: cell.value });
+    }
+    uids.add(cell.id);
+  }
+  return nodes;
+}
+
 class Spreadsheet {
   columnCount: number;
   rowCount: number;
-  lastEditedCell: string | null;
-  selection: IDPayload[] = [];
+  focusedCell: string | null;
+  selection: Cell[] = [];
   rows: Rows;
   constructor(rows: Rows) {
     this.rows = rows;
-    this.lastEditedCell = null;
+    this.focusedCell = null;
     this.rowCount = rows.length;
     this.columnCount = rows[0].cells.length;
   }
@@ -91,9 +102,59 @@ class Spreadsheet {
   getWritable() {
     return this;
   }
-  updateSelection(ids: IDPayload[]) {
+  updateSelection(cells: Cell[]) {
     const self = this.getWritable();
-    self.selection = [...ids];
+    self.selection = [...cells];
+  }
+
+  cellGraph() {
+    const self = this.getWritable();
+    const cells = self.selection;
+    const output: GraphPayload = { nodes: [], links: [] };
+    if (cells.length === 0) output;
+    const C = cells.length;
+    const map: Cell[][] = [];
+    const ucells: Cell[] = [];
+    const nodes = graphNodesFromCells(cells);
+    for (let i = 0; i < C; i++) {
+      let cell = cells[i];
+      if (!cell.value) continue;
+      if (map[cell.row] !== undefined) {
+        let neighbor = cell;
+
+        map[cell.row].push(neighbor);
+      } else {
+        ucells.push(cell);
+        map[cell.row] = [];
+      }
+    }
+    const links: Link[] = [];
+    const toDelete = new Set<string>();
+    for (let i = 0; i < ucells.length; i++) {
+      const ucell = ucells[i];
+      const source = { id: ucell.id, value: ucell.value };
+      for (let j = 0; j < map.length; j++) {
+        const neighbors = map[j];
+        if (neighbors[0].row !== ucell.row) continue;
+        for (let k = 0; k < neighbors.length; k++) {
+          let neighbor = neighbors[k];
+          if (neighbor.value.startsWith("$")) {
+            const value = neighbor.value.slice(1);
+            console.log(value);
+            const { rowIndex, columnIndex } = getRowCol(value);
+            const other = self.getCellAt(rowIndex, columnIndex);
+            if (other) {
+              toDelete.add(neighbor.id);
+              neighbor = other;
+            }
+          }
+          const target = { id: neighbor.id, value: neighbor.value };
+          output.links.push({ source: source.id, target: target.id });
+        }
+      }
+    }
+    output.nodes = nodes.filter((n) => !toDelete.has(n.id));
+    return output;
   }
 
   static preload(rows: Rows) {
@@ -117,17 +178,23 @@ class Spreadsheet {
   pushColumns(count: number) {
     const self = this.getWritable();
     const rows = self.rows;
+    const C = self.columnCount;
     for (let y = 0; y < rows.length; y++) {
       const row = rows[y];
       const cells = row.cells;
       const cellsClone = Array.from(cells);
       const rowClone = { ...row, ...{ cells: cellsClone } };
       const type = cells[cells.length - 1].type;
+      const r = cells[cells.length - 1].row;
       for (let x = 0; x < count; x++) {
-        cellsClone.push(newCell(type));
+        const cell = newCell(type);
+        cell.row = r;
+        cell.column = latinize(C);
+        cellsClone.push(cell);
       }
       rows[y] = rowClone;
     }
+    self.columnCount++;
     return this;
   }
 
@@ -143,6 +210,10 @@ class Spreadsheet {
       cellsClone.splice(columnIndex, 0, newCell(type));
       rows[y] = rowClone;
     }
+    self.columnCount++;
+    if (this.mustAdjustColumnIds(columnIndex)) {
+      this.updateAllColumnIDs();
+    }
     return this;
   }
 
@@ -157,13 +228,18 @@ class Spreadsheet {
       clonedCells.splice(columnIndex, 1);
       rows[r] = rowClone;
     }
+    self.columnCount--;
+    if (this.mustAdjustColumnIds(columnIndex)) {
+      this.updateAllColumnIDs();
+    }
+    return this;
   }
 
   pushRows(count: number) {
     const self = this.getWritable();
     const rows = self.rows;
     const previousRow = rows[rows.length - 1];
-    const cellCount = previousRow.cells.length;
+    const cellCount = self.columnCount;
     for (let y = 0; y < count; y++) {
       const cells: Cells = [];
       for (let x = 0; x < cellCount; x++) {
@@ -180,20 +256,65 @@ class Spreadsheet {
     return this;
   }
 
-  updateCellRows() {}
+  mustAdjustColumnIds(insertedColumnIndex: number) {
+    const self = this.getWritable();
+    return (insertedColumnIndex) < self.columnCount;
+  }
+
+  mustAdjustRowIDs(insertedRowIndex: number) {
+    const self = this.getWritable();
+    return (insertedRowIndex) < self.rowCount;
+  }
 
   insertRowAt(rowIndex: number) {
     const self = this.getWritable();
-    self.rowCount += 1;
+    const mustAdjustRowIDs = self.mustAdjustRowIDs(rowIndex);
     const rows = self.rows;
     const prevRow = rows[rowIndex] || rows[rowIndex - 1];
     const cellCount = prevRow.cells.length;
     const row = newRow([]);
     for (let c = 0; c < cellCount; c++) {
-      const cell = newCell(prevRow.cells[c].type);
+      const type = prevRow.cells[c].type;
+      const col = prevRow.cells[c].column;
+      const cell = newCell(type);
+      cell.column = col;
       row.cells.push(cell);
     }
     rows.splice(rowIndex, 0, row);
+    self.rowCount += 1;
+    if (mustAdjustRowIDs) {
+      this.updateAllRowIDs();
+    }
+    return this;
+  }
+
+  updateAllColumnIDs() {
+    const self = this.getWritable();
+    const R = self.rowCount;
+    const C = self.columnCount;
+    for (let r = 0; r < R; r++) {
+      const row = self.rows[r];
+      const cells = row.cells;
+      for (let c = 0; c < C; c++) {
+        const cell = cells[c];
+        cell.column = latinize(c);
+      }
+    }
+  }
+
+  updateAllRowIDs() {
+    const self = this.getWritable();
+    const rowCount = self.rowCount;
+    const colCount = self.columnCount;
+    for (let r = 0; r < rowCount; r++) {
+      const row = self.rows[r];
+      const cells = row.cells;
+      for (let c = 0; c < colCount; c++) {
+        const cell = cells[c];
+        const clonedCell = { ...cell, row: r };
+        cells[c] = clonedCell;
+      }
+    }
   }
 
   getCellAt(rowIndex: number, columnIndex: number) {
@@ -209,16 +330,25 @@ class Spreadsheet {
     const self = this.getWritable();
     const rows = self.rows;
     rows.splice(rowIndex, 1);
+    self.rowCount--;
+    if (this.mustAdjustRowIDs(rowIndex)) {
+      this.updateAllRowIDs();
+    }
+    return this;
   }
 
   updateCellValue(rowIndex: number, columnIndex: number, value: string) {
+    value = value.trimEnd().trimStart();
     const self = this.getWritable();
     const row = self.rows[rowIndex];
-    if (row === undefined) return this;
+    if (row === undefined) return value;
     const cell = row.cells[columnIndex];
-    if (cell === undefined) return this;
+    if (cell === undefined) return value;
+    if (value.startsWith("=")) {
+      value = evaluate(value.slice(1));
+    }
     cell.value = value;
-    return this;
+    return value;
   }
 }
 type IDPayload = {
@@ -240,11 +370,11 @@ const newIDPayload: IDPayloadFty = (id, rowIndex, columnIndex) => ({
 
 type pSheetContext = {
   children: ReactNode;
-  initialRows: Rows;
   minRowCount: number;
   minColCount: number;
+  sheet: React.MutableRefObject<Spreadsheet>;
 };
-const SheetContext = createContext<SheetState>({} as SheetState);
+const TableContext = createContext<SheetState>({} as SheetState);
 type SheetState = {
   rows: Rows;
   rowCount: number;
@@ -252,48 +382,61 @@ type SheetState = {
   pushRow: () => void;
   pushColumn: () => void;
   updateValue: (rowIndex: number, columnIndex: number, value: string) => void;
-  lastEditedCell: MutableRefObject<string | null>;
-  updateLastEditedCell: (id: string | null) => void;
+  focusedCell: string;
+  updateFocusedCell: (id: string | null) => void;
   toggleType: (rowIndex: number, columnIndex: number) => void;
   push: (kind: "col" | "row", index: number) => void;
   pop: (kind: "col" | "row", index: number) => void;
   cellmap: CellMap;
-  getSelectedCellIDs: (startID: string, endID: string) => IDPayload[];
+  getSelectedCellIDs: (startID: string, endID: string) => Cell[];
   selection: string[];
   updateSelection: React.Dispatch<React.SetStateAction<string[]>>;
   sheet: Spreadsheet;
   asciiRows: string[];
   primarySelectedID: string;
   setPrimarySelectedID: (x: string | null) => void;
-  
+  selectedCellIDs: Cell[];
+  setSelectedCellIDs: React.Dispatch<React.SetStateAction<Cell[]>>;
+  selectedCellSet: Set<string>;
 };
 type CellFn = (rowIndex: number, colIndex: number, value: string) => void;
-const SheetContextProvider = ({
+const TableContextProvider = ({
   children,
-  initialRows,
   minRowCount,
   minColCount,
+  sheet,
 }: pSheetContext) => {
-  const sheet = useRef(Spreadsheet.preload(initialRows));
   const [rowCount, setRowCount] = useState(minRowCount);
   const [colCount, setColCount] = useState(minColCount);
 
+  const cellmap = useMemo(() => {
+    const map: CellMap = new Map();
+    const rows = sheet.current.rows;
+    for (let r = 0; r < rows.length; r++) {
+      const row = rows[r];
+      const cells = row.cells;
+      for (let c = 0; c < cells.length; c++) {
+        const cell = cells[c];
+        map.set(cell.id, [r, c]);
+      }
+    }
+    return map;
+  }, [sheet.current.rows, rowCount, colCount]);
+
   const [
-    lastUpdatedCell,
-    setLastUpdatedCell,
+    currentFocusedCell,
+    setCurrentFocusedCell,
   ] = useState<string | null>(null);
-  
-  
-  
-  const primarySelectedID = useRef<string>("")
-  
-  const setPrimarySelectedID = (x:string|null) => {
+
+  const primarySelectedID = useRef<string>("");
+  const focusedCell = useRef<string>("");
+
+  const setPrimarySelectedID = (x: string | null) => {
     primarySelectedID.current = x === null ? "" : x;
-  }
-  
+  };
 
   const asciiRows = useMemo(() => {
-    return range(0, colCount + 1).map((n) => rebase(n - 1));
+    return range(0, colCount + 1).map((n) => latinize(n - 1));
   }, [colCount]);
 
   const [
@@ -301,19 +444,13 @@ const SheetContextProvider = ({
     updateSelection,
   ] = useState<string[]>([]);
 
-  const lastEditedCell = useRef<string | null>(null);
-
   const updateValue: CellFn = (rowIndex, colIndex, value) =>
-    sheet
-      .current
-      .updateCellValue(rowIndex, colIndex, value);
+    sheet.current.updateCellValue(rowIndex, colIndex, value);
 
-  const updateLastEditedCell = (id: string | null) => {
-    lastEditedCell.current = id;
-    if (id !== null) {
-      sheet.current.lastEditedCell = id;
-      setLastUpdatedCell(id);
-    }
+  const updateFocusedCell = (id: string | null) => {
+    focusedCell.current = id === null ? "" : id;
+    sheet.current.focusedCell = id;
+    setCurrentFocusedCell(id);
   };
 
   const push = (kind: "col" | "row", index: number) => {
@@ -356,20 +493,6 @@ const SheetContextProvider = ({
     setColCount((prev) => prev + 1);
   };
 
-  const cellmap = useMemo(() => {
-    const map: CellMap = new Map();
-    const rows = sheet.current.rows;
-    for (let r = 0; r < rows.length; r++) {
-      const row = rows[r];
-      const cells = row.cells;
-      for (let c = 0; c < cells.length; c++) {
-        const cell = cells[c];
-        map.set(cell.id, [r, c]);
-      }
-    }
-    return map;
-  }, [sheet.current.rows, rowCount, colCount]);
-
   const getSelectedRect = (startID: string, endID: string) => {
     const startPos = cellmap.get(startID);
     if (startPos === undefined) return null;
@@ -386,19 +509,28 @@ const SheetContextProvider = ({
     const rect = getSelectedRect(startID, endID);
     if (rect === null) return [];
     const { startX, startY, endX, endY } = rect;
-    const ids: IDPayload[] = [];
+    const ids: Cell[] = [];
     for (let x = startX; x <= endX; x++) {
       for (let y = startY; y <= endY; y++) {
         const cell = sheet.current.getCellAt(x, y);
         if (cell === null) continue;
-        ids.push(newIDPayload(cell.id, x, y));
+        ids.push(cell);
       }
     }
     return ids;
   };
 
+  const [
+    selectedCellIDs,
+    setSelectedCellIDs,
+  ] = useState<Cell[]>([]);
+
+  const selectedCellSet = useMemo(() => {
+    return new Set(selectedCellIDs.map((v) => v.id));
+  }, [selectedCellIDs]);
+
   return (
-    <SheetContext.Provider
+    <TableContext.Provider
       value={{
         updateValue,
         rows: sheet.current.rows,
@@ -406,8 +538,8 @@ const SheetContextProvider = ({
         colCount,
         pushRow,
         pushColumn,
-        lastEditedCell,
-        updateLastEditedCell,
+        focusedCell: focusedCell.current,
+        updateFocusedCell,
         toggleType,
         push,
         pop,
@@ -418,44 +550,288 @@ const SheetContextProvider = ({
         updateSelection,
         asciiRows,
         primarySelectedID: primarySelectedID.current,
-        setPrimarySelectedID
+        setPrimarySelectedID,
+        selectedCellIDs,
+        setSelectedCellIDs,
+        selectedCellSet,
       }}
     >
       {children}
-    </SheetContext.Provider>
+    </TableContext.Provider>
   );
 };
 
-const useSheet = () => useContext(SheetContext);
+const useTable = () => useContext(TableContext);
 
-type pSheetProps = Partial<
-  Pick<
-    pSheetContext,
-    "initialRows" | "minColCount" | "minRowCount"
-  >
->;
+type pSheet = {
+  minRowCount?: number;
+  minColCount?: number;
+  initialRows?: Rows;
+  initialDisplayState?: DisplayState;
+};
+
+type GraphPayload = {
+  nodes: GraphNode[];
+  links: Link[];
+};
+type DisplayState = {
+  counter: {
+    render: boolean;
+    data: number;
+  };
+  graph: {
+    render: boolean;
+    data: GraphPayload;
+  };
+  plot2d: {
+    render: boolean;
+    data: UserFunc;
+  };
+};
+
+type DisplayAction =
+  | { type: "graph"; payload: GraphPayload }
+  | { type: "plot2d"; payload: UserFunc };
+
+function reducer(state: DisplayState, action: DisplayAction): DisplayState {
+  const { type, payload } = action;
+  switch (type) {
+    case "plot2d":
+      return {
+        ...state,
+        plot2d: {
+          render: true,
+          data: payload,
+        },
+      };
+    case "graph":
+      return {
+        ...state,
+        graph: {
+          render: true,
+          data: payload,
+        },
+      };
+    default:
+      return state;
+  }
+}
+
+const defaultDisplayState: DisplayState = {
+  counter: {
+    render: false,
+    data: 0,
+  },
+  graph: {
+    render: false,
+    data: { nodes: [], links: [] },
+  },
+  plot2d: {
+    render: false,
+    data: { f: "" },
+  },
+};
 
 export default function Sheet({
-  minRowCount = 3,
-  minColCount = 2,
+  minRowCount = 5,
+  minColCount = 5,
   initialRows = makeRows(minRowCount, minColCount),
-}: pSheetProps) {
+  initialDisplayState = defaultDisplayState,
+}: pSheet) {
+  const sheet = useRef(Spreadsheet.preload(initialRows));
+  const [state, dispatch] = useReducer(reducer, initialDisplayState);
+
+  const handlers = useMemo(() => ({
+    Graph: () =>
+      dispatch({
+        type: "graph",
+        payload: sheet.current.cellGraph(),
+      }),
+  }), []);
+
   return (
-    <SheetContextProvider
-      minRowCount={minRowCount}
-      minColCount={minColCount}
-      initialRows={initialRows}
-    >
-      <div className={css.sheet_shell}>
-        <TOOLBAR />
+    <div className={css.sheet_shell}>
+      <TOOLBAR actions={handlers} />
+      <TableContextProvider
+        minRowCount={minRowCount}
+        minColCount={minColCount}
+        sheet={sheet}
+      >
         <MAIN />
-      </div>
-      <DEBUGGER />
-    </SheetContextProvider>
+      </TableContextProvider>
+      {state.graph.render && <Network data={state.graph.data} />}
+      {state.plot2d.render && <DEBUGGER data={state.plot2d.data} />}
+    </div>
   );
 }
 
-const MAIN = () => {
+type Op = { [key: string]: () => void };
+interface pTOOLBAR {
+  actions: Op;
+}
+
+const dPlot2d = (f: string): UserFunc => ({
+  f,
+  samples: 100,
+  domain: [-10, 10],
+  range: [-10, 10],
+  integrate: [-3, 3],
+  riemann: {
+    orient: "left",
+    precision: 100,
+    domain: [-4, 4],
+    on: "2x",
+  },
+});
+
+function TOOLBAR({ actions }: pTOOLBAR) {
+  const [showPlot2d, setShowPlot2d] = useState(true);
+  const [plot2d, setPlot2D] = useState<UserFunc[]>([
+    dPlot2d("f(x) = cos(x)"),
+    dPlot2d("f(x) = sin(x)"),
+  ]);
+  return (
+    <div className={css.sheet_toolbar}>
+      {Object.entries(actions).map(([label, action], i) => (
+        <button key={`sheet-${i}-${label}`} onClick={action}>{label}</button>
+      ))}
+      <button
+        children={"Plot2D"}
+        onClick={() => setShowPlot2d(!showPlot2d)}
+      />
+      <button>{"Plot3D"}</button>
+      <button>{"Bar Plot"}</button>
+      <button>{"Scatter Plot"}</button>
+      <button>{"Eval"}</button>
+      {showPlot2d && (
+        <Plot2DMenu
+          userFunctions={plot2d}
+          setShowFuncs={setShowPlot2d}
+        />
+      )}
+    </div>
+  );
+}
+
+type pMenuPlot2d = {
+  setShowFuncs: (b: boolean) => void;
+  userFunctions: UserFunc[];
+};
+
+type FH = { data: string; onChange: (x: string) => void };
+function FunctionHandler({ data, onChange }: FH) {
+  const [val, setVal] = useState(data);
+  return (
+    <section>
+      <label>Function</label>
+      <input
+        onChange={(e) => setVal(e.target.value)}
+        onBlur={() => onChange(val)}
+        value={val}
+      />
+    </section>
+  );
+}
+
+type DItvl = {
+  data: [number, number];
+};
+
+function IntegralHandler({ data }: DItvl) {
+  return (
+    <section>
+      <label>Integrate</label>
+      <Interval
+        value={data}
+        containerClass={css.fint}
+        onChange={() => null}
+      />
+    </section>
+  );
+}
+
+function RangeHandler({ data }: { data: [number, number] }) {
+  return (
+    <section>
+      <label>Domain</label>
+      <Interval
+        value={data}
+        containerClass={css.fint}
+        onChange={() => null}
+      />
+    </section>
+  );
+}
+
+function DomainHandler({ data }: { data: [number, number] }) {
+  const [interval, setInterval] = useState(data);
+  return (
+    <section>
+      <label>Domain</label>
+      <Interval
+        value={interval}
+        containerClass={css.fint}
+        onChange={setInterval}
+      />
+    </section>
+  );
+}
+
+function SamplesHandler({ data }: { data: number }) {
+  return (
+    <section>
+      <label>Samples</label>
+      <Range
+        minValue={10}
+        maxValue={1000}
+        initialValue={data}
+      />
+    </section>
+  );
+}
+type PFnItem = {
+  fn: UserFunc;
+  index: number;
+};
+
+function Plot2DMenuItem({ fn, index }: PFnItem) {
+  const [f, setF] = useState(fn.f);
+  const [domain, setDomain] = useState(fn.domain || [-10, 10]);
+  const [range, setRange] = useState(fn.range || [-10, 10]);
+  return (
+    <div className={css.item}>
+      <FunctionHandler data={f} onChange={setF} />
+      <DomainHandler data={fn.domain || [-10, 10]} />
+      <RangeHandler data={fn.range || [-10, 10]} />
+      <IntegralHandler data={fn.domain || [-10, 10]} />
+      <SamplesHandler data={fn.samples || 100} />
+      <Button label={"Update"} click={() => null} />
+    </div>
+  );
+}
+
+function Plot2DMenu({
+  setShowFuncs,
+  userFunctions,
+}: pMenuPlot2d) {
+  return (
+    <menu className={css.menu}>
+      <Button
+        label={"\u00d7"}
+        click={() => setShowFuncs(false)}
+        className={css.close}
+      />
+      {userFunctions.map((ufn, i) => (
+        <Plot2DMenuItem index={i} key={ufn.f + "func" + i} fn={ufn} />
+      ))}
+      <button className={css.newfunc}>
+        New Function
+      </button>
+    </menu>
+  );
+}
+
+function MAIN() {
   return (
     <div className={app.vstack}>
       <div className={css.sheet_main}>
@@ -463,29 +839,31 @@ const MAIN = () => {
         <NewColumnButton />
       </div>
       <NewRowButton />
+      {/* <DEBUGGER data={sheet} /> */}
     </div>
   );
+}
+
+type pNetwork = {
+  data: { nodes: GraphNode[]; links: Link[] };
 };
 
-
-
-const TOOLBAR = () => {
+function Network({ data }: pNetwork) {
   return (
-    <div className={css.sheet_toolbar}>
-      <button children={"Sum"} />
-      <EXPRINPUT />
+    <div>
+      <GRAPH nodes={data.nodes} links={data.links} />
     </div>
   );
-};
+}
 
 const EXPRINPUT = () => {
-  const {lastEditedCell} = useSheet();
+  const { focusedCell } = useTable();
   const [formula, setFormula] = useState("");
   return (
     <input
       type={"text"}
       value={formula}
-      placeholder={""}
+      placeholder={focusedCell}
       onChange={(E) => setFormula(E.target.value)}
     />
   );
@@ -515,47 +893,29 @@ const targetOnControl = (target: Html) => {
   return false;
 };
 
-const TABLE = () => {
+function TABLE() {
   const {
     rows,
-    updateLastEditedCell,
-    lastEditedCell,
+    updateFocusedCell,
+    focusedCell,
     rowCount,
     colCount,
     cellmap,
     getSelectedCellIDs,
     sheet,
     primarySelectedID,
-    setPrimarySelectedID
-  } = useSheet();
+    setPrimarySelectedID,
+    selectedCellIDs,
+    setSelectedCellIDs,
+  } = useTable();
 
   const tableRef = useRef<null | HTMLTableElement>(null);
 
   const mouseDown = useRef(false);
 
-  // const [
-    // primarySelectedID,
-    // setPrimarySelectedID,
-  // ] = useState<string | null>(null);
-  
-  // const primarySelectedID = useRef<string>("")
-  
-  // const setPrimarySelectedID = (x:string|null) => {
-    // primarySelectedID.current = x === null ? "" : x;
-  // }
-
   const [isSelected, setSelected] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
-
-  const [
-    selectedCellIDs,
-    setSelectedCellIDs,
-  ] = useState<IDPayload[]>([]);
-
-  const selectedCellSet = useMemo(() => {
-    return new Set(selectedCellIDs.map((v) => v.id));
-  }, [selectedCellIDs]);
 
   const selectTable = useCallback(() => {
     setTimeout(() => {
@@ -569,7 +929,9 @@ const TABLE = () => {
 
   useEffect(() => {
     const tableElement = tableRef.current;
-    if (tableElement === null) return;
+    if (tableElement === null) {
+      return;
+    }
     if (document.activeElement === document.body && isSelected) {
       tableElement.focus();
     }
@@ -577,7 +939,9 @@ const TABLE = () => {
 
   useEffect(() => {
     const tableElement = tableRef.current;
-    if (tableElement === null) return;
+    if (tableElement === null) {
+      return;
+    }
     const tableRect = tableElement.getBoundingClientRect();
     const atTableEdge = (clientX: number, clientY: number) => (
       clientX - tableRect.x < 5 || clientY - tableRect.y < 5
@@ -594,14 +958,12 @@ const TABLE = () => {
         setSelected(false);
         mouseDown.current = true;
         let lastID: string | null = null;
-        // if (primarySelectedID !== pid) {
-        // if (primarySelectedID.current !== pid) {
         if (primarySelectedID !== pid) {
           setPrimarySelectedID(pid);
           setIsEditing(false);
           lastID = pid;
         }
-        updateLastEditedCell(lastID);
+        updateFocusedCell(lastID);
         setSelectedCellIDs([]);
         sheet.updateSelection([]);
         return;
@@ -613,25 +975,24 @@ const TABLE = () => {
         setSelectedCellIDs([]);
         sheet.updateSelection([]);
         setIsEditing(false);
-        updateLastEditedCell(null);
+        updateFocusedCell(null);
       }
     };
     const handlePointerMove = (e: PointerEvent) => {
-      if (isEditing) return;
-      if (!mouseDown.current) return;
-      if (primarySelectedID === null) return;
+      if (isEditing || !mouseDown.current || primarySelectedID === null) {
+        return;
+      }
       const pid = getCellID(e.target as Html);
-      if (pid === null) return;
-      if (pid === lastEditedCell.current) return;
+      if (pid === null || pid === focusedCell) {
+        return;
+      }
       if (selectedCellIDs.length === 0) {
         tableElement.style.userSelect = "none";
       }
-      // const ids = getSelectedCellIDs(primarySelectedID, pid);
-      // const ids = getSelectedCellIDs(primarySelectedID.current, pid);
       const ids = getSelectedCellIDs(primarySelectedID, pid);
       setSelectedCellIDs(ids.length === 1 ? [] : ids);
       sheet.updateSelection(ids.length === 1 ? [] : ids);
-      updateLastEditedCell(pid);
+      updateFocusedCell(pid);
     };
     const handlePointerUp = () => {
       if (tableElement && mouseDown.current && selectedCellIDs.length > 1) {
@@ -656,8 +1017,6 @@ const TABLE = () => {
   useEffect(() => {
     const handleDblClick = (event: MouseEvent) => {
       const pid = getCellID(event.target as Html);
-      // if (pid === primarySelectedID) {
-      // if (pid === primarySelectedID.current) {
       if (pid === primarySelectedID) {
         setIsEditing(true);
         setSelectedCellIDs([]);
@@ -684,65 +1043,72 @@ const TABLE = () => {
       >
         <tbody>
           {rows.map((row, rowIndex) => (
-            <Fragment key={row.id + rowIndex}>
-              {rowIndex === 0 && <RowIndices />}
-              <tr>
-                {row.cells.map((cell, columnIndex) => (
-                  <Fragment key={cell.id + columnIndex}>
-                    {columnIndex === 0 && (
-                      <td className={css.sheet_axis_cell}>{rowIndex}</td>
-                    )}
-                    <CellProvider
-                      type={cell.type}
-                      value={cell.value}
-                      id={cell.id}
-                      rowIndex={rowIndex}
-                      columnIndex={columnIndex}
-                      isSelected={selectedCellSet.has(cell.id)}
-                      isEditing={isEditing}
-                      isPrimarySelected={primarySelectedID === cell.id}
-                    >
-                      <CELL>
-                        <INPUT />
-                        <TEXT />
-                        <MENU />
-                      </CELL>
-                    </CellProvider>
-                  </Fragment>
-                ))}
-              </tr>
-            </Fragment>
+            <ROW
+              cells={row.cells}
+              rowIndex={rowIndex}
+              isEditing={isEditing}
+              key={row.id + rowIndex}
+            />
           ))}
         </tbody>
       </table>
     </div>
   );
+}
+
+const ROW = (
+  { cells, rowIndex, isEditing }: {
+    cells: Cell[];
+    rowIndex: number;
+    isEditing: boolean;
+  },
+) => {
+  return (
+    <Fragment>
+      {rowIndex === 0 && <RowIndices />}
+      <tr>
+        {cells.map((cell, columnIndex) => (
+          <Fragment key={cell.id + columnIndex}>
+            {columnIndex === 0 && (
+              <td className={css.sheet_axis_cell}>{rowIndex}</td>
+            )}
+            <CellProvider cell={cell} isEditing={isEditing}>
+              <CELL>
+                <INPUT />
+                <TEXT />
+                <MENU />
+              </CELL>
+            </CellProvider>
+          </Fragment>
+        ))}
+      </tr>
+    </Fragment>
+  );
 };
 
-const RowIndices = () => {
-  const { asciiRows } = useSheet();
+function RowIndices() {
+  const { asciiRows } = useTable();
   return (
     <tr>
       {asciiRows.map((letter, i) => (
-        <Fragment key={`ci${letter}`}>
-          {i === 0
-            ? <th className={css.sheet_axis_cell} />
-            : (
-              <th className={css.sheet_axis_cell}>
-                {letter}
-              </th>
-            )}
+        <Fragment key={i + "col" + letter}>
+          {i === 0 ? <HEADER of={""} /> : <HEADER of={letter} />}
         </Fragment>
       ))}
     </tr>
   );
-};
+}
+
+function HEADER({ of }: { of: string }) {
+  return <th className={css.sheet_axis_cell}>{of}</th>;
+}
 
 interface CellCtx {
   type: CellType;
   value: string;
   rowIndex: number;
   columnIndex: number;
+  colChar: string;
   isSelected: boolean;
   isPrimarySelected: boolean;
   isEditing: boolean;
@@ -755,34 +1121,34 @@ const CellContext = createContext<CellCtx>({} as CellCtx);
 
 type pCELL = {
   children: ReactNode;
-  type: CellType;
-  value: string;
-  rowIndex: number;
-  columnIndex: number;
-  isSelected: boolean;
-  isPrimarySelected: boolean;
   isEditing: boolean;
-  id: string;
+  cell: Cell;
 };
 
-const CellProvider = ({
+function CellProvider({
   children,
-  type,
-  value,
-  rowIndex,
-  columnIndex,
-  isSelected,
-  isPrimarySelected,
+  cell,
   isEditing,
-  id,
-}: pCELL) => {
-  const { sheet } = useSheet();
-  const [val, setVal] = useState(value);
-  const [currentType, setCurrentType] = useState(type);
+}: pCELL) {
+  const { sheet, cellmap, primarySelectedID, selectedCellSet } = useTable();
+  const rowcol = cellmap.get(cell.id);
+  if (rowcol === undefined) {
+    return null;
+  }
+  const [rowIndex, columnIndex] = rowcol;
+  const [val, setVal] = useState(cell.value);
+  const [currentType, setCurrentType] = useState(cell.type);
+  const id = cell.id;
+
+  useEffect(() => {
+    if (isEditing === false) {
+      sheet.updateCellValue(cell.row, columnIndex, val);
+      setVal(cell.value);
+    }
+  }, [isEditing]);
 
   const updateCellValue: InputFn = (event) => {
     event.stopPropagation();
-    sheet.updateCellValue(rowIndex, columnIndex, event.target.value);
     setVal(event.target.value);
   };
 
@@ -793,18 +1159,19 @@ const CellProvider = ({
         value: val,
         rowIndex,
         columnIndex,
-        isSelected,
-        isPrimarySelected,
+        isSelected: selectedCellSet.has(id),
+        isPrimarySelected: primarySelectedID === id,
         isEditing,
         id,
         setCurrentType,
         updateCellValue,
+        colChar: cell.column,
       }}
     >
       {children}
     </CellContext.Provider>
   );
-};
+}
 
 const useCell = () => useContext(CellContext);
 
@@ -837,16 +1204,20 @@ function CELL({
   );
 }
 
-const TEXT = () => {
-  const { value, isPrimarySelected, isEditing, id } = useCell();
+function TEXT() {
+  const {
+    value,
+    isPrimarySelected,
+    isEditing,
+  } = useCell();
   return (!(isPrimarySelected && isEditing))
     ? (
       <div className={css.sheet_text + " " + css.sheet_readonly}>
-        {value || id}
+        {value}
       </div>
     )
     : (null);
-};
+}
 
 const INPUT = () => {
   const { value, updateCellValue, isPrimarySelected, isEditing } = useCell();
@@ -859,11 +1230,11 @@ const INPUT = () => {
         className={css.sheet_writable}
       />
     )
-    : null;
+    : (null);
 };
 
 const MENU = () => {
-  const { toggleType, push, pop, rowCount, colCount } = useSheet();
+  const { toggleType, push, pop, rowCount, colCount } = useTable();
   const { rowIndex, columnIndex, type, setCurrentType } = useCell();
   return (
     <Dropdown
@@ -924,10 +1295,17 @@ const MENU = () => {
 };
 
 const NewColumnButton = () => {
-  const { pushColumn } = useSheet();
+  const { pushColumn, setSelectedCellIDs, sheet } = useTable();
   return (
     <div className={css.sidecontrol}>
-      <button className={css.new_col_button} onClick={pushColumn}>
+      <button
+        className={css.new_col_button}
+        onClick={() => {
+          setSelectedCellIDs([]);
+          sheet.updateSelection([]);
+          pushColumn();
+        }}
+      >
         <div className={css.plus_button} />
       </button>
     </div>
@@ -935,22 +1313,28 @@ const NewColumnButton = () => {
 };
 
 const NewRowButton = () => {
-  const { pushRow } = useSheet();
+  const { pushRow, setSelectedCellIDs, sheet } = useTable();
   return (
     <div className={css.sidecontrol}>
-      <button className={css.new_row_button} onClick={pushRow}>
+      <button
+        className={css.new_row_button}
+        onClick={() => {
+          setSelectedCellIDs([]);
+          sheet.updateSelection([]);
+          pushRow();
+        }}
+      >
         <div className={css.plus_button} />
       </button>
     </div>
   );
 };
 
-const DEBUGGER = () => {
-  const { sheet } = useSheet();
+const DEBUGGER = ({ data = {} }: { data: Object }) => {
   return (
     <div className={css.debug}>
       <pre>
-        {JSON.stringify(sheet,null,4)}
+        {JSON.stringify(data, null, 4)}
       </pre>
     </div>
   );

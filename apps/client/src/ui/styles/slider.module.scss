@@ -2,6 +2,9 @@
 
 .main {
 	font-family: $mainFont;
+	user-select: none;
+	border: $line3;
+	padding: $padtiny $pad1;
 	header {
 		display: block;
 		color: $bray1;
@@ -12,6 +15,8 @@
 		padding: 0;
 		font-weight: normal;
 		font-style: normal;
+		color: $bray1;
+		font-size: $xxsmall;
 	}
 }
 
@@ -24,17 +29,18 @@
 	border-radius: 3px;
 	background-color: #ddd;
 	height: 5px;
-	width: 50vh;
+	min-width: 90px;
+	width: 20vw;
 }
 
 .thumb {
-	width: 15px;
-	height: 15px;
+	width: 10px;
+	height: 10px;
 	border-radius: 50%;
 	position: relative;
-	top: -5px;
-	opacity: 0.5;
-	background-color: #823eb7;
+	top: -2.5px;
+	background-color: $pageColor;
+	border: $line1;
 	cursor: pointer;
 }
 
@@ -44,6 +50,14 @@
 	color: $bray3;
 	border: $line2;
 	padding: $pad1;
-	margin: $margin1;
 	border-radius: $pad1;
+}
+
+.header {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	var {
+		font-size: 0.65rem !important;
+	}
 }

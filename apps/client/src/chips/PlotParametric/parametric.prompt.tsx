@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
 import { useState } from "react";
-import { toLatex } from "src/algom";
+import { toLatex } from "@webtex/algom";
 import { Pair } from "src/App";
 import { concat } from "src/util";
 import { Table } from "../DataTable";

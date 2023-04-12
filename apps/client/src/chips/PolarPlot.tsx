@@ -1,10 +1,17 @@
 import { scaleLinear } from "d3";
 import { lineRadial } from "d3-shape";
 import { nanoid } from "nanoid";
-import { compfn } from "src/algom";
+import { compfn } from "@webtex/algom";
 import { SVG, svgDimensions } from "./PlotUtils";
-import { polar } from "src/algom/structs/mathfn";
 
+function polar(f: Function, domain: [number, number]) {
+  let points: [number, number][] = [];
+  for (let i = domain[0]; i < domain[1]; i += 0.01) {
+    const point = [i, f(i)];
+    points.push(point as [number, number]);
+  }
+  return points;
+}
 interface PolarPlotProps {
   f: Function | string;
   domain?: [number, number];

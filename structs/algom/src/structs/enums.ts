@@ -5,6 +5,8 @@ export enum TOKEN {
   LBRACKET, RBRACKET, LBRACE,
   RBRACE, DQUOTE, SEMICOLON,
   COLON, VBAR,
+  
+  CALL,
 
   DOT, PLUS, PLUS_PLUS,
   SQUOTE, MINUS, STAR,
@@ -166,6 +168,7 @@ export const TokenRecord: { [k in TOKEN]: Entry } = {
   [TOKEN.SQUOTE]: { kind: KIND.POSTFIX, prec: PREC.PEAK, fixity: FIX.LEFT },
   [TOKEN.BANG]: { kind: KIND.POSTFIX, prec: PREC.PEAK, fixity: FIX.LEFT },
 
+  [TOKEN.CALL]: { kind: KIND.PREFIX, prec: PREC.PEAK, fixity: FIX.RIGHT },
   [TOKEN.DOT]: { kind: KIND.INFIX, prec: PREC.PEAK, fixity: FIX.RIGHT },
   [TOKEN.MINUS]: { kind: KIND.INFIX, prec: PREC.MID, fixity: FIX.LEFT },
   [TOKEN.PLUS]: { kind: KIND.INFIX, prec: PREC.MID, fixity: FIX.LEFT },

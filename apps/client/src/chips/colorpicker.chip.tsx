@@ -2,7 +2,7 @@ import app from "../ui/styles/App.module.scss";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "./Inputs";
 import { schema } from "./EditorConfig";
-import { clamp } from "src/algom";
+import { clamp } from "@webtex/algom";
 
 const WIDTH = 200;
 const HEIGHT = 150;
@@ -59,10 +59,10 @@ export function ColorPicker({
   }, [selfColor]);
 
   // useEffect(() => {
-    // if (!color) return;
-    // const updatedColor = colorTransform("hex", color);
-    // setSelfColor(updatedColor);
-    // setInputColor(updatedColor.hex);
+  // if (!color) return;
+  // const updatedColor = colorTransform("hex", color);
+  // setSelfColor(updatedColor);
+  // setInputColor(updatedColor.hex);
   // }, [color]);
 
   return (
@@ -259,7 +259,7 @@ function Spectrum({
 }: pSpectrumPlane) {
   const divRef = useRef<HTMLDivElement>(null);
 
-  const move = (e: React.MouseEvent | MouseEvent) => {
+  const move = (e: React.PointerEvent | PointerEvent) => {
     if (divRef.current) {
       const { current: div } = divRef;
       const { width, height, left, top } = div.getBoundingClientRect();
@@ -269,24 +269,26 @@ function Spectrum({
     }
   };
 
-  const onMouseDown = (e: React.MouseEvent) => {
+  const onMouseDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
     move(e);
-    const onMouseMove = (evt: MouseEvent) => move(evt);
-    const onMouseUp = (evt2: MouseEvent) => {
-      document.removeEventListener("mousemove", onMouseMove, false);
-      document.removeEventListener("mouseup", onMouseUp, false);
+    const onMouseMove = (evt: PointerEvent) => {
+      move(evt);
+    };
+    const onMouseUp = (evt2: PointerEvent) => {
+      document.removeEventListener("pointermove", onMouseMove, false);
+      document.removeEventListener("pointerup", onMouseUp, false);
       move(evt2);
     };
-    document.addEventListener("mousemove", onMouseMove, false);
-    document.addEventListener("mouseup", onMouseUp, false);
+    document.addEventListener("pointermove", onMouseMove, false);
+    document.addEventListener("pointerup", onMouseUp, false);
   };
   return (
     <div
       ref={divRef}
       className={className}
       style={style}
-      onMouseDown={onMouseDown}
+      onPointerDown={onMouseDown}
     >
       {children}
     </div>

@@ -11,7 +11,7 @@ import {
 import { Pair, Quad } from "src/App";
 import { NodeKey, SerializedLexicalNode, Spread } from "lexical";
 import { nanoid } from "nanoid";
-import { makeFunction } from "src/algom";
+import { makeFunction } from "@webtex/algom";
 
 function parametric(
   fx: Function,

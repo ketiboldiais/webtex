@@ -56,19 +56,7 @@ export class List<t> {
   get length() {
     return this.#length;
   }
-  setItem(index: number) {
-    return {
-      as: (value: t) => {
-        index = this.#rem(index);
-        this.#traverse((n, i) => {
-          if (i === index) {
-            n.value = value;
-          }
-        });
-        return this;
-      },
-    };
-  }
+  
   item(index: number) {
     index = this.#rem(index);
     let out = null;

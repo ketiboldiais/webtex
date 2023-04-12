@@ -81,22 +81,22 @@ interface TbProps<T extends Struct> {
   headerClassName?: string;
   headingClassName?: string;
   cellClassName?: string;
+  containerClassName?: string;
 }
 type Order = "ascending" | "descending";
 
-export function Table<T extends Struct>(
-  {
-    data,
-    onUpdate,
-    uid,
-    schema,
-    keys,
-    cell,
-    headerClassName = "",
-    cellClassName = "",
-    headingClassName = "",
-  }: TbProps<T>,
-) {
+export function Table<T extends Struct>({
+  data,
+  onUpdate,
+  uid,
+  schema,
+  keys,
+  cell,
+  headerClassName = "",
+  cellClassName = "",
+  headingClassName = "",
+  containerClassName=app.grid_table
+}: TbProps<T>) {
   const blank = createObj(keys);
   const headings = schema ? Object.values(schema).map((v) => v.label) : keys;
   const [entries, setEntries] = useState(data);
@@ -188,16 +188,16 @@ export function Table<T extends Struct>(
   };
 
   return (
-    <div className={app.grid_table}>
+    <div className={containerClassName}>
       <article
         className={concat(headerClassName, app.grid_header, app.grid_row)}
       >
         {headings.map((header, h) => (
           <div
             className={concat(
-              headingClassName,
               app.grid_heading,
               app.grid_cell,
+              headingClassName,
             )}
             key={concat("header", uid, h)}
             onClick={() =>

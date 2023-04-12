@@ -1,20 +1,20 @@
-import { NODE } from "../structs/enums";
+import { NODE } from "../structs/enums.js";
 import { Visitor } from "./astnode.js";
-import { BinaryExprNode } from "./BinaryExprNode";
-import { BlockNode } from "./BlockNode";
-import { BoolNode } from "./BoolNode";
-import { FunctionNode } from "./FunctionNode";
-import { GroupNode } from "./GroupNode";
-import { MatrixNode } from "./MatrixNode";
-import { NullNode } from "./NullNode";
-import { N } from "./Numerics";
-import { Root } from "./RootNode";
-import { StringNode } from "./StringNode";
-import { SymbolNode } from "./SymbolNode";
-import { TupleNode } from "./TupleNode";
-import { UnaryExprNode } from "./UnaryExprNode";
-import { VarDeclareNode } from "./VarDeclareNode";
-import { VectorNode } from "./VectorNode";
+import { BinaryExprNode } from "./BinaryExprNode.js";
+import { BlockNode } from "./BlockNode.js";
+import { BoolNode } from "./BoolNode.js";
+import { FunctionNode } from "./FunctionNode.js";
+import { GroupNode } from "./GroupNode.js";
+import { MatrixNode } from "./MatrixNode.js";
+import { NullNode } from "./NullNode.js";
+import { N } from "./Numerics.js";
+import { Root } from "./RootNode.js";
+import { StringNode } from "./StringNode.js";
+import { SymbolNode } from "./SymbolNode.js";
+import { TupleNode } from "./TupleNode.js";
+import { UnaryExprNode } from "./UnaryExprNode.js";
+import { VarDeclareNode } from "./VarDeclareNode.js";
+import { VectorNode } from "./VectorNode.js";
 
 export abstract class ASTNode {
   kind: NODE;

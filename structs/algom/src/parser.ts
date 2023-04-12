@@ -26,6 +26,8 @@ import { C } from "./ast/Numerics.js";
 import { SymbolNode } from "./ast/SymbolNode.js";
 import { TupleNode } from "./ast/TupleNode.js";
 import { VectorNode } from "./ast/VectorNode.js";
+import { FunctionNode } from "./ast/FunctionNode.js";
+import { CallNode } from "./ast/CallNode.js";
 
 export interface Parser {
   /**
@@ -68,6 +70,7 @@ export class Parser {
     this.numtype = TOKEN.INT;
     this.error = null;
     this.strict = true;
+    this.isManualFunctionParse = false;
     this.funcs.clear();
   }
 
@@ -125,6 +128,9 @@ export class Parser {
       this.advance();
     }
     const remaining = this.source.substring(this.start, this.current);
+    if (corelib.hasFunction(remaining)) {
+      return this.token(TOKEN.CALL);
+    }
     if (keywords[remaining as Keyword] !== undefined) {
       const type = keywords[remaining as Keyword];
       return this.token(type);
@@ -360,9 +366,12 @@ export class Parser {
     return n.accept(i);
   }
 
-  parseExpr(expression: string) {
+  isManualFunctionParse: boolean = false;
+
+  parseExpr(expression: string, isManualFunctionParse: boolean = false) {
     this.peek = this.INIT(expression);
     this.strict = false;
+    this.isManualFunctionParse = isManualFunctionParse;
     const result = this.expression();
     this.CLEAN();
     return result;
@@ -375,8 +384,9 @@ export class Parser {
     return newnode;
   }
 
-  latex(src: string) {
-    return this.parse(src).accept(new ToLatex());
+  latex(src: string, parsingFunctions: boolean = false) {
+    const x = this.parseExpr(src, parsingFunctions);
+    return x.accept(new ToLatex());
   }
   compute(src: string) {
     return this.parse(src).accept(new Interpreter()).accept(new ToLatex());
@@ -395,6 +405,23 @@ export class Parser {
     }
     if (err) return err;
     return `Invalid expression ${body}`;
+  }
+  createFunction(expr: string) {
+    expr = "let " + expr + ";";
+    const errMessage = (m: string) => `Could not compile: ${m}`;
+    const res = this.parse(expr);
+    if (!(res instanceof Root)) {
+      return errMessage(`Could not parse a function from ${expr}`);
+    }
+    const c = new Compile();
+    const root = res;
+    const { result, err } = root.accept(c) as Runtimeval;
+    if (result instanceof Fn) {
+      return (...as: any): any => result.call(c, as);
+    }
+    return errMessage(
+      `Compile succeeded, but result was not a function: ${err}`,
+    );
   }
   parse(source: string): ASTNode {
     this.peek = this.INIT(source);
@@ -519,6 +546,10 @@ export class Parser {
     if (this.strict && this.error !== null) return this.error as ASTNode;
     let lhs: ASTNode = ast.nil;
     switch (this.peek.type) {
+      case TOKEN.CALL:
+        const t = this.eat(TOKEN.CALL);
+        lhs = this.callexpr(ast.symbol(t));
+        break;
       case TOKEN.SYMBOL:
         lhs = this.id();
         break;

@@ -404,31 +404,70 @@ button.default_button {
 }
 
 // inputs
+.interval_chip {
+	// width: fit-content;
+	font-size: $xsmall;
+	margin: $margin2 0;
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	font-family: $mainFont;
+}
+
+.interval_label {
+	display: block;
+	font-family: $mainFont;
+	background-color: inherit;
+}
+
+.interval_input_label {
+	font-size: $small;
+}
+
+.interval_counters {
+	display: flex;
+	justify-content: space-evenly;
+	padding: $padtiny;
+	height: auto;
+}
+
+.interval_row {
+	// display: flex;
+	margin: 0;
+	// flex-direction: column;
+	// justify-content: center;
+	// align-items: center;
+}
 .number {
 	border-radius: $medium;
-	padding: $padtiny 0;
+	padding: 0;
 	width: fit-content;
-	font-family: $cmu_text;
 }
 
 .number_input_field {
-	text-align: center;
 	font-size: $xsmall;
-	width: 3vw;
-	// border: $line2;
-	// border-radius: 3px;
+	border-radius: 3px;
+	padding: 0;
+	text-align: center;
+	width: 25px;
 }
 
 .number_input_body {
 	display: flex;
-	justify-content: center;
-	align-items: center;
+	// max-width: 75px;
+	height: fit-content;
+	gap: 5px;
+	margin: 0;
 }
 
 .number_input_button {
 	border: 0;
+	text-align: center;
+	line-height: 0;
+	margin: 0 2px;
 	background-color: inherit;
 	color: inherit;
+	width: 15px;
 }
 
 #canvas {
@@ -442,7 +481,7 @@ button.default_button {
 
 
 // § Grid
-div.grid_table {
+.grid_table {
 	font-family: $mainFont;
 }
 
@@ -465,8 +504,7 @@ div.grid_table {
 	}
 }
 
-.grid_header div.grid_heading {
-	font-size: 0.85rem;
+.grid_header .grid_heading {
 	border: 0;
 }
 
@@ -477,7 +515,7 @@ div.grid_table {
 
 
 
-input.grid_cell_input {
+.grid_cell_input {
 	width: 100%;
 	margin: 0;
 	padding: 2px;
@@ -485,7 +523,7 @@ input.grid_cell_input {
 	background-color: inherit;
 }
 
-button.grid_delete {
+.grid_delete {
 	background-color: inherit;
 	padding: 0;
 	border: 0;
@@ -505,40 +543,7 @@ button.grid_cancel {
 	margin-left: $margin1;
 }
 
-.interval_chip {
-	width: fit-content;
-}
 
-.interval_body {
-	font-size: $xsmall;
-	margin: $margin2 0;
-	display: flex;
-	justify-content: center;
-	align-items: flex-start;
-}
-
-.interval_label {
-	display: block;
-	font-family: $mainFont;
-	width: 70px;
-	height: 100%;
-}
-
-.interval_input_label {
-	font-size: $xsmall;
-}
-
-.interval_counters {
-	display: flex;
-}
-
-.interval_row {
-	display: flex;
-	margin: $margin1;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-}
 
 
 
@@ -575,7 +580,6 @@ button.grid_cancel {
 		margin-left: 4.2rem;
 		justify-content: flex-start;
 		gap: $margin1;
-
 		.number {
 			margin-left: 0;
 		}
@@ -1429,5 +1433,3 @@ button.destroy_button[disabled] {
 .resizeFocus {
 	border: solid 2px $blue4;
 }
-
-

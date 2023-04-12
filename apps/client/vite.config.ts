@@ -10,7 +10,7 @@ export default defineConfig(async () => {
       tsconfigPaths(),
     ],
     optimizeDeps: {
-      include: ["react/jsx-runtime", "./src/algom/*"],
+      include: ["react/jsx-runtime", "@webtex/algom"],
     },
     resolve: {
       alias: {

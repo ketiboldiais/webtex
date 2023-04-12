@@ -1,7 +1,7 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
-import { makeFunction } from "src/algom";
-import { AxesHelper, DoubleSide, GridHelper, ShapeGeometry, Vector3 } from "three";
+import { makeFunction } from "@webtex/algom";
+import { AxesHelper, DoubleSide, GridHelper, Vector3 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { ParametricGeometry } from "three/examples/jsm/geometries/ParametricGeometry";
 

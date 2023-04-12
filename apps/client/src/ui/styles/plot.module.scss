@@ -1,0 +1,18 @@
+@import './base';
+
+.control {
+	min-width: 90%;
+	padding: $padtiny $pad2;
+	min-height: fit-content;
+}
+
+.showfuncs {
+	padding: $pad1;
+	font-size: $xxsmall;
+	margin: 0;
+	background-color: $pageColor;
+	border: solid thin lightgrey;
+}
+
+
+

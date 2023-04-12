@@ -1,7 +1,7 @@
 import { scaleLinear } from "@visx/scale";
 import { ReactNode, useRef, useState } from "react";
 import { Axis, AxisScale } from "@visx/axis";
-import {HTML_DIV_REF} from "src/App";
+import { HTML_DIV_REF } from "src/App";
 
 export const Scale = {
   linear: {
@@ -152,32 +152,39 @@ export function SVG({
   const viewBoxHeight = svgHeight + top + bottom;
   const viewboxValue = `0 0 ${viewBoxWidth} ${viewBoxHeight}`;
   return (
-    <div
-      style={{
-        display: "block",
-        position: "relative",
-        width: `${cwidth}%`,
-        paddingBottom: `${cwidth * cheight}%`,
-        overflow: "hidden",
-      }}
+    <Figure
+      width={svgWidth}
+      height={svgHeight}
+      minWidth={100}
+      minHeight={100}
+      maxWidth={800}
+      maxHeight={800}
     >
-      <svg
-        viewBox={viewboxValue}
-        preserveAspectRatio={"xMinYMin meet"}
+      <div
         style={{
           display: "block",
-          position: "absolute",
-          top: "10%",
-          left: "10%",
+          position: "relative",
+          width: `${cwidth}%`,
+          paddingBottom: `${cwidth * cheight}%`,
+          overflow: "hidden",
         }}
       >
-        {children}
-      </svg>
-    </div>
+        <svg
+          viewBox={viewboxValue}
+          preserveAspectRatio={"xMinYMin meet"}
+          style={{
+            display: "block",
+            position: "absolute",
+            top: "10%",
+            left: "10%",
+          }}
+        >
+          {children}
+        </svg>
+      </div>
+    </Figure>
   );
 }
-
-
 
 type divref = null | HTMLDivElement;
 interface FigAPI {
@@ -350,24 +357,25 @@ function Resizer({
   const startResize = (event: Ptr, direction: number) => {
     const target = targetRef.current;
     const controlWrapper = ctrlWrapper.current;
-    if (target === null || controlWrapper === null) return;
-    const { width, height } = target.getBoundingClientRect();
-    const positioning = positioningRef.current;
-    positioning.startWidth = width;
-    positioning.startHeight = height;
-    positioning.ratio = width / height;
-    positioning.currentWidth = width;
-    positioning.currentHeight = height;
-    positioning.startX = event.clientX;
-    positioning.startY = event.clientY;
-    positioning.isResizing = true;
-    positioning.direction = direction;
-    setStartCursor(direction);
-    onResizeStart();
-    target.style.height = `${height}px`;
-    target.style.width = `${width}px`;
-    document.addEventListener("pointermove", resize);
-    document.addEventListener("pointerup", stopResize);
+    if (target !== null && controlWrapper !== null) {
+      const { width, height } = target.getBoundingClientRect();
+      const positioning = positioningRef.current;
+      positioning.startWidth = width;
+      positioning.startHeight = height;
+      positioning.ratio = width / height;
+      positioning.currentWidth = width;
+      positioning.currentHeight = height;
+      positioning.startX = event.clientX;
+      positioning.startY = event.clientY;
+      positioning.isResizing = true;
+      positioning.direction = direction;
+      setStartCursor(direction);
+      onResizeStart();
+      target.style.height = `${height}px`;
+      target.style.width = `${width}px`;
+      document.addEventListener("pointermove", resize);
+      document.addEventListener("pointerup", stopResize);
+    }
   };
 
   const resize = (event: PointerEvent) => {
@@ -480,6 +488,6 @@ function getCursorPos(dir: number) {
   return ew ? "ew" : ns ? "ns" : nwse ? "nwse" : "nesw";
 }
 
-export const translate = (x:number, y:number) => `translate(${x}, ${y})`;
-type FontUnit = 'px'|'em'|'rem'
-export const fontSize = (x:number, unit:FontUnit='px') => `${x}${unit}`
+export const translate = (x: number, y: number) => `translate(${x}, ${y})`;
+type FontUnit = "px" | "em" | "rem";
+export const fontSize = (x: number, unit: FontUnit = "px") => `${x}${unit}`;
