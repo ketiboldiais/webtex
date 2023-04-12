@@ -59,7 +59,7 @@ Observations:
 4. The `div` operator returns the integer quotient of a divison. This is equivalent to ${\lfloor{ x/y \rfloor},}$ where ${x, y \in \mathbb{Z}.}$
 
 ### Precedence Rules
-The Algom compiler uses Pratt parser to enforce a defined precedence scheme. The Pratt parser operates by comparing the binding power of each scanned token (in the parser’s source code, the token property `bp`). A binding power is an element of the following ordered poset (listed from least to greatest):
+The Algom compiler uses Pratt parsing to enforce a defined precedence scheme. The parser takes the binding power of a scanned token (in the parser’s source code, the token property `bp`) and branches depending on the next token’s binding power. The binding powers are an ordered poset (listed from least to greatest):
 
 1. `NIL`
 2. `NON`
@@ -72,7 +72,7 @@ The Algom compiler uses Pratt parser to enforce a defined precedence scheme. The
 9. `PEAK`
 10. `APEX`
 
-Each binding power is assigned to a defined subset of operators:
+Given two operators ${a}$ and ${b,}$ if ${a}$ has a higher binding power than ${b,}$ then ${a}$ is evaluated before ${b.}$ If ${a}$ and ${b}$ have the same binding power, then the operators are evaluated from left to right.
 
 1. `NIL` is indicates a utility token type (e.g., `EOF` or `ERROR`). If the Pratt parser is given a `NIL` power, parsing immediately halts.
 2. `NON`. A base-case power. Because Pratt parsing is a recursive operation, this serves as a base case, allowing other parsers to operate on potential sub-expressions.
