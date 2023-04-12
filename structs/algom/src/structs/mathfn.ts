@@ -9,13 +9,10 @@ export type CalculiEntry = {
 };
 export type Calculi = { [key: string]: CalculiEntry };
 export const lib: Calculi = {
-  e: { val: Math.E, node: () => C.e },
-  pi: { val: Math.PI, node: () => C.pi },
+  E: { val: Math.E, node: () => C.e },
+  PI: { val: Math.PI, node: () => C.pi },
   LN2: { val: Math.LN2, node: () => C.ln2 },
   LN10: { val: Math.LN10, node: () => C.ln10 },
-  LOG2E: { val: Math.LOG2E, node: () => C.log2e },
-  LOG10E: { val: Math.LOG10E, node: () => C.log10e },
-  SQRT1_2: { val: Math.SQRT1_2, node: () => C.sqrt1_2 },
   SQRT2: { val: Math.SQRT2, node: () => C.sqrt2 },
   abs: { val: Math.abs },
   acos: { val: Math.acos },
@@ -27,26 +24,20 @@ export const lib: Calculi = {
   atan2: { val: Math.atan2 },
   cbrt: { val: Math.cbrt },
   ceil: { val: Math.ceil },
-  clz32: { val: Math.clz32 },
   cos: { val: Math.cos },
   cosh: { val: Math.cosh },
   exp: { val: Math.exp },
-  expm1: { val: Math.expm1 },
   floor: { val: Math.floor },
   fround: { val: Math.fround },
   gcd: { val: GCD },
   hypot: { val: Math.hypot },
-  imul: { val: Math.imul },
-  log: { val: Math.log },
   ln: { val: Math.log },
-  log1p: { val: Math.log1p },
-  log10: { val: Math.log10 },
-  log2: { val: Math.log2 },
+  log: { val: Math.log10 },
   lg: { val: Math.log2 },
   max: { val: Math.max },
   min: { val: Math.min },
-  pow: { val: Math.pow },
-  random: { val: Math.random },
+  rand: { val: Math.random },
+  randInt: { val: randInt },
   round: { val: Math.round },
   sign: { val: Math.sign },
   sin: { val: Math.sin },
@@ -61,6 +52,10 @@ export const lib: Calculi = {
   sum: { val: sum },
   avg: { val: avg },
 };
+
+export function randInt(min:number, max:number) {
+  return Math.floor(Math.random() * (max - min + 1) + min);
+} 
 
 export function avg(...nums: number[]) {
   if (nums === undefined) {
@@ -160,3 +155,4 @@ export function getFrac(n: string) {
   const y = Number.parseInt(b);
   return [x, y];
 }
+
