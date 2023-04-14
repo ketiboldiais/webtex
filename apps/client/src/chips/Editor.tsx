@@ -1,6 +1,4 @@
-import { PlotPlugin } from "./Plot2d";
 import app from "../ui/styles/App.module.scss";
-import docstyles from "../ui/styles/Editor.module.scss";
 import { ImagePlugin } from "./Image.js";
 import { Plot3DPlugin } from "./Plot3d/plot3d.plugin.js";
 import { useEditor } from "@hooks/useEditor";
@@ -93,7 +91,6 @@ export function Editor() {
         <ListPlugin />
         <LatexPlugin />
         <ImagePlugin />
-        <PlotPlugin />
         <Plot3DPlugin />
         <ParametricPlotPlugin />
         <ExcalidrawPlugin />

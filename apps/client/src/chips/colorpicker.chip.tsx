@@ -58,13 +58,6 @@ export function ColorPicker({
     }
   }, [selfColor]);
 
-  // useEffect(() => {
-  // if (!color) return;
-  // const updatedColor = colorTransform("hex", color);
-  // setSelfColor(updatedColor);
-  // setInputColor(updatedColor.hex);
-  // }, [color]);
-
   return (
     <div className={app.color_picker}>
       <div

@@ -1,7 +1,7 @@
 import { scaleLinear } from "@visx/scale";
 import { ReactNode, useRef, useState } from "react";
 import { Axis, AxisScale } from "@visx/axis";
-import { HTML_DIV_REF } from "src/App";
+import { HTML_DIV_REF, Quad } from "src/App";
 
 export const Scale = {
   linear: {
@@ -50,7 +50,7 @@ export function svgDimensions(
   return [svgWidth, svgHeight];
 }
 
-function XAxis({ ticks, yScale, xScale }: AxisProps) {
+export function XAxis({ ticks, yScale, xScale }: AxisProps) {
   return (
     <g transform={`translate(0, ${yScale(0)})`}>
       <PlotAxis ticks={ticks} direction={"x"} scale={xScale} />
@@ -58,7 +58,7 @@ function XAxis({ ticks, yScale, xScale }: AxisProps) {
   );
 }
 
-function YAxis({ ticks, yScale, xScale }: AxisProps) {
+export function YAxis({ ticks, yScale, xScale }: AxisProps) {
   return (
     <g transform={`translate(${xScale(0)}, 0)`}>
       <PlotAxis ticks={ticks} direction={"y"} scale={yScale} />
@@ -491,3 +491,7 @@ function getCursorPos(dir: number) {
 export const translate = (x: number, y: number) => `translate(${x}, ${y})`;
 type FontUnit = "px" | "em" | "rem";
 export const fontSize = (x: number, unit: FontUnit = "px") => `${x}${unit}`;
+
+export const DEFAULT_SVG_WIDTH = 500;
+export const DEFAULT_SVG_HEIGHT = 500;
+export const DEFAULT_SVG_MARGINS: Quad<number> = [30, 30, 30, 30];

@@ -240,7 +240,6 @@ export function LatexComponent({ latex, inline, nodeKey }: LCP) {
 }
 
 import LatexEditor from "./LatexEditor";
-import { Row } from "./Inputs";
 
 type LR = Readonly<{ latex: string; inline: boolean; onClick: VoidFunction }>;
 
@@ -325,10 +324,10 @@ export function LatexModifier({ initLatex = "", onConfirm }: LMP) {
   return (
     <div className={app.katex_input_shell}>
       <div className={app.katex_input_options}>
-        <Row>
+        <div>
           <input type="checkbox" checked={inline} onChange={onCheck} />
           <label>Inline</label>
-        </Row>
+        </div>
       </div>
       <div className={app.katex_input_main}>
         <label>LaTeX Input</label>

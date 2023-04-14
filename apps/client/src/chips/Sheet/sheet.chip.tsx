@@ -1,4 +1,13 @@
 import {
+  Button,
+  Optional,
+  OptionsList,
+  Palette,
+  Range,
+  Switch,
+  TextInput,
+} from "../Inputs";
+import {
   createContext,
   Fragment,
   ReactNode,
@@ -6,28 +15,24 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useReducer,
   useRef,
   useState,
 } from "react";
-import {
-  digitize26,
-  evaluate,
-  getRowCol,
-  latinize,
-  range,
-  uid,
-} from "@webtex/algom";
-import { Html } from "src/util";
-import css from "../../ui/styles/sheet.module.scss";
-import app from "../../ui/styles/App.module.scss";
+import { evaluate, getRowCol, latinize, range, uid } from "@webtex/algom";
+import { Children, Html } from "src/util";
+import css from "../../ui/styles/App.module.scss";
 import { Dropdown, Option } from "../Dropdown";
 import { Chevron } from "../Icon";
-import { InputFn } from "src/App";
+import { InputFn, Pair } from "src/App";
 import GRAPH, { GraphNode, Link } from "../Graph/graph.chip";
-import { UserFunc } from "../Plot2d/plot2d.chip";
-import { Button, Range } from "../Inputs";
-import { Interval } from "../Interval";
+import { Interval, NumberInput } from "../Inputs";
+import { Detail } from "../Detail";
+import Plot2D, {
+  BasePlotFn,
+  IntegralData,
+  PlotFn,
+  RiemannDatum,
+} from "../Plot2d/plot2d.chip";
 
 type CellType = "td" | "th";
 type CellMap = Map<string, [number, number]>;
@@ -128,7 +133,6 @@ class Spreadsheet {
         map[cell.row] = [];
       }
     }
-    const links: Link[] = [];
     const toDelete = new Set<string>();
     for (let i = 0; i < ucells.length; i++) {
       const ucell = ucells[i];
@@ -351,22 +355,6 @@ class Spreadsheet {
     return value;
   }
 }
-type IDPayload = {
-  id: string;
-  rowIndex: number;
-  columnIndex: number;
-};
-type IDPayloadFty = (
-  id: string,
-  rowIndex: number,
-  columnIndex: number,
-) => IDPayload;
-
-const newIDPayload: IDPayloadFty = (id, rowIndex, columnIndex) => ({
-  id,
-  rowIndex,
-  columnIndex,
-});
 
 type pSheetContext = {
   children: ReactNode;
@@ -392,7 +380,6 @@ type SheetState = {
   selection: string[];
   updateSelection: React.Dispatch<React.SetStateAction<string[]>>;
   sheet: Spreadsheet;
-  asciiRows: string[];
   primarySelectedID: string;
   setPrimarySelectedID: (x: string | null) => void;
   selectedCellIDs: Cell[];
@@ -434,10 +421,6 @@ const TableContextProvider = ({
   const setPrimarySelectedID = (x: string | null) => {
     primarySelectedID.current = x === null ? "" : x;
   };
-
-  const asciiRows = useMemo(() => {
-    return range(0, colCount + 1).map((n) => latinize(n - 1));
-  }, [colCount]);
 
   const [
     selection,
@@ -548,7 +531,6 @@ const TableContextProvider = ({
         sheet: sheet.current,
         selection,
         updateSelection,
-        asciiRows,
         primarySelectedID: primarySelectedID.current,
         setPrimarySelectedID,
         selectedCellIDs,
@@ -570,304 +552,34 @@ type pSheet = {
   initialDisplayState?: DisplayState;
 };
 
-type GraphPayload = {
-  nodes: GraphNode[];
-  links: Link[];
-};
-type DisplayState = {
-  counter: {
-    render: boolean;
-    data: number;
-  };
-  graph: {
-    render: boolean;
-    data: GraphPayload;
-  };
-  plot2d: {
-    render: boolean;
-    data: UserFunc;
-  };
-};
-
-type DisplayAction =
-  | { type: "graph"; payload: GraphPayload }
-  | { type: "plot2d"; payload: UserFunc };
-
-function reducer(state: DisplayState, action: DisplayAction): DisplayState {
-  const { type, payload } = action;
-  switch (type) {
-    case "plot2d":
-      return {
-        ...state,
-        plot2d: {
-          render: true,
-          data: payload,
-        },
-      };
-    case "graph":
-      return {
-        ...state,
-        graph: {
-          render: true,
-          data: payload,
-        },
-      };
-    default:
-      return state;
-  }
-}
-
-const defaultDisplayState: DisplayState = {
-  counter: {
-    render: false,
-    data: 0,
-  },
-  graph: {
-    render: false,
-    data: { nodes: [], links: [] },
-  },
-  plot2d: {
-    render: false,
-    data: { f: "" },
-  },
-};
-
 export default function Sheet({
   minRowCount = 5,
   minColCount = 5,
   initialRows = makeRows(minRowCount, minColCount),
-  initialDisplayState = defaultDisplayState,
+  initialDisplayState = defaultDisplayState(),
 }: pSheet) {
   const sheet = useRef(Spreadsheet.preload(initialRows));
-  const [state, dispatch] = useReducer(reducer, initialDisplayState);
-
-  const handlers = useMemo(() => ({
-    Graph: () =>
-      dispatch({
-        type: "graph",
-        payload: sheet.current.cellGraph(),
-      }),
-  }), []);
 
   return (
     <div className={css.sheet_shell}>
-      <TOOLBAR actions={handlers} />
-      <TableContextProvider
-        minRowCount={minRowCount}
-        minColCount={minColCount}
-        sheet={sheet}
-      >
-        <MAIN />
-      </TableContextProvider>
-      {state.graph.render && <Network data={state.graph.data} />}
-      {state.plot2d.render && <DEBUGGER data={state.plot2d.data} />}
+      <TOOLBAR sheet={sheet.current} init={initialDisplayState}>
+        <TableContextProvider
+          minRowCount={minRowCount}
+          minColCount={minColCount}
+          sheet={sheet}
+        >
+          <div className={css.vstack}>
+            <div className={css.sheet_main}>
+              <TABLE />
+              <NewColumnButton />
+            </div>
+            <NewRowButton />
+          </div>
+        </TableContextProvider>
+      </TOOLBAR>
     </div>
   );
 }
-
-type Op = { [key: string]: () => void };
-interface pTOOLBAR {
-  actions: Op;
-}
-
-const dPlot2d = (f: string): UserFunc => ({
-  f,
-  samples: 100,
-  domain: [-10, 10],
-  range: [-10, 10],
-  integrate: [-3, 3],
-  riemann: {
-    orient: "left",
-    precision: 100,
-    domain: [-4, 4],
-    on: "2x",
-  },
-});
-
-function TOOLBAR({ actions }: pTOOLBAR) {
-  const [showPlot2d, setShowPlot2d] = useState(true);
-  const [plot2d, setPlot2D] = useState<UserFunc[]>([
-    dPlot2d("f(x) = cos(x)"),
-    dPlot2d("f(x) = sin(x)"),
-  ]);
-  return (
-    <div className={css.sheet_toolbar}>
-      {Object.entries(actions).map(([label, action], i) => (
-        <button key={`sheet-${i}-${label}`} onClick={action}>{label}</button>
-      ))}
-      <button
-        children={"Plot2D"}
-        onClick={() => setShowPlot2d(!showPlot2d)}
-      />
-      <button>{"Plot3D"}</button>
-      <button>{"Bar Plot"}</button>
-      <button>{"Scatter Plot"}</button>
-      <button>{"Eval"}</button>
-      {showPlot2d && (
-        <Plot2DMenu
-          userFunctions={plot2d}
-          setShowFuncs={setShowPlot2d}
-        />
-      )}
-    </div>
-  );
-}
-
-type pMenuPlot2d = {
-  setShowFuncs: (b: boolean) => void;
-  userFunctions: UserFunc[];
-};
-
-type FH = { data: string; onChange: (x: string) => void };
-function FunctionHandler({ data, onChange }: FH) {
-  const [val, setVal] = useState(data);
-  return (
-    <section>
-      <label>Function</label>
-      <input
-        onChange={(e) => setVal(e.target.value)}
-        onBlur={() => onChange(val)}
-        value={val}
-      />
-    </section>
-  );
-}
-
-type DItvl = {
-  data: [number, number];
-};
-
-function IntegralHandler({ data }: DItvl) {
-  return (
-    <section>
-      <label>Integrate</label>
-      <Interval
-        value={data}
-        containerClass={css.fint}
-        onChange={() => null}
-      />
-    </section>
-  );
-}
-
-function RangeHandler({ data }: { data: [number, number] }) {
-  return (
-    <section>
-      <label>Domain</label>
-      <Interval
-        value={data}
-        containerClass={css.fint}
-        onChange={() => null}
-      />
-    </section>
-  );
-}
-
-function DomainHandler({ data }: { data: [number, number] }) {
-  const [interval, setInterval] = useState(data);
-  return (
-    <section>
-      <label>Domain</label>
-      <Interval
-        value={interval}
-        containerClass={css.fint}
-        onChange={setInterval}
-      />
-    </section>
-  );
-}
-
-function SamplesHandler({ data }: { data: number }) {
-  return (
-    <section>
-      <label>Samples</label>
-      <Range
-        minValue={10}
-        maxValue={1000}
-        initialValue={data}
-      />
-    </section>
-  );
-}
-type PFnItem = {
-  fn: UserFunc;
-  index: number;
-};
-
-function Plot2DMenuItem({ fn, index }: PFnItem) {
-  const [f, setF] = useState(fn.f);
-  const [domain, setDomain] = useState(fn.domain || [-10, 10]);
-  const [range, setRange] = useState(fn.range || [-10, 10]);
-  return (
-    <div className={css.item}>
-      <FunctionHandler data={f} onChange={setF} />
-      <DomainHandler data={fn.domain || [-10, 10]} />
-      <RangeHandler data={fn.range || [-10, 10]} />
-      <IntegralHandler data={fn.domain || [-10, 10]} />
-      <SamplesHandler data={fn.samples || 100} />
-      <Button label={"Update"} click={() => null} />
-    </div>
-  );
-}
-
-function Plot2DMenu({
-  setShowFuncs,
-  userFunctions,
-}: pMenuPlot2d) {
-  return (
-    <menu className={css.menu}>
-      <Button
-        label={"\u00d7"}
-        click={() => setShowFuncs(false)}
-        className={css.close}
-      />
-      {userFunctions.map((ufn, i) => (
-        <Plot2DMenuItem index={i} key={ufn.f + "func" + i} fn={ufn} />
-      ))}
-      <button className={css.newfunc}>
-        New Function
-      </button>
-    </menu>
-  );
-}
-
-function MAIN() {
-  return (
-    <div className={app.vstack}>
-      <div className={css.sheet_main}>
-        <TABLE />
-        <NewColumnButton />
-      </div>
-      <NewRowButton />
-      {/* <DEBUGGER data={sheet} /> */}
-    </div>
-  );
-}
-
-type pNetwork = {
-  data: { nodes: GraphNode[]; links: Link[] };
-};
-
-function Network({ data }: pNetwork) {
-  return (
-    <div>
-      <GRAPH nodes={data.nodes} links={data.links} />
-    </div>
-  );
-}
-
-const EXPRINPUT = () => {
-  const { focusedCell } = useTable();
-  const [formula, setFormula] = useState("");
-  return (
-    <input
-      type={"text"}
-      value={formula}
-      placeholder={focusedCell}
-      onChange={(E) => setFormula(E.target.value)}
-    />
-  );
-};
 
 const getCellID = (domElement: Html) => {
   let node: null | HTMLElement = domElement;
@@ -1036,19 +748,24 @@ function TABLE() {
   ]);
   return (
     <div className={css.sheet_table_wrapper}>
-      <table
-        className={css.sheet_table}
-        ref={tableRef}
-        tabIndex={-1}
-      >
+      <table className={css.sheet_table} ref={tableRef} tabIndex={-1}>
         <tbody>
           {rows.map((row, rowIndex) => (
-            <ROW
-              cells={row.cells}
-              rowIndex={rowIndex}
-              isEditing={isEditing}
-              key={row.id + rowIndex}
-            />
+            <RowIndex key={row.id} rowIndex={rowIndex} colCount={colCount}>
+              <tr>
+                {row.cells.map((cell, columnIndex) => (
+                  <Column key={cell.id} col={columnIndex} row={rowIndex}>
+                    <CellProvider cell={cell} isEditing={isEditing}>
+                      <CELL>
+                        <INPUT />
+                        <TEXT />
+                        <MENU />
+                      </CELL>
+                    </CellProvider>
+                  </Column>
+                ))}
+              </tr>
+            </RowIndex>
           ))}
         </tbody>
       </table>
@@ -1056,46 +773,36 @@ function TABLE() {
   );
 }
 
-const ROW = (
-  { cells, rowIndex, isEditing }: {
-    cells: Cell[];
-    rowIndex: number;
-    isEditing: boolean;
-  },
-) => {
+function Column({ col, row, children }:
+  & { col: number; row: number }
+  & Children) {
   return (
     <Fragment>
-      {rowIndex === 0 && <RowIndices />}
-      <tr>
-        {cells.map((cell, columnIndex) => (
-          <Fragment key={cell.id + columnIndex}>
-            {columnIndex === 0 && (
-              <td className={css.sheet_axis_cell}>{rowIndex}</td>
-            )}
-            <CellProvider cell={cell} isEditing={isEditing}>
-              <CELL>
-                <INPUT />
-                <TEXT />
-                <MENU />
-              </CELL>
-            </CellProvider>
-          </Fragment>
-        ))}
-      </tr>
+      {col === 0 && <td className={css.sheet_axis_cell}>{row}</td>}
+      {children}
     </Fragment>
   );
-};
+}
 
-function RowIndices() {
-  const { asciiRows } = useTable();
+function RowIndex({ rowIndex, children, colCount }:
+  & { rowIndex: number; colCount: number }
+  & Children) {
+  const asciiRows = useMemo(() => {
+    return range(0, colCount + 1).map((n) => latinize(n - 1));
+  }, [colCount]);
   return (
-    <tr>
-      {asciiRows.map((letter, i) => (
-        <Fragment key={i + "col" + letter}>
-          {i === 0 ? <HEADER of={""} /> : <HEADER of={letter} />}
-        </Fragment>
-      ))}
-    </tr>
+    <Fragment>
+      {rowIndex === 0 && (
+        <tr>
+          {asciiRows.map((letter, i) => (
+            <Fragment key={i + "col" + letter}>
+              {i === 0 ? <HEADER of={""} /> : <HEADER of={letter} />}
+            </Fragment>
+          ))}
+        </tr>
+      )}
+      {children}
+    </Fragment>
   );
 }
 
@@ -1330,12 +1037,552 @@ const NewRowButton = () => {
   );
 };
 
-const DEBUGGER = ({ data = {} }: { data: Object }) => {
-  return (
-    <div className={css.debug}>
-      <pre>
-        {JSON.stringify(data, null, 4)}
-      </pre>
-    </div>
-  );
+function defaultDisplayState(): DisplayState {
+  return ({
+    graph: {
+      render: false,
+      data: { nodes: [], links: [] },
+    },
+  });
+}
+
+type GraphPayload = {
+  nodes: GraphNode[];
+  links: Link[];
 };
+
+type DisplayState = {
+  graph: {
+    render: boolean;
+    data: GraphPayload;
+  };
+};
+
+type pTOOLBAR = {
+  init: DisplayState;
+  sheet: Spreadsheet;
+} & Children;
+
+function TOOLBAR({ children, sheet, init }: pTOOLBAR) {
+  const [plot2dData, setPlot2dData] = useState<PlotRender | null>(null);
+  const [plot2d, openPlot2d] = useState(false);
+  const [graph, setGraph] = useState<GraphPayload | null>(null);
+  return (
+    <Fragment>
+      <aside>
+        <Button
+          label={"Graph Selection"}
+          click={() =>
+            setGraph(
+              sheet.selection.length > 0 ? sheet.cellGraph() : null,
+            )}
+        />
+        <Button label={"Plot2D"} click={() => openPlot2d(!plot2d)} />
+      </aside>
+      {graph && <GRAPH nodes={graph.nodes} links={graph.links} />}
+      {plot2d && (
+        <article className={app.modal}>
+          <Button
+            className={app.close}
+            label={"\u00d7"}
+            click={() => openPlot2d(!plot2d)}
+          />
+          <Plot2DForm onSave={setPlot2dData}>
+            {plot2dData && (
+              <Plot2D
+                functions={plot2dData.functions}
+                domain={plot2dData.domain}
+                range={plot2dData.range}
+                ticks={plot2dData.ticks}
+              />
+            )}
+          </Plot2DForm>
+        </article>
+      )}
+      {children}
+    </Fragment>
+  );
+}
+
+
+
+
+
+
+const defaultPayload: PlotFn = {
+  fn: "",
+  id: "demo",
+  domain: [-10, 10],
+  range: [-10, 10],
+  samples: 170,
+  color: "#ff0000",
+  riemann: {
+    domain: [NaN, NaN],
+    dx: 0.5,
+    method: "left",
+    color: "#ff0000",
+  },
+  integrate: {
+    bounds: [NaN, NaN],
+    color: "#ff0000",
+  },
+};
+
+type BasePlotUpdate = (d: Partial<BasePlotFn>) => void;
+
+type RiemannUpdate = (d: Partial<RiemannDatum>) => void;
+
+type IntegralUpdate = (d: Partial<IntegralData>) => void;
+
+type PlotRender = {
+  functions: PlotFn[];
+  domain: [number, number];
+  range: [number, number];
+  ticks: number;
+};
+
+type pPlotFns = {
+  onSave: (payload: PlotRender) => void;
+};
+function Plot2DForm({ children, onSave }: pPlotFns & Children) {
+  const [
+    plot2dEntries,
+    setPlot2dEntries,
+  ] = useState<PlotFn[]>([defaultPayload]);
+
+  const [axesDomain, setAxesDomain] = useState<[number, number]>([-10, 10]);
+  const [axesRange, setAxesRange] = useState<[number, number]>([-10, 10]);
+  const [ticks, setTicks] = useState<number>(10);
+
+  const save = () => {
+    const L = plot2dEntries.length;
+    const functions: PlotFn[] = [];
+    for (let i = 0; i < L; i++) {
+      const fn = plot2dEntries[i];
+      if (fn.fn === "") continue;
+      if (fn.domain[0] >= fn.domain[1]) continue;
+      if (fn.range[0] >= fn.domain[1]) continue;
+      if (fn.samples <= 0 || 600 <= fn.samples) continue;
+      functions.push(fn);
+    }
+    functions.length > 0 && onSave({
+      functions,
+      domain: axesDomain,
+      range: axesRange,
+      ticks: ticks,
+    });
+  };
+
+  const updateBasePlot = (index: number) => {
+    return (payload: Partial<BasePlotFn>) => {
+      const entry = plot2dEntries[index];
+      if (entry === undefined) return;
+      const clone = { ...entry };
+      const update = { ...clone, ...payload };
+      setPlot2dEntries(plot2dEntries.map((E, i) => (i === index ? update : E)));
+    };
+  };
+
+  const updateRiemann = (index: number) => {
+    return (d: Partial<RiemannDatum>) => {
+      const entry = plot2dEntries[index];
+      if (entry === undefined) return;
+      const clone: PlotFn = { ...entry };
+      const prevRiemann = entry.riemann;
+      if (prevRiemann === undefined) return;
+      const update = { ...prevRiemann, ...d };
+      clone.riemann = update;
+      setPlot2dEntries(plot2dEntries.map((E, i) => (i === index ? clone : E)));
+    };
+  };
+
+  const updateIntegral = (index: number) => {
+    return (d: Partial<IntegralData>) => {
+      const entry = plot2dEntries[index];
+      const clone: PlotFn = { ...entry };
+      const prevIntegral = entry.integrate;
+      if (prevIntegral === undefined) return;
+      const update = { ...prevIntegral, ...d };
+      clone.integrate = update;
+      setPlot2dEntries(plot2dEntries.map((E, i) => (i === index ? clone : E)));
+    };
+  };
+
+  const onDelete = (index: number) => {
+    setPlot2dEntries(plot2dEntries.filter((E, i) => i !== index));
+  };
+
+  const addFunction = () => {
+    setPlot2dEntries((prev) => [...prev, defaultPayload]);
+  };
+
+  return (
+    <Fragment>
+      <Form
+        onSave={save}
+        afix={[{ label: "Add function", act: addFunction }]}
+        atop={[
+          { label: "Axes Domain", interval: axesDomain, act: setAxesDomain },
+          { label: "Axes Range", interval: axesRange, act: setAxesRange },
+          { label: "Axes Ticks", num: ticks, act: setTicks },
+        ]}
+      >
+        {plot2dEntries.map((d, i) => (
+          <div key={d.fn + i} className={app.card}>
+            <Button
+              className={app.delete}
+              label={"\u00d7"}
+              click={() => onDelete(i)}
+            />
+            <FunctionForm
+              fn={d.fn}
+              domain={d.domain}
+              range={d.range}
+              samples={d.samples}
+              curveColor={d.color}
+              update={updateBasePlot(i)}
+            >
+              {d.integrate && (
+                <IntegralForm
+                  integral={d.integrate.bounds}
+                  integralColor={d.integrate.color}
+                  update={updateIntegral(i)}
+                />
+              )}
+
+              {d.riemann && (
+                <RiemannForm
+                  rDomain={d.riemann.domain}
+                  dx={d.riemann.dx}
+                  method={d.riemann!.method}
+                  rectColor={d.riemann!.color}
+                  update={updateRiemann(i)}
+                  render={true}
+                />
+              )}
+            </FunctionForm>
+          </div>
+        ))}
+      </Form>
+      {children}
+    </Fragment>
+  );
+}
+
+type RiemannMethod = "left" | "midpoint" | "right";
+const methods: RiemannMethod[] = ["left", "midpoint", "right"];
+
+type pPlot2DForm = {
+  fn: string;
+  domain: [number, number];
+  range: [number, number];
+  samples: number;
+  curveColor: string;
+  update: BasePlotUpdate;
+};
+
+type pRiemannForm = {
+  rectColor: string;
+  rDomain: [number, number];
+  dx: number;
+  method: RiemannMethod;
+  update: RiemannUpdate;
+  render: boolean;
+};
+
+function RiemannForm(props: pRiemannForm) {
+  const setColor = (color: string) => props.update({ color });
+  const setDx = (dx: number) => props.update({ dx });
+  const setDomain = (domain: [number, number]) => props.update({ domain });
+  const setMethod = (method: RiemannMethod) => props.update({ method });
+  const update = (x: boolean) => {
+    if (x) {
+      props.update({ domain: [-3, 3] });
+    } else {
+      props.update({ domain: [NaN, NaN] });
+    }
+  };
+  return (
+    <Optional
+      val={!(isNaN(props.rDomain[0]) && isNaN(props.rDomain[0]))}
+      act={update}
+      label={"Riemann Sums"}
+    >
+      <Form
+        isolated
+        fields={[
+          {
+            label: "Interval",
+            interval: props.rDomain,
+            act: setDomain,
+            allowFloats: [true, true],
+          },
+          { label: "dx", range: props.dx, max: 5, min: 0, act: setDx },
+          {
+            label: "Method",
+            options: methods,
+            act: setMethod,
+            val: props.method,
+          },
+        ]}
+      >
+        <Palette
+          label={"Rectangle Color"}
+          act={setColor}
+          init={props.rectColor}
+        />
+      </Form>
+    </Optional>
+  );
+}
+
+type pIntegralForm = {
+  integral: [number, number];
+  integralColor: string;
+  update: IntegralUpdate;
+};
+
+function IntegralForm(props: pIntegralForm) {
+  const setIntegral = (bounds: [number, number]) => props.update({ bounds });
+  const setColor = (color: string) => props.update({ color });
+
+  const update = (x: boolean) => {
+    if (x) {
+      props.update({ bounds: [-3, 3] });
+    } else {
+      props.update({ bounds: [NaN, NaN] });
+    }
+  };
+
+  return (
+    <Optional
+      val={!(isNaN(props.integral[0]) && isNaN(props.integral[1]))}
+      act={update}
+      label={"Integrate"}
+    >
+      <Form
+        isolated
+        fields={[
+          {
+            label: "Interval",
+            interval: props.integral,
+            act: setIntegral,
+            allowFloats: [true, true],
+          },
+        ]}
+      >
+        <Palette
+          label={"Area Color"}
+          act={setColor}
+          init={props.integralColor}
+        />
+      </Form>
+    </Optional>
+  );
+}
+
+function FunctionForm(props: pPlot2DForm & Children) {
+  const setFn = (fn: string) => props.update({ fn });
+  const setRange = (range: [number, number]) => props.update({ range });
+  const setDomain = (domain: [number, number]) => props.update({ domain });
+  const setSamples = (samples: number) => props.update({ samples });
+  const setColor = (color: string) => props.update({ color });
+  return (
+    <Form
+      isolated
+      fields={[
+        { label: "Function", text: props.fn, act: setFn, temp: "" },
+        {
+          label: "Domain",
+          interval: props.domain,
+          act: setDomain,
+          allowFloats: [true, true],
+        },
+        {
+          label: "Range",
+          interval: props.range,
+          act: setRange,
+          allowFloats: [true, true],
+        },
+        { label: "Samples", num: props.samples, act: setSamples },
+      ]}
+    >
+      <Palette
+        label={"Curve color"}
+        act={setColor}
+        init={props.curveColor}
+      />
+      {props.children}
+    </Form>
+  );
+}
+
+type TextField = {
+  text: string;
+  label: string;
+  temp: string;
+  act: (val: string) => void;
+};
+const isText = (x: any): x is TextField => x["text"] !== undefined;
+
+type OptionList<t extends string> = {
+  label: string;
+  options: t[];
+  val: t;
+  act: (x: t) => void;
+};
+
+const isOptionList = <t extends string>(x: any): x is OptionList<t> =>
+  x["options"] !== undefined;
+
+type NumberField = {
+  num: number;
+  label: string;
+  act: (val: number) => void;
+  min?: number;
+  max?: number;
+  nonnegative?: boolean;
+  allowFloat?: boolean;
+};
+const isNum = (x: any): x is NumberField => x["num"] !== undefined;
+type SwitchField = {
+  bool: boolean;
+  label: string;
+  act: () => void;
+};
+const isSwitch = (x: any): x is SwitchField => x["bool"] !== undefined;
+type RangeField = {
+  range: number;
+  label: string;
+  max: number;
+  min: number;
+  act: (x: number) => void;
+};
+const isRange = (x: any): x is RangeField => x["range"] !== undefined;
+type IntervalField = {
+  label: string;
+  interval: [number, number];
+  allowFloats?: [boolean, boolean];
+  act: (x: [number, number]) => void;
+};
+const isInterval = (x: any): x is IntervalField => x["interval"] !== undefined;
+
+type FormField<t extends string> =
+  | TextField
+  | NumberField
+  | SwitchField
+  | RangeField
+  | OptionList<t>
+  | IntervalField;
+
+interface FormAPI<t extends string> {
+  fields?: FormField<t>[];
+  atop?: FormField<t>[];
+  isolated?: boolean;
+  afix?: { act: () => void; label: string; css?: string }[];
+  onSave?: () => void;
+}
+
+const Entry = <t extends string>({ x }: { x: FormField<t> }) => {
+  if (isText(x)) {
+    return <TextInput temp={x.temp} val={x.text} act={x.act} />;
+  }
+  if (isNum(x)) {
+    return (
+      <NumberInput
+        allowFloat={x.allowFloat}
+        val={x.num}
+        nonnegative={x.nonnegative}
+        act={x.act}
+        min={x.min}
+        max={x.max}
+      />
+    );
+  }
+  if (isSwitch(x)) {
+    return <Switch act={x.act} val={x.bool} />;
+  }
+  if (isRange(x)) {
+    return <Range act={x.act} val={x.range} min={x.min} max={x.max} />;
+  }
+  if (isInterval(x)) {
+    return (
+      <Interval allowFloats={x.allowFloats} val={x.interval} act={x.act} />
+    );
+  }
+  if (isOptionList(x)) {
+    return <OptionsList val={x.val} options={x.options} act={x.act} />;
+  }
+  return <></>;
+};
+
+function Form<t extends string>({
+  fields = [],
+  children,
+  isolated = false,
+  onSave,
+  atop,
+  afix,
+}: FormAPI<t> & Children) {
+  return (
+    <Shell
+      condition={!isolated}
+      wrapper={(children) => <menu>{children}</menu>}
+    >
+      {atop && (
+        <header>
+          {atop.map((field, i) => (
+            <Field key={field.label + i} label={field.label}>
+              <Entry x={field} />
+            </Field>
+          ))}
+        </header>
+      )}
+      <article>
+        {fields.map((field, i) => (
+          <Field key={field.label + i} label={field.label}>
+            <Entry x={field} />
+          </Field>
+        ))}
+        {children}
+      </article>
+      {afix &&
+        afix.map((a) => (
+          <Button
+            label={a.label}
+            className={a.css || app.longwhitebutton}
+            key={a.label}
+            click={a.act}
+          />
+        ))}
+      {!isolated && onSave && (
+        <Button
+          click={onSave}
+          label={"Save"}
+          className={css.saveButton}
+        />
+      )}
+    </Shell>
+  );
+}
+
+type pShell = {
+  condition: boolean;
+  wrapper: (children: ReactNode) => JSX.Element;
+  children: ReactNode;
+};
+
+const Shell = ({ condition, wrapper, children }: pShell) => {
+  return condition ? wrapper(children) : <>{children}</>;
+};
+
+import app from "../../ui/styles/App.module.scss";
+
+function Field({ children, label }: Children & { label: string }) {
+  return (
+    <section className={app.field}>
+      <label>{label}</label>
+      {children}
+    </section>
+  );
+}

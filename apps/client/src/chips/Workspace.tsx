@@ -10,7 +10,6 @@ import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { ExcalidrawNode } from "./Draw";
 import { ImageNode } from "./Image";
 import { LatexNode } from "./Latex";
-import { PlotNode } from "./Plot2d";
 import { ParametricPlotNode } from "./PlotParametric/parametric.node.js";
 import { Plot3DNode } from "./Plot3d/plot3d.node.js";
 
@@ -23,7 +22,6 @@ const defaultConfig = {
     ListItemNode,
     LatexNode,
     ImageNode,
-    PlotNode,
     ParametricPlotNode,
     Plot3DNode,
     ExcalidrawNode,

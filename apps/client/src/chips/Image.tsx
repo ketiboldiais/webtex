@@ -53,7 +53,7 @@ import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
 import { LexicalNestedComposer } from "@lexical/react/LexicalNestedComposer";
 import { DOM_AVAILABLE, joinRest, toggle } from "src/util";
-import { FileInput, Switch, TextInput } from "./Inputs";
+import { Button, FileInput, Switch, Text, TextInput } from "./Inputs";
 import { Resizer } from "./Resizer";
 declare global {
   interface DragEvent {
@@ -590,19 +590,20 @@ export function PromptImageLink({ onClick }: ImagePrompt) {
   const save = () => onClick({ altText, src });
   return (
     <div className={app.image_prompt}>
-      <TextInput
-        label="Image URL"
-        onChange={setSrc}
-        value={src}
+      <section>
+        <Text of={"Image URL"} />
+        <TextInput act={setSrc} val={src} />
+      </section>
+      <section>
+        <Text of={"Description"} />
+        <TextInput act={setAltText} val={altText} />
+      </section>
+      <Button
+        disabled={isDisabled}
+        label={"Save"}
+        click={save}
+        className={app.modalSave}
       />
-      <TextInput
-        label="Description"
-        onChange={setAltText}
-        value={altText}
-      />
-      <button disabled={isDisabled} onClick={save} className={app.modal_save}>
-        Save
-      </button>
     </div>
   );
 }
@@ -624,18 +625,17 @@ export function PromptImageUpload({ onClick }: ImagePrompt) {
 
   return (
     <div className={app.image_prompt}>
-      <FileInput
-        onChange={loadImage}
-        accept="image/*"
+      <FileInput act={loadImage} accept="image/*"/>
+      <section>
+        <Text of={'Description'}/>
+        <TextInput act={setAltText} val={altText}/>
+      </section>
+      <Button
+        disabled={isDisabled}
+        label={"Save"}
+        click={save}
+        className={app.modalSave}
       />
-      <TextInput
-        label="Description"
-        onChange={setAltText}
-        value={altText}
-      />
-      <button disabled={isDisabled} onClick={save} className={app.modal_save}>
-        Save
-      </button>
     </div>
   );
 }
@@ -666,10 +666,8 @@ export function InsertImageDialog({ activeEditor, onClose }: ImageDialogProps) {
   return (
     <div className={app.image_dialog}>
       <Switch
-        onToggle={() => setIsFile(!isFile)}
-        value={isFile}
-        trueLabel={"File"}
-        falseLabel={"URL"}
+        act={() => setIsFile(!isFile)}
+        val={isFile}
       />
       {!isFile && <PromptImageLink onClick={onClick} />}
       {isFile && <PromptImageUpload onClick={onClick} />}

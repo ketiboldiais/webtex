@@ -1,6 +1,8 @@
 import {
+  ChangeEvent,
   CSSProperties,
   forwardRef,
+  Fragment,
   ReactNode,
   useCallback,
   useEffect,
@@ -9,24 +11,25 @@ import {
   useState,
 } from "react";
 import { BtnFn, InputFn } from "src/App";
-import { concat, toggle } from "src/util";
 import app from "../ui/styles/App.module.scss";
 
 export interface ButtonProps {
-  click: BtnFn;
+  click?: BtnFn;
   label?: string | ReactNode;
   className?: string;
   icon?: string | JSX.Element;
   btnTitle?: string;
   style?: CSSProperties;
+  disabled?: boolean;
 }
 
 export function Button({
   click,
   label,
-  className = app.default_button,
+  className = app.button,
   btnTitle,
   style,
+  disabled = false,
 }: ButtonProps) {
   return (
     <button
@@ -34,72 +37,50 @@ export function Button({
       title={btnTitle}
       onClick={click}
       className={className}
+      disabled={disabled}
     >
       {label}
     </button>
   );
 }
 
-type TextInputProps = Readonly<{
-  label?: string | ReactNode;
-  onChange: (val: string) => void;
-  placeholder?: string;
-  className?: string;
-  value: string;
-  defaultWidth?: number;
-  grow?: boolean;
+export type TextInputProps = Readonly<{
+  act: (val: string) => void;
+  val: string;
+  temp?: string;
 }>;
 
 export function TextInput({
-  label,
-  value,
-  onChange,
-  placeholder = "",
-  className = "",
-  defaultWidth = 0,
-  grow = true,
+  val,
+  act,
+  temp = "",
 }: TextInputProps) {
-  const [content, setContent] = useState("");
-  const [width, setWidth] = useState(defaultWidth);
-  const span = useRef<null | HTMLSpanElement>(null);
-  useEffect(() => {
-    if (span.current && grow) {
-      setWidth(span.current.offsetWidth);
-    }
-  }, [content]);
+  const [content, setContent] = useState(val);
   const update: InputFn = (e) => {
     e.stopPropagation();
-    onChange(e.target.value);
+    act(e.target.value);
     setContent(e.target.value);
   };
   return (
-    <div className={className ? className : app.text_input_shell}>
-      {label && (typeof label === "string" ? <label>{label}</label> : label)}
-      <span className={app.text_input_hidden_span} ref={span}>
-        {content}
-      </span>
-      <div className={app.text_input_field}>
-        <input
-          type={"text"}
-          placeholder={placeholder}
-          autoFocus
-          value={value}
-          onChange={update}
-          style={{ width }}
-        />
-      </div>
-    </div>
+    <input
+      type={"text"}
+      placeholder={temp}
+      autoFocus
+      className={app.textInput}
+      value={content}
+      onChange={update}
+    />
   );
 }
 
 interface FileInputProps {
   accept?: string;
-  onChange: (files: FileList | null) => void;
+  act: (files: FileList | null) => void;
 }
 
 export function FileInput({
   accept,
-  onChange,
+  act,
 }: FileInputProps) {
   return (
     <div className={app.file_upload}>
@@ -110,99 +91,77 @@ export function FileInput({
         type={"file"}
         id={"file-upload"}
         accept={accept}
-        onChange={(e) => onChange(e.target.files)}
+        onChange={(e) => act(e.target.files)}
       />
     </div>
   );
 }
 
-type NumberInputProps = Readonly<{
-  value: number;
-  onChange: (val: number) => void;
-  className?: string;
-  label?: string | ReactNode;
-  noPropogate?: boolean;
-}>;
-export function NumberInput({
-  label,
-  value,
-  onChange,
-  className = "",
-  noPropogate = false,
-}: NumberInputProps) {
-  const plus = () => onChange(value + 1);
-  const minus = () => onChange(value - 1);
-  return (
-    <div className={concat(app.number, className)}>
-      {label && typeof label === "string" ? <label>{label}</label> : label}
-      <div className={app.number_input_body}>
-        <button
-          className={app.number_input_button}
-          onClick={(event) => {
-            noPropogate && event.stopPropagation();
-            minus();
-          }}
-        >
-          &minus;
-        </button>
-        <div className={app.number_input_field}>{value}</div>
-        <button
-          className={app.number_input_button}
-          onClick={(event) => {
-            noPropogate && event.stopPropagation();
-            plus();
-          }}
-        >
-          &#43;
-        </button>
-      </div>
-    </div>
-  );
-}
+type OptionalProps = {
+  children?: ReactNode;
+  label: string;
+  act: (x: boolean) => void;
+  val: boolean;
+};
 
-interface RowProps {
-  children: JSX.Element[];
-}
-export function Row({ children }: RowProps) {
+export function Optional({
+  children,
+  label,
+  act,
+  val,
+}: OptionalProps) {
+  const checkbox = useRef<null | HTMLInputElement>(null);
+  const update = () => {
+    const _checkbox = checkbox.current;
+    if (_checkbox === null) return;
+    const val = _checkbox.checked;
+    act(val);
+    _checkbox.checked = !val;
+  };
   return (
-    <div className={app.atom_row}>
-      {children}
+    <div className={app.checkform}>
+      <span className={app.label}>
+        <input
+          type={"checkbox"}
+          checked={val}
+          ref={checkbox}
+          onChange={update}
+        />
+        <label>{label}</label>
+      </span>
+      {val && children}
     </div>
   );
 }
 
 interface SwitchProps {
-  onToggle: () => void;
-  value: boolean;
-  trueLabel?: string;
-  falseLabel?: string;
+  act: (x: boolean) => void;
+  val: boolean;
 }
 export function Switch({
-  onToggle,
-  value,
-  trueLabel = "",
-  falseLabel = "",
+  act,
+  val,
 }: SwitchProps) {
+  const toggle = useRef<null | HTMLSpanElement>(null);
+  const checkbox = useRef<null | HTMLInputElement>(null);
+  const update = () => {
+    const _checkbox = checkbox.current;
+    if (_checkbox === null) return;
+    const val = _checkbox.checked;
+    act(!val);
+    _checkbox.checked = !val;
+  };
   return (
-    <div>
-      <label className={app.switch_shell}>
-        <input
-          type={"checkbox"}
-          onChange={onToggle}
-          checked={value}
-          className={app.switch_checkbox}
-        />
-        <div className={app.switch_slider} />
-      </label>
-      {trueLabel && falseLabel && (
-        <div className={toggle(app.switch_on, app.switch_off).on(value)}>
-          <span
-            onClick={() =>
-              onToggle()}
-            children={value ? trueLabel : falseLabel}
-          />
-        </div>
-      )}
+    <div className={app.switch}>
+      <input
+        type={"checkbox"}
+        checked={val}
+        ref={checkbox}
+        value={val ? 1 : 0}
+      />
+      <span onClick={update} ref={toggle} className={val ? app.on : app.off}>
+        <span className={app.toggle} />
+      </span>
     </div>
   );
 }
@@ -218,11 +177,10 @@ export const Text = forwardRef<TextRef, TextProps>((props, ref) => {
 });
 
 interface RangeAPI {
-  initialValue?: number;
-  maxValue?: number;
-  minValue?: number;
-  onChange?: (x: number) => void;
-  step?: number;
+  val?: number;
+  max?: number;
+  min?: number;
+  act: (x: number) => void;
 }
 
 import { scaleLinear } from "d3";
@@ -232,23 +190,22 @@ import css from "../ui/styles/slider.module.scss";
 const getLeft = (x: number) => `calc(${x}% - 8px)`;
 
 export function Range({
-  initialValue = 0,
-  maxValue = 10,
-  minValue = -10,
-  onChange,
-  step=0,
+  val = 0,
+  max = 10,
+  min = -10,
+  act,
 }: RangeAPI) {
-  const initialPercent = percentage(initialValue, maxValue, minValue);
+  const initialPercent = percentage(val, max, min);
   const sliderRef = useRef<null | HTMLDivElement>(null);
   const thumbRef = useRef<null | HTMLDivElement>(null);
   const displayValue = useRef<null | HTMLElement>(null);
   const diff = useRef(0);
-  const value = useRef(initialValue);
+  const value = useRef(val);
 
   const scale = useCallback((x: number) =>
     scaleLinear()
       .domain([0, 100])
-      .range([minValue, maxValue])(x), [initialValue, maxValue, minValue]);
+      .range([min, max])(x), [val, max, min]);
 
   const onUpdate = (value: number, percent: number) => {
     const thumb = thumbRef.current;
@@ -259,8 +216,8 @@ export function Range({
   };
 
   useLayoutEffect(() => {
-    onUpdate(initialValue, initialPercent);
-  }, [initialValue, onUpdate]);
+    onUpdate(val, initialPercent);
+  }, [val, onUpdate]);
 
   const onPtrMove = (event: PointerEvent) => {
     const elem = sliderRef.current;
@@ -280,7 +237,7 @@ export function Range({
     const newValue = scale(newPercent);
     value.current = newValue;
     displayElem.textContent = `${value.current}`;
-    onChange && onChange(newValue);
+    act(newValue);
   };
 
   const onPtrUp = () => {
@@ -302,7 +259,7 @@ export function Range({
         <Text ref={displayValue} of={value.current} />
       </div>
       <div className={app.hstack + " " + css.range}>
-        <Text of={minValue} />
+        <Text of={min} />
         <div ref={sliderRef} className={css.track}>
           <div
             ref={thumbRef}
@@ -310,8 +267,254 @@ export function Range({
             onPointerDown={onPtrDown}
           />
         </div>
-        <Text of={maxValue} />
+        <Text of={max} />
       </div>
+    </div>
+  );
+}
+
+type pNumberIO = {
+  val: number;
+  act: (val: number) => void;
+  min?: number;
+  max?: number;
+  nonnegative?: boolean;
+  allowFloat?: boolean;
+};
+
+import { verifyNumber } from "@webtex/algom";
+import { ColorPicker } from "./colorpicker.chip";
+import { Children } from "src/util";
+
+function getNum(x: string, integerOnly: boolean = true) {
+  const { num, kind } = verifyNumber(x);
+  if (integerOnly && kind !== "integer") return null;
+  switch (kind) {
+    case "float":
+    case "integer":
+      return ((num as any) * 1);
+    case "fraction": {
+      const [N, D] = num.split("/");
+      if (!N || !D) return null;
+      const n = (N as any) * 1;
+      const d = (D as any) * 1;
+      return n / d;
+    }
+    case "hex":
+      return Number.parseInt(num, 16);
+    case "binary":
+      return Number.parseInt(num, 2);
+    case "scientific": {
+      const val = num.split("E");
+      let base = val[0] as any;
+      if (!base) return null;
+      let exp = val[1] as any;
+      if (!exp) return null;
+      base = (base) * 1;
+      exp = (exp) * 1;
+      const n = base * (10 ** exp);
+      if (n > Number.MAX_SAFE_INTEGER) {
+        return null;
+      }
+      return n;
+    }
+    case "complex-number":
+    case "unknown":
+      return null;
+  }
+}
+
+export function NumberInput({
+  val,
+  act,
+  nonnegative = false,
+  min = nonnegative ? 0 : -1000,
+  max = 1000,
+  allowFloat = false,
+}: pNumberIO) {
+  const [value, setValue] = useState(`${val}`);
+  const inputRef = useRef<null | HTMLInputElement>(null);
+  const canPlus = ((val as any) * 1) < max;
+  const onPlusClick = () => {
+    const _input = inputRef.current;
+    if (!_input) return;
+    _input.stepUp();
+    const maybeNum = getNum(_input.value, !allowFloat);
+    if (maybeNum === null) return;
+    setValue(`${maybeNum}`);
+    act(maybeNum);
+  };
+
+  const canMinus = ((val as any) * 1) > min;
+
+  const onMinusClick = () => {
+    const _input = inputRef.current;
+    if (!_input) return;
+    _input.stepDown();
+    const maybenum = getNum(_input.value, !allowFloat);
+    if (maybenum === null) return;
+    setValue(`${maybenum}`);
+    act(maybenum);
+  };
+  const onKeyboardInput = (e: ChangeEvent<HTMLInputElement>) => {
+    setValue(e.target.value)
+    const newval = e.target.value;
+    if (newval === "") return;
+    const maybeNum = getNum(newval, !allowFloat);
+    if (maybeNum === null) return;
+    setValue(`${maybeNum}`);
+    act(maybeNum);
+  };
+
+  useEffect(() => {
+    const elem = inputRef.current;
+    if (elem === null) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === "ArrowDown" && canMinus) {
+        onMinusClick();
+        e.preventDefault();
+        return;
+      }
+      if (e.code === "ArrowUp" && canPlus) {
+        onPlusClick();
+        e.preventDefault();
+      }
+    };
+    elem.addEventListener("keydown", handleKeyDown);
+    return () => elem.removeEventListener("keydown", handleKeyDown);
+  }, [canMinus, canPlus]);
+
+  return (
+    <div className={app.numberInput}>
+      <Button disabled={!canMinus} label={"-"} click={onMinusClick} />
+      <input
+        ref={inputRef}
+        type={"number"}
+        min={min}
+        max={max}
+        step={allowFloat ? 0.01 : 1}
+        value={value}
+        onChange={onKeyboardInput}
+      />
+      <Button disabled={!canPlus} label={"+"} click={onPlusClick} />
+    </div>
+  );
+}
+
+interface IntervalProps {
+  val: [number, number];
+  act: (interval: [number, number]) => void;
+  allowFloats?: [boolean, boolean];
+}
+export function Interval({
+  act,
+  val,
+  allowFloats = [false, false],
+}: IntervalProps) {
+  const [interval, setInterval] = useState(val);
+
+  const updateMin = (newMin: number) => {
+    setInterval([newMin, interval[1]]);
+    act([newMin, interval[1]]);
+  };
+  const updateMax = (newMax: number) => {
+    setInterval([interval[0], newMax]);
+    act([interval[0], newMax]);
+  };
+
+  return (
+    <div className={app.intervalInput}>
+      <NumberInput
+        val={interval[0]}
+        act={updateMin}
+        allowFloat={allowFloats[0]}
+        max={interval[1]}
+      />
+      <NumberInput
+        val={interval[1]}
+        act={updateMax}
+        allowFloat={allowFloats[1]}
+        min={interval[0]}
+      />
+    </div>
+  );
+}
+
+type OptionsListAPI<t extends string> = {
+  options: t[];
+  val: t;
+  act: (x: t) => void;
+};
+export function OptionsList<t extends string>({
+  options,
+  val,
+  act,
+}: OptionsListAPI<t>) {
+  const [picked, setPicked] = useState(val);
+  const isPicked = (value: string) => value === picked;
+  const pick = (e: ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value as unknown as t;
+    setPicked(val);
+    act(val);
+  };
+  return (
+    <div className={app.optionsList}>
+      {options.map((option, i) => (
+        <div key={option + i} className={app.option}>
+          <label>{option}</label>
+          <input
+            checked={isPicked(option)}
+            type={"radio"}
+            key={option + i}
+            value={option}
+            onChange={pick}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+type pSlotLabel = {
+  children: ReactNode;
+  of: string;
+};
+
+export function SlotLabel({ children, of }: pSlotLabel) {
+  return (
+    <div className={app.slot_label}>
+      <label className={app.slot_left}>{of}</label>
+      {children}
+    </div>
+  );
+}
+
+type pPalette = {
+  label: string;
+  init?: string;
+  act: (newcolor: string) => void;
+};
+export function Palette({
+  label,
+  act,
+  init = "#000",
+}: pPalette) {
+  const [currentColor, setCurrentColor] = useState(init);
+  const [openColor, setOpenColor] = useState(false);
+  const update = (c: string) => {
+    setCurrentColor(c);
+    act(c);
+  };
+  return (
+    <div className={app.palette}>
+      <SlotLabel of={label}>
+        <div
+          className={app.colorpreview}
+          style={{ backgroundColor: currentColor }}
+          onClick={() => setOpenColor(!openColor)}
+        />
+      </SlotLabel>
+      {openColor && <ColorPicker color={init} onChange={update} />}
     </div>
   );
 }

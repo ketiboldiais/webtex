@@ -1,4 +1,4 @@
-/* -------------------------------------------------------------------------- */
+
 /*                               Editor Toolbar                               */
 /* -------------------------------------------------------------------------- */
 /**
@@ -44,6 +44,7 @@ import {
 } from "lexical";
 import { $findMatchingParent } from "@lexical/utils";
 import {
+  ReactNode,
   createContext,
   useCallback,
   useContext,
@@ -63,7 +64,6 @@ import {
   JustifyIcon,
   LeftIcon,
   ParametricIcon,
-  Plot1Icon,
   Plot3DIcon,
   RightIcon,
   StrikeIcon,
@@ -71,9 +71,6 @@ import {
 } from "./Icon";
 import { InsertImageDialog } from "./Image";
 import { InsertLatexDialog } from "./Latex";
-import { PlotPrompt } from "./Plot2d";
-import { Plot3DPrompt } from "./Plot3d/plot3d.prompt";
-import { ParametricPlotPrompt } from "./PlotParametric/parametric.prompt";
 import { schema } from "./EditorConfig";
 import { range } from "@webtex/algom";
 import { ColorPicker } from "./colorpicker.chip";
@@ -324,18 +321,7 @@ export function ToolbarPlugin({
   );
 }
 
-type pSlotLabel = {
-  children: JSX.Element[];
-};
-
-function SlotLabel({ children }: pSlotLabel) {
-  return (
-    <div className={app.slot_label}>
-      <label className={app.slot_left}>{children[0]}</label>
-      {children[1]}
-    </div>
-  );
-}
+import { SlotLabel } from "./Inputs";
 
 function FontColor() {
   const { fontColor, enstyle } = useContext(ToolbarContext);
@@ -350,10 +336,9 @@ function FontColor() {
       selfClose={false}
       className={app.fontcolor_dropdown}
       title={
-        <SlotLabel>
-          <label>Color</label>
+        <SlotLabel of={'Color'}>
           <div
-            className={app.fontcolor_dropdown_preview}
+            className={app.colorpreview}
             style={{ backgroundColor: fontColor }}
           />
         </SlotLabel>
@@ -381,8 +366,7 @@ function FontSizer() {
   return (
     <Dropdown
       title={
-        <SlotLabel>
-          <label>Font Size</label>
+        <SlotLabel of={'Font Size'}>
           <div>
             {fontSizes[fontSize].slice(0, 2)}
           </div>
@@ -407,8 +391,7 @@ function FontFamilyFormat() {
   return (
     <Dropdown
       title={
-        <SlotLabel>
-          <span>{"Font family"}</span>
+        <SlotLabel of={'Font Family'}>
           <span style={{ fontFamily }}>
             {schema.fontFamilies[fontFamily]}
           </span>
@@ -435,39 +418,6 @@ function FigureDropdown() {
   return (
     <>
       <Dropdown title={"Figure"}>
-        <Option
-          label={"Plot2D"}
-          icon={<Plot1Icon />}
-          click={() =>
-            showModal((close) => (
-              <PlotPrompt
-                activeEditor={activeEditor}
-                onClose={close}
-              />
-            ))}
-        />
-        <Option
-          label={"Parametric Plot"}
-          icon={<ParametricIcon />}
-          click={() =>
-            showModal((close) => (
-              <ParametricPlotPrompt
-                activeEditor={activeEditor}
-                onClose={close}
-              />
-            ))}
-        />
-        <Option
-          label={"Plot3D"}
-          icon={<Plot3DIcon />}
-          click={() =>
-            showModal((close) => (
-              <Plot3DPrompt
-                activeEditor={activeEditor}
-                onClose={close}
-              />
-            ))}
-        />
         <Option
           label={"Image"}
           icon={<ImageIcon />}

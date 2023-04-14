@@ -142,7 +142,7 @@ $line3: solid thin $bray0;
 
 @mixin BlueButton {
 	background-color: $blue4;
-	color: $blue0;
+	color: white;
 	font-size: $xxsmall;
 	border: 0;
 	width: fit-content;
@@ -171,25 +171,24 @@ $page-box-shadow: 0px 1px 1px #b5b5b5, 1px 1px 4px #c6c6c6;
 	box-shadow: 0.6px 1.3px 1.3px $bray0;
 }
 
-@mixin PlusSign(
-	$thickness: 2px, 
-	$size: 10px, 
+@mixin PlusSign($thickness: 2px,
+	$size: 10px,
 	$outspace: 0px,
-	$crossColor: $bray1, 
-	$background: $pageColor, 
+	$crossColor: $bray1,
+	$background: $pageColor,
 	$radius: 0%,
 ) {
-  width: $size;
-  aspect-ratio: 1;
-  border: $outspace solid $background;
-  background:
-    conic-gradient(
-			from 90deg at $thickness $thickness, 
+	width: $size;
+	aspect-ratio: 1;
+	border: $outspace solid $background;
+	background:
+		conic-gradient(from 90deg at $thickness $thickness,
 			$background 90deg,
-			$crossColor 0
-		) 
-    calc(100% + $thickness/2) calc(100% + $thickness/2)/
-    calc(50%  + $thickness)   calc(50%  + $thickness);
-  display: inline-block;
+			$crossColor 0) calc(100% + $thickness/2) calc(100% + $thickness/2)/ calc(50% + $thickness) calc(50% + $thickness);
+	display: inline-block;
 	border-radius: $radius;
+}
+
+@mixin Shadow {
+	box-shadow: rgba(9, 30, 66, 0.25) 0px 1px 1px, rgba(9, 30, 66, 0.13) 0px 0px 1px 1px;
 }

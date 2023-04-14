@@ -23,7 +23,7 @@ export function Dropdown({
   selfClose = true,
   open = false,
   className = "",
-  buttonClass = app.default_button,
+  buttonClass = app.button,
   topOffset = 25,
   leftOffset = 20,
   containerClass = "",

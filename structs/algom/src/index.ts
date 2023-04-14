@@ -6,13 +6,14 @@ import { Interpreter } from "./visitors/interpreter.js";
 import { ToLatex } from "./visitors/ToLatex.js";
 import { ASTNode } from "./ast/base.js";
 
+export { verifyNumber } from "./structs/stringfn.js";
+
 export const getData = {
   polar,
   xy,
 };
 
 export const parser = new Parser();
-
 
 export function evalLatex(src: string) {
   return parser.compute(src);
@@ -23,7 +24,7 @@ export function evalNode(node: ASTNode) {
   return n;
 }
 
-export function toLatex(src: string, parsingFunctions:boolean=false) {
+export function toLatex(src: string, parsingFunctions: boolean = false) {
   const parsing = parser.latex(src, parsingFunctions);
   return parsing;
 }
@@ -57,7 +58,7 @@ export function compfn(input: string, fname = "f", params = "(x)") {
   return `Input ${input} did not compile to a function.`;
 }
 
-export function createFunction(expr:string) {
+export function createFunction(expr: string) {
   return parser.createFunction(expr);
 }
 
@@ -93,8 +94,8 @@ export function uid(length: number = 4, base = 36) {
     .substring(0, length + 1);
 }
 
-export function percentage(current: number, max: number, min:number=0) {
-  return ( ((current-min) / ((max-min))) * 100 );
+export function percentage(current: number, max: number, min: number = 0) {
+  return (((current - min) / (max - min)) * 100);
 }
 
 export function latinize(num: number): string {
@@ -127,5 +128,3 @@ export function getRowCol(id: string): RowCol {
   }
   return { columnIndex: -1, rowIndex: -1 };
 }
-
-

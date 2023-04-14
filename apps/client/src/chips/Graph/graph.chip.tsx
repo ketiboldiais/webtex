@@ -1,4 +1,3 @@
-import CONTROL from "../controller.chip";
 import {
   forceCenter,
   forceCollide,
@@ -15,7 +14,7 @@ import {
 import { createContext, useContext, useMemo, useState } from "react";
 import { uid } from "@webtex/algom";
 import { Quad } from "src/App";
-import { Figure, fontSize, SVG, svgDimensions, translate } from "../PlotUtils";
+import { fontSize, SVG, svgDimensions, translate } from "../PlotUtils";
 
 export interface GraphNode extends SimulationNodeDatum {
   id: string;
@@ -259,7 +258,6 @@ export default function GRAPH({
         setNodeFillColor,
       }}
     >
-      <TOOLBAR />
       <SVG width={width} height={height} margins={margins}>
         <EDGES />
         <VERTICES />
@@ -270,32 +268,7 @@ export default function GRAPH({
 
 const useGraph = () => useContext(GraphCtx);
 
-function TOOLBAR() {
-  const {
-    nodeRadius,
-    setRadius,
-    nodeFontsize,
-    setNodeFontSize,
-    nodeFillColor,
-    setNodeFillColor,
-  } = useGraph();
-  return (
-    <CONTROL
-      name={`graph-control`}
-      tickers={[
-        { value: nodeRadius, handler: setRadius, label: "Node Radius" },
-        { value: nodeFontsize, handler: setNodeFontSize, label: "Font Size" },
-      ]}
-      colorPickers={[
-        {
-          value: nodeFillColor,
-          handler: setNodeFillColor,
-          label: "Node Fill Color",
-        },
-      ]}
-    />
-  );
-}
+
 
 function VERTICES() {
   const { vertices } = useGraph();

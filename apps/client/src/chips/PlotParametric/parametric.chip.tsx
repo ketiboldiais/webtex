@@ -12,7 +12,8 @@ import { Pair, Quad } from "src/App";
 import { NodeKey, SerializedLexicalNode, Spread } from "lexical";
 import { nanoid } from "nanoid";
 import { makeFunction } from "@webtex/algom";
-
+import { PARAMETRIC_TYPE } from "./parametric.node";
+type Point = { x: number | null; y: number | null };
 function parametric(
   fx: Function,
   fy: Function,
@@ -142,6 +143,3 @@ export type SerializedParametricPlotNode = Spread<
   },
   SerializedLexicalNode
 >;
-
-import { PARAMETRIC_TYPE } from "./parametric.node";import {Point} from "../Plot2d/plot2d.chip";
-
