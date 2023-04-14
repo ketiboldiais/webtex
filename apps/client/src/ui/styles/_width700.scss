@@ -2,6 +2,14 @@
 	.notesButton {
 		display: none;
 	}
+	
+	.doc {
+		max-width: calc(100% - 20px);
+	}
+	
+	.page {
+		max-width: 70vw;
+	}
 
 
 	.editor.toolbar {
@@ -26,8 +34,6 @@
 		grid-template-columns: 3fr 9fr;
 		margin-left: 2px;
 		margin-top: 0;
-		width: 98vw;
-		height: 98vh;
 		background-color: var(--page);
 	}
 

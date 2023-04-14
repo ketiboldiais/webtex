@@ -12,6 +12,8 @@ import { ImageNode } from "./Image";
 import { LatexNode } from "./Latex";
 import { ParametricPlotNode } from "./PlotParametric/parametric.node.js";
 import { Plot3DNode } from "./Plot3d/plot3d.node.js";
+import { SheetNode } from "./Sheet/sheet.node";
+import { Plot2DNode } from "./Plot2d/plot2d.node";
 
 const defaultConfig = {
   namespace: "editor",
@@ -25,6 +27,8 @@ const defaultConfig = {
     ParametricPlotNode,
     Plot3DNode,
     ExcalidrawNode,
+    SheetNode,
+    Plot2DNode,
   ],
   theme,
   onError(error: any) {

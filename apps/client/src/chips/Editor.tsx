@@ -25,6 +25,8 @@ import { useAutosave } from "../hooks/useAutosave";
 import { EditorState, RootNode } from "lexical";
 import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
 import { ToolbarPlugin } from "./toolbar.plugin";
+import { SheetPlugin } from "./Sheet/sheet.plugin";
+import { Plot2DPlugin } from "./Plot2d/plot2d.plugin";
 
 /* --------------------------------- EDITOR --------------------------------- */
 /**
@@ -95,6 +97,8 @@ export function Editor() {
         <ParametricPlotPlugin />
         <ExcalidrawPlugin />
         <MarkdownPlugin />
+        <SheetPlugin />
+        <Plot2DPlugin />
       </div>
     </div>
   );

@@ -151,6 +151,7 @@
 
 .editor.toolbar {
 	display: flex;
+	font-size: $xxsmall;
 	justify-content: flex-start;
 	flex-wrap: nowrap;
 	align-items: center;
@@ -216,36 +217,8 @@
 .button {
 	background-color: var(--page);
 	border: $line3;
+	font-size: 0.75rem;
 }
-
-.fontsize_box {
-	display: grid;
-	grid-template-columns: 8fr 2fr;
-	gap: 2px;
-
-	label {
-		font-size: 0.65rem;
-		line-height: 1.6;
-		padding: 0;
-		margin: 0;
-		padding-right: 2px;
-		border-right: solid thin $bray0;
-	}
-
-	.fontsize_value {
-		margin-left: 3px;
-	}
-}
-
-
-
-.fontsize_option>label {
-	display: none;
-}
-
-
-
-
 
 // § Modal
 
@@ -709,7 +682,6 @@ button.write_button {
 	width: $margin1;
 	position: relative;
 	transform: rotate(-45deg);
-	color: $bray3;
 }
 
 .chevron.bottom::before {
@@ -864,7 +836,7 @@ button.write_button {
 	height: 20px;
 }
 
-.editor.toolbar .default_button:hover {
+.editor.toolbar .button:hover {
 	background-color: $gray0;
 }
 
@@ -872,11 +844,10 @@ button.write_button {
 	display: flex;
 	justify-content: flex-start;
 	align-items: center;
-	font-size: inherit;
 
 	.slot_left {
 		border-right: $line3;
-		padding-right: 5px;
+		padding-right: 3px;
 		line-height: 1.5;
 	}
 
@@ -890,7 +861,11 @@ button.write_button {
 	height: 16px;
 	width: 16px;
 	border-radius: 3px;
-	margin-left: 2px;
+}
+
+.preview,
+.colorpreview {
+	margin-left: 3px;
 }
 
 .palette {
@@ -1209,214 +1184,128 @@ button.destroy_button[disabled] {
 }
 
 
-.sheet_shell {
+.sheetShell {
 	font-family: $mainFont;
 	margin: 1% auto;
-	max-width: 97vw;
-	background-color: $pageColor;
+	width: 100%;
 	font-size: 0.85rem;
 	color: $gray5;
-	border: solid thin lightgray;
-}
+	menu {
+		// padding: 0;
+		margin: 0;
+		padding: $pad1;
+		display: flex;
+		justify-content: flex-start;
+		align-items: center;
+		border-left: $primary;
+		border-top: $primary;
+		border-right: $primary;
+		// border: 0;
+		background-color: rgb(226, 226, 226);
+		gap: 5px;
+		button {
+			border: 0;
+			border-radius: 2px;
+			@include Shadow;
+
+			&:hover {
+				box-shadow: $box-shadow-pressed;
+			}
+		}
+	}
+
+	.sheet {
+		overflow: auto;
+
+		.table {
+			background-color: $pageColor;
+			border-collapse: collapse;
+			border-spacing: 0;
+			margin: 0;
+			padding: 0;
+			width: 100%;
+		}
+
+		th.selected, td.selected {
+			background-color: rgb(238, 254, 254);
+			border: solid 2px rgb(117, 206, 227);
+		}
+
+		.focus {
+			background-color: rgb(238, 237, 237);
+			border: solid 2px $blue6;
+		}
+
+		.cellbody {
+			display: flex;
+			justify-content: flex-start;
+			height: 100%;
+			min-height: 20px;
+		}
+
+		.headerCell,
+		.normalCell {
+			border: $primary;
+			border-collapse: collapse;
+			min-width: 80px;
+		}
+
+		.cellText {
+			white-space: nowrap;
+			text-overflow: ellipsis;
+			overflow: hidden;
+			display: block;
+			width: 100%;
+		}
+
+		.cellReadonly {
+			height: 100%;
+			padding: $padtiny;
+		}
+
+		.cellWritable {
+			width: 100%;
+			outline: none;
+			appearance: none;
+			border: 0;
+		}
+
+		.cellmenu {
+			padding: 0 1px;
+			background-color: inherit;
+
+			button {
+				color: $bray4;
+				margin: 0;
+				padding: 0;
+				border: 0;
+				background-color: inherit;
+				width: 10px;
+			}
+		}
+
+		.table td:hover {
+			.cellmenu {
+				opacity: 1;
+				transition: all 0.1s ease-out;
+
+			}
+		}
 
 
-.sheet_main {
-	display: flex;
-	justify-content: space-around;
-	align-items: center;
-	width: 100%;
-	margin: $margin2;
-}
-
-.sidecontrol {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	margin: $margin1;
-	padding: 0;
-}
-
-.plus_button {
-	@include PlusSign($outspace: 4px,
-		$background: $pageColor,
-		$size: 18px,
-		$crossColor: $bray1,
-		$radius: 50%);
-}
-
-
-.new_col_button,
-.new_row_button {
-	border: 0;
-	margin: $margin1;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	width: fit-content;
-	padding: 2px;
-	margin: 0;
-	border-radius: 50%;
-
-	&:hover {
-		box-shadow: $box-shadow-pressed;
+		.sheet_axis_cell {
+			font-size: $xsmall;
+			font-weight: normal;
+			color: $bray3;
+			padding: $padtiny $pad3;
+			text-align: center;
+			width: fit-content;
+			border: $primary;
+		}
 	}
 }
 
-.sheet_table_wrapper {
-	overflow: auto;
-	margin-left: $margin2;
-}
 
-.sheet_table {
-	background-color: $pageColor;
-	width: 100%;
-	border-collapse: collapse;
-	border-spacing: 0;
-	margin: 0;
-	padding: 0;
-}
-
-.sheet_selected {
-	background-color: $blue0;
-	border: solid thin $blue5;
-}
-
-.sheet_focus {
-	background-color: rgb(225, 243, 194);
-	border: solid thin $blue6;
-}
-
-.sheet_cell_content {
-	display: grid;
-	grid-template-columns: 20fr 1fr;
-}
-
-.sheet_header,
-.sheet_cell {
-	border: thin solid $bray3;
-	border-collapse: collapse;
-	min-width: 80px;
-}
-
-
-.sheet_text {
-	white-space: nowrap;
-	text-overflow: ellipsis;
-	overflow: hidden;
-	display: block;
-}
-
-.sheet_readonly {
-	height: 100%;
-	padding: $padtiny;
-}
-
-.sheet_writable {
-	width: 100%;
-	height: 100%;
-	outline: none;
-	appearance: none;
-	border: 0;
-}
-
-.sheet_menu {
-	padding: $pad1;
-	opacity: 0;
-	transition: all 0.1s ease-in;
-}
-
-.sheet_table td:hover {
-	.sheet_menu {
-		opacity: 1;
-		transition: all 0.1s ease-out;
-	}
-}
-
-.sheet_menu button {
-	margin: 0;
-	padding: 0;
-	border: 0;
-	background-color: inherit;
-}
-
-.sheet_axis_cell {
-	font-size: $xsmall;
-	font-weight: normal;
-	color: $bray3;
-	padding: $padtiny $pad3;
-	text-align: center;
-	width: fit-content;
-	border: $line2;
-}
-
-
-/**
- * The menu element is reserved for
- * figure customization menus.
- * These are menus that allow
- * the user to configure:
- * 
- * <Plot2D>
- * <Plot3D>
- * <BarChart>
- * <Graph>
- * 
- * The menu's structure:
- * 
- *   <menu>
- *     : <section>
-           <label>
-					 (input)
- *       </section>
- *     : (null) | <Button/>
- */
-article.modal{
-	position: relative;
-	z-index: 20;
-	background-color: $pageColor;
-	width: fit-content;
-	@include Shadow;
-}
-
-button.close {
-	color: $bray5;
-	background-color: transparent;
-	border: 0;
-	font-size: $medium;
-}
-
-menu {
-	width: fit-content;
-	min-width: 300px;
-	font-size: 0.73rem;
-	max-height: 50vh;
-	article {
-		@include Scrollbar;
-		overflow-y: auto;
-	}
-
-
-	// bottom padding space for the save button
-	// top padding space for the close button
-	padding: $pad2 $pad2 $margin3 $pad2;
-	display: flex;
-	flex-direction: column;
-
-	section {
-		display: grid;
-		grid-template-columns: 3fr 8fr;
-	}
-
-	.saveButton {
-		margin-top: $margin4;
-		margin-left: 80%;
-	}
-}
-
-section.field,
-.palette {
-	margin: $margin2;
-}
 
 
 
@@ -1620,10 +1509,18 @@ div.vertical {
 	width: 100%;
 }
 
+.formbody {
+	display: flex;
+	flex-wrap: wrap;
+	height: 280px;
+	overflow-y: auto;
+}
+
 .card {
 	margin: $margin1;
-	padding: $pad2;
 	@include Shadow;
+	width: fit-content;
+
 	button.delete {
 		color: $orange6;
 		background-color: transparent;
@@ -1633,3 +1530,23 @@ div.vertical {
 
 }
 
+.node {
+	display: flex;
+	justify-content: space-between;
+	width: fit-content;
+	height: fit-content;
+	margin: $margin1;
+
+	.button {
+		height: 100%;
+		border: $line3;
+		margin-left: 3px;
+		padding: 2px 5px;
+	}
+}
+
+.box {
+	@include Shadow;
+	width: fit-content;
+	padding: $padtiny $pad1;
+}

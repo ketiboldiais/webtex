@@ -63,17 +63,17 @@ export function SideBar() {
           btnTitle={"Add new note"}
           label={<WriteIcon />}
           click={createNote}
-          className={concat(app.default_button, app.write_button)}
+          className={concat(app.button, app.write_button)}
         />
         <Button
           btnTitle={"Recently deleted"}
           label={<TrashIcon />}
           click={() =>
             showModal((close) => <TrashedNotesList onClose={close} />)}
-          className={concat(app.default_button, app.write_button)}
+          className={concat(app.button, app.write_button)}
         />
         <Button
-          className={concat(app.default_button, app.formatBox, app.notesButton)}
+          className={concat(app.button, app.formatBox, app.notesButton)}
           label={"Notes"}
           click={() => setShowNotes(!showNotes)}
         />

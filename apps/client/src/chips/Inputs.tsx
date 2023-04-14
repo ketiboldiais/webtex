@@ -158,6 +158,7 @@ export function Switch({
         checked={val}
         ref={checkbox}
         value={val ? 1 : 0}
+        onChange={update}
       />
       <span onClick={update} ref={toggle} className={val ? app.on : app.off}>
         <span className={app.toggle} />

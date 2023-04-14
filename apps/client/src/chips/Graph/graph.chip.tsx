@@ -19,6 +19,8 @@ import { fontSize, SVG, svgDimensions, translate } from "../PlotUtils";
 export interface GraphNode extends SimulationNodeDatum {
   id: string;
   value: string;
+  color?: string;
+  radius?: string;
 }
 
 function isNodeObject<T>(node: number | string | T): node is T {
@@ -33,7 +35,7 @@ export type Edge = {
   id: string;
 };
 
-const defaultNodes: GraphNode[] = [
+export const defaultNodes: GraphNode[] = [
   { id: "A", value: "apple" },
   { id: "M", value: "mango" },
   { id: "D", value: "durian" },
@@ -41,7 +43,7 @@ const defaultNodes: GraphNode[] = [
   { id: "B", value: "banana" },
 ];
 
-const testEdges: Link[] = [
+export const testEdges: Link[] = [
   { source: "A", target: "M" },
   { source: "M", target: "A" },
   { source: "D", target: "M" },

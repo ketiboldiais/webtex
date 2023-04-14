@@ -1,4 +1,3 @@
-
 /*                               Editor Toolbar                               */
 /* -------------------------------------------------------------------------- */
 /**
@@ -44,8 +43,8 @@ import {
 } from "lexical";
 import { $findMatchingParent } from "@lexical/utils";
 import {
-  ReactNode,
   createContext,
+  ReactNode,
   useCallback,
   useContext,
   useEffect,
@@ -322,6 +321,7 @@ export function ToolbarPlugin({
 }
 
 import { SlotLabel } from "./Inputs";
+import { SheetPrompt } from "./Sheet/sheet.prompt";
 
 function FontColor() {
   const { fontColor, enstyle } = useContext(ToolbarContext);
@@ -336,7 +336,7 @@ function FontColor() {
       selfClose={false}
       className={app.fontcolor_dropdown}
       title={
-        <SlotLabel of={'Color'}>
+        <SlotLabel of={"Color"}>
           <div
             className={app.colorpreview}
             style={{ backgroundColor: fontColor }}
@@ -366,8 +366,8 @@ function FontSizer() {
   return (
     <Dropdown
       title={
-        <SlotLabel of={'Font Size'}>
-          <div>
+        <SlotLabel of={"Font Size"}>
+          <div className={app.preview}>
             {fontSizes[fontSize].slice(0, 2)}
           </div>
         </SlotLabel>
@@ -391,10 +391,10 @@ function FontFamilyFormat() {
   return (
     <Dropdown
       title={
-        <SlotLabel of={'Font Family'}>
-          <span style={{ fontFamily }}>
+        <SlotLabel of={"Font Family"}>
+          <div className={app.preview} style={{ fontFamily }}>
             {schema.fontFamilies[fontFamily]}
-          </span>
+          </div>
         </SlotLabel>
       }
     >
@@ -418,6 +418,16 @@ function FigureDropdown() {
   return (
     <>
       <Dropdown title={"Figure"}>
+        <Option
+          label={"Sheet"}
+          click={() =>
+            showModal((close) => (
+              <SheetPrompt
+                activeEditor={activeEditor}
+                onClose={close}
+              />
+            ))}
+        />
         <Option
           label={"Image"}
           icon={<ImageIcon />}

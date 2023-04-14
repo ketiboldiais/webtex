@@ -36,6 +36,13 @@ export type PlotFn = {
   integrate?: IntegralData;
 } & BasePlotFn;
 
+export type RiemannDatum = {
+  domain: [number, number];
+  dx: number;
+  method: "left" | "midpoint" | "right";
+  color: string;
+};
+
 interface IPlot2d {
   functions?: PlotFn[];
   samples?: number;
@@ -47,7 +54,7 @@ interface IPlot2d {
   margins?: Quad<number>;
 }
 
-const defaults: PlotFn[] = [
+export const defaults: PlotFn[] = [
   {
     fn: "f(x) = x^3",
     id: "tan",
@@ -70,6 +77,7 @@ export default function Plot2D({
   width = DEFAULT_SVG_WIDTH,
   height = DEFAULT_SVG_HEIGHT,
   margins = DEFAULT_SVG_MARGINS,
+  samples = 170,
 }: IPlot2d) {
   const [svgWidth, svgHeight] = svgDimensions(width, height, margins);
   return (
@@ -88,7 +96,7 @@ export default function Plot2D({
             <FunctionProvider key={fn.fn + fn.id} fn={fn.fn}>
               <ColorGroup color={fn.color}>
                 <ComputedPath
-                  samples={fn.samples}
+                  samples={fn.samples || samples}
                   range={fn.range}
                   domain={fn.domain}
                 />
@@ -266,13 +274,6 @@ type RectCoords = {
   y2: number;
   width: number;
   xTranslate: number;
-};
-
-export type RiemannDatum = {
-  domain: [number, number];
-  dx: number;
-  method: "left" | "midpoint" | "right";
-  color: string;
 };
 
 function RiemannPlot({
