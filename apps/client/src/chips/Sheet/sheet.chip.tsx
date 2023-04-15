@@ -78,13 +78,13 @@ function CONTROL({ children }: Children) {
   const setColumnTypes = () => {
     // bindColumns(["a", "b", "c"]);
     // activeEditor.dispatchCommand(INSERT_PLOT_2D_COMMAND, {
-      // functions: defaults,
-      // domain: [-10, 10],
-      // range: [-10, 10],
-      // width: DEFAULT_SVG_WIDTH,
-      // height: DEFAULT_SVG_HEIGHT,
-      // ticks: 10,
-      // samples: 170,
+    // functions: defaults,
+    // domain: [-10, 10],
+    // range: [-10, 10],
+    // width: DEFAULT_SVG_WIDTH,
+    // height: DEFAULT_SVG_HEIGHT,
+    // ticks: 10,
+    // samples: 170,
     // });
   };
 
@@ -349,23 +349,22 @@ function TABLE({ children }: Children) {
         }
         setSelected(false);
         mouseDown.current = true;
-        let lastID: string | null = null;
         if (primarySelectedID !== pid) {
           setPrimarySelectedID(pid);
           setIsEditing(false);
-          lastID = pid;
+          updateFocusedCell(pid);
+        } else {
+          updateFocusedCell(null);
         }
-        updateFocusedCell(lastID);
         setSelectedCellIDs([]);
-        sheet.updateSelection([]);
-        return;
-      }
-      if (primarySelectedID !== null && !targetOnControl(e.target as Html)) {
+      } else if (
+        primarySelectedID !== null &&
+        !targetOnControl(e.target as Html)
+      ) {
         setSelected(false);
         mouseDown.current = false;
         setPrimarySelectedID(null);
         setSelectedCellIDs([]);
-        sheet.updateSelection([]);
         setIsEditing(false);
         updateFocusedCell(null);
       }
@@ -585,7 +584,7 @@ function CELL({
         (isSelected ? " " + css.selected : "") +
         (isPrimarySelected ? " " + css.focus : "")}
     >
-      <div className={css.cellbody}>
+      <div data-id={id} className={css.cellbody}>
         {children}
       </div>
     </Box>
@@ -597,10 +596,11 @@ function TEXT() {
     value,
     isPrimarySelected,
     isEditing,
+    id,
   } = useCell();
   return (!(isPrimarySelected && isEditing))
     ? (
-      <div className={css.cellText + " " + css.cellReadonly}>
+      <div data-id={id} className={css.cellText + " " + css.cellReadonly}>
         {value}
       </div>
     )
@@ -608,11 +608,12 @@ function TEXT() {
 }
 
 const INPUT = () => {
-  const { value, updateCellValue, isPrimarySelected, isEditing } = useCell();
+  const { value, id, updateCellValue, isPrimarySelected, isEditing } = useCell();
   return isPrimarySelected && isEditing
     ? (
       <input
         value={value}
+        data-id={id}
         onChange={updateCellValue}
         autoFocus
         className={css.cellWritable}

@@ -1,7 +1,7 @@
 import app from "../ui/styles/App.module.scss";
 import { useEditor } from "@hooks/useEditor";
 import { nanoid } from "nanoid";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { BtnEvt, LiEvt } from "src/App";
 import {
   addNote,
@@ -16,44 +16,26 @@ import {
   untrashNote,
   useAppDispatch,
 } from "src/state/state";
-import { concat, EMPTY_NOTE, toggle } from "src/util";
+import { Children, concat, EMPTY_NOTE, toggle } from "src/util";
 import { Checkmark, TrashIcon, WriteIcon } from "./Icon";
 import { useModal } from "@hooks/useModal";
 import { Button } from "./Inputs";
 
-export function SideBar() {
-  const dispatch = useAppDispatch();
-  let notes = getNotes();
-  const { activeEditor } = useEditor();
-  const active = getActiveNote();
+type pSideBar = {
+  notes: Note[];
+  activeNote: Note;
+  createNote(event: BtnEvt): void;
+  destroyNote(event: BtnEvt, index: number): void;
+  switchNote(event: LiEvt, index: number): void;
+};
+export function SideBar({
+  notes,
+  activeNote,
+  createNote,
+  destroyNote,
+  switchNote,
+}: pSideBar) {
   const [showNotes, setShowNotes] = useState(false);
-
-  function createNote(event: BtnEvt) {
-    event.stopPropagation();
-    const title = ``;
-    const id = nanoid(10);
-    const newnote = makeNote(id, title, EMPTY_NOTE);
-    dispatch(addNote(newnote));
-    const newstate = activeEditor.parseEditorState(newnote.content);
-    activeEditor.setEditorState(newstate);
-  }
-
-  function destroyNote(event: BtnEvt, note: Note) {
-    event.stopPropagation();
-    dispatch(deleteNote(note));
-    if (note.id === active.id) {
-      let ns = notes.filter((n) => n.id !== note.id);
-      if (ns.length) {
-        const newnote = ns[0];
-        const newstate = activeEditor.parseEditorState(newnote.content);
-        activeEditor.setEditorState(newstate);
-      } else {
-        const blank = activeEditor.parseEditorState(EMPTY_NOTE);
-        activeEditor.setEditorState(blank);
-      }
-    }
-  }
-
   const [modal, showModal] = useModal();
 
   return (
@@ -79,8 +61,25 @@ export function SideBar() {
         />
       </div>
       <ul className={`${app.notelist} ${showNotes ? app.visible : app.hidden}`}>
-        {notes.map((note) => (
-          <NoteItem key={note.id} note={note} onDelete={destroyNote} />
+        {notes.map((note, index) => (
+          <li
+            className={note.id === activeNote.id ? app.activeNote : app.note}
+            onClick={(e) => switchNote(e, index)}
+            key={note.id}
+          >
+            <NoteItem
+              note={note}
+              title={note.id === activeNote.id ? activeNote.title : note.title}
+            >
+              {note.id !== `webtexDOCS` && (
+                <Button
+                  className={app.delete_button}
+                  click={(e) => destroyNote(e, index)}
+                  label={"\u00d7"}
+                />
+              )}
+            </NoteItem>
+          </li>
         ))}
       </ul>
       {modal}
@@ -98,43 +97,19 @@ export function SideBar() {
 
 interface INoteItem {
   note: Note;
-  onDelete: (event: BtnEvt, note: Note) => void;
+  title: string;
 }
-function NoteItem({ note, onDelete }: INoteItem) {
-  const dispatch = useAppDispatch();
-  const activeNote = getActiveNote();
-  const { activeNoteTitle } = useEditor();
-  const { activeEditor } = useEditor();
-  function switchNote(event: LiEvt) {
-    event.stopPropagation();
-    dispatch(setActiveNote(note));
-    const newstate = activeEditor.parseEditorState(note.content);
-    activeEditor.setEditorState(newstate);
-  }
-  const title = note.id === activeNote.id ? activeNoteTitle : note.title;
+function NoteItem({ note, title, children }: INoteItem & Children) {
   return (
-    <li
-      onClick={switchNote}
-      className={concat(
-        app.note,
-        toggle(app.activeNote, app.note).on(note.id === activeNote.id),
-      )}
-    >
+    <Fragment>
       <div className={app.note_header}>
         <strong>{title}</strong>
-        {note.id !== `webtexDOCS` && (
-          <button
-            className={app.delete_button}
-            onClick={(e) => onDelete(e, note)}
-          >
-            &times;
-          </button>
-        )}
+        {children}
       </div>
       <div className={app.note_details}>
         <small>{note.date}</small>
       </div>
-    </li>
+    </Fragment>
   );
 }
 

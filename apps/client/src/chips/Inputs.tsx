@@ -3,6 +3,7 @@ import {
   CSSProperties,
   forwardRef,
   Fragment,
+  MouseEventHandler,
   ReactNode,
   useCallback,
   useEffect,
@@ -14,7 +15,7 @@ import { BtnFn, InputFn } from "src/App";
 import app from "../ui/styles/App.module.scss";
 
 export interface ButtonProps {
-  click?: BtnFn;
+  click?: MouseEventHandler<HTMLButtonElement>;
   label?: string | ReactNode;
   className?: string;
   icon?: string | JSX.Element;

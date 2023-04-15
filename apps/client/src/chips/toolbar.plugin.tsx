@@ -51,7 +51,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import { command, concat } from "src/util";
+import { Children, command, concat } from "src/util";
 import { INSERT_EXCALIDRAW_COMMAND } from "./Draw";
 import { Dropdown, Option } from "./Dropdown";
 import {
@@ -135,13 +135,14 @@ type pToolbarPlugin = {
   defaultVariant?: "normal" | "small-caps";
 };
 
-export function ToolbarPlugin({
+export function ToolbarContextProvider({
   defaultFontSize = "14px",
   defaultFontFamily = "KaTeX_Main",
   defaultFontColor = "black",
   defaultBgColor = "white",
   defaultVariant = "normal",
-}: pToolbarPlugin) {
+  children,
+}: pToolbarPlugin & Children) {
   const { initEditor, activeEditor, setActiveEditor } = useEditor();
   const [blockType, setBlocktype] = useState<Blocktype>("paragraph");
   const [
@@ -310,16 +311,27 @@ export function ToolbarPlugin({
 
   return (
     <ToolbarContext.Provider value={ctxObject}>
-      <div className={concat(app.editor, app.toolbar)}>
-        <CoreFormat />
-        <FontSizer />
-        <FontColor />
-        <FontFamilyFormat />
-        <BlockTypeDropdown />
-        <FigureDropdown />
-        <NewSheetButton />
-      </div>
+      {children}
     </ToolbarContext.Provider>
+  );
+}
+
+export function ToolbarPlugin({ children }: Children) {
+  return (
+    <Fragment>
+      <div className={concat(app.editor, app.toolbar)}>
+        <ToolbarContextProvider>
+          <CoreFormat />
+          <FontSizer />
+          <FontColor />
+          <FontFamilyFormat />
+          <BlockTypeDropdown />
+          <FigureDropdown />
+          <NewSheetButton />
+        </ToolbarContextProvider>
+      </div>
+      {children}
+    </Fragment>
   );
 }
 
@@ -328,7 +340,7 @@ import { SheetPrompt } from "./Sheet/sheet.prompt";
 import Plot2DPrompt from "./Plot2d/plot2d.prompt";
 import { Plot3DPrompt } from "./Plot3d/plot3d.prompt";
 
-function FontColor() {
+export function FontColor() {
   const { fontColor, enstyle } = useContext(ToolbarContext);
 
   const setColor = useCallback(
@@ -362,7 +374,7 @@ const fontSizes: Record<string, string> = range(
   {},
 );
 
-function FontSizer() {
+export function FontSizer() {
   const { fontSize, enstyle } = useContext(ToolbarContext);
   const setFont = (size: string) => () => {
     enstyle({ "font-size": size });
@@ -388,7 +400,7 @@ function FontSizer() {
     </Dropdown>
   );
 }
-function FontFamilyFormat() {
+export function FontFamilyFormat() {
   const { fontFamily, enstyle } = useContext(ToolbarContext);
   const setFontFamily = (fontFamily: string) => () => {
     enstyle({ "font-family": fontFamily });
@@ -416,7 +428,7 @@ function FontFamilyFormat() {
   );
 }
 
-function NewSheetButton() {
+export function NewSheetButton() {
   const { activeEditor } = useEditor();
   const [modal, showModal] = useModal();
   return (
@@ -436,7 +448,7 @@ function NewSheetButton() {
   );
 }
 
-function FigureDropdown() {
+export function FigureDropdown() {
   const { activeEditor } = useEditor();
   const [modal, showModal] = useModal();
 
@@ -500,7 +512,7 @@ function FigureDropdown() {
   );
 }
 
-function BlockTypeDropdown() {
+export function BlockTypeDropdown() {
   const { initEditor } = useEditor();
   const { blockType } = useContext(ToolbarContext);
 
@@ -559,7 +571,7 @@ function getSelectedNode(selection: RangeSelection) {
     : focusNode;
 }
 
-function CoreFormat() {
+export function CoreFormat() {
   const { entext, align } = useContext(ToolbarContext);
   return (
     <>
@@ -608,7 +620,7 @@ function CoreFormat() {
   );
 }
 
-function SmallCapsToggle() {
+export function SmallCapsToggle() {
   const {
     enstyle,
     smallcaps,

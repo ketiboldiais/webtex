@@ -118,7 +118,10 @@ const initialState: NoteState = {
 /* -------------------------- Slice Initialization -------------------------- */
 
 import { createSlice } from "@reduxjs/toolkit";
-
+type TitlePayload = {
+  id: string;
+  title: string;
+};
 const noteSlice = createSlice({
   name: "notes",
   initialState,
@@ -129,6 +132,13 @@ const noteSlice = createSlice({
       state.notelist[newNote.id] = newNote;
       state.noteCount = Object.values(state.notelist).length;
       state.activeNote = state.notelist[newNote.id];
+    },
+    setActiveNoteTitle(state, action: PayloadAction<TitlePayload>) {
+      const { id, title } = action.payload;
+      state.activeNote.title = title;
+      if (state.notelist[id]) {
+        state.notelist[id].title = title;
+      }
     },
     deleteNote(state, action: PayloadAction<Note>) {
       if (state.noteCount > 1) {
@@ -175,6 +185,7 @@ export const {
   deleteNote,
   untrashNote,
   destroyNote,
+  setActiveNoteTitle,
 } = noteSlice.actions;
 
 /* --------------------------- Listener Middleware -------------------------- */

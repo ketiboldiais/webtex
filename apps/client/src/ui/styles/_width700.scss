@@ -4,11 +4,11 @@
 	}
 	
 	.doc {
-		max-width: calc(100% - 20px);
+		// max-width: calc(100% - 20px);
 	}
 	
 	.page {
-		max-width: 70vw;
+		// max-width: 90%;
 	}
 
 
@@ -30,17 +30,24 @@
 
 	.main {
 		position: fixed;
-		display: grid;
-		grid-template-columns: 3fr 9fr;
+		// display: grid;
+		// grid-template-columns: 3fr 9fr;
+		display: flex;
 		margin-left: 2px;
 		margin-top: 0;
 		background-color: var(--page);
+		.sidebar {
+			width: 22vw;
+		}
+		.doc {
+			width: 78vw;
+		}
 	}
 
 	.sidebar {
 		position: relative;
 		padding: $pad2;
-		margin: $margin2 $margin1;
+		margin: $margin2 0;
 	}
 
 	.notes_control {

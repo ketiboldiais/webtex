@@ -52,9 +52,7 @@
 	right: 0;
 }
 
-.note_header {
-	height: 25px;
-}
+
 
 
 
@@ -113,20 +111,34 @@
 	font-size: 0.6em;
 }
 
-.note {
+.note_header {
+	display: flex;
+	gap: 2px;
+	margin: 0;
+	padding: 0;
+}
+.note, .activeNote {
+	display: grid;
+	grid-template-rows: 1fr 1fr;
 	background-color: var(--page);
-	padding: $padtiny $pad6;
+	padding: $pad2 $pad5;
+	padding-top: 1px;
 	padding-left: $pad2;
 	margin: 0;
 	@include Card;
 	width: 100%;
 	border-radius: 3px;
-	height: 50px;
 	margin: $margin1 0;
-
+	overflow: hidden;
 	strong {
-		font-size: 0.7em;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		width: calc(100% - 5px);
+		display: block;
+		overflow: hidden;
+		font-size: 0.75em;
 		margin: 0;
+		margin-top: 5px;
 		padding: 0;
 	}
 }
@@ -168,7 +180,7 @@
 }
 
 .doc {
-	position: fixed;
+	// position: fixed;
 	width: 100%;
 	height: 100%;
 }
@@ -203,13 +215,14 @@
 	border: 0;
 	background-color: inherit;
 	outline: none;
+	border-bottom: solid thin rgb(215, 215, 215);
 }
 
 // lexical input
 .pageContent {
 	overflow-y: auto;
 	@include Scrollbar;
-	width: 98%;
+	width: 100%;
 	height: 100%;
 	outline: none;
 }
@@ -1191,7 +1204,8 @@ button.destroy_button[disabled] {
 .sheetShell {
 	font-family: $mainFont;
 	margin: 1% auto;
-	width: 100%;
+	// width: 100%;
+	max-width: 65vw;
 	font-size: 0.85rem;
 	color: $gray5;
 
