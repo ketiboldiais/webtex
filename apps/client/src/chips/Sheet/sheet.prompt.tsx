@@ -28,7 +28,7 @@ export function SheetPrompt({
   return (
     <Form onSave={save}>
       <Card>
-        <Field name={"Number of Columns"}>
+        <Field name={"Columns"}>
           <NumberInput
             val={colCount}
             act={setColCount}
@@ -38,7 +38,7 @@ export function SheetPrompt({
             min={2}
           />
         </Field>
-        <Field name={"Number of Rows"}>
+        <Field name={"Rows"}>
           <NumberInput
             val={rowCount}
             act={setRowCount}

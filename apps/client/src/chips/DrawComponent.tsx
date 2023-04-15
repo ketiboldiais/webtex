@@ -301,8 +301,15 @@ export function ExcalidrawModal({
             }}
           />
           <div className={app.draw_modal_actions}>
-            <button className={app.modal_close_button} onClick={discard}>&times;</button>
-            <button className={app.draw_save_button} onClick={save}>Save</button>
+            <Button
+              className={app.modal_close_button}
+              click={discard}
+            />
+            <Button
+              className={app.draw_save_button}
+              click={save}
+              label={"Save"}
+            />
           </div>
         </div>
       </div>
