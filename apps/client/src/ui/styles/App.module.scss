@@ -173,6 +173,9 @@
 	padding-bottom: 2px;
 	overflow-x: scroll;
 	@include Scrollbar;
+	.button {
+		color: $bray3;
+	}
 
 	&::-webkit-scrollbar {
 		height: 2px;
