@@ -373,7 +373,7 @@ function FontSizer() {
       title={
         <SlotLabel of={"Font Size"}>
           <div className={app.preview}>
-            {fontSizes[fontSize].slice(0, 2)}
+            {fontSizes[fontSize]?.slice(0, 2)}
           </div>
         </SlotLabel>
       }
@@ -381,7 +381,7 @@ function FontSizer() {
       {Object.entries(fontSizes).map(([k, v]) => (
         <Option
           key={`font${k}`}
-          label={k.slice(0, 2)}
+          label={k ? k.slice(0, 2) : ""}
           click={setFont(v)}
         />
       ))}
