@@ -4,6 +4,7 @@ import app from "../ui/styles/App.module.scss";
 import Plot1 from "../chips/Plot2d/plot2d.chip";
 import { Range } from "src/chips/Inputs";
 import { Plot3DPrompt } from "src/chips/Plot3d/plot3d.prompt";
+import {InsertImageDialog, PromptImageLink, PromptImageUpload} from "src/chips/Image";
 
 export function Canvas() {
   return (
@@ -11,6 +12,7 @@ export function Canvas() {
       {/* <Sheet /> */}
       {/* <Plot2DPrompt/> */}
       {/* <Plot3DPrompt/> */}
+      {/* <InsertImageDialog/> */}
     </div>
   );
 }

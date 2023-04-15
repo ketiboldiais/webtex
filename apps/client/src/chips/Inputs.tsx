@@ -66,7 +66,6 @@ export function TextInput({
     <input
       type={"text"}
       placeholder={temp}
-      autoFocus
       className={app.textInput}
       value={content}
       onChange={update}

@@ -52,8 +52,17 @@ import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
 import { LexicalNestedComposer } from "@lexical/react/LexicalNestedComposer";
-import { DOM_AVAILABLE, joinRest, toggle } from "src/util";
-import { Button, FileInput, Switch, Text, TextInput } from "./Inputs";
+import { DOM_AVAILABLE, EditorPrompt, joinRest, toggle } from "src/util";
+import {
+  Button,
+  Card,
+  Field,
+  FileInput,
+  Form,
+  Switch,
+  Text,
+  TextInput,
+} from "./Inputs";
 import { Resizer } from "./Resizer";
 declare global {
   interface DragEvent {
@@ -589,22 +598,26 @@ export function PromptImageLink({ onClick }: ImagePrompt) {
   const isDisabled = src === "";
   const save = () => onClick({ altText, src });
   return (
-    <div className={app.image_prompt}>
-      <section>
-        <Text of={"Image URL"} />
-        <TextInput act={setSrc} val={src} />
-      </section>
-      <section>
-        <Text of={"Description"} />
-        <TextInput act={setAltText} val={altText} />
-      </section>
-      <Button
-        disabled={isDisabled}
-        label={"Save"}
-        click={save}
-        className={app.modalSave}
-      />
-    </div>
+    <Form
+      className={app.image_prompt}
+      footers={() => (
+        <Button
+          disabled={isDisabled}
+          label={"Save"}
+          click={save}
+          className={app.saveButton}
+        />
+      )}
+    >
+      <Card>
+        <Field name={"Image URL"}>
+          <TextInput act={setSrc} val={src} />
+        </Field>
+        <Field name={"Description"}>
+          <TextInput act={setAltText} val={altText} />
+        </Field>
+      </Card>
+    </Form>
   );
 }
 
@@ -624,27 +637,31 @@ export function PromptImageUpload({ onClick }: ImagePrompt) {
   const save = () => onClick({ altText, src });
 
   return (
-    <div className={app.image_prompt}>
-      <FileInput act={loadImage} accept="image/*"/>
-      <section>
-        <Text of={'Description'}/>
-        <TextInput act={setAltText} val={altText}/>
-      </section>
-      <Button
-        disabled={isDisabled}
-        label={"Save"}
-        click={save}
-        className={app.modalSave}
-      />
-    </div>
+    <Form
+      className={app.image_prompt}
+      headers={() => <FileInput act={loadImage} accept="image/*" />}
+      footers={() => (
+        <Button
+          disabled={isDisabled}
+          label={"Save"}
+          click={save}
+          className={app.saveButton}
+        />
+      )}
+    >
+      <Card>
+        <Field name={"Description"}>
+          <TextInput act={setAltText} val={altText} />
+        </Field>
+      </Card>
+    </Form>
   );
 }
 
-interface ImageDialogProps {
-  activeEditor: LexicalEditor;
-  onClose: () => void;
-}
-export function InsertImageDialog({ activeEditor, onClose }: ImageDialogProps) {
+export function InsertImageDialog({
+  activeEditor,
+  onClose,
+}: EditorPrompt) {
   const [isFile, setIsFile] = useState(false);
 
   const hasModifier = useRef(false);
@@ -664,14 +681,16 @@ export function InsertImageDialog({ activeEditor, onClose }: ImageDialogProps) {
     onClose();
   };
   return (
-    <div className={app.image_dialog}>
-      <Switch
-        act={() => setIsFile(!isFile)}
-        val={isFile}
-      />
+    <Form className={app.image_dialog}>
+      <Field name={"Image Upload"}>
+        <Switch
+          act={() => setIsFile(!isFile)}
+          val={isFile}
+        />
+      </Field>
       {!isFile && <PromptImageLink onClick={onClick} />}
       {isFile && <PromptImageUpload onClick={onClick} />}
-    </div>
+    </Form>
   );
 }
 

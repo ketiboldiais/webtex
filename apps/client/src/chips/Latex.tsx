@@ -358,7 +358,7 @@ export function LatexModifier({ initLatex = "", onConfirm }: LMP) {
         </div>
       </div>
       <div className={app.katex_input_footer}>
-        <button className={app.modal_save} onClick={onClick}>
+        <button className={app.saveButton} onClick={onClick}>
           Save
         </button>
       </div>

@@ -251,6 +251,7 @@
 	flex-grow: 0px;
 	flex-shrink: 1px;
 	z-index: 100;
+	background-color: #2f2f2fa1;
 }
 
 .modal_main {
@@ -631,7 +632,6 @@ textarea.katex_input_text_area {
 
 .image_dialog {
 	margin-top: $margin2;
-	height: 150px;
 }
 
 .file_upload {
