@@ -24,8 +24,6 @@ export type SerializedPlot3DNode = Spread<
 
 export class Plot3DNode extends DecoratorNode<JSX.Element> {
   __z_expression: string;
-  __x_variable: string;
-  __y_variable: string;
   __fov: number;
   __position: Triple<number>;
   __near: number;
@@ -44,8 +42,6 @@ export class Plot3DNode extends DecoratorNode<JSX.Element> {
 
   constructor(
     z_expression: string,
-    x_variable?: string,
-    y_variable?: string,
     segments?: number,
     fov?: number,
     position?: Triple<number>,
@@ -65,8 +61,6 @@ export class Plot3DNode extends DecoratorNode<JSX.Element> {
   ) {
     super(nodeKey);
     this.__z_expression = z_expression;
-    this.__x_variable = x_variable || "x";
-    this.__y_variable = y_variable || "y";
     this.__segments = segments || 100;
     this.__fov = fov || 60;
     this.__position = position || [12, 5, 12];
@@ -87,8 +81,6 @@ export class Plot3DNode extends DecoratorNode<JSX.Element> {
   exportJSON(): SerializedPlot3DNode {
     return {
       z_expression: this.__z_expression,
-      x_variable: this.__x_variable,
-      y_variable: this.__y_variable,
       fov: this.__fov,
       position: this.__position,
       near: this.__near,
@@ -112,8 +104,6 @@ export class Plot3DNode extends DecoratorNode<JSX.Element> {
   static importJSON(serializedNode: SerializedPlot3DNode): Plot3DNode {
     const {
       z_expression,
-      x_variable,
-      y_variable,
       segments,
       fov,
       position,
@@ -132,8 +122,6 @@ export class Plot3DNode extends DecoratorNode<JSX.Element> {
     } = serializedNode;
     const node = $createPlot3DNode({
       z_expression,
-      x_variable,
-      y_variable,
       segments,
       fov,
       position,
@@ -159,8 +147,6 @@ export class Plot3DNode extends DecoratorNode<JSX.Element> {
   static clone(node: Plot3DNode): Plot3DNode {
     return new Plot3DNode(
       node.__z_expression,
-      node.__x_variable,
-      node.__y_variable,
       node.__segments,
       node.__fov,
       node.__position,
@@ -192,8 +178,6 @@ export class Plot3DNode extends DecoratorNode<JSX.Element> {
       <Suspense fallback={null}>
         <Plot3d
           z_expression={this.__z_expression}
-          x_variable={this.__x_variable}
-          y_variable={this.__y_variable}
           segments={this.__segments}
           fov={this.__fov}
           position={this.__position}
@@ -215,8 +199,6 @@ export class Plot3DNode extends DecoratorNode<JSX.Element> {
 
 export function $createPlot3DNode({
   z_expression,
-  x_variable,
-  y_variable,
   segments,
   fov,
   position,
@@ -236,8 +218,6 @@ export function $createPlot3DNode({
   return $applyNodeReplacement(
     new Plot3DNode(
       z_expression,
-      x_variable,
-      y_variable,
       segments,
       fov,
       position,

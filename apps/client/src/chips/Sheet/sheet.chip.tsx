@@ -93,7 +93,7 @@ function CONTROL({ children }: Children) {
       <menu>
         <Button click={push("column")} label={"Add column"} />
         <Button click={push("row")} label={"Add row"} />
-        <Button click={setColumnTypes} label={"Plot 2D"} />
+        {/* <Button click={setColumnTypes} label={"Plot 2D"} /> */}
       </menu>
       {children}
     </Fragment>

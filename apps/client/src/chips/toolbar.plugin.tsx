@@ -44,6 +44,7 @@ import {
 import { $findMatchingParent } from "@lexical/utils";
 import {
   createContext,
+  Fragment,
   ReactNode,
   useCallback,
   useContext,
@@ -63,6 +64,7 @@ import {
   JustifyIcon,
   LeftIcon,
   ParametricIcon,
+  Plot1Icon,
   Plot3DIcon,
   RightIcon,
   StrikeIcon,
@@ -315,6 +317,7 @@ export function ToolbarPlugin({
         <FontFamilyFormat />
         <BlockTypeDropdown />
         <FigureDropdown />
+        <NewSheetButton />
       </div>
     </ToolbarContext.Provider>
   );
@@ -322,6 +325,8 @@ export function ToolbarPlugin({
 
 import { SlotLabel } from "./Inputs";
 import { SheetPrompt } from "./Sheet/sheet.prompt";
+import Plot2DPrompt from "./Plot2d/plot2d.prompt";
+import { Plot3DPrompt } from "./Plot3d/plot3d.prompt";
 
 function FontColor() {
   const { fontColor, enstyle } = useContext(ToolbarContext);
@@ -411,6 +416,26 @@ function FontFamilyFormat() {
   );
 }
 
+function NewSheetButton() {
+  const { activeEditor } = useEditor();
+  const [modal, showModal] = useModal();
+  return (
+    <Fragment>
+      <Button
+        label={"Spreadsheet"}
+        click={() =>
+          showModal((close) => (
+            <SheetPrompt
+              activeEditor={activeEditor}
+              onClose={close}
+            />
+          ))}
+      />
+      {modal}
+    </Fragment>
+  );
+}
+
 function FigureDropdown() {
   const { activeEditor } = useEditor();
   const [modal, showModal] = useModal();
@@ -419,10 +444,22 @@ function FigureDropdown() {
     <>
       <Dropdown title={"Figure"}>
         <Option
-          label={"Sheet"}
+          label={"Plot2D"}
+          icon={<Plot1Icon />}
           click={() =>
             showModal((close) => (
-              <SheetPrompt
+              <Plot2DPrompt
+                activeEditor={activeEditor}
+                onClose={close}
+              />
+            ))}
+        />
+        <Option
+          label={"Plot3D"}
+          icon={<Plot3DIcon />}
+          click={() =>
+            showModal((close) => (
+              <Plot3DPrompt
                 activeEditor={activeEditor}
                 onClose={close}
               />

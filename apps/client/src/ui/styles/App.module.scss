@@ -725,22 +725,25 @@ button.write_button {
 }
 
 .color_picker {
-	padding: 0.8rem;
+	padding: $pad3;
 	display: block;
 	margin: 0 auto;
+	background-color: rgb(44, 44, 44);
+	@include Card;
+	border-radius: 5px;
 }
 
 .color_picker_shell {
 	padding: 0;
 	font-family: $mainFont;
-	font-size: $xxsmall;
+	font-size: $xsmall;
 }
 
 .hex_input {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	color: $bray1;
+	color: $bray0;
 	margin-bottom: $margin3;
 }
 
@@ -861,6 +864,7 @@ button.write_button {
 	height: 16px;
 	width: 16px;
 	border-radius: 3px;
+	cursor: pointer;
 }
 
 .preview,
@@ -1190,6 +1194,7 @@ button.destroy_button[disabled] {
 	width: 100%;
 	font-size: 0.85rem;
 	color: $gray5;
+
 	menu {
 		// padding: 0;
 		margin: 0;
@@ -1203,6 +1208,7 @@ button.destroy_button[disabled] {
 		// border: 0;
 		background-color: rgb(226, 226, 226);
 		gap: 5px;
+
 		button {
 			border: 0;
 			border-radius: 2px;
@@ -1226,7 +1232,8 @@ button.destroy_button[disabled] {
 			width: 100%;
 		}
 
-		th.selected, td.selected {
+		th.selected,
+		td.selected {
 			background-color: rgb(238, 254, 254);
 			border: solid 2px rgb(117, 206, 227);
 		}
@@ -1504,49 +1511,84 @@ div.vertical {
 	}
 }
 
-.longwhitebutton {
+
+.form {
+	font-family: $mainFont;
+	font-size: $xsmall;
+	padding: $pad1;
+	width: 90vw;
+	position: relative;
+	footer {
+		padding-bottom: $pad8;
+		margin-top: $margin2;
+	}
+	.formsave {
+		@include BlueButton;
+		position: absolute;
+		bottom: 0;
+		right: 0;
+		margin: $margin2;
+	}
+	article {
+		padding: $pad1;
+		max-height: 40vh;
+		overflow-y: auto;
+		display: flex;
+		flex-wrap: wrap;
+		@include Scrollbar;
+		.card {
+			width: fit-content;
+			flex: 1;
+		}
+	}
+	section {
+		display: grid;
+		grid-template-columns: 2fr 8fr;
+		margin: $margin1 0;
+		padding: $pad1 $pad2;
+		position: relative;
+		section {
+			display: flex;
+			align-items: center;
+			justify-content: flex-start;
+			gap: 3px;
+		}
+	}
+
+	.checkform {
+		margin-left: $pad2;
+
+		.label {
+			label {
+				margin-left: $margin1;
+			}
+		}
+	}
+
+	.color_picker {
+		@include Shadow;
+		z-index: 10;
+		position: absolute;
+		left: 40%;
+	}
+}
+
+.card {
+	@include Shadow;
+	padding-bottom: $pad2;
+	margin: $margin2;
+	.delete {
+		border: 0;
+		font-size: $medium;
+		background-color: inherit;
+	}
+}
+
+.longbutton {
 	@include PlainButton;
 	width: 100%;
 }
 
-.formbody {
-	display: flex;
-	flex-wrap: wrap;
-	height: 280px;
-	overflow-y: auto;
-}
-
-.card {
-	margin: $margin1;
-	@include Shadow;
-	width: fit-content;
-
-	button.delete {
-		color: $orange6;
-		background-color: transparent;
-		border: 0;
-		font-size: $medium;
-	}
-
-}
-
-.node {
-	display: flex;
-	justify-content: space-between;
-	width: fit-content;
-	height: fit-content;
-	margin: $margin1;
-
-	.button {
-		height: 100%;
-		border: $line3;
-		margin-left: 3px;
-		padding: 2px 5px;
-	}
-}
-
-.box {
-	@include Shadow;
-	width: fit-content;
-	padding: $padtiny $pad1;
+.fullform article {
+	max-height: 70vh;
 }

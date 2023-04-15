@@ -1,14 +1,13 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
-import { makeFunction } from "@webtex/algom";
+import { createFunction, makeFunction } from "@webtex/algom";
 import { AxesHelper, DoubleSide, GridHelper, Vector3 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { ParametricGeometry } from "three/examples/jsm/geometries/ParametricGeometry";
+import { Figure } from "../PlotUtils";
 
 export type Plot3dProps = {
   z_expression: string;
-  x_variable?: string;
-  y_variable?: string;
   fov?: number;
   position?: [number, number, number];
   near?: number;
@@ -57,8 +56,6 @@ function CameraController() {
 
 export default function Plot3d({
   z_expression,
-  x_variable = "x",
-  y_variable = "y",
   segments = 100,
   fov = 60,
   position = [12, 5, 12],
@@ -76,12 +73,9 @@ export default function Plot3d({
   gridColor = "lightgrey",
 }: Plot3dProps) {
   const canvasSize = { width, height };
-  const ZFN: Function | string = makeFunction(z_expression, [
-    x_variable,
-    y_variable,
-  ]);
+  const ZFN: Function | string = createFunction(z_expression);
   if (typeof ZFN === "string") {
-    return <>compiler failure</>;
+    return <p>compiler failure</p>;
   }
   const Z = ZFN;
   const paramFunction = (x: number, y: number, target: Vector3) => {
@@ -93,22 +87,31 @@ export default function Plot3d({
     return z;
   };
   return (
-    <div style={{ ...canvasSize, margin: "auto", padding: "1.2em" }}>
-      <Canvas
-        camera={{ fov, position, near, far }}
-        onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
-      >
-        <CameraController />
-        <pointLight position={[0, 250, 0]} color={0xffffff} />
-        <primitive object={new AxesHelper(10)} />
-        <primitive object={new GridHelper(10, 10, gridColor, gridColor)} />
-        <Plot3dPath
-          paramFunction={paramFunction}
-          scale={scale}
-          segments={segments}
-        />
-      </Canvas>
-    </div>
+    <Figure
+      width={width}
+      height={height}
+      minWidth={100}
+      minHeight={100}
+      maxWidth={800}
+      maxHeight={800}
+    >
+      <div style={{ ...canvasSize, margin: "auto", padding: "1em" }}>
+        <Canvas
+          camera={{ fov, position, near, far }}
+          onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
+        >
+          <CameraController />
+          <pointLight position={[0, 250, 0]} color={0xffffff} />
+          <primitive object={new AxesHelper(10)} />
+          <primitive object={new GridHelper(10, 10, gridColor, gridColor)} />
+          <Plot3dPath
+            paramFunction={paramFunction}
+            scale={scale}
+            segments={segments}
+          />
+        </Canvas>
+      </div>
+    </Figure>
   );
 }
 

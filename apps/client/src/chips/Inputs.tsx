@@ -99,7 +99,7 @@ export function FileInput({
 
 type OptionalProps = {
   children?: ReactNode;
-  label: string;
+  label?: string;
   act: (x: boolean) => void;
   val: boolean;
 };
@@ -127,7 +127,7 @@ export function Optional({
           ref={checkbox}
           onChange={update}
         />
-        <label>{label}</label>
+        {label && <label>{label}</label>}
       </span>
       {val && children}
     </div>
@@ -358,7 +358,7 @@ export function NumberInput({
     act(maybenum);
   };
   const onKeyboardInput = (e: ChangeEvent<HTMLInputElement>) => {
-    setValue(e.target.value)
+    setValue(e.target.value);
     const newval = e.target.value;
     if (newval === "") return;
     const maybeNum = getNum(newval, !allowFloat);
@@ -491,12 +491,10 @@ export function SlotLabel({ children, of }: pSlotLabel) {
 }
 
 type pPalette = {
-  label: string;
   init?: string;
   act: (newcolor: string) => void;
 };
 export function Palette({
-  label,
   act,
   init = "#000",
 }: pPalette) {
@@ -507,15 +505,74 @@ export function Palette({
     act(c);
   };
   return (
-    <div className={app.palette}>
-      <SlotLabel of={label}>
-        <div
-          className={app.colorpreview}
-          style={{ backgroundColor: currentColor }}
-          onClick={() => setOpenColor(!openColor)}
-        />
-      </SlotLabel>
+    <Fragment>
+      <div
+        className={app.colorpreview}
+        style={{ backgroundColor: currentColor }}
+        onClick={() => setOpenColor(!openColor)}
+      />
       {openColor && <ColorPicker color={init} onChange={update} />}
+    </Fragment>
+  );
+}
+
+export type pForm = {
+  onSave?: () => void;
+  footers?: () => JSX.Element;
+  headers?: () => JSX.Element;
+  className?: string;
+};
+export function Form({
+  children,
+  headers,
+  onSave,
+  footers,
+  className,
+}: pForm & Children) {
+  return (
+    <menu className={app.form + (className ? " " + className : "")}>
+      {headers && <header>{headers()}</header>}
+      <article>
+        {children}
+      </article>
+      <footer>
+        {footers && footers()}
+        {onSave && (
+          <Button className={app.formsave} click={onSave} label={"Save"} />
+        )}
+      </footer>
+    </menu>
+  );
+}
+
+export type pField = {
+  name: string;
+};
+export function Field({ name, children }: pField & Children) {
+  return (
+    <section>
+      <label>{name}</label>
+      {children}
+    </section>
+  );
+}
+
+type pCard = {
+  onDelete?: () => void;
+};
+export function Card({ onDelete, children }: pCard & Children) {
+  return (
+    <div className={app.card}>
+      {onDelete && (
+        <header>
+          <Button
+            label={"\u00d7"}
+            click={onDelete}
+            className={app.delete}
+          />
+        </header>
+      )}
+      {children}
     </div>
   );
 }

@@ -89,7 +89,9 @@ export function Editor() {
             setIsFirstRender(false);
           }}
         />
-        <OnChangePlugin onChange={(editorState) => doc.current = editorState} />
+        <OnChangePlugin
+          onChange={(editorState) => doc.current = editorState}
+        />
         <ListPlugin />
         <LatexPlugin />
         <ImagePlugin />

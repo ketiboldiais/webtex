@@ -17,6 +17,9 @@ import { Quad } from "src/App";
 import { createFunction } from "@webtex/algom";
 import { area, line } from "d3-shape";
 
+export type RiemannMethod = "left" | "midpoint" | "right";
+
+
 export type IntegralData = {
   bounds: [number, number];
   color: string;
@@ -39,7 +42,7 @@ export type PlotFn = {
 export type RiemannDatum = {
   domain: [number, number];
   dx: number;
-  method: "left" | "midpoint" | "right";
+  method: RiemannMethod;
   color: string;
 };
 
