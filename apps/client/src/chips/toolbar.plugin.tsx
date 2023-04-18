@@ -162,8 +162,6 @@ export function ToolbarContextProvider({
   const [isCrossed, setIsCrossed] = useState(false);
   const [isSubscript, setIsSubscript] = useState(false);
   const [isSuperscript, setIsSuperscript] = useState(false);
-
-  const [bgColor, setBgColor] = useState(defaultBgColor);
   const [fontColor, setFontColor] = useState(defaultFontColor);
   /**
    * When the user makes a selection, we want to

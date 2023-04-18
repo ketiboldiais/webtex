@@ -1,0 +1,37 @@
+{
+  "name": "@webtex/vtex",
+  "type": "module",
+  "license": "ISC",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@visx/axis": "^3.0.0",
+    "@visx/scale": "^2.18.0",
+    "@webtex/algom": "workspace:*",
+    "@webtex/vtex": "workspace:*",
+    "d3-shape": "^3.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.8.1"
+  },
+  "devDependencies": {
+    "@types/d3-shape": "^3.1.1",
+    "@types/react": "^18.0.28",
+    "@types/react-dom": "^18.0.11",
+    "@vitejs/plugin-react": "^3.1.0",
+    "pathe": "^1.1.0",
+    "sass": "^1.59.3",
+    "typescript": "^4.9.3",
+    "typescript-plugin-css-modules": "^4.1.1",
+    "vite": "^4.2.0",
+    "vite-plugin-dts": "^2.3.0"
+  }
+}

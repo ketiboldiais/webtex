@@ -16,7 +16,7 @@ import {
 import { Editor, TextPlugin } from "./Editor";
 import { theme } from "./EditorConfig";
 import { ListItemNode, ListNode } from "@lexical/list";
-import { HeadingNode, QuoteNode } from "@lexical/rich-text";
+import { $isHeadingNode, HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { ExcalidrawNode, ExcalidrawPlugin } from "./Draw";
 import { ImageNode, ImagePlugin } from "./Image";
 import { LatexNode, LatexPlugin } from "./Latex";
@@ -36,7 +36,7 @@ import { ToolbarPlugin } from "./toolbar.plugin";
 import { nanoid } from "nanoid";
 import { BtnEvt, LiEvt } from "src/App";
 import { NodeEventPlugin } from "@lexical/react/LexicalNodeEventPlugin";
-import { RootNode } from "lexical";
+import { LineBreakNode, RootNode } from "lexical";
 
 export function Workspace() {
   const activeNote = getActiveNote();
@@ -129,22 +129,20 @@ function Main() {
       <Doc>
         <ToolbarPlugin />
         <Editor onSave={save}>
-          <NodeEventPlugin
-            nodeType={RootNode}
-            eventType={"keydown"}
-            eventListener={(_, editor) => {
-              editor.registerTextContentListener((title) => {
-                if (title.length < 30) {
-                  dispatch(setActiveNoteTitle({ id: activeNote.id, title }));
-                }
-              });
-            }}
-          />
           <HistoryPlugin />
           <TextPlugin />
           <ListPlugin />
           <LatexPlugin />
           <ImagePlugin />
+          <TitlePlugin
+            action={(title) =>
+              dispatch(
+                setActiveNoteTitle({
+                  id: activeNote.id,
+                  title,
+                }),
+              )}
+          />
           <Plot3DPlugin />
           <ParametricPlotPlugin />
           <ExcalidrawPlugin />
@@ -154,6 +152,28 @@ function Main() {
         </Editor>
       </Doc>
     </section>
+  );
+}
+
+function TitlePlugin({ action }: { action: (title: string) => void }) {
+  return (
+    <NodeEventPlugin
+      nodeType={RootNode}
+      eventType={"keydown"}
+      eventListener={(_, editor) => {
+        let lb = 0;
+        editor.registerMutationListener(LineBreakNode, (nodes) => {
+          for (let [n, m] of nodes) {
+            console.log(n, m);
+          }
+        });
+        editor.registerTextContentListener((title) => {
+          if (title.length < 30) {
+            action(title);
+          }
+        });
+      }}
+    />
   );
 }
 

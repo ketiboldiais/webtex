@@ -4,22 +4,14 @@ import { ChangeEventHandler, MouseEventHandler } from "react";
 import { Provider } from "react-redux";
 import { store } from "./state/state.js";
 import { Workspace } from "./chips/Workspace.js";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { Canvas } from "./test/test.canvas.js";
 
 export function App() {
   return (
     <Provider store={store}>
-      <BrowserRouter>
-        <Routes>
-          <Route path={"/"} element={<Workspace />} />
-          <Route path={"/canvas"} element={<Canvas />} />
-        </Routes>
-      </BrowserRouter>
+      <Workspace />
     </Provider>
   );
 }
-
 
 export type LiFn = MouseEventHandler<HTMLLIElement>;
 export type DivFn = MouseEventHandler<HTMLDivElement>;
