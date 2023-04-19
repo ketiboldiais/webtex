@@ -1,6 +1,6 @@
 import { MouseEventHandler, ReactNode } from "react";
 
-export type tButton = {
+export type _Button = {
   click?: MouseEventHandler<HTMLButtonElement>;
   label?: ReactNode;
   className?: string;
@@ -14,7 +14,7 @@ export function Button({
   className = "",
   title = "",
   disabled = false,
-}: tButton) {
+}: _Button) {
   return (
     <button
       onClick={click}
