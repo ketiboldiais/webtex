@@ -13,6 +13,7 @@ export type _Range = {
   trackClass?: string;
   thumbClass?: string;
   leftOffset?: number;
+  trackWidth?: string | number;
 };
 
 const getLeft = (leftOffset: number) => (x: number) => {
@@ -30,6 +31,7 @@ export function Range({
   trackClass,
   thumbClass,
   leftOffset = 8,
+  trackWidth = 170,
 }: _Range) {
   const calcLeft = getLeft(leftOffset);
   const initialPercent = percentage(val, max, min);
@@ -91,19 +93,61 @@ export function Range({
   };
 
   return (
-    <div className={mainClass}>
-      <header className={headerClass}>
+    <div
+      className={mainClass}
+      style={{
+        userSelect: "none",
+        fontSize: '0.8em'
+      }}
+    >
+      <header
+        className={headerClass}
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
         <div ref={displayValue}>{value.current}</div>
       </header>
-      <section className={rangeClass}>
+      <section
+        className={rangeClass}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         <span>{min}</span>
-        <span ref={sliderRef} className={trackClass}>
+        <div
+          ref={sliderRef}
+          className={trackClass}
+          style={{
+            position: "relative",
+            borderRadius: "3px",
+            height: "5px",
+            width: typeof trackWidth === "number"
+              ? `${trackWidth}px`
+              : trackWidth,
+            backgroundColor: "#ddd",
+          }}
+        >
           <div
             ref={thumbRef}
             className={thumbClass}
             onPointerDown={onPtrDown}
+            style={{
+              width: "10px",
+              height: "10px",
+              borderRadius: "50%",
+              position: "relative",
+              top: "-4px",
+              cursor: "pointer",
+              border: "solid thin grey",
+              backgroundColor: 'inherit'
+            }}
           />
-        </span>
+        </div>
         <span>{max}</span>
       </section>
     </div>

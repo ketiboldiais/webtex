@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { CSSProperties, useState } from "react";
 import { NumberInput } from "./number.input";
 
 export type _Interval = {
@@ -33,10 +33,18 @@ export function IntervalInput({
     setInterval([interval[0], newMax]);
     act([interval[0], newMax]);
   };
+  
+  const style:CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: '50% 50%',
+    gap: '4px',
+    width: '100%'
+  }
 
   return (
-    <div className={mainClass}>
+    <div className={mainClass} style={style}>
       <NumberInput
+        noButtons
         val={interval[0]}
         act={updateMin}
         real={real[0]}
@@ -47,6 +55,7 @@ export function IntervalInput({
 				step={steps[0]}
       />
       <NumberInput
+        noButtons
         val={interval[1]}
         act={updateMax}
         real={real[1]}

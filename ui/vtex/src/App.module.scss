@@ -1,6 +1,12 @@
 .app {
-	display: flex;
-	place-items: center;
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
 	text-rendering: optimizeLegibility;
+	width: 100%;
+	article {
+		display: block;
+	}
+}
+
+.fig {
+	padding: 0 3em;
 }

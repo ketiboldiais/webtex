@@ -1,0 +1,1 @@
+export const translate = (x:number=0, y:number=0) => `translate(${x}, ${y})`;

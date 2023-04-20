@@ -1,6 +1,7 @@
 import { scaleLinear } from "@visx/scale";
-import { CSSProperties, Fragment, ReactNode, useState } from "react";
+import { ReactNode } from "react";
 import { Axis, AxisScale } from "@visx/axis";
+import { SVG } from "../core/svg";
 
 interface Plot2Axis {
   ticks: number;
@@ -60,61 +61,6 @@ export function Clip({ id, width, height }: ClipProps) {
     </defs>
   );
 }
-export function svgDimensions(
-  width: number,
-  height: number,
-  margins: [number, number, number, number],
-) {
-  const [marginTop, marginRight, marginBottom, marginLeft] = margins;
-  const svgWidth = width - marginLeft - marginRight;
-  const svgHeight = height - marginTop - marginBottom;
-  return [svgWidth, svgHeight];
-}
-
-export type SVGProps = {
-  width?: number;
-  height?: number;
-  top?: number;
-  right?: number;
-  bottom?: number;
-  left?: number;
-  children?: ReactNode;
-};
-
-export function SVG({
-  width = 500,
-  height = 500,
-  top = 5,
-  left = 10,
-  right = 0,
-  bottom = 0,
-  children,
-}: SVGProps) {
-  const VB = `0 0 ${width} ${height}`;
-  const figstyle: CSSProperties = {
-    display: "block",
-    position: "relative",
-    width: `100%`,
-    paddingBottom: `${100 * (height / width)}%`,
-    overflow: "hidden",
-  };
-  const svgCSS: CSSProperties = {
-    display: "inline-block",
-    position: "absolute",
-    top: `${top}%`,
-    left: `${left}%`,
-    right: `${right}%`,
-    bottom: `${bottom}%`,
-  };
-  const par = "xMidYMid meet";
-  return (
-    <div style={figstyle}>
-      <svg viewBox={VB} preserveAspectRatio={par} style={svgCSS}>
-        {children}
-      </svg>
-    </div>
-  );
-}
 
 export type Children = { children?: ReactNode };
 export type Quad<t> = [t, t, t, t];
@@ -150,17 +96,6 @@ export type RiemannDatum = {
   color: string;
 };
 
-export interface IPlot2d {
-  functions?: PlotFn[];
-  samples?: number;
-  domain?: [number, number];
-  range?: [number, number];
-  width?: number;
-  height?: number;
-  ticks?: number;
-  margins?: Quad<number>;
-}
-
 export const defaults: PlotFn[] = [
   {
     fn: "f(x) = x^3",
@@ -176,66 +111,80 @@ export const defaults: PlotFn[] = [
   },
 ];
 
-export const DEFAULT_SVG_WIDTH = 500;
-export const DEFAULT_SVG_HEIGHT = 500;
-export const DEFAULT_SVG_MARGINS: Quad<number> = [30, 30, 30, 30];
+export interface IPlot2d {
+  functions?: PlotFn[];
+  samples?: number;
+  domain?: [number, number];
+  range?: [number, number];
+  width?: number;
+  height?: number;
+  ticks?: number;
+  margin?: number;
+  className?: string;
+}
+
+const shift = (x: number, y: number) => `translate(${x},${y})`;
 
 export function Plot2D({
   functions = defaults,
   domain = [-10, 10],
   range = [-10, 10],
   ticks = 10,
-  width = DEFAULT_SVG_WIDTH,
-  height = DEFAULT_SVG_HEIGHT,
-  margins = DEFAULT_SVG_MARGINS,
+  width = 500,
+  height = 500,
+  margin = 50,
   samples = 170,
+  className="",
 }: IPlot2d) {
-  const [svgWidth, svgHeight] = svgDimensions(width, height, margins);
+  const svgWidth = width - margin;
+  const svgHeight = height - margin;
   return (
-    <SVG width={width} height={height}>
-      <Clip id={"plot2d"} width={svgWidth} height={svgHeight} />
-      <ScaleProvider
-        range={range}
-        domain={domain}
-        width={svgWidth}
-        height={svgHeight}
-      >
-        <YAxis ticks={ticks} />
-        <XAxis ticks={ticks} />
-        <g clipPath={`url(#plot2d)`}>
-          {functions.map((fn) => (
-            <FunctionProvider key={fn.fn + fn.id} fn={fn.fn}>
-              <ColorGroup color={fn.color}>
-                <ComputedPath
-                  samples={fn.samples || samples}
-                  range={fn.range}
-                  domain={fn.domain}
-                />
-              </ColorGroup>
-              {fn.riemann && (
-                !isNaN(fn.riemann.domain[0]) &&
-                !isNaN(fn.riemann.domain[1])
-              ) && (
-                <ColorGroup color={fn.riemann.color}>
-                  <RiemannPlot {...fn.riemann} />
-                </ColorGroup>
-              )}
-              {fn.integrate && (
-                !isNaN(fn.integrate.bounds[0]) &&
-                !isNaN(fn.integrate.bounds[1])
-              ) && (
-                <ColorGroup fill={fn.integrate.color}>
-                  <Integral
-                    samples={fn.samples}
-                    bounds={fn.integrate.bounds}
-                    max={fn.domain[1]}
+    <SVG width={width} height={height} className={className}>
+      <g transform={shift(margin / 2, margin / 2)}>
+        <Clip id={"plot2d"} width={svgWidth} height={svgHeight} />
+        <ScaleProvider
+          range={range}
+          domain={domain}
+          width={svgWidth}
+          height={svgHeight}
+        >
+          <YAxis ticks={ticks} />
+          <XAxis ticks={ticks} />
+          <g clipPath={`url(#plot2d)`}>
+            {functions.map((fn) => (
+              <FunctionProvider key={fn.fn + fn.id} fn={fn.fn}>
+                <ColorGroup color={fn.color}>
+                  <ComputedPath
+                    samples={fn.samples || samples}
+                    range={fn.range}
+                    domain={fn.domain}
                   />
                 </ColorGroup>
-              )}
-            </FunctionProvider>
-          ))}
-        </g>
-      </ScaleProvider>
+                {fn.riemann && (
+                  !isNaN(fn.riemann.domain[0]) &&
+                  !isNaN(fn.riemann.domain[1])
+                ) && (
+                  <ColorGroup color={fn.riemann.color}>
+                    <RiemannPlot {...fn.riemann} />
+                  </ColorGroup>
+                )}
+                {fn.integrate && (
+                  !isNaN(fn.integrate.bounds[0]) &&
+                  !isNaN(fn.integrate.bounds[1])
+                ) && (
+                  <ColorGroup fill={fn.integrate.color}>
+                    <Integral
+                      samples={fn.samples}
+                      bounds={fn.integrate.bounds}
+                      max={fn.domain[1]}
+                    />
+                  </ColorGroup>
+                )}
+              </FunctionProvider>
+            ))}
+          </g>
+        </ScaleProvider>
+      </g>
     </SVG>
   );
 }
@@ -525,29 +474,5 @@ function ComputedPath({ range, domain, samples }: pComputedPath) {
     />
   );
 }
-
 type Point = [number, number];
-
 type Points = Point[];
-
-type BasePlotUpdate = (d: Partial<BasePlotFn>) => void;
-
-type RiemannUpdate = (d: Partial<RiemannDatum>) => void;
-const defaultPayload: PlotFn = {
-  fn: "",
-  id: "demo",
-  domain: [-10, 10],
-  range: [-10, 10],
-  samples: 170,
-  color: "#ff0000",
-  riemann: {
-    domain: [NaN, NaN],
-    dx: 0.5,
-    method: "left",
-    color: "#ff0000",
-  },
-  integrate: {
-    bounds: [NaN, NaN],
-    color: "#ff0000",
-  },
-};

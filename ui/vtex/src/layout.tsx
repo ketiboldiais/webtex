@@ -3,6 +3,7 @@ export default function Layout() {
   const navLinks = [
     { href: "/", title: "Introduction" },
     { href: "plot2d", title: "Plot2D" },
+    { href: "graph", title: "Graph" },
   ];
   <li>
     <NavLink to={"/"}>Home</NavLink>

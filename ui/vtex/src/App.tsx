@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Home from "./pages/home.page.js";
 import Plot2DPage from "./pages/plot2d.page";
 import Layout from "./layout";
+import GraphPage from "./pages/graph.page";
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
           <Route element={<Layout />}>
             <Route path={"/"} element={<Home />} />
             <Route path={"plot2d"} element={<Plot2DPage />} />
+            <Route path={"graph"} element={<GraphPage />} />
           </Route>
         </Routes>
       </Router>

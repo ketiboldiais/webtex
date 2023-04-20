@@ -1,5 +1,5 @@
 import { verifyNumber } from "@webtex/algom";
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { CSSProperties, ChangeEvent, useEffect, useRef, useState } from "react";
 
 function getNum(x: string, integerOnly: boolean = true) {
   const { num, kind } = verifyNumber(x);
@@ -50,6 +50,7 @@ export type _NumberInput = {
   minusClass?: string;
   addClass?: string;
   step?: number;
+  noButtons?: boolean;
 };
 
 export function NumberInput({
@@ -63,6 +64,7 @@ export function NumberInput({
   mainClass = "",
   minusClass = "",
   addClass = "",
+  noButtons = false,
 }: _NumberInput) {
   const [value, setValue] = useState(`${val}`);
   const inputRef = useRef<null | HTMLInputElement>(null);
@@ -115,16 +117,25 @@ export function NumberInput({
     elem.addEventListener("keydown", handleKeyDown);
     return () => elem.removeEventListener("keydown", handleKeyDown);
   }, [canMinus, canPlus]);
+  
+  const btn:CSSProperties = {
+    border: 'solid thin grey',
+    padding: '2px 5px',
+    backgroundColor: 'inherit',
+  }
 
   return (
     <div className={mainClass}>
-      <button
-        className={minusClass}
-        disabled={!canMinus}
-        onClick={onMinusClick}
-      >
-        {"-"}
-      </button>
+      {!noButtons && (
+        <button
+          className={minusClass}
+          disabled={!canMinus}
+          onClick={onMinusClick}
+          style={{...btn, borderRight: 0}}
+        >
+          {"-"}
+        </button>
+      )}
       <input
         ref={inputRef}
         type={"number"}
@@ -134,13 +145,16 @@ export function NumberInput({
         value={value}
         onChange={onKeyboardInput}
       />
-      <button
-        className={addClass}
-        disabled={!canPlus}
-        onClick={onPlusClick}
-      >
-        {"+"}
-      </button>
+      {!noButtons && (
+        <button
+          className={addClass}
+          disabled={!canPlus}
+          onClick={onPlusClick}
+          style={{...btn, borderLeft: 0}}
+        >
+          {"+"}
+        </button>
+      )}
     </div>
   );
 }

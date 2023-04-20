@@ -1,3 +1,5 @@
+import {Plot2DMenu} from "../lib/inputs/form.input";
+
 export default function Home() {
 	return (
 		<div>
