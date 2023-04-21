@@ -8,7 +8,7 @@ export default function Plot2DPage() {
     <article>
       <h2>Plot2D</h2>
       <p>The Plot2D module is 2D function plotter.</p>
-      <Plot2D className={css.fig}/>
     </article>
   );
 }
+
