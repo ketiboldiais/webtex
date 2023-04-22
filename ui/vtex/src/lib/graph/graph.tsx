@@ -15,6 +15,7 @@ import {
   SimulationNodeDatum,
 } from "d3-force";
 import { translate } from "../utils/aux";
+import { Anchor } from "../types";
 
 export interface GraphNode extends SimulationNodeDatum {
   id: string;
@@ -27,7 +28,6 @@ export interface GraphNode extends SimulationNodeDatum {
 function isGraphNode<t>(node: number | string | t): node is t {
   return typeof node !== "number" && typeof node !== "string";
 }
-type _TextAnchor = "start" | "middle" | "end";
 
 export class GraphNode {
   id: string = uid(10);
@@ -39,7 +39,7 @@ export class GraphNode {
   FontFamily: string = "inherit";
   TextDX: number = 0;
   TextDY: number = 0;
-  TextAnchor: _TextAnchor = "middle";
+  TextAnchor: Anchor = "middle";
   constructor(data: string) {
     this.Data = data;
   }
@@ -105,7 +105,7 @@ export class GraphNode {
     clone.textAnchor(node.TextAnchor);
     return clone;
   }
-  textAnchor(anchor: _TextAnchor) {
+  textAnchor(anchor: Anchor) {
     const self = this.getWritable();
     self.TextAnchor = anchor;
     return this;
