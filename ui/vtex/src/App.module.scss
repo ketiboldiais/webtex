@@ -1,12 +1,174 @@
+@mixin dark-mode {
+  background-color: rgb(53, 53, 53);
+  color: white;
+  .nav {
+    background-color: rgb(39, 39, 39);
+  }
+  .plot2d {
+    fill: white;
+    line {
+      stroke: rgb(237, 237, 237);
+    }
+  }
+  .blueGraph {
+    circle {
+      fill: rgb(181, 208, 231);
+      stroke: rgb(80, 206, 206);
+    }
+    marker {
+      fill: rgb(80, 206, 206);
+    }
+    line {
+      stroke: rgb(80, 206, 206);
+    }
+    text {
+      fill: rgb(199, 199, 199);
+    }
+  }
+  .redGraph {
+    circle {
+      fill: tomato;
+    }
+    line {
+      stroke: firebrick;
+    }
+    text {
+      fill: rgb(199, 199, 199);
+    }
+  }
+}
+@mixin light-mode {
+  background-color: white;
+  color: rgb(38, 38, 38);
+  .plot2d {
+    fill: rgb(39, 39, 39);
+    line {
+      stroke: rgb(39, 39, 39);
+    }
+  }
+  .blueGraph {
+    circle {
+      fill: rgb(166, 186, 203);
+      stroke: rgb(70, 111, 111);
+    }
+    marker {
+      fill: rgb(71, 106, 106);
+    }
+    line {
+      stroke: rgb(46, 102, 102);
+    }
+    text {
+      fill: rgb(72, 103, 128);
+    }
+  }
+  .redGraph {
+    circle {
+      fill: rgb(232, 157, 143);
+      stroke: rgb(106, 20, 20);
+    }
+    line {
+      stroke: firebrick;
+    }
+    text {
+      fill: rgb(92, 92, 92);
+    }
+  }
+}
+
+.dark {
+  @include dark-mode;
+}
+
+.light {
+  @include light-mode;
+}
+
 .app {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-	text-rendering: optimizeLegibility;
-	width: 100%;
-	article {
-		display: block;
-	}
+  text-rendering: optimizeLegibility;
+  width: 100%;
+  height: 100vh;
+  font-size: 1.1em;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  main {
+    margin-top: 50px;
+    height: 100vh;
+    width: 100vw;
+    overflow-y: auto;
+  }
+  p {
+    line-height: 1.5;
+  }
+  article {
+    :not(pre) code {
+      font-size: 0.9em;
+      padding: 1px 4px;
+      border-radius: 5px;
+    }
+    h1 {
+      text-align: left;
+      margin: 5% 0;
+    }
+    display: block;
+    width: 90%;
+    padding: 1vh 5%;
+    padding-bottom: 10vh;
+  }
+  table {
+    width: 100%;
+  }
+  td {
+    padding: 0.5em 1em;
+  }
+  table,
+  td,
+  th {
+    border: solid thin lightgrey;
+    border-collapse: collapse;
+  }
 }
 
 .fig {
-	padding: 0 3em;
+  padding: 0 3em;
+}
+
+.nav {
+  position: sticky;
+  box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px,
+    rgba(60, 64, 67, 0.15) 0px 2px 6px 2px;
+  top: 0;
+  bottom: 0;
+  height: 30px;
+  padding: 1%;
+  margin: 0;
+  width: 98%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  button {
+    font-size: 1em;
+    text-align: center;
+    padding: 0;
+    height: 30px;
+    width: 30px;
+    cursor: pointer;
+  }
+  ul {
+    list-style: none;
+    padding: 0 10px;
+    margin: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 2vw;
+    a {
+      color: inherit;
+    }
+  }
 }
