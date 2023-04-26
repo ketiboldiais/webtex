@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 /* eslint-disable no-unused-vars */
 import {
   forceCenter,
@@ -11,15 +12,22 @@ import {
   SimulationLinkDatum,
   SimulationNodeDatum,
 } from "d3-force";
-import { _Anchor, _Arrow, arrow, Arrows, Group, Label } from "..";
-import { getCenter, N2 } from "../path/path";
+import {
+  Circular,
+  Classable,
+  Colorable,
+  Movable,
+  nonnull,
+  Sketchable,
+  Spatial,
+  Textual,
+  Unique,
+} from "../core/core.utils";
 import { SVG } from "../svg";
-import { Visitor } from "../visitor";
-import { value } from "../packer";
-import { Anchor } from "../types";
-import { uid } from "@webtex/algom";
-
-const centerForce = (x: number, y: number) => forceCenter(x, y);
+import { ArrowHead, getCenter, N2 } from "../path/path";
+import { Group } from "../group/group.main";
+import { ReactNode, SVGProps } from "react";
+import { Arrows } from "../path/path";
 
 export type FX = ForceX<SimulationNodeDatum>;
 export type FY = ForceY<SimulationNodeDatum>;
@@ -32,371 +40,508 @@ export const newForce = <t extends FX | FY>(
   return f(dimension).strength(strength) as t;
 };
 
-export interface $NODE extends SimulationNodeDatum {
-  value: string;
-  id: string;
-  radius: number;
-}
-
-export class NODE {
-  _styles?: any;
-  accept<t>(visitor: Visitor<t>): t {
-    return visitor.node(this);
-  }
-  _value: string = "";
-  constructor(value: string) {
-    this._value = value;
-  }
-  _radius?: number;
-  radius(value: number) {
-    this._radius = value;
-    return this;
-  }
-  getData() {
-    const val = this._value;
-    const id = uid(10);
-    const radius = value(this._radius, 5);
-    return { value: val, id, radius };
-  }
-  clone() {
-    const self = this;
-    const copy = node(self._value);
-    return copy;
-  }
-  link(node: StyledNode) {
-    const self = this;
-    const copy = self.clone();
-    const result = edge(copy, node);
-    result.directed(false);
-    return result;
-  }
-  to(node: StyledNode) {
-    const self = this;
-    const copy = self.clone();
-    const result = edge(copy, node);
-    result.directed(true);
-    return result;
-  }
-  style(value: any) {
-    this._styles = value;
-    return this;
+export type FigType = "vertex" | "node" | "edge" | "graph";
+export class ATOM {
+  type: FigType;
+  constructor(type: FigType) {
+    this.type = type;
   }
 }
-import { Classable, Colorable, Movable, Sketchable, Textual } from "..";
-export const STYLED_NODE = Classable(
-  Textual(Movable(Sketchable(Colorable(NODE)))),
-);
-export const node = (value: string) => new STYLED_NODE(value);
-type StyledNode = ReturnType<typeof node>;
 
-export type $EDGE = {
-  source: $NODE;
-  target: $NODE;
-  isLoop: boolean;
-  isDirected: boolean;
-  id: string;
-};
-
-export class EDGE {
-  _styles?: any;
-  accept<t>(visitor: Visitor<t>): t {
-    return visitor.edge(this);
+export class VERTEX extends ATOM {
+  value: string | number;
+  constructor(value: string | number) {
+    super("vertex");
+    this.value = value;
   }
-  source: StyledNode;
-  target: StyledNode;
-  isDirected: boolean = false;
-  isLoop: boolean = false;
-
-  getData() {
-    const source = this.source.getData();
-    const target = this.target.getData();
-    const isLoop = this.isLoop;
-    const isDirected = this.isDirected;
-    const id = uid(10);
+  data() {
+    const value = this.value;
     return {
-      source,
-      target,
-      isLoop,
-      isDirected,
-      id,
+      value,
     };
   }
-
-  clone() {
-    const directed = this.isDirected;
-    const loop = this.isLoop;
-    const source = this.source.clone();
-    const target = this.target.clone();
-    const edge = new EDGE(source, target);
-    edge.directed(directed);
-    edge.loop(loop);
-    return edge;
+  /**
+   * Creates a new, directed edge.
+   * Styles may or may not be retained
+   * on the source node.
+   */
+  to(target: $NODE): $LINK {
+    const source = node(this.value);
+    const out = edge(source, target);
+    return out.directed();
   }
+  /**
+   * Creates a new, undirected
+   * edge. Styles may or may not
+   * be retained on the source node.
+   */
+  link(target: $NODE): $LINK {
+    const source = node(this.value);
+    return edge(source, target);
+  }
+  /**
+   * Creates a new double link.
+   * Styles may or may not be
+   * retained on the source node.
+   */
+  mutual(target: $NODE): $LINK {
+    const source = node(this.value);
+    const out = edge(source, target);
+    return out.bilink();
+  }
+}
 
-  constructor(
-    source: StyledNode,
-    end: StyledNode,
-  ) {
+export function node(value: string | number) {
+  const NodeObject = Classable(
+    Textual(
+      Movable(
+        Sketchable(
+          Circular(
+            Colorable(
+              Unique(VERTEX),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  return new NodeObject(value);
+}
+
+export type $NODE = ReturnType<typeof node>;
+interface GraphNode extends SimulationNodeDatum {
+  value: string | number;
+  id: string;
+}
+
+export const isNode = (
+  x: ATOM,
+): x is $NODE => x.type === "vertex";
+
+export class EDGE extends ATOM {
+  source: $NODE;
+  targets: $NODE[];
+  weight?: number;
+  constructor(source: $NODE, target: $NODE) {
+    super("edge");
     this.source = source;
-    this.target = end;
+    this.targets = [target];
+  }
+  link(node: $NODE) {
+    this.targets.push(node);
+    return this;
+  }
+  /**
+   * Assigns the given value
+   * as a weight to the edge.
+   */
+  weighed(value: number) {
+    this.weight = value;
+    return this;
   }
 
-  setTarget(node: StyledNode) {
-    const self = this;
-    self.target = node;
-    return self;
-  }
-
-  setSource(node: StyledNode) {
-    const self = this;
-    self.source = node;
-    return self;
-  }
-
-  directed(value: boolean) {
+  isDirected?: boolean;
+  /**
+   * If called, sets the
+   * edge’s `_isDirected` property
+   * to `true`, indicating that the
+   * edge is directed.
+   */
+  directed(value: boolean = true) {
     this.isDirected = value;
     return this;
   }
 
+  isBilink?: boolean;
+  /**
+   * If called, sets the edge’s
+   * `bilink` property to true.
+   * This will render a 2-way edge.
+   */
+  bilink() {
+    this.isBilink = true;
+    return this;
+  }
+
+  isCurved?: boolean;
+  curved(value: boolean = true) {
+    this.isCurved = value;
+    return this;
+  }
+
+  isLoop?: boolean;
   loop(value: boolean = true) {
     this.isLoop = value;
     return this;
   }
 }
 
-export const edge = (
-  start: StyledNode,
-  end: StyledNode,
-) => new EDGE(start, end);
+export function edge(source: $NODE, target: $NODE) {
+  const LINK = Unique(
+    Classable(Textual(Movable(Sketchable(Colorable(EDGE))))),
+  );
+  return new LINK(source, target);
+}
 
-export type $LINK = SimulationLinkDatum<$NODE> & $EDGE;
-export type $GRAPH = {
-  links: $EDGE[];
-  nodes: $NODE[];
-  hasLoop: boolean;
-  isDirected: boolean;
-  width: number;
-  height: number;
-  margin: number;
-  arrows: _Arrow[];
+export type $LINK = ReturnType<typeof edge>;
+
+type AtomicValue = string | number;
+type GraphEdge = {
+  [key: AtomicValue]: {
+    edges: { value: string }[];
+  };
 };
-export class GRAPH {
-  _styles?: any;
-  accept<t>(visitor: Visitor<t>): t {
-    return visitor.graph(this);
-  }
-  edges: EDGE[];
-  HasLoop: boolean = false;
-  hasLoop(value: boolean) {
-    this.HasLoop = value;
-    return this;
-  }
-  IsDirected: boolean = false;
-  isDirected(value: boolean) {
-    this.IsDirected = value;
-    return this;
-  }
-  MaxCharge: number = 50;
-  Margin: number = 50;
-  Width: number = 500;
-  Height: number = 500;
-  ForceX: number = 0;
-  ForceY: number = 0;
-  EdgeLength?: number;
-  EdgeCharge?: number;
-  Charge: number = -150;
-  Center: N2 = [this.getWidth() / 2, this.getHeight() / 2];
+type GraphLink = SimulationLinkDatum<GraphNode> & $LINK;
+type EdgeList = (GraphLink)[];
+const build = (payload: ($LINK | $NODE)[], fallbackStroke: string) => {
+  const graph: GraphEdge = {};
+  const nodes: $NODE[] = [];
+  const edges: EdgeList = [];
+  const uids = new Set<string | number>();
+  const nodemap: { [key: AtomicValue]: $NODE } = {};
+  const tempEdges = [];
+  const arrows: ArrowHead[] = [];
+  for (let i = 0; i < payload.length; i++) {
+    const datum = payload[i];
+    if (isNode(datum)) {
+      if (!graph[datum.value]) {
+        const entry = { edges: [] };
+        graph[datum.value] = entry;
+        datum.setID(datum.value);
+      }
+      if (!uids.has(datum.value)) {
+        nodes.push(datum);
+        uids.add(datum.value);
+        nodemap[datum.value] = datum;
+      }
+      continue;
+    }
+    const edgeList = datum.targets;
+    const edgeCount = edgeList.length;
+    const source = datum.source;
 
-  constructor(edges: EDGE[]) {
-    this.edges = edges;
+    if (!uids.has(source.value)) {
+      nodes.push(source);
+      uids.add(source.value);
+      nodemap[source.value] = source;
+    }
+
+    for (let e = 0; e < edgeCount; e++) {
+      const edge = edgeList[e];
+      const target = edge;
+      if (!uids.has(target.value)) {
+        nodes.push(target);
+        uids.add(target.value);
+        nodemap[target.value] = target;
+      }
+      if (!graph[source.value]) {
+        const entry = { edges: [] };
+        graph[source.value] = entry;
+      }
+      graph[source.value].edges.push({
+        value: `${target.value}`,
+      });
+      const link: { source?: any; targets?: any } = { ...datum };
+      delete link.source;
+      delete link.targets;
+      tempEdges.push({
+        ...link,
+        source,
+        target,
+      });
+      if (datum.isDirected) {
+        const id = source.value + "-" + target.value;
+        const fill = nonnull(datum._stroke, fallbackStroke);
+        arrows.push({ id, fill });
+      }
+    }
   }
-  maxCharge(value: number) {
-    this.MaxCharge = value;
-    return this;
+  for (let i = 0; i < tempEdges.length; i++) {
+    const edge = tempEdges[i];
+    const sourceID = edge.source.value;
+    const targetID = edge.target.value;
+    const source = nodemap[sourceID];
+    const target = nodemap[targetID];
+    edges.push({ ...edge, source, target } as any as GraphLink);
   }
-  margin(value: number) {
-    this.Margin = value;
-    return this;
-  }
-  getMargin() {
-    return this.Margin;
-  }
-  getWidth() {
-    return this.Width - this.Margin;
-  }
-  width(value: number) {
-    this.Width = value;
-    return this;
-  }
-  height(value: number) {
-    this.Height = value;
-    return this;
-  }
-  getHeight() {
-    return this.Height - this.Margin;
-  }
-  forceX(value: number) {
-    this.ForceX = value;
-    return this;
-  }
-  forceY(value: number) {
-    this.ForceY = value;
-    return this;
+  const arrowIDs = Array.from(arrows);
+  return {
+    graph,
+    nodes,
+    edges,
+    nodemap,
+    arrowIDs,
+  };
+};
+
+type GraphData = ReturnType<typeof build>;
+
+export class GRAPH extends ATOM {
+  _shortestPath?: any;
+  data: GraphData;
+  constructor(edges: ($LINK | $NODE)[]) {
+    super("graph");
+    this.data = build(edges, "currentColor");
   }
 
-  edgeLength(value?: number) {
-    this.EdgeLength = value;
-    return this;
-  }
-
-  edgeCharge(value?: number) {
-    this.EdgeCharge = value;
-    return this;
-  }
-
-  charge(value: number) {
-    this.Charge = value;
-    return this;
-  }
-
+  Center?: N2;
   center(x: number, y: number) {
     this.Center = [x, y];
     return this;
   }
 
-  getGraphData(): $GRAPH {
-    const { nodelist, nodemap } = this.nodeList();
-    const edges = this.edges;
-    const hasLoop = this.HasLoop;
-    const isDirected = this.IsDirected;
-    const links: $EDGE[] = [];
-    const arrows: _Arrow[] = [];
-    for (let i = 0; i < edges.length; i++) {
-      const link = edges[i];
-      const sourceID = link.source._value;
-      const targetID = link.target._value;
-      const source = nodemap[sourceID];
-      const target = nodemap[targetID];
-      const L = { ...link.getData(), source, target };
-      if (link.isDirected) {
-        arrows.push(arrow(sourceID, targetID));
-      }
-      links.push(L);
-    }
-    const self = this;
+  Charge?: number;
+  charge(value: number) {
+    this.Charge = value;
+    return this;
+  }
+
+  MaxCharge?: number;
+  maxCharge(value: number) {
+    this.MaxCharge = value;
+    return this;
+  }
+
+  ForceX?: number;
+  forceX(value: number) {
+    this.ForceX = value;
+    return this;
+  }
+
+  ForceY?: number;
+  forceY(value: number) {
+    this.ForceY = value;
+    return this;
+  }
+
+  EdgeLength?: number;
+  edgeLength(value: number) {
+    this.EdgeLength = value;
+    return this;
+  }
+
+  EdgeCharge?: number;
+  edgeCharge(value: number) {
+    this.EdgeCharge = value;
+    return this;
+  }
+
+  getGraphData() {
+    const arrowIDs = this.data.arrowIDs;
+    const links = this.data.edges;
+    const nodes = this.data.nodes;
+    const [x, y] = nonnull(this.Center, [500, 500]);
     const linkForce = forceLink(links);
-    const charge = self.Charge;
+    const charge = nonnull(this.Charge, -150);
     const bodyForce = forceManyBody().strength(charge);
-    const [x, y] = self.Center;
-    const forceX = self.ForceX;
-    const forceY = self.ForceY;
-    const width = self.getWidth();
-    const height = self.getHeight();
-    const margin = self.Margin;
-    forceSimulation(nodelist)
+    const forceX = nonnull(this.ForceX, 0);
+    const forceY = nonnull(this.ForceY, 0);
+    forceSimulation(nodes as SimulatedNode[])
       .force("charge", bodyForce)
       .force("link", linkForce)
-      .force("center", centerForce(width / 2, height / 2))
+      .force("center", forceCenter(x / 2, y / 2))
       .force("x", newForce("x", x, forceX))
       .force("y", newForce("y", y, forceY))
       .stop()
       .tick(200);
-
     return {
       links,
-      nodes: nodelist,
-      hasLoop,
-      isDirected,
-      width,
-      height,
-      margin,
-      arrows,
+      nodes,
+      arrowIDs,
     };
   }
-  nodeList() {
-    const nodemap: Record<string, $NODE> = {};
-    const nodelist: $NODE[] = [];
-    const ids = new Set<string>();
-    const edges = this.edges;
-    for (let i = 0; i < edges.length; i++) {
-      const edge = edges[i];
-      const source = edge.source.getData();
-      if (!ids.has(source.value)) {
-        nodelist.push(source);
-        nodemap[source.value] = source;
-        ids.add(source.value);
-      }
-      const target = edge.target.getData();
-      if (!ids.has(target.value)) {
-        nodelist.push(target);
-        nodemap[target.value] = target;
-        ids.add(target.value);
-      }
-    }
-    return { nodelist, nodemap };
+  _edgeStyles?: SVGProps<SVGGElement>;
+  edgeStyles(props: SVGProps<SVGGElement>) {
+    this._edgeStyles = props;
+    return this;
   }
-  style(x: any) {}
+  _nodeStyles?: SVGProps<SVGGElement>;
+  nodeStyles(props: SVGProps<SVGGElement>) {
+    this._nodeStyles = props;
+    return this;
+  }
+  _noLabels?: boolean;
+  noLabels() {
+    this._noLabels = true;
+    return this;
+  }
+  _textStyles?: SVGProps<SVGTextElement>;
+  textStyles(props: SVGProps<SVGTextElement>) {
+    this._textStyles = props;
+    return this;
+  }
+  textCSS() {
+    const styles = this._textStyles;
+    const fontFamily = "inherit";
+    const fontSize = 10;
+    const fill = "currentColor";
+    const stroke = "none";
+    const textAnchor = "middle";
+    return {
+      fontFamily,
+      fontSize,
+      fill,
+      stroke,
+      textAnchor,
+      ...styles,
+    };
+  }
+  edgeCSS() {
+    const styles = this._edgeStyles;
+    const stroke = "currentColor";
+    const strokeWidth = 1;
+    return { stroke, strokeWidth, ...styles };
+  }
+  nodeCSS() {
+    const styles = this._nodeStyles;
+    const fill = "white";
+    const stroke = "currentColor";
+    const r: any = nonnull(styles?.r, 5);
+    return { fill, stroke, r, ...styles };
+  }
 }
 
-export const graph = (...edges: EDGE[]) => new GRAPH(edges);
+type SimulatedNode = GraphNode & $NODE;
 
-type _Graph = {
-  data: GRAPH;
-  className?: string;
-};
+const _GRAPH = Classable(Spatial(GRAPH));
 
-export function Graph({ data, className }: _Graph) {
-  const graphData = data.getGraphData();
-  const margin = graphData.margin;
-  const width = graphData.width - margin;
-  const height = graphData.height - margin;
+export type GraphObject = InstanceType<typeof _GRAPH>;
+
+export const graph = (
+  ...edges: ($LINK | $NODE)[]
+): GraphObject => new _GRAPH(edges);
+
+export type $GRAPH = ReturnType<typeof graph>;
+
+interface GraphAPI {
+  data: $GRAPH;
+}
+export function Graph({ data }: GraphAPI) {
+  const width = nonnull(data._height, 400);
+  const height = nonnull(data._width, 400);
+  const marginTop = nonnull(data._marginTop, 50);
+  const marginBottom = nonnull(data._marginBottom, 50);
+  const marginRight = nonnull(data._marginRight, 50);
+  const marginLeft = nonnull(data._marginLeft, 50);
+  const className = nonnull(data._class, "vtex-graph");
+  const W = width - marginLeft - marginRight;
+  const H = height - marginTop - marginBottom;
+  data.center(W, H);
+  const graph = data.getGraphData();
+  const edges = graph.links;
+  const nodes = graph.nodes;
+  const arrowIDs = graph.arrowIDs;
+  const edgeCSS = data.edgeCSS();
+  const nodeCSS = data.nodeCSS();
+  const textCSS = data.textCSS();
+  const labeled = nonnull(data._noLabels, true);
   return (
     <div>
-      <SVG width={width} height={height} className={className}>
-        {graphData.arrows.length && <Arrows data={graphData.arrows} />}
-        {graphData.links.map((link) => <Edge data={link} key={link.id} />)}
-        {graphData.nodes.map((node) => <Vertex data={node} key={node.id} />)}
+      <SVG width={W} height={H} className={className}>
+        {arrowIDs.length && <Arrows data={arrowIDs} />}
+        <g {...edgeCSS}>
+          {edges.map((link) => (
+            <Segment
+              r={nodeCSS.r}
+              key={link.id}
+              data={link}
+            />
+          ))}
+        </g>
+        <g {...nodeCSS}>
+          {nodes.map((node) => (
+            <Circle key={node.id} r={nodeCSS.r} data={node}>
+              {labeled && (
+                <g {...textCSS}>
+                  <NodeText
+                    data={node}
+                    dx={textCSS.dx || nodeCSS.r * 1.8}
+                    dy={textCSS.dy || -nodeCSS.r}
+                  />
+                </g>
+              )}
+            </Circle>
+          ))}
+        </g>
       </SVG>
+      <details>
+        <summary>debugger</summary>
+        <pre>
+          {JSON.stringify(data,null,2)}
+        </pre>
+      </details>
     </div>
   );
 }
 
-type _Edge = {
-  data: $LINK;
+type NodeTextAPI = {
+  data: SimulatedNode;
+  dy: number | string;
+  dx: number | string;
 };
-export function Edge({ data }: _Edge) {
-  const source = data.source;
-  const target = data.target;
-  const x1 = source.x || 1;
-  const y1 = source.y || 1;
-  let x2 = target.x || 1;
-  let y2 = target.y || 1;
-  const arrow = data.isDirected
-    ? `${source.value}-to-${target.value}`
+const NodeText = ({ data, dy, dx }: NodeTextAPI) => {
+  const xOffset = nonnull(data._dx, dx);
+  const yOffset = nonnull(data._dy, dy);
+  return (
+    <text
+      fontFamily={data._font}
+      fontSize={data._fontSize}
+      fill={data._color}
+      stroke={"none"}
+      dx={xOffset}
+      dy={yOffset}
+      textAnchor={data._textAnchor}
+    >
+      {data.value}
+    </text>
+  );
+};
+
+type _Segment = {
+  data: GraphLink;
+  r: number;
+};
+export function Segment({ data, r }: _Segment) {
+  const source = data.source as GraphNode & $NODE;
+  const target = data.target as GraphNode & $NODE;
+  const x1 = source.x;
+  const y1 = source.y;
+  let x2 = target.x;
+  let y2 = target.y;
+  const markerEnd = data.isDirected !== undefined
+    ? `url(#${source.value + "-" + target.value})`
     : undefined;
-
   if (data.isDirected || data.isLoop) {
-    const [x, y] = getCenter(x1, y1, x2, y2, target.radius);
-    x2 = x;
-    y2 = y;
+    const radius = nonnull(target._radius, r);
+    [x2, y2] = getCenter(x1, y1, x2, y2, radius);
   }
+  const stroke = nonnull(data._stroke, "inherit");
+  const strokeWidth = nonnull(data._strokeWidth, "inherit");
+  const strokeDasharray = nonnull(data._dashed, "inherit");
 
   return (
-    <Group markerEnd={arrow}>
+    <g {...{ stroke, strokeWidth, strokeDasharray, markerEnd }}>
       <line x1={x1} y1={y1} x2={x2} y2={y2} />
-    </Group>
+    </g>
   );
 }
 
-type _Vertex = {
-  data: $NODE;
+type _Circle = {
+  data: SimulatedNode;
+  r: string | number;
+  children?: ReactNode;
 };
-export function Vertex({ data }: _Vertex) {
+
+export function Circle({ data, r, children }: _Circle) {
+  const radius = nonnull(data._radius, r);
+  const fill = nonnull(data._fill, "inherit");
+  const stroke = nonnull(data._stroke, "inherit");
+  const dx = data.x;
+  const dy = data.y;
   return (
-    <Group dx={data.x} dy={data.y}>
-      <circle r={data.radius} />
+    <Group dx={dx} dy={dy}>
+      <circle r={radius} fill={fill} stroke={stroke} />
+      {children}
     </Group>
   );
 }
-
-export const isNode = (x: any): x is NODE => x instanceof NODE;

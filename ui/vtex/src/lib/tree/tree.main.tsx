@@ -1,12 +1,7 @@
 /* eslint-disable no-unused-vars */
-import { ATOM } from "../atom.type";
-import { isNode, NODE } from "../graph/graph.main";
-import { value } from "../packer";
-import { hierarchy, HierarchyLink, linkHorizontal, stratify } from "d3";
+import { hierarchy, linkHorizontal } from "d3";
 import {
-  HierarchyNode,
   HierarchyPointLink,
-  HierarchyPointNode,
   tree as d3tree,
 } from "d3-hierarchy";
 import { SVG } from "../svg";

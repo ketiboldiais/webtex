@@ -290,11 +290,11 @@ export const line = (start: N2, end: N2) => {
 };
 
 export function getCenter(
-  sourceX: number,
-  sourceY: number,
-  targetX: number,
-  targetY: number,
-  radius: number,
+  sourceX: number = 0,
+  sourceY: number = 0,
+  targetX: number = 0,
+  targetY: number = 0,
+  radius: number = 0,
 ) {
   const t_radius = radius;
   const dx = targetX - sourceX;
@@ -305,17 +305,12 @@ export function getCenter(
   return [tx, ty];
 }
 
-export const arrow = (
-  sourceData: string,
-  targetData: string,
-): _Arrow => ({
-  id: `${sourceData}-to-${targetData}`,
-});
-
-export type _Arrow = { id: string };
-
+export type ArrowHead = {
+  id:string;
+  fill:string;
+};
 export type _Arrows = {
-  data: _Arrow[];
+  data: ArrowHead[];
 };
 export function Arrows({ data }: _Arrows) {
   return (
@@ -324,13 +319,14 @@ export function Arrows({ data }: _Arrows) {
         <marker
           refX={10}
           refY={5}
-          key={arrow.id + i}
+          key={arrow.id+i}
           id={arrow.id}
           viewBox={"0 0 10 10"}
           markerUnits={"strokeWidth"}
           markerWidth={10}
           markerHeight={5}
           orient={"auto"}
+          fill={arrow.fill}
         >
           <path d={path(0, 0).L(10, 5).L(0, 10).close("z").value} />
         </marker>

@@ -2,20 +2,14 @@
 import { BrowserRouter, Link, Outlet, Route, Routes } from "react-router-dom";
 import css from "./App.module.scss";
 import Main from "./docs/main.mdx";
-import Graph from "./docs/graph.mdx";
-import DataTypes from "./docs/dataTypes.mdx";
-import Atom from "./docs/atom.mdx";
-import Plot2D from "./docs/plot2D.mdx";
 import Tree from "./docs/trees.mdx";
-import { ReactNode, useState } from "react";
+import GraphPage from './docs/graph.doc.mdx';
+import { ReactNode, useEffect, useState } from "react";
 
 export const docLinks = {
   Intro: "/",
-  Atom: "/atom",
-  Graph: "/graph",
-  Plot2D: "/plot2d",
+  Graphs: '/graph',
   Trees: "/tree",
-  ADTs: "/datatypes",
 };
 
 export const Pages = () => {
@@ -24,11 +18,8 @@ export const Pages = () => {
       <Routes>
         <Route element={<Page />}>
           <Route path={docLinks.Intro} element={<Main />} />
-          <Route path={docLinks.Graph} element={<Graph />} />
-          <Route path={docLinks.ADTs} element={<DataTypes />} />
-          <Route path={docLinks.Atom} element={<Atom />} />
-          <Route path={docLinks.Plot2D} element={<Plot2D />} />
           <Route path={docLinks.Trees} element={<Tree />} />
+          <Route path={docLinks.Graphs} element={<GraphPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
@@ -36,9 +27,17 @@ export const Pages = () => {
 };
 
 function Nav({ children }: { children: ReactNode }) {
-  const [darkMode, setDarkMode] = useState(true);
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    const attribute = "(prefers-color-scheme: dark)";
+    const prefersDark = window.matchMedia(attribute);
+    if (prefersDark.matches) {
+      setDark(true);
+    }
+    prefersDark.addEventListener("change", (e) => setDark(e.matches));
+  }, []);
   return (
-    <div className={darkMode ? css.dark : css.light}>
+    <div className={dark ? css.dark : css.light}>
       <nav className={css.nav}>
         <ul>
           {Object.entries(docLinks).map(([name, path]) => (
@@ -47,8 +46,8 @@ function Nav({ children }: { children: ReactNode }) {
             </li>
           ))}
         </ul>
-        <button onClick={() => setDarkMode(!darkMode)}>
-          {darkMode ? "\u263c" : "\u263d"}
+        <button onClick={() => setDark(!dark)}>
+          {dark ? "\u263c" : "\u263d"}
         </button>
       </nav>
       {children}

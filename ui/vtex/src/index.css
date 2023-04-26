@@ -48,48 +48,42 @@ pre code .namespace {
 	opacity: 0.7;
 }
 
+pre code .token.function {
+	color: hsl(187, 47%, 55%);
+}
+
+
+
 pre code .token.tag,
 pre code .token.constant,
 pre code .token.symbol,
+pre code .token.property,
+pre code .token.method,
 pre code .token.deleted {
-	color: #81a1c1;
+	color: hsl(355, 65%, 65%);
 }
-
+pre code .token.string,
 pre code .token.number {
-	color: #b48ead;
+	color: hsl(29, 54%, 61%);
 }
 
-pre code .token.boolean {
-	color: #81a1c1;
-}
 
-pre code .token.function {
-	color: rgb(130, 217, 227);
-}
 
-pre code .token.string {
-	color: #d2e3ea;
-}
-
-pre code .token.method {
-	color: rgb(255, 122, 99);
-}
 
 pre code .token.selector,
 pre code .token.attr-name,
 pre code .token.char,
 pre code .token.builtin,
 pre code .token.inserted {
-	color: hsl(29, 54%, 61%);
+	color: #d1c48d;
 }
 
 pre code .token.variable,
 pre code .token.operator,
 pre code .token.class-name {
-	color: hsl(196, 82%, 66%);
+	color: hsl(207, 82%, 66%);
 }
 
-pre code .token.property,
 pre code .token.keyword {
 	color: hsl(286, 60%, 67%);
 }
@@ -99,6 +93,9 @@ pre code .token.important {
 	color: #ebcb8b;
 }
 
+pre code .token.script {
+	color: white;
+}
 pre code .token.important,
 pre code .token.bold {
 	color: hsl(355, 65%, 65%);

@@ -1,8 +1,12 @@
 @mixin dark-mode {
-  background-color: rgb(53, 53, 53);
+  background-color: rgb(43, 43, 43);
   color: white;
+  p code {
+    background-color: rgb(82, 82, 82);
+    color:#f4f4f4
+  }
   .nav {
-    background-color: rgb(39, 39, 39);
+    background-color: rgb(26, 26, 26);
   }
   .plot2d {
     fill: white;
@@ -38,6 +42,7 @@
   }
 }
 @mixin light-mode {
+  
   background-color: white;
   color: rgb(38, 38, 38);
   .plot2d {

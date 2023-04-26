@@ -1,55 +1,54 @@
-import { GraphDemo1 } from "./MainDemo1.tsx";
+import { IntroDemo0, RedGraph } from "./intro.demos.tsx";
 
 # VTex
 
-This is the documentation page for `@webtex/vtex`, the repository for Webtex’s visual components. VTex figures are rendered in a declarative style. For example, the following graph:
+This is the documentation page for `@webtex/vtex`, the repository for Webtex’s visual components. VTex figures are rendered in a declarative style.
 
-<GraphDemo1 />
-
-is rendered with the following code:
+<IntroDemo0 />
 
 ```tsx
-import { graph, node, Graph } from "@webtex/vtex";
-import styles from "./demos.module.scss";
+import { Graph, graph, node } from "@webtex/vtex";
 
-const graphDemo1 = graph(
-  node("A").link(node("B")),
-  node("C").link(node("D")),
-  node("J").link(node("A")),
-  node("N").link(node("C")),
-  node("B").link(node("C")),
-  node("A").link(node("N"))
-)
-  .radius(5)
-  .textDX(2.5)
-  .textDY(-10)
-  .width(600)
-  .height(200)
-  .margin(10);
-
-export const GraphDemo1 = () => {
-  return <Graph data={graphDemo1} className={styles.graph} />;
+export const GraphA = () => {
+  const graphData = graph(
+    node("f").link(node("g")),
+    node("f").link(node("i")),
+    node("g").link(node("h")),
+    node("g").link(node("k")),
+    node("j").link(node("i"))
+  );
+  return <Graph data={graphData} />;
 };
 ```
 
-The accompanying SCSS:
+## Mindless Components
 
-```scss
-.graph {
-  circle {
-    fill: #d5dedf;
-    stroke: #354e4e;
-  }
-  line {
-    stroke: #495b5b;
-  }
-  text {
-    fill: #748d98;
-  }
-}
+A core guideline in VTex is the idea of _mindless components_ — JSX elements should not perform any logic of their own. They’re given primitive values (e.g., a number, string, null, or undefined) and render. Everything else—branching, type checking, error handling, etc.—is handled by the relevant _data handler_. In the previous example, `node` and `graph` are two such handlers. Maintaining this separation allows for easier debugging, testing, and a cleaner API.
+
+The mindless component guideline implies that a visualization’s underlying data should not depend on arguments passed to its rendering component. That is, VTex visualizations are a strict one-way data flow. This extends to styling. For example, reusing the previous graph, we can style every node and edge with the following:
+
+```tsx
+import { Graph, graph, node } from "@webtex/vtex";
+
+export const RedGraph = () => {
+  const graphData = graph(
+    node("f").link(node("g")),
+    node("f").link(node("i")),
+    node("g").link(node("h")),
+    node("g").link(node("k")),
+    node("j").link(node("i")),
+  ).nodeStyles({
+    fill: 'tomato',
+    stroke: 'crimson',
+  }).edgeStyles({
+    stroke: 'red',
+    strokeDasharray: 3
+  });
+
+  return <Graph data={graphData} />;
+};
 ```
 
-## Mindless Components
-A core principle in VTex is the idea of _mindless components_ — JSX elements should not perform any logic of their own. They’re given primitive values (e.g., a number, string, null, or undefined) and render. Everything else—branching, type checking, error handling, etc.—is handled by the relevant _data handler_. In the previous example, `node` and `graph` are two such handlers. Maintaining this separation allows for easier debugging, testing, and a cleaner API.
+This renders:
 
-
+<RedGraph />

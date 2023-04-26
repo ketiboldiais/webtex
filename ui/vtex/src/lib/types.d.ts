@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import {ReactNode} from "react";
 export type Children = {children?: ReactNode};
 export type Constructor<T = {}> = new (...args: any[]) => T;
