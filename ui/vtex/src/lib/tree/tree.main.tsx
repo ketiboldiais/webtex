@@ -4,7 +4,7 @@ import {
   HierarchyPointLink,
   tree as d3tree,
 } from "d3-hierarchy";
-import { SVG } from "../svg";
+import { SVG } from "../core/svg";
 import { Group } from "../group/group.main";
 
 export class LEAF {

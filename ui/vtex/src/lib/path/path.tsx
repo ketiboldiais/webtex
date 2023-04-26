@@ -1,5 +1,4 @@
-export type N2 = [number, number];
-export type N3 = [number, number, number];
+import { N2 } from "../types";
 export const shift = (x: number, y: number) => `translate(${x},${y})`;
 const coord = (point: [number, number]) => `${point[0]},${point[1]}`;
 const pairs = (p1: N2, p2: N2) => {

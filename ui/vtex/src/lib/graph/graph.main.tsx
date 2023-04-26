@@ -23,11 +23,13 @@ import {
   Textual,
   Unique,
 } from "../core/core.utils";
-import { SVG } from "../svg";
-import { ArrowHead, getCenter, N2 } from "../path/path";
+import { SVG } from "../core/svg";
+import { ArrowHead, getCenter } from "../path/path";
 import { Group } from "../group/group.main";
 import { ReactNode, SVGProps } from "react";
 import { Arrows } from "../path/path";
+import { Datum } from "../core/core.atom";
+import { N2 } from "../types";
 
 export type FX = ForceX<SimulationNodeDatum>;
 export type FY = ForceY<SimulationNodeDatum>;
@@ -40,15 +42,7 @@ export const newForce = <t extends FX | FY>(
   return f(dimension).strength(strength) as t;
 };
 
-export type FigType = "vertex" | "node" | "edge" | "graph";
-export class ATOM {
-  type: FigType;
-  constructor(type: FigType) {
-    this.type = type;
-  }
-}
-
-export class VERTEX extends ATOM {
+export class VERTEX extends Datum {
   value: string | number;
   constructor(value: string | number) {
     super("vertex");
@@ -115,10 +109,10 @@ interface GraphNode extends SimulationNodeDatum {
 }
 
 export const isNode = (
-  x: ATOM,
+  x: Datum,
 ): x is $NODE => x.type === "vertex";
 
-export class EDGE extends ATOM {
+export class EDGE extends Datum {
   source: $NODE;
   targets: $NODE[];
   weight?: number;
@@ -276,7 +270,7 @@ const build = (payload: ($LINK | $NODE)[], fallbackStroke: string) => {
 
 type GraphData = ReturnType<typeof build>;
 
-export class GRAPH extends ATOM {
+export class GRAPH extends Datum {
   _shortestPath?: any;
   data: GraphData;
   constructor(edges: ($LINK | $NODE)[]) {
@@ -436,41 +430,33 @@ export function Graph({ data }: GraphAPI) {
   const textCSS = data.textCSS();
   const labeled = nonnull(data._noLabels, true);
   return (
-    <div>
-      <SVG width={W} height={H} className={className}>
-        {arrowIDs.length && <Arrows data={arrowIDs} />}
-        <g {...edgeCSS}>
-          {edges.map((link) => (
-            <Segment
-              r={nodeCSS.r}
-              key={link.id}
-              data={link}
-            />
-          ))}
-        </g>
-        <g {...nodeCSS}>
-          {nodes.map((node) => (
-            <Circle key={node.id} r={nodeCSS.r} data={node}>
-              {labeled && (
-                <g {...textCSS}>
-                  <NodeText
-                    data={node}
-                    dx={textCSS.dx || nodeCSS.r * 1.8}
-                    dy={textCSS.dy || -nodeCSS.r}
-                  />
-                </g>
-              )}
-            </Circle>
-          ))}
-        </g>
-      </SVG>
-      <details>
-        <summary>debugger</summary>
-        <pre>
-          {JSON.stringify(data,null,2)}
-        </pre>
-      </details>
-    </div>
+    <SVG width={W} height={H} className={className}>
+      {arrowIDs.length && <Arrows data={arrowIDs} />}
+      <g {...edgeCSS}>
+        {edges.map((link) => (
+          <Segment
+            r={nodeCSS.r}
+            key={link.id}
+            data={link}
+          />
+        ))}
+      </g>
+      <g {...nodeCSS}>
+        {nodes.map((node) => (
+          <Circle key={node.id} r={nodeCSS.r} data={node}>
+            {labeled && (
+              <g {...textCSS}>
+                <NodeText
+                  data={node}
+                  dx={textCSS.dx || nodeCSS.r * 1.8}
+                  dy={textCSS.dy || -nodeCSS.r}
+                />
+              </g>
+            )}
+          </Circle>
+        ))}
+      </g>
+    </SVG>
   );
 }
 

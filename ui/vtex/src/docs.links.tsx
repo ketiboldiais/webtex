@@ -1,15 +1,17 @@
 /* eslint-disable no-undef */
 import { BrowserRouter, Link, Outlet, Route, Routes } from "react-router-dom";
 import css from "./App.module.scss";
-import Main from "./docs/main.mdx";
-import Tree from "./docs/trees.mdx";
-import GraphPage from './docs/graph.doc.mdx';
+import MainPage from "./docs/main.mdx";
+import TreePage from "./docs/trees.mdx";
+import GraphPage from "./docs/graph.doc.mdx";
+import Plot2DPage from "./docs/plot2d.doc.mdx";
 import { ReactNode, useEffect, useState } from "react";
 
 export const docLinks = {
   Intro: "/",
-  Graphs: '/graph',
+  Graphs: "/graph",
   Trees: "/tree",
+  Plot2D: "/plot2d",
 };
 
 export const Pages = () => {
@@ -17,9 +19,10 @@ export const Pages = () => {
     <BrowserRouter>
       <Routes>
         <Route element={<Page />}>
-          <Route path={docLinks.Intro} element={<Main />} />
-          <Route path={docLinks.Trees} element={<Tree />} />
+          <Route path={docLinks.Intro} element={<MainPage />} />
+          <Route path={docLinks.Trees} element={<TreePage />} />
           <Route path={docLinks.Graphs} element={<GraphPage />} />
+          <Route path={docLinks.Plot2D} element={<Plot2DPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

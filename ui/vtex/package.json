@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "clean": "rm -rf docs/*",
-    "doc": "typedoc --plugin typedoc-plugin-markdown --out docs src/lib"
+    "doc": "pnpm clean && typedoc --plugin typedoc-plugin-markdown --out docs src/lib"
   },
   "dependencies": {
     "@types/d3-hierarchy": "^3.1.2",

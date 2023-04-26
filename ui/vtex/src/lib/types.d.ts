@@ -7,3 +7,5 @@ export type Anchor = "start" | "middle" | "end";
 export type Pair<t> = [t, t];
 export type Triple<t> = [t, t, t];
 export type Quad<t> = [t, t, t, t];
+export type N2 = [number, number];
+export type N3 = [number, number, number];

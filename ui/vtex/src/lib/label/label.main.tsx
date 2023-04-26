@@ -1,8 +1,8 @@
-import { _Anchor } from "..";
+import { Anchor } from "..";
 
 export type _Label = {
   value?: string;
-  anchor?: _Anchor;
+  anchor?: Anchor;
   dx?: number;
   dy?: number;
   fontSize?: number | string;

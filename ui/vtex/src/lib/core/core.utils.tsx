@@ -1,16 +1,20 @@
 /* eslint-disable no-dupe-class-members */
 import { uid } from "@webtex/algom";
+import {Anchor} from "../types";
 
 /* eslint-disable no-unused-vars */
 export type CSTR<T = {}> = new (...args: any[]) => T;
 
-export const nonnull = <a, b>(x: a, fallback: b) =>
+export const nonnull = <t,>(x: null|undefined|t, fallback: t) =>
   (x !== undefined && x !== null)
-    ? (x as unknown as b)
-    : (fallback as unknown as b);
+    ? (x as unknown as t)
+    : (fallback as unknown as t);
 
 export const safe = <a,>(x?: a | undefined | null): x is a =>
   x !== undefined && x !== null;
+  
+export type UnsafeValue = undefined | null;
+export const unsafe = (x:any): x is UnsafeValue => (x===undefined||x===null);
 
 export function Colorable<CLASS extends CSTR>(C: CLASS) {
   return class extends C {
@@ -47,18 +51,49 @@ export function Circular<CLASS extends CSTR>(C: CLASS) {
 export type CIRCULAR = InstanceType<ReturnType<typeof Circular>>;
 export function Sketchable<CLASS extends CSTR>(C: CLASS) {
   return class extends C {
-    _strokeWidth?: number;
-    strokeWidth(value: number) {
+    _strokeWidth?: number|string;
+    strokeWidth(value: number|string) {
       this._strokeWidth = value;
       return this;
     }
-    _dashed?: number;
-    dashed(value: number) {
+    _dashed?: number|string;
+    dashed(value: number|string) {
       this._dashed = value;
+      return this;
+    }
+    _mode?:RenderMode;
+    /**
+     * Declares the rendering mode
+     * for the SVG shape. Acceptable values:
+     *
+     * - `auto`. This is the default value.
+     * The user agent will make tradeoffs to
+     * balance speed, crisp edges, and geometric
+     * precision, with geometric precision taking
+     * priority over speed and crisp edges.
+     * 
+     * - `optimizeSpeed`. Rendering speed takes
+     * priority over geometric precision and
+     * crisp edges.
+     * 
+     * - `crispEdges` - Crisp edges takes priority
+     * over rendering speed and geometric precision.
+     * 
+     * - `geometricPrecision` - geometricPrecision
+     * takes priority over speed and crisp edges.
+     * 
+     */
+    renderMode(mode:RenderMode) {
+      this._mode = mode;
       return this;
     }
   };
 }
+export type RenderMode =
+  | 'auto'
+  | 'optimizeSpeed'
+  | 'crispEdges'
+  | 'geometricPrecision'
 
 export type SKETCHABLE = InstanceType<ReturnType<typeof Sketchable>>;
 
@@ -123,6 +158,11 @@ export function Textual<CLASS extends CSTR>(C: CLASS) {
     _color?: string;
     color(value: string) {
       this._color = value;
+      return this;
+    }
+    _verticalAnchor?:Anchor;
+    verticalAnchor(value:Anchor) {
+      this._verticalAnchor=value;
       return this;
     }
   };
