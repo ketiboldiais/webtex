@@ -40,7 +40,5 @@ export { Arrows, shift } from "./path/path";
 export { Clip } from "./path/clip";
 export { Label } from "./label/label.main";
 
-export { leaf, TREE, Tree, tree } from "./tree/tree.main";
-
 export { edge, Graph, graph, node } from "./graph/graph.main";
 export type { $LINK, $NODE } from "./graph/graph.main";

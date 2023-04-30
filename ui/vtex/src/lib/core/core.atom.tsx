@@ -8,6 +8,7 @@ export type DataType =
 	| 'plot'
 	| 'tree'
 	| "edge" 
+	| 'leaf'
 	| "graph";
 export class Datum {
   type: DataType;

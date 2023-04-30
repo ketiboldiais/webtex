@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import { Datum } from "../core/core.atom";
 import { Classable, nonnull, Spatial, Unique } from "../core/core.utils";
 import { SVG } from "../core/svg";
@@ -6,7 +5,7 @@ import { Group } from "../group/group.main";
 import { Clip } from "../path/clip";
 import { N2 } from "../types";
 import { $AXIS2D, Axis, axis, isAxis } from "./plot2d.axis";
-import { $FUNCTION2D, f, FnCurve, isFunction2D } from "./plot2d.fn";
+import { $FUNCTION2D, FnCurve, isFunction2D } from "./plot2d.fn";
 
 export class Plot extends Datum {
   _functions: $FUNCTION2D[];
@@ -128,9 +127,7 @@ export type $PLOT = ReturnType<typeof plot>;
 type Plot2DAPI = {
   data: $PLOT;
 };
-export function Plot2D({
-  data,
-}: Plot2DAPI) {
+export function Plot2D({ data }: Plot2DAPI) {
   const width = nonnull(data._width, 500);
   const height = nonnull(data._height, 500);
   const marginTop = nonnull(data._marginTop, 50);
@@ -144,7 +141,7 @@ export function Plot2D({
   const marginsY = marginTop + marginBottom;
   const marginsX = marginLeft + marginRight;
   return (
-    <SVG width={width} height={height} debug>
+    <SVG width={width} height={height}>
       <Clip id={id} width={width} height={height} />
       <Group dx={marginsX / 2} dy={marginsY / 2}>
         <Axis

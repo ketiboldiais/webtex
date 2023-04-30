@@ -12,11 +12,13 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "exam": "vitest run -t",
     "clean": "rm -rf docs/*",
     "doc": "pnpm clean && typedoc --plugin typedoc-plugin-markdown --out docs src/lib"
   },
   "dependencies": {
     "@types/d3-hierarchy": "^3.1.2",
+    "@types/mapbox__rehype-prism": "^0.8.0",
     "@visx/text": "^3.0.0",
     "@webtex/algom": "workspace:*",
     "d3-hierarchy": "^3.1.2",

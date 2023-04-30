@@ -26,8 +26,6 @@ import { C } from "./ast/Numerics.js";
 import { SymbolNode } from "./ast/SymbolNode.js";
 import { TupleNode } from "./ast/TupleNode.js";
 import { VectorNode } from "./ast/VectorNode.js";
-import { FunctionNode } from "./ast/FunctionNode.js";
-import { CallNode } from "./ast/CallNode.js";
 
 export interface Parser {
   /**

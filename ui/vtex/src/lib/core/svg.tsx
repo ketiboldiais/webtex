@@ -3,10 +3,6 @@ import { CSSProperties, ReactNode } from "react";
 export type SVGProps = {
   width?: number;
   height?: number;
-  top?: number;
-  right?: number;
-  bottom?: number;
-  left?: number;
   children?: ReactNode;
   className?: string;
   debug?: boolean;

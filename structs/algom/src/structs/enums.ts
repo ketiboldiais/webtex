@@ -153,6 +153,7 @@ export const TokenRecord: { [k in TOKEN]: Entry } = {
   [TOKEN.EOF]: { kind: KIND.UTIL, prec: PREC.NON, fixity: FIX.NON },
   [TOKEN.ERROR]: { kind: KIND.UTIL, prec: PREC.NON, fixity: FIX.NON },
   [TOKEN.NIL]: { kind: KIND.UTIL, prec: PREC.NON, fixity: FIX.NON },
+  
   [TOKEN.COMMA]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
   [TOKEN.QUERY]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
   [TOKEN.LPAREN]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
@@ -165,6 +166,7 @@ export const TokenRecord: { [k in TOKEN]: Entry } = {
   [TOKEN.SEMICOLON]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
   [TOKEN.COLON]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
   [TOKEN.VBAR]: { kind: KIND.DELIM, prec: PREC.NON, fixity: FIX.NON },
+  
   [TOKEN.SQUOTE]: { kind: KIND.POSTFIX, prec: PREC.PEAK, fixity: FIX.LEFT },
   [TOKEN.BANG]: { kind: KIND.POSTFIX, prec: PREC.PEAK, fixity: FIX.LEFT },
 

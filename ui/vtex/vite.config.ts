@@ -1,19 +1,22 @@
+/// <reference types="vitest" />
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "pathe";
 import dts from "vite-plugin-dts";
-import mdx from '@mdx-js/rollup';
-import remarkMath from 'remark-math';
-import remarkGfm from 'remark-gfm';
-import rehypeKatex from 'rehype-katex';
-import rehypeSlug from 'rehype-slug';
-import rehypePrism from '@mapbox/rehype-prism';
+import mdx from "@mdx-js/rollup";
+import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
+import rehypeKatex from "rehype-katex";
+import rehypeSlug from "rehype-slug";
+import rehypePrism from "@mapbox/rehype-prism";
+import * as path from 'path';
 
 export default defineConfig({
   plugins: [
     react(),
     mdx({
-      providerImportSource: '@mdx-js/react',
+      providerImportSource: "@mdx-js/react",
       remarkPlugins: [remarkMath, remarkGfm],
       rehypePlugins: [rehypeKatex, rehypeSlug, rehypePrism],
     }),
@@ -21,6 +24,12 @@ export default defineConfig({
       insertTypesEntry: true,
     }),
   ],
+  resolve: {
+    alias: [{
+      find: '@',
+      replacement: path.resolve(__dirname, 'src/lib')
+    }]
+  },
   build: {
     lib: {
       entry: resolve(__dirname, "src/lib/index.ts"),

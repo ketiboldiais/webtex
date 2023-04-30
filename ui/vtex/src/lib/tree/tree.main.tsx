@@ -1,142 +1,141 @@
 /* eslint-disable no-unused-vars */
-import { hierarchy, linkHorizontal } from "d3";
+import { hierarchy } from "d3";
+import { Datum } from "../core/core.atom";
 import {
-  HierarchyPointLink,
-  tree as d3tree,
-} from "d3-hierarchy";
+  Circular,
+  Classable,
+  Colorable,
+  Movable,
+  nonnull,
+  Spatial,
+  Textual,
+  Unique,
+} from "../core/core.utils";
+import { linkHorizontal } from "d3";
+import { HierarchyPointLink, tree as d3tree } from "d3-hierarchy";
 import { SVG } from "../core/svg";
 import { Group } from "../group/group.main";
 
-export class LEAF {
+export class Leaf extends Datum {
   name: string;
   constructor(value: string) {
+    super("leaf");
     this.name = value;
   }
-  getData(): $LEAF {
-    const name = this.name;
-    return { name };
-  }
 }
 
-export const leaf = (name: string) => new LEAF(name);
+export function leaf(name: string | number) {
+  const LEAF = Colorable(Classable(Unique(Circular(Textual(Leaf)))));
+  return new LEAF(`${name}`);
+}
 
-type $LEAF = {
+type $LEAF = ReturnType<typeof leaf>;
+
+export function isLeaf(datum: Datum): datum is $LEAF {
+  return datum.type === "leaf";
+}
+type Child = string | number | $TREE | $LEAF;
+type $TreeNode = $TREE | $LEAF;
+export class Tree extends Datum {
   name: string;
-  x?: number;
-  y?: number;
-};
-
-export type $TREE = {
-  name: string;
-  children: ($TREE | $LEAF)[];
-  x?: number;
-  y?: number;
-};
-
-type $TREENODE = $LEAF | $TREE;
-
-export class TREE {
-  tree: $TREE;
+  children: ($TreeNode)[] = [];
   constructor(name: string) {
-    this.tree = { name, children: [] };
+    super("tree");
+    this.name = name;
   }
-  getData(): $TREE {
-    const tree = this.tree;
-    const name = tree.name;
-    const children = tree.children;
-    return { name, children };
-  }
-  nodes(...nodes: (TREE | LEAF)[]) {
-    const newChildren: $TREENODE[] = nodes.map(
-      (v) => v.getData(),
-    );
-    const currentTree = this.tree;
-    const children = currentTree.children;
-    currentTree.children = [...children, ...newChildren];
+  nodes(...children: Child[]) {
+    const C = children.length;
+    for (let i = 0; i < C; i++) {
+      const child = children[i];
+      this.node(child);
+    }
     return this;
   }
-  getTree() {
-    const data = this.tree;
-    const root = hierarchy(data);
-    const margin = this._margin;
-    const width = this._width - margin;
-    const height = this._height - margin;
-    const tree = d3tree<$TREE>().size([width, height]);
-    return tree(root);
-  }
-
-  _width: number = 500;
-  /**
-   * Sets the figure’s width.
-   */
-  width(value: number) {
-    this._width = value;
+  node(child: Child) {
+    if (typeof child === "string" || typeof child === "number") {
+      this.children.push(leaf(`${child}`));
+    } else this.children.push(child);
     return this;
   }
-
-  _height: number = 500;
-  /** Sets the figure’s height. */
-  height(value: number) {
-    this._height = value;
-    return this;
-  }
-
-  /** Sets the figure’s margins. */
-  _margin: number = 50;
-  margin(value: number) {
-    this._margin = value;
-    return this;
-  }
-
-  _curvedLinks: boolean = false;
-  /** If set to true, renders curved edges. */
-  curvedLinks(value: boolean = true) {
-    this._curvedLinks = value;
-    return this;
+  treeData(width: number, height: number) {
+    if (isTree(this)) {
+      const root = hierarchy<$TreeNode>(this as any as $TreeNode);
+      const tree = d3tree<$TreeNode>().size([width, height]);
+      const treeData = tree(root);
+      const links = treeData.links();
+      const nodes = treeData.descendants();
+      console.log(nodes);
+      return {
+        links,
+        nodes,
+      };
+    }
+    return null;
   }
 }
 
-const treeLink = linkHorizontal<HierarchyPointLink<$TREE>, $LEAF>().x((d) =>
-  d.x || 1
-).y((d) => d.y || 1);
-
-export const tree = (root: string) => new TREE(root);
-
-type _Tree = {
-  data: TREE;
+export const tree = (root: string | number) => {
+  const TREE = Classable(Spatial(Unique(Circular(Colorable(Textual(Tree))))));
+  return new TREE(`${root}`);
 };
 
-export function Tree({ data }: _Tree) {
-  const tree = data.getTree();
-  const width = data._width;
-  const height = data._height;
-  const margin = data._margin;
+export type $TREE = ReturnType<typeof tree>;
+
+export function isTree(datum: Datum): datum is $TREE {
+  return datum.type === "tree";
+}
+
+type TreeProps = {
+  data: $TREE;
+};
+
+export function TreeFig({ data }: TreeProps) {
+  const r = nonnull(data._radius, 10);
+  const fill = nonnull(data._fill, "currentColor");
+  const stroke = nonnull(data._stroke, "currentColor");
+  const color = nonnull(data._color, "currentColor");
+  const tx = nonnull(data._tx, r);
+  const ty = nonnull(data._ty, -r);
+  const width = nonnull(data._width, 500);
+  const height = nonnull(data._height, 500);
+  const marginTop = nonnull(data._marginTop, 50);
+  const marginBottom = nonnull(data._marginBottom, 50);
+  const marginLeft = nonnull(data._marginLeft, 50);
+  const marginRight = nonnull(data._marginRight, 50);
+  const marginY = marginTop + marginBottom;
+  const marginX = marginLeft + marginRight;
+  const svgWidth = width - marginTop - marginBottom;
+  const svgHeight = height - marginLeft - marginRight;
+  const treeData = data.treeData(svgWidth, svgHeight);
+  if (treeData === null) return null;
+  const links = treeData.links;
+  const nodes = treeData.nodes;
   return (
     <SVG width={width} height={height}>
-      <Group dx={margin / 2} dy={margin / 2}>
-        {tree.links().map((link, i) => (
-          <g
-            key={`link` + i}
-            fill={"none"}
-            stroke={"currentColor"}
-          >
-            <TreeLink
-              data={link}
-              curved={data._curvedLinks}
+      <Group dx={marginX / 2} dy={marginY / 2}>
+        {links.map(({ source, target }, i) => (
+          <g key={(source.data.id) + target.data.id}>
+            <line
+              stroke={stroke}
+              x1={source.x}
+              y1={source.y}
+              x2={target.x}
+              y2={target.y}
             />
           </g>
         ))}
-        {tree.descendants().map((node, i) => (
-          <Group
-            key={node.data.name + i}
-            dx={node.x}
-            dy={node.y}
-          >
+        {nodes.map((node, i) => (
+          <Group key={node.data.id + i} dx={node.x} dy={node.y}>
             <circle
-              fill={"red"}
-              r={5}
+              r={nonnull(node.data._radius, r)}
+              fill={nonnull(node.data._fill, fill)}
+              stroke={nonnull(node.data._stroke, stroke)}
             />
-            <text fill={"currentColor"}>
+            <text
+              dx={nonnull(node.data._tx, tx)}
+              dy={nonnull(node.data._ty, ty)}
+              fill={nonnull(node.data._color, color)}
+            >
               {node.data.name}
             </text>
           </Group>
@@ -145,20 +144,15 @@ export function Tree({ data }: _Tree) {
     </SVG>
   );
 }
-type _TreeLink = {
-  data: HierarchyPointLink<$TREE>;
-  curved: boolean;
-};
-function TreeLink({ data, curved }: _TreeLink) {
-  if (!curved) {
-    return (
-      <line
-        x1={data.source.x}
-        y1={data.source.y}
-        x2={data.target.x}
-        y2={data.target.y}
-      />
-    );
-  }
-  return <path d={treeLink(data) || ""} />;
-}
+
+const data = tree(12)
+  .node(tree(6).nodes(3, 2, 1))
+  .node(9)
+  .node(tree(5).nodes(8, 1, 6))
+  .radius(10)
+  .fill("tomato")
+  .width(650)
+  .height(300)
+  .radius(10)
+
+export const TreeDemo1 = () => <TreeFig data={data} />;

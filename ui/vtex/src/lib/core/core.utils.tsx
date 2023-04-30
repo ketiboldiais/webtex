@@ -165,6 +165,16 @@ export function Textual<CLASS extends CSTR>(C: CLASS) {
       this._verticalAnchor=value;
       return this;
     }
+    _tx?:number;
+    tx(value:number) {
+      this._tx=value;
+      return this;
+    } 
+    _ty?:number;
+    ty(value:number) {
+      this._ty=value;
+      return this;
+    }
   };
 }
 
@@ -264,3 +274,19 @@ export function Spatial<CLASS extends CSTR>(C: CLASS) {
 }
 
 export type SPATIAL = InstanceType<ReturnType<typeof Spatial>>;
+
+export const DNE = (x:any): x is undefined => x === undefined;
+export const exists = (x: any) => x !== undefined;
+export const hasKey = (x: any, key: string) => exists(x[key]);
+export const isString = (x:any): x is string  => typeof x === 'string';
+export const isNumber = (x:any): x is number  => typeof x === 'number';
+export const isNull = (x:any): x is null => x === null;
+
+export const isStrList = (
+  x:any
+): x is Array<string> => Array.isArray(x) && isString(x[0]);
+
+export const isNumList = (
+  x:any
+): x is Array<number> => Array.isArray(x) && isNumber(x[0]);
+

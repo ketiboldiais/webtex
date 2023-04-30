@@ -173,7 +173,7 @@ export function Axis({
   const fontFamily = nonnull(data._font, "inherit");
   const fontSize = nonnull(data._fontSize, 11);
   const dx = nonnull(data._dx, isYAxis ? 2 : 3);
-  const fontColor = nonnull(data._color, "inherit");
+  const fontColor = nonnull(data._color, "currentColor");
   return (
     <Group dx={Dx} dy={Dy}>
       <VisualAxis
@@ -182,6 +182,7 @@ export function Axis({
         numTicks={numTicks}
         tickTransform={tickTransform}
         orientation={orient}
+        stroke={tickStroke}
         tickStroke={tickStroke}
         tickLength={tickLength}
         tickLabelProps={() => ({

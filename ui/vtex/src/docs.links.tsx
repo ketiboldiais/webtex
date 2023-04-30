@@ -2,7 +2,7 @@
 import { BrowserRouter, Link, Outlet, Route, Routes } from "react-router-dom";
 import css from "./App.module.scss";
 import MainPage from "./docs/main.mdx";
-import TreePage from "./docs/trees.mdx";
+import TreePage from "./docs/tree.doc.mdx";
 import GraphPage from "./docs/graph.doc.mdx";
 import Plot2DPage from "./docs/plot2d.doc.mdx";
 import { ReactNode, useEffect, useState } from "react";

@@ -1,0 +1,167 @@
+type State<t = any> = {
+  result: t;
+  readonly src: string;
+  index: number;
+  error: string[];
+};
+
+function initState(src: string): State {
+  return ({
+    result: null,
+    src,
+    index: 0,
+    error: [],
+  });
+}
+
+function inError(state: State) {
+  return state.error.length !== 0;
+}
+
+type PFn<a = any, b = any> = (x: State<a>) => State<b>;
+
+function success<a, b>(
+  prev: State<a>,
+  result: b,
+  index: number,
+): State<b> {
+  return ({ ...prev, result, index });
+}
+
+function error(prev: State, error: string): State {
+  return ({
+    ...prev,
+    error: [...prev.error, error],
+  });
+}
+
+class P<a = any, b = any> {
+  parse: PFn<a, b>;
+  constructor(fn: PFn<a, b>) {
+    this.parse = fn;
+  }
+  run(src: string) {
+    const state = initState(src);
+    return this.parse(state);
+  }
+  and(rule: P) {
+    const parse = this.parse;
+    return new P((state) => {
+      const r1 = parse(state);
+      if (inError(r1)) {
+        return r1;
+      }
+      const results = [r1.result];
+      const r2 = rule.parse(r1);
+      if (inError(r2)) {
+        return r2;
+      }
+      results.push(r2.result);
+      return success(state, results, r2.index);
+    });
+  }
+  or(rule: P) {
+    const parse = this.parse;
+    return new P((state) => {
+      const r1 = parse(state);
+      if (!inError(r1)) return r1;
+      const r2 = rule.parse(state);
+      if (!inError(r2)) return r2;
+      const msg = report("or", "Expected at least 1 match.");
+      return error(state, msg);
+    });
+  }
+}
+
+function report(parserName: string, message: string) {
+  return `{ Error[${parserName}] | ${message} }`;
+}
+
+function expError(exp: string, actual: string) {
+  return `Expected ${exp}, got: ${actual}`;
+}
+
+function lit(rule: string) {
+  return new P<string, string>((state) => {
+    const { src, index } = state;
+    const target = src.slice(index);
+    if (target.startsWith(rule)) {
+      const newIndex = index + rule.length;
+      return success(state, rule, newIndex);
+    }
+    const msg = expError(rule, target);
+    const err = report("char", msg);
+    return error(state, err);
+  });
+}
+
+function list<k extends any[], t extends P[]>(rules: [...t]) {
+  return new P((state) => {
+    const results: k[] = [];
+    let nextState = state;
+    for (const p of rules) {
+      nextState = p.parse(nextState);
+      results.push(nextState.result as unknown as k);
+    }
+    return success(state, results as [...k], nextState.index);
+  });
+}
+
+function word(rules: P<string, string>[]) {
+  return new P((state) => {
+    const { index } = state;
+    const res = list(rules);
+    const p = res.parse(state);
+    const out = p.result.join("");
+    return success(state, out, index + out.length);
+  });
+}
+
+function many(rule: P) {
+  return new P((state) => {
+    if (inError(state)) {
+      return state;
+    }
+    const results = [];
+    const max = state.src.length;
+    let nextState = rule.parse(state);
+    let index = state.index;
+    while (!inError(state) && index < max) {
+      index++;
+      nextState = rule.parse(nextState);
+      if (!inError(state)) {
+        results.push(nextState.result);
+      }
+    }
+    return success(state, results, index);
+  });
+}
+
+function pick<t extends P<any>[]>(rules: [...t]) {
+  return new P((state) => {
+    const R = rules.length;
+    let next = state;
+    for (let i = 0; i < R; i++) {
+      next = rules[i].parse(next);
+      if (!inError(next)) return next;
+    }
+    const reason = `Expected at least one match.`;
+    const msg = report("pick", reason);
+    return error(state, msg);
+  });
+}
+
+
+function chain<k extends any[], t extends P[]>(rules: [...t]) {
+  return new P((state) => {
+    const results: k[] = [];
+    let nextState = state;
+    for (const p of rules) {
+      nextState = p.parse(nextState);
+      if (nextState.result==='') continue;
+      results.push(nextState.result as unknown as k);
+    }
+    return success(state, results as [...k], nextState.index);
+  });
+}
+
