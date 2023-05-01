@@ -1,4 +1,5 @@
 import { isStrList } from "../core/core.utils.js";
+
 /**
  * @file This is Skim’s main source file. The source code
  * is heavily commented for documentation purposes.
@@ -443,12 +444,6 @@ export const lit = (rule: string): P<string> =>
   });
 
 /**
- * Skimmer for the given number. Equivalent to `lit`,
- * but takes a number as an argument rather than a string.
- */
-export const n = (num: number) => lit(num.toString());
-
-/**
  * Returns a skimmer that must match the given list of rules
  * exactly. If a single skimmer fails, an error is returned.
  * This is in contrast to the `list` skimmer, which always
@@ -489,7 +484,7 @@ export const chain = <T extends any[], A extends P<[...T][number]>[]>(
 export const list = <T extends any[], A extends P<[...T][number]>[]>(
   rules: [...A],
 ) =>
-  new P<T>((state) => {
+  new P<(A extends P<infer T>[] ? T : never)[]>((state) => {
     if (state.erred) return state;
     const results = [];
     let newState = state;
@@ -511,10 +506,10 @@ export const list = <T extends any[], A extends P<[...T][number]>[]>(
  * skim whose result is null.
  * @param rules - A list of rules to match.
  */
-export const some = <T extends any[], X extends P<any>[]>(
-  rules: [...X],
-): P<[...T][number]> =>
-  new P((state) => {
+export const some = <T extends any[], A extends P<[...T][number]>[]>(
+  rules: [...A],
+) =>
+  new P<(A extends P<infer T>[] ? T : never)>((state) => {
     if (state.erred) return state;
     let newState = state as SkimState<any>;
     const R = rules.length;
@@ -525,13 +520,13 @@ export const some = <T extends any[], X extends P<any>[]>(
           state,
           newState.result,
           newState.index,
-        );
+        ) as SkimState<T>;
       }
     }
     const msg = `Expected at least one match.`;
     const error = erratum("some", msg);
-    return flaw(newState, error);
-  }) as unknown as P<[...T][number]>;
+    return flaw(newState, error) as SkimState<T>;
+  });
 
 /**
  * Returns a skimmer that matches the given rule as
@@ -772,17 +767,6 @@ export const ctrl = (option: CtrlOption) => {
   });
 };
 
-const either = <A, B>(r1: P<A>, r2: P<B>) =>
-  new P((state) => {
-    if (state.erred) return state;
-    const res1 = r1.skim(state);
-    if (!res1.erred) return res1;
-    const res2 = r2.skim(state);
-    if (!res2.erred) return res2;
-    const msg = `Expected on match`;
-    const erm = erratum("either", msg);
-    return flaw(state, erm);
-  });
 /**
  * Returns a skimmer for numbers between `start` (inclusive)
  * and `end` (inclusive), returning the largest successfully
@@ -1145,6 +1129,10 @@ export const num: NumberReader = (
   const MINUS_SIGN = regex(/^[-]/);
   const PLUS_SIGN = regex(/^[+]/);
   let reader = one(pattern);
+  const zerosLedInt = word([
+    maybe(REPEAT_0),
+    POSITIVE_INTEGER,
+  ]);
   switch (pattern) {
     case "whole":
       reader = POSITIVE_INTEGER;
@@ -1202,7 +1190,7 @@ export const num: NumberReader = (
         NATURAL_NUMBER,
         DOT,
         NATURAL_NUMBER,
-      ]).errdef("ufloat");
+      ]);
       break;
     case "-float":
       reader = word([
@@ -1211,48 +1199,30 @@ export const num: NumberReader = (
         DOT,
         maybe(REPEAT_0),
         POSITIVE_INTEGER,
-      ]).errdef("-float");
+      ]);
       break;
     case "+float":
       reader = word([
         PLUS_SIGN,
-        word([
-          POSITIVE_INTEGER,
-          DOT,
-          maybe(REPEAT_0),
-          POSITIVE_INTEGER,
-        ]).or(word([
-          ZERO,
-          DOT,
-          maybe(REPEAT_0),
-          POSITIVE_INTEGER,
-        ])),
+        NATURAL_NUMBER.then((r1) => {
+          const res = r1 === "0" ? zerosLedInt : zerosLedInt
+            .or(ZERO);
+          return word([DOT, res]).map((r2) => r1 + r2);
+        }),
       ]);
       break;
     case "hex":
-    case "HEX": {
-      const HEX_NUMS = regex(/^[0-9]+/);
-      const HEX_LETTERS = regex(pattern === "hex" ? /^[a-f]+/ : /^[A-F]+/);
-      const X = lit("x");
-      reader = word([
-        ZERO,
-        X,
-        (HEX_LETTERS.or(HEX_NUMS)).repeating,
-      ]);
+    case "HEX":
+      reader = regex(
+        pattern === "hex" ? /^0x[0-9a-f]+/ : /^0x[0-9A-F]+/,
+      );
       break;
-    }
-    case "octal": {
-      const OCTALS = regex(/^[0-7]+/);
-      const O = lit("o");
-      reader = word([ZERO, O, OCTALS]).errdef(pattern);
+    case "octal":
+      reader = regex(/^0o[0-7]+/);
       break;
-    }
-    case "binary": {
-      const BIGITS = regex(/^[0-1]+/);
-      const B = lit("b");
-      reader = word([ZERO, B, BIGITS]).errdef(pattern);
+    case "binary":
+      reader = regex(/^0b[0|1]+/);
       break;
-    }
     case "fraction":
       reader = word([
         maybe(MINUS_SIGN.or(PLUS_SIGN)),
@@ -1300,716 +1270,673 @@ export const num: NumberReader = (
       reader = num("complex").or(num("real"));
       break;
   }
-  return reader;
+  return reader.errdef(pattern);
 };
 
-export class Parser {
-  /** The current line number. */
-  line: number;
-
-  /**
-   * Index indicating the first character
-   * of the current lexeme.
-   */
-  start: number;
-
-  /**
-   * Pointer to the character currently
-   * being parser.
-   */
-  current: number;
-
-  /** The input source text. */
-  text: string;
-  constructor() {
-    this.line = 1;
-    this.start = 0;
-    this.current = 0;
-    this.text = "";
-  }
-  atEOF() {
-    return this.current >= this.text.length;
-  }
-
-  scan() {
-  }
-}
+// § Utility Methods
+/**
+ * The following section relates to utility methods
+ * used throughout the source code. Because the
+ * reader may not be familiar with functional
+ * programming concepts, we take the time to
+ * document their implementations. Readers
+ * familiar with these methods may continue to
+ * to the [Token Type]{@link tkn} section (relating
+ * to token definitions).
+ */
 
 /**
- * Enum indicating the current status
- * of the engine.
- * @readonly
- * @enum {number}
+ * The `pipe` function combines its argument list of functions
+ * into a single function, executed from left to right.
+ *
+ * @example
+ * ~~~
+ * const cap = (s:string) => s.slice(0,1).toUpperCase() + s.slice(1);
+ * const dot = (s:string) => s + '.';
+ * const capdot = pipe(capFirst, addDot);
+ * const res = capdot('hello') // 'Hello.'
+ * ~~~
  */
-export enum stat {
-  /**
-   * Indicates that an error
-   * occurred during scanning.
-   * Within the engine, this
-   * is prompted by an unexpected
-   * or unrecognized character.
-   */
-  scanner_error = 1,
-  syntax_error = 5,
-  semantic_error = 6,
-  type_error = 2,
-  interpreter_error = 3,
-  resolver_error = 4,
-  ok = 5,
-}
+const pipe = <t>(...fns: Array<(arg: t) => t>) => (arg: t) =>
+  fns.reduce((acc, fn) => fn(acc), arg);
 
-export type Token = {
-  Type: token;
-  Kind: kind;
-  Lexeme: string;
-  Line: number;
-  Fixity?: fix;
-  BP?: bp;
+const either =
+  <x>(main: (arg: x) => boolean, alt: (arg: x) => boolean) => (arg: x) =>
+    main(arg) || alt(arg);
+
+const both =
+  <x>(req1: (arg: x) => boolean, req2: (arg: x) => boolean) => (arg: x) =>
+    req1(arg) && req2(arg);
+
+const anyof = <x>(...conds: Array<(arg: x) => boolean>) => (arg: x) => {
+  for (let i = 0; i < conds.length; i++) {
+    if (conds[i](arg)) return true;
+  }
+  return false;
 };
 
 /**
- * A `fix` value indicates the associativity
- * of a given token. Tokens that do not have
- * a given associativity are assumed to have
- * a `fix` value of `non`.
+ * The `tkn` type corresponds to “token type.”
+ * A token type is distinguished from the
+ * _token instance_. The structure “a crook is a crook”
+ * consists of five tokens but four token
+ * types – type “a”, type “crook”, and type “is”.
+ * A distinct `tkn` type allows us to more efficiently
+ * recognize tokens. There are countably-infinite number
+ * of integers, but we can encapsulate all of them with
+ * the single token `int`. Likewise, there may be infinite
+ * number of string values, but we encapsulate all of them
+ * with `string`.
  */
-export enum fix {
-  non = 1,
-  chain = 2,
-  left = 3,
-  right = 4,
-}
-
-export enum kind {
-  util,
-  char,
-  keyword,
-  illegal,
-  prefix,
-  infix,
-  postfix,
-  mixfix,
-  atomic,
-}
-
-export enum bp {
-  /** Utility precedence, used as a base case. */
-  non = 1,
-
-  /** Lowest substantive precedence, E.g., code blocks. */
-  least = 2,
-
-  /** Equality and boolean operators precedence. */
-  low = 3,
-
-  /** Inequality-level precedence. */
-  mid = 4,
-
-  /** Additive-level precdence. */
-  high = 5,
-
-  /** Multiplicative-level precedence */
-  upper = 6,
-
-  /** Prefix expressions */
-  peak = 7,
-
-  /** Postfix expressions. */
-  apex = 8,
-
-  /** Function expressions. */
-  call = 9,
-}
-
-export enum token {
+enum tkn {
+  // § Utility Tokens
   /**
-   * A utility token for initializing the
-   * scanner.
-   * @property {Lexeme} - `""`
-   * @property {Kind} - `kind.util`
-   * @property {Fixity} - `fix.non`
-   * @property {BP} - `bp.non`
-   */
-  void,
-
-  /**
-   * A utility token indicating a lexing error.
-   * @property {Lexeme} - `""`
-   * @property {Kind} - `kind.util`
-   * @property {Fixity} - `fix.non`
-   * @property {BP} - `bp.non`
-   */
-  error,
-
-  /**
-   * A utility token indicating the end of input.
-   * @property {Lexeme} - `""`
-   * @property {Kind} - `kind.util`
-   * @property {Fixity} - `fix.non`
-   * @property {BP} - `bp.non`
+   * A utility token corresponding to
+   * the end of input.
    */
   eof,
-
-  // ---------- Single character tokens
-
   /**
-   * Delimiter left-bracket.
-   * @property {Lexeme} - `[`
-   * @property {Kind} - `kind.char`
-   * @property {Fixity} - `fix.non`
-   * @property {BP} - `bp.non`
+   * A utility token corresponding to
+   * an error.
    */
-  left_bracket,
 
+  err,
   /**
-   * Delimiter right-bracket.
-   * @property {Lexeme} - `[`
-   * @property {Kind} - `kind.char`
-   * @property {Fixity} - `fix.non`
-   * @property {BP} - `bp.non`
+   * A utility token to indicate
+   * an initial, empty state.
    */
-  right_bracket,
+  nil,
+
+  // § 1 Character Tokens
+  // The following are 1-character
+  // token types.
 
   /**
-   * Delimiter left-parenthesis.
-   * @property {Lexeme} - `(`
-   * @property {Kind} - `kind.char`
-   * @property {Fixity} - `fix.non`
-   * @property {BP} - `bp.non`
+   * - Lexeme: `,`
+   * - BP: `nil`
+   * - Ctx: `delimiter`
    */
-  left_paren,
+  comma,
 
   /**
-   * Delimiter right-parenthesis.
-   * @property {Lexeme} - `)`
-   * @property {Kind} - `kind.char`
-   * @property {Fixity} - `fix.non`
-   * @property {BP} - `bp.non`
+   * - Lexeme: `?`
+   * - BP: `nil`
+   * - Ctx: `delimiter`
    */
-  right_paren,
+  query,
 
   /**
-   * Delimiter left-brace.
-   * @property {Lexeme} - `{`
-   * @property {Kind} - `kind.char`
-   * @property {Fixity} - `fix.non`
-   * @property {BP} - `bp.non`
+   * - Lexeme: `(`
+   * - BP: `nil`
+   * - Ctx: `delimiter`
    */
-  left_brace,
+  lparen,
 
   /**
-   * Delimiter right-brace.
-   * @property {Lexeme} - `}`
-   * @property {Kind} - `kind.char`
-   * @property {Fixity} - `fix.non`
-   * @property {BP} - `bp.non`
+   * - Lexeme: `)`
+   * - BP: `nil`
+   * - Ctx: `delimiter`
    */
-  right_brace,
+  rparen,
 
   /**
-   * Delimiter semicolon.
-   * @property {Lexeme} - `;`
-   * @property {Kind} - `kind.char`
-   * @property {Fixity} - `fix.non`
-   * @property {BP} - `bp.non`
+   * - Lexeme: `[`
+   * - BP: `nil`
+   * - Ctx: `delimiter`
+   */
+  lbracket,
+
+  /**
+   * - Lexeme: `]`
+   * - BP: `nil`
+   * - Ctx: `delimiter`
+   */
+  rbracket,
+
+  /**
+   * - Lexeme: `{`
+   * - BP: `nil`
+   * - Ctx: `delimiter`
+   */
+  lbrace,
+
+  /**
+   * - Lexeme: `}`
+   * - BP: `nil`
+   * - Ctx: `delimiter`
+   */
+  rbrace,
+
+  /**
+   * - Lexeme: `"`
+   * - BP: `nil`
+   * - Ctx: `delimiter`
+   */
+  dquote,
+
+  /**
+   * - Lexeme: `;`
+   * - BP: `nil`
+   * - Ctx: `delimiter`
    */
   semicolon,
 
   /**
-   * Delimiter comma.
-   * @property {Lexeme} - `,`
-   * @property {Kind} - `kind.char`
-   * @property {Fixity} - `fix.non`
-   * @property {BP} - `bp.non`
+   * - Lexeme: `:`
+   * - BP: `nil`
+   * - Ctx: `delimiter`
    */
-  comma,
-
-  hash,
-
   colon,
 
-  amp,
-
-  dollar,
-
+  /**
+   * - Lexeme: `|`
+   * - BP: `nil`
+   * - Ctx: `delimiter`
+   */
   vbar,
 
-  tilde,
-
-  squote,
-
-  // ---------- 1 or 2 character tokens
-
-  // --- dot-prefixed operators
-
-  /** Token `.` */
+  /**
+   * - Lexeme: `.`
+   * - BP: `nil`
+   * - Ctx: `delimiter`
+   */
   dot,
 
-  /** Token `.+` */
-  dot_plus,
+  // § 1-2 Character Tokens
 
-  /** Token `.-` */
-  dot_minus,
-
-  /** Token `.*` */
-  dot_star,
-
-  /** Token `.%` */
-  dot_percent,
-
-  /** Token `.^` */
-  dot_caret,
-
-  /** Token `./` */
-  dot_fslash,
-
-  /** Token `%` */
-  percent,
-
-  /** Token `-` */
-  minus,
-
-  /** Token `--` */
-  minus2,
-
-  /** Token `+` */
+  /**
+   * - Lexeme: `+`
+   */
   plus,
 
-  /** Token `++` */
-  plus2,
+  /**
+   * - Lexeme: `-`
+   */
+  minus,
 
-  /** Token `/` */
-  fslash,
-
-  /** Token `^` */
-  caret,
-
-  /** Token `*` */
+  /**
+   * - Lexeme: `*`
+   */
   star,
 
-  /** Token `**` */
-  star2,
+  /**
+   * - Lexeme: `/`
+   */
+  slash,
 
-  /** Token `!` */
-  bang,
+  /**
+   * - Lexeme: `=`
+   */
+  eq,
 
-  /** Token `!=` */
-  bang_equal,
+  /**
+   * - Lexeme: `!=`
+   */
+  neq,
 
-  /** Token `=` */
-  equal,
+  /**
+   * - Lexeme: `==`
+   */
+  eq2,
 
-  /** Token `==` */
-  equal2,
+  /**
+   * - Lexeme: `>`
+   */
+  gtn,
 
-  /** Token `=>` */
-  fat_arrow,
+  /**
+   * - Lexeme: `>=`
+   */
+  geq,
 
-  /** Token `>` */
-  gt,
+  /**
+   * - Lexeme: `<`
+   */
+  ltn,
 
-  /** Token `>=` */
-  gte,
+  /**
+   * - Lexeme: `<=`
+   */
+  leq,
 
-  /** Token `<` */
-  lt,
-
-  /** Token `>=` */
-  lte,
-
-  /** Token `<<` */
-  lshift,
-
-  /** Token `>>` */
-  rshift,
-
-  // ---------- literal token
+  // § Literal Tokens
+  /**
+   * An identifier token.
+   * A token is scanned as
+   * an identifier if and only if
+   * the token’s lexeme:
+   *
+   * 1. begins with an ASCII Latin letter, `_`, or `'`
+   * 2. ends with a Latin letter, `_`, digit, or `'`, and
+   * 3. is not a keyword, reserved word, or
+   *    native function name.
+   */
   symbol,
+
+  /**
+   * Strings are recognized by a starting `"` (double-quote)
+   * and a terminating `"`. Unterminated strings will
+   * trigger a `status.syntax_error`.
+   */
   string,
+
+  // Numeric Literals
   int,
   real,
-  bignum,
-  fraction,
-  scinum,
+  frac,
+}
 
-  // ---------- keyword-literal tokens
-  nan,
-  inf,
-  true,
-  false,
+/**
+ * Just because the parser _can_ parse a
+ * token doesn’t mean that it _should_.
+ * A `bp` is a type that corresponds to a token’s binding
+ * power. Tokens with higher binding powers take priority.
+ * Tokens with lower binding powers are subjected to those
+ * of higher powers.
+ */
+enum bp {
+  /**
+   * A `bp` type corresponding to “no bp.” Not
+   * every token requires a `bp`, but every token’s
+   * `bp` property must be initialized with a `bp`.
+   * This ensures that all tokens have the same type.
+   * The alternative is to leave the field `undefined`,
+   * thereby introducing a further need for guards and
+   * field-checks.
+   */
   nil,
 
-  // ---------- keyword-operator tokens
-  mod,
-  rem,
-  and,
-  or,
-  xor,
-  nand,
-  not,
-  xnor,
-  nor,
-  is,
+  /**
+   * The lowest substantive `bp` type.
+   */
+  base,
+  /**
+   * Tokens with a `bp` of `low`
+   * have a higher binding power than
+   * operators with a `bp` of `base`,
+   * but a lower binding power than
+   * operators with a `bp` of `mid`.
+   */
+  low,
+  /**
+   * One rung above `low`, tokens
+   * with a `bp` of `mid` bind more
+   * strongly than operators with a
+   * `bp` of `low`, but are subservient
+   * to operators with a `bp` of `high`.
+   */
+  mid,
+  /**
+   * Tokens with a `bp` of `high`
+   * bind more strongly than those of
+   * `bp.mid`, but less strongly than
+   * those of `bp.peak`.
+   */
+  high,
+  /**
+   * For most tokens, this is the highest
+   * possible `bp`. The only tokens that
+   * may use this `bp` are prefix operator
+   * tokens.
+   */
+  peak,
+  /**
+   * The only tokens that may use the
+   * `bp` of `apex` are function calls
+   * and postfix operators (which are
+   * parsed as native function calls).
+   */
+  apex,
+}
+/**
+ * A token’s `ctx` type gives the parser
+ * a “hint” as to what the given token’s
+ * context is.
+ *
+ * For example, the lexemes `(` and `)`
+ * correspond to `tkn.lparen` and `tkn.rparen`
+ * respectively. Both types, however, are a
+ * _kind_ of `delimiter`.
+ *
+ * Providing this context allows the parser
+ * to more efficiently determine which route to
+ * take next.
+ */
+enum ctx {
+  /**
+   * A token of kind `util`
+   * is an internal-use only token.
+   * The two `util`-type tokens are
+   * `eof` and `err`.
+   */
+  util,
 
-  // ---------- pure keyword tokens
-  class,
-  else,
-  for,
-  while,
-  return,
-  super,
-  this,
-  that,
+  /**
+   * Tokens of kind `delim`
+   * are tokens are “structuring”
+   * tokens. These tokens include:
+   * `(`, `)`, `[`, `]`, `.`, `{`,
+   * `}`, `"`, `;`, and `|`.
+   */
+  delim,
 
-  /** variable declaration */
-  let,
+  /**
+   * Keyword tokens are tokens
+   * that have well-defined
+   * semantics in the language.
+   * E.g., `let`, `if`, `else`,
+   * and `class`.
+   */
+  keyword,
 
-  /** function declaration */
-  def,
+  /**
+   * A _reserved token_ is a token
+   * that may or may not have a
+   * well-defined semantic in the
+   * language, but are restricted
+   * from the user regardless, for
+   * whatever reason.
+   */
+  reserved,
 
-  /** constant declaration */
-  const,
+  /**
+   * A `prefix` token is an operator
+   * contextualized in prefix notation.
+   * E.g., `~5` (bitwise not).
+   */
+  prefix,
+
+  /**
+   * An `infix_left` token indicates
+   * an infix operator that prefers
+   * left-associativity. E.g., in
+   * `2+5`, `+` is an infix operator
+   * to be read from left to right.
+   */
+  infix_left,
+
+  /**
+   * An `infix_right` token
+   * indicates an infix operator
+   * that prefers right-associativity.
+   * E.g., given `2^1+3`, the token `^`
+   * is an `infix_right` token
+   * evaluated from right to left. Thus,
+   * `1+3` is read first (yielding
+   * `4`), and `2` is read last (yielding
+   * `2`). The overall result is `2^4`,
+   * yielding `16`. Had we classified
+   * `^` as an `infix_left` token,
+   * the result would have been `2+3=4`.
+   */
+  infix_right,
+
+  /**
+   * A token under `postfix` indicates
+   * a postfix notation context.
+   * E.g., in the expression `3!`,
+   * the token `!` is understood
+   * as the factorial operator.
+   */
+  postfix,
+
+  /**
+   * A token under `mixfix` indicates
+   * a context that is some _fix_ neither
+   * pre, in, or post. E.g, the ternary
+   * operator `?` is a `mixfix` context.
+   */
+  mixfix,
+
+  /**
+   * An `atom` indicates a terminal
+   * context. That is, there are no
+   * other contexts to consider.
+   */
+  atom,
 }
 
-const utilToken = (Type: token): Token => ({
-  Type,
-  Kind: kind.util,
-  Lexeme: "",
-  Line: -1,
+type Token = {
+  /**
+   * The token’s type.
+   * @see tkn for further description.
+   */
+  Type: tkn;
+
+  /**
+   * The token’s binding power.
+   * @see bp for further description.
+   */
+  BP: bp;
+
+  /**
+   * The token’s context.
+   * @see ctx for futher description.
+   */
+  Ctx: ctx;
+  Lexeme: string;
+  Line: number;
+  Col: number;
+};
+const token = (
+  Type: tkn,
+  BP: bp,
+  Ctx: ctx,
+  Lexeme: string,
+  Line: number,
+  Col: number,
+): Token => ({ Type, BP, Ctx, Lexeme, Line, Col });
+
+const ctxTest = (def: ctx) => (subject: ctx) => (subject === def);
+
+const isUtilToken = ctxTest(ctx.util);
+const isDelimToken = ctxTest(ctx.delim);
+const isKeyword = ctxTest(ctx.keyword);
+const isReserved = ctxTest(ctx.reserved);
+const isInfixLeft = ctxTest(ctx.infix_left);
+const isInfixRight = ctxTest(ctx.infix_right);
+const isPrefix = ctxTest(ctx.prefix);
+const isInfix = either(isInfixLeft, isInfixRight);
+const isPostFix = ctxTest(ctx.postfix);
+const isMixFix = ctxTest(ctx.mixfix);
+const isOP = anyof(isInfix, isPrefix, isPostFix, isMixFix);
+const isAtom = ctxTest(ctx.atom);
+
+type LCFn = (
+  type: () => tkn,
+  BP: () => bp,
+  Ctx: () => ctx,
+  lexeme: () => string,
+) => (line: number, column: number) => Token;
+
+const LC: LCFn = (type, BP, Ctx, lexeme) => (line, column) =>
+  token(
+    type(),
+    BP(),
+    Ctx(),
+    lexeme(),
+    line,
+    column,
+  );
+
+const pureTokenFactory = (Ctx: ctx) => (type: tkn, lexeme = "") =>
+  LC(() => type, () => bp.nil, () => Ctx, () => lexeme);
+
+const tokenFactory = (Ctx: ctx) => (lexeme: string, type: tkn, BP: bp) =>
+  LC(() => type, () => BP, () => Ctx, () => lexeme);
+
+const infixRightToken = tokenFactory(ctx.infix_left);
+const infixLeftToken = tokenFactory(ctx.infix_right);
+const mixFixToken = tokenFactory(ctx.mixfix);
+const postFixToken = tokenFactory(ctx.postfix);
+const prefixToken = tokenFactory(ctx.prefix);
+const atomToken = pureTokenFactory(ctx.atom);
+const delimiterToken = pureTokenFactory(ctx.delim);
+const keywordToken = pureTokenFactory(ctx.keyword);
+const reservedToken = pureTokenFactory(ctx.reserved);
+const utilToken = pureTokenFactory(ctx.util);
+const errorToken = (message: string) => utilToken(tkn.err, message);
+enum stat {
+  scanner_error,
+  syntax_error,
+  semantic_error,
+  type_error,
+  ok,
+}
+type State = {
+  start: number;
+  current: number;
+  line: number;
+  column: number;
+  max: number;
+  status: stat;
+  prevtoken: tkn;
+};
+const initState = (max: number): State => ({
+  start: 0,
+  current: 0,
+  line: 1,
+  column: 0,
+  max,
+  status: stat.ok,
+  prevtoken: tkn.nil,
 });
 
-export class Engine {
-  /** @internal The input source string. */
-  #source: string;
-
-  /** @internal Pointer to the first character of the lexeme. */
-  #start: number;
-
-  /** @internal The current positiong of scanning. */
-  #current: number;
-
-  /** @internal The current line number of `current`. */
-  #line: number;
-
-  /**
-   * @internal Method for resetting
-   * the Engine’s state. There should
-   * be no remnants of a previous parsing.
-   */
-  private clean() {
-    this.#source = "";
-    this.#start = 0;
-    this.#current = 0;
-    this.#line = 1;
-    this.#status = stat.ok;
-  }
-
-  private utilityToken(Type: token) {
-  }
-
-  /**
-   * @internal Returns true if
-   * the parser has reached the
-   * end of source input.
-   */
-  private get atEOF(): boolean {
-    return this.#current >= this.#source.length;
-  }
-
-  #currentToken: Token;
-
-  /** @internal The current token in state. */
-  private get currentToken(): Token {
-    return this.#currentToken;
-  }
-
-  /** @internal Current status of engine. */
-  #status: stat;
-
-  /**
-   * @internal Returns true if the engine
-   * status is currently ok.
-   */
-  private get isOK(): boolean {
-    return this.#status === stat.ok;
-  }
-
-  constructor() {
-    this.#source = "";
-    this.#start = 0;
-    this.#current = 0;
-    this.#line = 1;
-    this.#currentToken = utilToken(token.void);
-    this.#status = stat.ok;
-  }
-
-  /**
-   * @internal Returns the current line number
-   * and lexeme as a pair.
-   */
-  private lexLine(): [number, string] {
-    const line = this.#line;
-    const lexeme = this.#source.slice(this.#start, this.#current);
-    return [line, lexeme];
-  }
-
-  /**
-   * @internal Returns a new token of
-   * kind `char` (a single character token).
-   */
-  private charToken(Type: token): Token {
-    const [Line, Lexeme] = this.lexLine();
-    const Kind = kind.char;
-    return { Type, Kind, Lexeme, Line };
-  }
-
-  /**
-   * @internal Creates a new error token struct.
-   */
-  private errorToken(message: string): Token {
-    const [Line] = this.lexLine();
-    const Type = token.error;
-    const out: Token = {
-      Type,
-      Lexeme: message,
-      Kind: kind.util,
-      Line,
-    };
-    this.#currentToken = out;
-    this.#status = stat.scanner_error;
-    return out;
-  }
-
-  /**
-   * @internal Moves the scanner forward
-   * to read the next character. This will
-   * consume the current character and
-   * return it.
-   */
-  private tick(): string {
-    this.#current++;
-    return this.#source[this.#current - 1];
-  }
-
-  private matchToken(expected: string) {
-    if (this.atEOF) return false;
-    const currentChar = this.#source[this.#current];
-    if (currentChar !== expected) return false;
-    this.#current++;
+const parse = (source: string, devmode: boolean = false) => {
+  const text = source;
+  const stateLogs: State[] = [];
+  let state = initState(text.length);
+  const stateUpdate = (update: Partial<State>) => {
+    devmode && stateLogs.push(state);
+    state = { ...state, ...update };
+  };
+  const makeToken = (tkfn: (line: number, column: number) => Token) => {
+    const res = tkfn(state.line, state.column);
+    stateUpdate({prevtoken: res.Type})
+    return res;
+  };
+  const safe = () => state.status === stat.ok;
+  const atEnd = () => state.current >= state.max;
+  const tick = (by: number = 1) => {
+    const char = text[state.current];
+    const current = state.current + by;
+    stateUpdate({ current });
+    return char;
+  };
+  const peek = () => text[state.current];
+  const peekNext = () => text[state.current + 1];
+  const currentChar = () => text.slice(state.start, state.current);
+  const match = (expectedChar: string) => {
+    if (atEnd()) return false;
+    if (currentChar() !== expectedChar) return false;
+    tick();
     return true;
-  }
-
-  /** @internal Returns the next token from source. */
-  private getToken() {
-    this.#start = this.#current;
-    if (this.atEOF) return utilToken(token.eof);
-    const char = this.tick();
-    switch (char) {
-      case "[":
-        return this.charToken(token.left_bracket);
-      case "]":
-        return this.charToken(token.right_bracket);
+  };
+  const isDigit = (c: string) => c >= "0" && c <= "9";
+  const remText = () => text.slice(state.current);
+  const scanPosNum = (str: string) => {
+    const N = some([
+      num("+dotnum").map((res) => ({ res, type: "+float" })),
+      num("+float").map((res) => ({ res, type: "+float" })),
+      num("+int").map((res) => ({ res, type: "+int" })),
+    ]).run(str);
+    if (N.erred) return makeToken(errorToken("Expected number"));
+    const result = N.result.res;
+    tick(result.length - 1);
+    const type = N.result.type === "+float" ? tkn.real : tkn.int;
+    return makeToken(atomToken(type, result));
+  };
+  const scanNegNum = (str: string) => {
+    const N = some([
+      num("-dotnum").map((res) => ({ res, type: "-float" })),
+      num("-float").map((res) => ({ res, type: "-float" })),
+      num("-int").map((res) => ({ res, type: "-int" })),
+    ]).run(str);
+    if (N.erred) return makeToken(errorToken("Expected number"));
+    const result = N.result.res;
+    tick(result.length - 1);
+    const type = N.result.type === "-float" ? tkn.real : tkn.int;
+    return makeToken(atomToken(type, result));
+  };
+  const scanDotNum = (str: string) => {
+    const N = num("dotnum").run(str);
+    if (N.erred) return makeToken(errorToken("Expected number"));
+    tick(N.result.length - 1);
+    return makeToken(atomToken(tkn.real, N.result));
+  };
+  const skipwhitespace = () => {
+    while (safe() && !atEnd()) {
+      const c = peek();
+      switch (c) {
+        case " ":
+        case "\r":
+        case "\t":
+          tick();
+          break;
+        case "\n":
+          stateUpdate({ line: state.line + 1 });
+          tick();
+          break;
+        default:
+          stateUpdate({ column: state.column + 1 });
+          return;
+      }
+    }
+  };
+  const getToken = () => {
+    skipwhitespace();
+    const c = tick();
+    const D = (t: tkn) => makeToken(delimiterToken(t, c));
+    const text = c + remText();
+    const nxtchar = peek();
+    switch (c) {
       case "(":
-        return this.charToken(token.left_paren);
+        return D(tkn.lparen);
       case ")":
-        return this.charToken(token.right_paren);
+        return D(tkn.rparen);
       case "{":
-        return this.charToken(token.left_brace);
+        return D(tkn.lbrace);
       case "}":
-        return this.charToken(token.right_brace);
+        return D(tkn.rbrace);
+      case "[":
+        return D(tkn.lbracket);
+      case "]":
+        return D(tkn.rbracket);
       case ";":
-        return this.charToken(token.semicolon);
+        return D(tkn.semicolon);
       case ",":
-        return this.charToken(token.comma);
+        return D(tkn.comma);
+      case ".":
+        if (isDigit(nxtchar)) return scanDotNum(text);
+        return D(tkn.dot);
+      case "-":
+        if (isDigit(nxtchar)) return scanNegNum(text);
+        return D(tkn.minus);
+      case "+":
+        if (isDigit(nxtchar)) return scanPosNum(text);
+        return D(tkn.plus);
+      case "/":
+        return D(tkn.slash);
+      case "*":
+        return D(tkn.star);
     }
-    return this.errorToken("Unexpected character.");
-  }
-
-  /**
-   * Returns an array of tokens,
-   * used primarily for testing.
-   */
-  public tokenize(text: string): Token[] {
-    this.clean();
-    this.#source = text;
-    const tokens = [];
-    const L = this.#source.length;
+    return makeToken(utilToken(tkn.eof));
+  };
+  const report = <t>(output: t) =>
+    devmode ? ({ output, stateLogs }) : ({ output });
+  const tokenize = () => {
+    const L = text.length;
+    const tokens: Token[] = [];
     for (let i = 0; i < L; i++) {
-      tokens.push(this.getToken());
+      tokens.push(getToken());
+      if (atEnd()) break;
     }
-    return tokens;
-  }
-
-  /**
-   * Parses the given input text.
-   */
-  public parse(text: string) {
-    this.clean();
-    this.#source = text;
-  }
-}
-
-const real = some([
-  lit("0").then((res, nextChar) => {
-    if (nextChar === "b") {
-      return regex(/^b[0-1]+/).map((r) => res + r);
-    } else if (nextChar === "x") {
-      const hexchars = regex(/^x[0-9]+/)
-        .or(regex(/^[a-f]+/));
-      return hexchars.repeating.map((r) => res + r);
-    } else if (nextChar === "o") {
-      return regex(/^o[0-7]+/).map((r) => res + r);
-    } else {
-      return P.NIL();
-    }
-  }),
-]);
-
-const anum: NumberReader = (
-  pattern:
-    | `${number}`
-    | "whole"
-    | "real"
-    | "natural"
-    | "+int"
-    | "-int"
-    | "int"
-    | "dotnum"
-    | "udotnum"
-    | "-dotnum"
-    | "+dotnum"
-    | "ufloat"
-    | "float"
-    | "+float"
-    | "-float"
-    | "hex"
-    | "HEX"
-    | "octal"
-    | "binary"
-    | "real"
-    | "scientific"
-    | "SCIENTIFIC"
-    | "fraction"
-    | "complex"
-    | "any",
-) => {
-  const digits = regex(/^[0-9]+/);
-  const zero = regex(/^[0]/);
-  const manyZeros = regex(/^[0]+/);
-  const posint = regex(/^[1-9]\d*/);
-  const natnum = regex(/^(0|[1-9]\d*)/);
-  const dot = regex(/^[\.]/);
-  const minus = regex(/^[-]/);
-  const plus = regex(/^[+]/);
-  const nonzeroInt = word([minus.optional, posint]);
-  const zerosLedInt = word([maybe(manyZeros), posint]);
-  const option = (x: typeof pattern, p: () => P<string>) => {
-    return pattern === x ? p() : P.NIL();
+    return report(tokens);
   };
-  const posInt = () => {
-    return word([plus, integer()]);
+  return {
+    tokenize,
   };
-  const integer = () => {
-    return either(nonzeroInt, zero);
-  };
-  const negativeInteger = () => {
-    return word([minus, posint]);
-  };
-  const floatingPointNumber = () => {
-    return word([natnum, dot, digits]);
-  };
-  const naturalNumber = () => {
-    return regex(/^(0|[1-9]\d*)/);
-  };
-  const wholeNumber = () => {
-    return regex(/^[1-9]\d*/);
-  };
-  const scinum = () =>
-    word([
-      maybe(plus.or(minus)),
-      anum("float").or(anum("int")).or(anum("dotnum")),
-      lit(pattern === "scientific" ? "e" : "E"),
-      anum("int").or(anum("+int")),
-    ]);
-  const sfloat = () => {
-    return word([
-      plus,
-      natnum.then((r1) =>
-        dot.then((r2) => {
-          const p = r1 === "0" ? zerosLedInt : natnum;
-          return p.map((r3) => r1 + r2 + r3);
-        })
-      ),
-    ]);
-  };
-  const fraction = () => {
-    return word([
-      maybe(minus.or(plus)),
-      natnum,
-      lit("/"),
-      natnum,
-    ]);
-  };
-  const unsignedDottedNumber = () =>
-    word([
-      dot,
-      zerosLedInt.or(zero),
-    ]);
-  const dottedNumber = () =>
-    word([
-      maybe(minus),
-      anum("udotnum"),
-    ]);
-  const negativeDotNum = () =>
-    word([
-      minus,
-      dot,
-      zerosLedInt,
-    ]);
-  const positiveDotNum = () =>
-    word([
-      plus,
-      dot,
-      zerosLedInt,
-    ]);
-  const unsignedFloat = () => word([natnum, dot, natnum]);
-  const negativeFloat = () =>
-    word([
-      minus,
-      natnum,
-      dot,
-      zerosLedInt,
-    ]);
-  const hexNum = () =>
-    regex(
-      pattern === "hex" ? /^0x[0-9a-f]+/ : /^0x[0-9A-F]+/,
-    );
-  const binaryNumber = () => regex(/^0b[0|1]+/);
-  const octalNumber = () => regex(/^0o[0-7]+/);
-  const reader = some([
-    option("whole", wholeNumber),
-    option("natural", naturalNumber),
-    option("float", floatingPointNumber),
-    option("+int", posInt),
-    option("-int", negativeInteger),
-    option("int", integer),
-    option("udotnum", unsignedDottedNumber),
-    option("dotnum", dottedNumber),
-    option("-dotnum", negativeDotNum),
-    option("+dotnum", positiveDotNum),
-    option("ufloat", unsignedFloat),
-    option("-float", negativeFloat),
-    option("hex", hexNum),
-    option("HEX", hexNum),
-    option("binary", binaryNumber),
-    option("octal", octalNumber),
-    option("scientific", scinum),
-    option("SCIENTIFIC", scinum),
-    option("fraction", fraction),
-    option("+float", sfloat),
-  ]);
-  return reader;
 };
 
-const p = anum("whole");
-console.log(p.run("1.2"));
+const parsing = parse(".123 + 2.3", true);
+console.log(parsing.tokenize());
