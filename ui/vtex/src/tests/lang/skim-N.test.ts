@@ -1,9 +1,9 @@
 import { describe, expect, it, test } from "vitest";
-import { num } from "../../lib/lang";
+import { number } from "../../lib/lang";
 
 describe("N", () => {
   it("should parse only whole numbers", () => {
-    const P = num("whole");
+    const P = number("whole");
     const res = P.run(`258`);
     const exp = {
       text: `258`,
@@ -15,7 +15,7 @@ describe("N", () => {
   });
 
   it("should parse 0", () => {
-    const P = num("0");
+    const P = number("0");
     const res = P.run("0");
     const exp = {
       text: "0",
@@ -27,7 +27,7 @@ describe("N", () => {
   });
 
   it("should parse 20", () => {
-    const P = num("natural");
+    const P = number("natural");
     const res = P.run("20");
     const exp = {
       text: "20",
@@ -39,7 +39,7 @@ describe("N", () => {
   });
 
   it("should parse +157", () => {
-    const P = num("+int");
+    const P = number("+int");
     const res = P.run("+157");
     const exp = {
       text: "+157",
@@ -51,7 +51,7 @@ describe("N", () => {
   });
 
   it("should NOT parse 34", () => {
-    const P = num("+int");
+    const P = number("+int");
     const res = P.run("34");
     const exp = {
       ...res,
@@ -63,7 +63,7 @@ describe("N", () => {
   });
 
   it("should not parse +0", () => {
-    const P = num("+int");
+    const P = number("+int");
     const res = P.run("+0");
 		const error = res.error;
     const exp = {
@@ -77,7 +77,7 @@ describe("N", () => {
   });
 
   it("should parse -28", () => {
-    const P = num('-int');
+    const P = number('-int');
     const res = P.run("-28");
     const exp = {
       text: "-28",
@@ -89,7 +89,7 @@ describe("N", () => {
   });
 
   it("should NOT parse -0", () => {
-    const P = num('-int');
+    const P = number('-int');
     const res = P.run("-0");
     const exp = {
 			...res,
@@ -101,7 +101,7 @@ describe("N", () => {
   });
 
   it("should parse -28", () => {
-    const P = num('int');
+    const P = number('int');
     const res = P.run("-28");
     const exp = {
       text: "-28",
@@ -113,7 +113,7 @@ describe("N", () => {
   });
 
   it("should not parse 0", () => {
-    const P = num("int");
+    const P = number("int");
     const res = P.run("0");
 		const error = res.error;
     const exp = {
@@ -127,7 +127,7 @@ describe("N", () => {
   });
 
   it("should not parse 5", () => {
-    const P = num("int");
+    const P = number("int");
     const res = P.run("5");
 		const error = res.error;
     const exp = {
@@ -141,7 +141,7 @@ describe("N", () => {
   });
 
   it("should NOT parse +5", () => {
-    const P = num("int");
+    const P = number("int");
     const res = P.run("+5");
     const exp = {
 			...res,
@@ -153,7 +153,7 @@ describe("N", () => {
 
   
   it("should parse 1.1", () => {
-    const P = num('ufloat');
+    const P = number('ufloat');
     const res = P.run("1.1");
     const exp = {
       ...res,
@@ -165,7 +165,7 @@ describe("N", () => {
   });
 
   it("should parse 0.0", () => {
-    const P = num('ufloat');
+    const P = number('ufloat');
     const res = P.run("0.0");
     const exp = {
       ...res,
@@ -177,7 +177,7 @@ describe("N", () => {
   });
 
   it("should NOT parse 0", () => {
-    const P = num('ufloat');
+    const P = number('ufloat');
     const res = P.run("0");
     const exp = {
       ...res,
@@ -191,7 +191,7 @@ describe("N", () => {
 
 
   it("should parse 1.3912", () => {
-    const P = num('ufloat');
+    const P = number('ufloat');
     const res = P.run("1.3912");
     const exp = {
       ...res,
@@ -203,7 +203,7 @@ describe("N", () => {
   });
 
   it("should parse 0.390", () => {
-    const P = num('ufloat');
+    const P = number('ufloat');
     const res = P.run("0.390");
     const exp = {
       ...res,
@@ -215,7 +215,7 @@ describe("N", () => {
   });
 
   it("should parse +1.0", () => {
-    const P = num('+float');
+    const P = number('+float');
     const res = P.run("+1.0");
     const exp = {
       ...res,
@@ -227,7 +227,7 @@ describe("N", () => {
   });
 
   it("should parse +0.0001", () => {
-    const P = num('+float');
+    const P = number('+float');
     const res = P.run("+0.0001");
     const exp = {
       ...res,
@@ -239,7 +239,7 @@ describe("N", () => {
   });
 
   it("should NOT parse 0.0", () => {
-    const P = num('+float');
+    const P = number('+float');
     const res = P.run("0.0");
     const exp = {
       ...res,
@@ -251,7 +251,7 @@ describe("N", () => {
   });
 
   it("should parse -1.2", () => {
-    const P = num('-float');
+    const P = number('-float');
     const res = P.run("-1.2");
     const exp = {
       ...res,
@@ -263,7 +263,7 @@ describe("N", () => {
   });
 
   it("should NOT parse -0.0", () => {
-    const P = num('-float');
+    const P = number('-float');
     const res = P.run("-0.0");
     const exp = {
       ...res,
@@ -275,7 +275,7 @@ describe("N", () => {
   });
 
   it("should parse .0", () => {
-    const P = num("udotnum");
+    const P = number("udotnum");
     const res = P.run(`.0`);
     const exp = {
       ...res,
@@ -287,7 +287,7 @@ describe("N", () => {
   });
 
   it("should parse .001", () => {
-    const P = num("udotnum");
+    const P = number("udotnum");
     const res = P.run(`.001`);
     const exp = {
       ...res,
@@ -299,7 +299,7 @@ describe("N", () => {
   });
 
   it("should parse -.001", () => {
-    const P = num("-dotnum");
+    const P = number("-dotnum");
     const res = P.run(`-.001`);
     const exp = {
       ...res,
@@ -311,7 +311,7 @@ describe("N", () => {
   });
 
   it("should NOT parse -.0", () => {
-    const P = num("-dotnum");
+    const P = number("-dotnum");
     const res = P.run(`-.0`);
     const exp = {
       ...res,
@@ -322,7 +322,7 @@ describe("N", () => {
   });
 
   it("should NOT parse +.0", () => {
-    const P = num("+dotnum");
+    const P = number("+dotnum");
     const res = P.run(`+.0`);
     const exp = {
       ...res,
@@ -333,7 +333,7 @@ describe("N", () => {
   });
 
   it("should parse +.291", () => {
-    const P = num("+dotnum");
+    const P = number("+dotnum");
     const res = P.run(`+.291`);
     const exp = {
       ...res,
@@ -345,7 +345,7 @@ describe("N", () => {
   });
 
   it("should parse 3.147", () => {
-    const P = num('float');
+    const P = number('float');
     const res = P.run(`3.147`);
     const exp = {
       ...res,
@@ -357,7 +357,7 @@ describe("N", () => {
   });
 
   it("should parse 2.3", () => {
-    const P = num('float');
+    const P = number('float');
     const res = P.run(`2.3`);
     const exp = {
       ...res,
@@ -369,7 +369,7 @@ describe("N", () => {
   });
 
   it("should parse -0.1", () => {
-    const P = num('float');
+    const P = number('float');
     const res = P.run(`-0.1`);
     const exp = {
       ...res,
@@ -380,7 +380,7 @@ describe("N", () => {
     expect(res).toEqual(exp);
   });
   it("should parse 5.20", () => {
-    const P = num('float');
+    const P = number('float');
     const res = P.run(`5.20`);
     const exp = {
       ...res,
@@ -391,7 +391,7 @@ describe("N", () => {
     expect(res).toEqual(exp);
   });
   it("should NOT parse -0.0", () => {
-    const P = num('float');
+    const P = number('float');
     const res = P.run(`-0.0`);
     const exp = {
       ...res,
@@ -402,7 +402,7 @@ describe("N", () => {
     expect(res).toEqual(exp);
   });
   it("should parse 0.0", () => {
-    const P = num('float');
+    const P = number('float');
     const res = P.run(`0.0`);
     const exp = {
       ...res,
@@ -414,7 +414,7 @@ describe("N", () => {
   });
 
   it("should parse -0.0001", () => {
-    const P = num('float');
+    const P = number('float');
     const res = P.run(`-0.0001`);
     const exp = {
       ...res,
@@ -426,7 +426,7 @@ describe("N", () => {
   });
   
   it("should parse 0.0001", () => {
-    const P = num('float');
+    const P = number('float');
     const res = P.run(`0.0001`);
     const exp = {
       ...res,
@@ -438,7 +438,7 @@ describe("N", () => {
   });
 
   it("should parse a case-insensitive hex number", () => {
-    const P = num('hex');
+    const P = number('hex');
     const res = P.run(`0xafed`);
     const exp = {
       ...res,
@@ -449,7 +449,7 @@ describe("N", () => {
   });
 
   it("should parse a case-sensitive hex number", () => {
-    const P = num('HEX');
+    const P = number('HEX');
     const res = P.run(`0xAF2E9D`);
     const exp = {
       ...res,
@@ -460,7 +460,7 @@ describe("N", () => {
   });
 
   it("should parse an octal number", () => {
-    const P = num('octal');
+    const P = number('octal');
     const res = P.run(`0o01272`);
     const exp = {
       ...res,
@@ -471,7 +471,7 @@ describe("N", () => {
   });
 
   it("should parse a binary number", () => {
-    const P = num('binary');
+    const P = number('binary');
     const res = P.run(`0b101101`);
     const exp = {
       ...res,
@@ -482,7 +482,7 @@ describe("N", () => {
   });
 
   it("should parse a fraction", () => {
-    const P = num('fraction');
+    const P = number('fraction');
     const res = P.run(`1/2`);
     const exp = {
       ...res,
@@ -493,7 +493,7 @@ describe("N", () => {
   });
 
   it("should parse a signed fraction", () => {
-    const P = num('fraction');
+    const P = number('signed-fraction');
     const res = P.run(`+1/2`);
     const exp = {
       ...res,
@@ -504,7 +504,7 @@ describe("N", () => {
   });
 
   it("should parse a negative, cap scientific number", () => {
-    const P = num('SCIENTIFIC');
+    const P = number('SCIENTIFIC');
     const res = P.run(`-1.2E5`);
     const exp = {
       ...res,
@@ -515,7 +515,7 @@ describe("N", () => {
   });
 
   it("should parse a lower-case, negative scientific number", () => {
-    const P = num('scientific');
+    const P = number('scientific');
     const res = P.run(`-1.2e5`);
     const exp = {
       ...res,
@@ -526,7 +526,7 @@ describe("N", () => {
   });
 
   it("should parse a lower-case, negative scientific number with a signed exponent", () => {
-    const P = num('scientific');
+    const P = number('scientific');
     const res = P.run(`-1.2e+5`);
     const exp = {
       ...res,
@@ -537,7 +537,7 @@ describe("N", () => {
   });
 
   it("should parse an upper-case, dotted, scientific number with a signed exponent", () => {
-    const P = num('SCIENTIFIC');
+    const P = number('SCIENTIFIC');
     const res = P.run(`.2E-5`);
     const exp = {
       ...res,
@@ -548,7 +548,7 @@ describe("N", () => {
   });
 
   it("should parse a lower-case, dotted, scientific number with a positive exponent", () => {
-    const P = num('scientific');
+    const P = number('scientific');
     const res = P.run(`+.2e+5`);
     const exp = {
       ...res,
@@ -558,7 +558,7 @@ describe("N", () => {
     expect(res).toEqual(exp);
   });
   it("should NOT parse +.2", () => {
-    const P = num('scientific');
+    const P = number('scientific');
     const res = P.run(`+.2`);
     const exp = {
       ...res,
@@ -570,7 +570,7 @@ describe("N", () => {
   });
 
   it("should NOT parse +2.", () => {
-    const P = num('dotnum');
+    const P = number('dotnum');
     const res = P.run(`+2.`);
     const exp = {
       ...res,

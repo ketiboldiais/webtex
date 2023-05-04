@@ -1,0 +1,171 @@
+
+class NUM {
+  private val: () => number | boolean;
+  private type: NumType;
+  constructor(value: () => number | boolean, type: NumType) {
+    this.val = value;
+    this.type = type;
+  }
+  value() {
+    const value = this.val();
+    return typeof value === "boolean" ? (value ? 1 : 0) : value;
+  }
+  binop(fn: (left: number, right: number) => number | boolean, other: NUM) {
+    return new NUM(
+      () => fn(this.value(), other.value()),
+      getType(this.type, other.type),
+    );
+  }
+  unop(fn: (val: number) => number | boolean) {
+    return new NUM(() => fn(this.value()), this.type);
+  }
+  add(other: NUM) {
+    return this.binop(add, other);
+  }
+  minus(other: NUM) {
+    return this.binop(sub, other);
+  }
+  times(other: NUM) {
+    return this.binop(mul, other);
+  }
+  divide(other: NUM) {
+    return this.binop(div, other);
+  }
+  quot(other: NUM) {
+    return this.binop(quot, other);
+  }
+  rem(other: NUM) {
+    return this.binop(rem, other);
+  }
+  mod(other: NUM) {
+    return this.binop(mod, other);
+  }
+  equals(other: NUM) {
+    return this.binop((L, R) => L === R, other);
+  }
+  neq(other: NUM) {
+    return this.binop((L, R) => L !== R, other);
+  }
+  lt(other: NUM) {
+    return this.binop((L, R) => L < R, other);
+  }
+  gt(other: NUM) {
+    return this.binop((L, R) => L > R, other);
+  }
+  static int(numcast: NumCaster) {
+    return (n: string | number) =>
+      new NUM(
+        () => typeof n === "string" ? numcast(n) : n,
+        NumType.int,
+      );
+  }
+  static float(numcast: NumCaster) {
+    return (n: string | number) =>
+      new NUM(
+        () => typeof n === "string" ? numcast(n) : n,
+        NumType.float,
+      );
+  }
+}
+const floor = (n: NUM) => n.unop(() => Math.floor(n.value()));
+const ceil = (n: NUM) => n.unop(() => Math.ceil(n.value()));
+const finite = (n: NUM) => n.unop(() => Number.isFinite(n.value()));
+const infinite = (n: NUM) => n.unop(() => !Number.isFinite(n.value()));
+const int = NUM.int((x) => Math.floor((x as any) * 1));
+const float = NUM.float((x) => Number.parseFloat(x));
+const hex = NUM.int((x) => Number.parseInt(x, 16));
+const binary = NUM.int((x) => Number.parseInt(x, 2));
+const octal = NUM.int((x) => Number.parseInt(x, 8));
+
+
+type NumBinop = (x: number, y: number) => number;
+
+class NUM {
+  fn: FNum<number>;
+  constructor(val: FNum<number>) {
+    this.fn = val;
+  }
+  unop(fn: (x: number) => number, fname: string = fn.name) {
+    const f = this.fn;
+    return new Num((calc) => {
+      const res = f(calc);
+      if (typeof res.result !== "number") {
+        const msg = typeReport(fname, "number", typeof res);
+        return err(calc, msg);
+      }
+      return update(calc, fn(res.result));
+    });
+  }
+  binop(fn: NumBinop, other: number, fname: string = fn.name) {
+    const f = this.fn;
+    return new Num((calc) => {
+      const res = f(calc);
+      if (typeof res.result !== "number") {
+        const msg = typeReport(fname, "number", typeof res);
+        return err(calc, msg);
+      }
+      return update(calc, fn(res.result, other));
+    });
+  }
+  
+  add(x: number) {
+    return this.binop(Real.add, x);
+  }
+
+  minus(x: number) {
+    return this.binop(Real.minus, x);
+  }
+
+  times(x: number) {
+    return this.binop(Real.times, x, "times");
+  }
+
+  div(x: number) {
+    return this.binop(Real.div, x);
+  }
+
+  floor() {
+    return this.unop(Real.floor);
+  }
+
+  ceil() {
+    return this.unop(Real.ceil);
+  }
+  pow(x: number) {
+    return this.binop(Real.pow, x);
+  }
+  root(x: number) {
+    return this.binop(Real.root, x);
+  }
+
+  end() {
+    return this.fn({
+      result: null,
+    }).result;
+  }
+}
+
+const Num = Typed(NUM, sys.number);
+type NumType = InstanceType<typeof Num>;
+type Term = NumType;
+
+function isReal(x: Term): x is NumType {
+  return x.getType() === sys.number;
+}
+
+// deno-fmt-ignore
+const NumBuilder = (
+  f: (x:string) => number
+) => (value:string|number) => new Num((calc)=>{
+  return ({
+    ...calc,
+    result: typeof value === 'string'
+      ? f(value)
+      : value}
+)})
+
+const num = NumBuilder((x) => (x as any) * 1);
+const hex = NumBuilder((x) => Number.parseInt(x, 16));
+const oct = NumBuilder((x) => Number.parseInt(x, 8));
+const bin = NumBuilder((x) => Number.parseInt(x, 2));
+

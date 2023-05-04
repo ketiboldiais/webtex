@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { num } from "../../lib/lang";
+import { number } from "../../lib/lang";
 
 const numTest = (input: string) => {
-  const P = num("real");
+  const P = number("real");
   const res = P.run(input);
   const exp = {
     ...res,
@@ -13,7 +13,7 @@ const numTest = (input: string) => {
   return { res, exp };
 };
 
-describe("num", () => {
+describe("number", () => {
   it("should parse 0", () => {
     const { res, exp } = numTest("0");
     expect(res).toEqual(exp);
@@ -59,7 +59,7 @@ describe("num", () => {
     expect(res).toEqual(exp);
   });
   it("should parse +2.2", () => {
-    const p = num('real');
+    const p = number('real');
 		const res = p.run('+2.2');
 		const exp = {
 			...res,
