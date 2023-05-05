@@ -1530,7 +1530,17 @@ export const number: NumberReader = (
 
 /**
  * The sum type `tkn` maps to a token type recognized
- * by skim.
+ * by skim. The token types are defined on specific ranges:
+ *
+ * 1. `0 - 99` - Reserved for utility tokens.
+ * 2. `100 - 199` - Reserved for single-character tokens.
+ * 3. `200 - 299` - Reserved for predicate operator tokens.
+ * 3. `300 - 399` - Reserved for numeric operator tokens.
+ * 3. `400 - 499` - Reserved for comparison operator tokens.
+ * 3. `500 - 599` - Reserved for function call operators.
+ * 3. `600 - 649` - Reserved for numeric literals.
+ * 3. `650 - 699` - Reserved for string literals.
+ * 3. `700 - 1000` - Reserved for keywords.
  * @enum
  */
 export enum tkn {
@@ -1564,212 +1574,212 @@ export enum tkn {
    * - Lexeme: `(`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  left_paren = 3,
+  left_paren = 100,
 
   /**
    * Lexeme: `)`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  right_paren = 4,
+  right_paren = 101,
 
   /**
    * Lexeme: `[`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  left_bracket = 5,
+  left_bracket = 102,
 
   /**
    * Lexeme: `]`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  right_bracket = 6,
+  right_bracket = 103,
 
   /**
    * Lexeme: `{`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  left_brace = 7,
+  left_brace = 104,
 
   /**
    * Lexeme: `}`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  right_brace = 8,
+  right_brace = 105,
 
   /**
    * Lexeme: `.`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  dot = 9,
+  dot = 106,
 
   /**
    * Lexeme: `|`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  vbar = 10,
+  vbar = 107,
 
   /**
    * Lexeme: `;`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  semicolon = 11,
+  semicolon = 108,
 
   /**
    * Lexeme: `,`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  comma = 12,
+  comma = 109,
 
   /**
    * Keyword-operator `and`
    */
-  and = 601,
+  and = 200,
 
   /**
    * Keyword-operator: `or`
    */
-  or = 602,
+  or = 201,
 
   /**
    * Keyword-operator: `nand`
    */
-  nand = 603,
+  nand = 202,
 
   /**
    * Keyword-operator: `nor`
    */
-  nor = 604,
+  nor = 203,
 
   /**
    * Keyword-operator: `xor`
    */
-  xor = 605,
+  xor = 204,
 
   /**
    * Keyword-operator: `xnor`
    */
-  xnor = 606,
+  xnor = 205,
 
   /**
    * Keyword-operator: `not`
    */
-  not = 607,
-
-  /**
-   * Keyword-operator: `is`
-   */
-  is = 608,
+  not = 206,
 
   /**
    * Keyword-operator: `rem`
    */
-  rem = 609,
+  rem = 300,
 
   /**
    * Keyword-operator: `mod`
    */
-  mod = 610,
+  mod = 301,
 
   /**
    * Keyword-operator: `div`
    */
-  div = 611,
+  div = 302,
 
   /**
    * Lexeme: `+`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  plus = 612,
+  plus = 304,
 
   /**
    * Lexeme: `-`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  minus = 613,
+  minus = 305,
 
   /**
    * Lexeme: `*`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  star = 614,
+  star = 306,
 
   /**
    * Lexeme: `&`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  ampersand = 615,
+  ampersand = 307,
 
   /**
    * Lexeme: `^`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  caret = 616,
+  caret = 308,
 
   /**
    * Lexeme: `%`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  percent = 617,
+  percent = 309,
 
   /**
    * Lexeme: `/`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  slash = 618,
+  slash = 310,
 
   /**
    * Lexeme: `!=`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  neq = 619,
+  neq = 311,
 
   /**
    * Lexeme: `!`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  bang = 620,
+  bang = 312,
+
+  /**
+   * Keyword-operator: `is`
+   */
+  is = 400,
 
   /**
    * Lexeme: `>=`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  geq = 621,
+  geq = 401,
 
   /**
    * Lexeme: `>`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  gt = 622,
+  gt = 402,
 
   /**
    * Lexeme: `<=`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  leq = 623,
+  leq = 403,
 
   /**
    * Lexeme: `<`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  lt = 624,
+  lt = 404,
 
   /**
    * Lexeme: `==`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  deq = 625,
+  deq = 405,
 
   /**
    * Lexeme: `=`
    * - _See also_ {@link Engine.readNextToken}.
    */
-  eq = 626,
+  eq = 406,
 
   /**
    * Lexeme: Any native function.
    * - _See also_ {@link Engine.readNextToken}.
    */
-  call = 627,
+  call = 500,
 
   /**
    * Token type integer.
@@ -1782,7 +1792,7 @@ export enum tkn {
    * 2. _See also_ {@link integer}
    * 2. _See also_ {@link integer_integer}
    */
-  int = 101,
+  int = 600,
 
   /**
    * Token type integer.
@@ -1795,7 +1805,7 @@ export enum tkn {
    * 2. _See also_ {@link floatingPointNumber} (demonstrating
    * how floating point numbers are parsed).
    */
-  float = 102,
+  float = 601,
 
   /**
    * Token type scinum. Note that Skim only recognizes
@@ -1810,7 +1820,7 @@ export enum tkn {
    * 2. _See also_ {@link scientificNumber} (demonstrating
    * how scientific numbers are parsed).
    */
-  scinum = 103,
+  scinum = 602,
 
   /**
    * Token type fraction.
@@ -1824,7 +1834,7 @@ export enum tkn {
    * 2. _See also_ {@link fractionalNumber} (demonstrating
    * how fractional numbers are parsed).
    */
-  frac = 104,
+  frac = 603,
 
   /**
    * Token type hex.
@@ -1840,7 +1850,7 @@ export enum tkn {
    * 3. _See also_ {@link signedHex} (demonstrating
    * how signed hexadecimal numbers are parsed).
    */
-  hex = 105,
+  hex = 604,
 
   /**
    * Token type octal (indicating an octal number).
@@ -1856,7 +1866,7 @@ export enum tkn {
    * 3. _See also_ {@link signedOctal} (demonstrating
    * how signed hexadecimal numbers are parsed).
    */
-  octal = 106,
+  octal = 605,
 
   /**
    * Token type binary (indicating an binary number).
@@ -1872,17 +1882,17 @@ export enum tkn {
    * 3. _See also_ {@link signedBinary} (demonstrating
    * how signed hexadecimal numbers are parsed).
    */
-  binary = 107,
+  binary = 606,
 
   /**
    * Keyword-literal: `nan`,
    */
-  nan = 108,
+  nan = 607,
 
   /**
    * Keyword-literal: `inf`
    */
-  inf = 109,
+  inf = 608,
 
   /**
    * Token type string (indicating a string literal).
@@ -1899,7 +1909,7 @@ export enum tkn {
    * 1. _See also_ {@link Engine.STRING} (the Engine’s string
    * scanning method)
    */
-  string = 110,
+  string = 650,
 
   /**
    * Token type symbol, indicating an identifier.
@@ -1912,97 +1922,96 @@ export enum tkn {
    * 1. _See_ {@link Engine.SYMBOL} for further comments
    * on classifying symbols.
    */
-  symbol = 111,
+  symbol = 651,
 
   /**
    * Keyword-literal: `null`.
    */
-  null = 112,
+  null = 652,
 
   /**
    * Keyword-literal: `true`
    */
-  true = 113,
+  true = 653,
 
   /**
    * Keyword-literal: `false`
    */
-  false = 114,
+  false = 654,
 
   /**
    * Keyword `class`.
    */
-  class = 301,
-
-  /**
-   * Keyword `else`.
-   */
-  else = 302,
-
-  /**
-   * Keyword `for`.
-   */
-  for = 303,
-
-  /**
-   * Keyword `if`.
-   */
-  if = 304,
-
-  /**
-   * Keyword `return`
-   */
-  return = 305,
-
-  /**
-   * Keyword `super`
-   */
-  super = 306,
+  class = 700,
 
   /**
    * Keyword `this`
    */
-  this = 307,
+  this = 701,
 
   /**
-   * Keyword `let`
+   * Keyword `super`
    */
-  let = 308,
+  super = 702,
 
   /**
-   * Keyword `def`
+   * Keyword `for`.
    */
-  def = 309,
+  for = 703,
 
   /**
    * Keyword `while`
    */
-  while = 310,
-
-  /**
-   * Keyword `in`
-   */
-  in = 311,
+  while = 704,
 
   /**
    * Keyword `do`
    */
-  do = 312,
+  do = 705,
 
   /**
    * Keyword `goto`
    */
-  goto = 313,
+  goto = 706,
 
   /**
    * Keyword `skip`
    */
-  skip = 314,
+  skip = 707,
+  /**
+   * Keyword `if`.
+   */
+  if = 708,
+
+  /**
+   * Keyword `else`.
+   */
+  else = 709,
+
+  /**
+   * Keyword `return`
+   */
+  return = 710,
+
+  /**
+   * Keyword `let`
+   */
+  let = 711,
+
+  /**
+   * Keyword `def`
+   */
+  def = 712,
+
+  /**
+   * Keyword `in`
+   */
+  in = 713,
 
   /**
    * Keyword `to`
    */
-  to = 315,
+  to = 714,
 }
 
 /**
@@ -2102,9 +2111,9 @@ const isTokenCall = tknTest(tkn.call);
  */
 const isTokenEOF = tknTest(tkn.eof);
 
-const isTokenNumber = (t: tkn) => 100 < t && t < 110;
-const isTokenKeyword = (t: tkn) => 300 < t && t < 400;
-const isTokenOp = (t: tkn) => 600 < t && t < 700;
+const isTokenNumber = (t: tkn) => 600 < t && t < 650;
+const isTokenKeyword = (t: tkn) => 700 <= t && t < 1000;
+const isTokenOp = (t: tkn) => 200 <= t && t < 599;
 /**
  * Returns true if the given token type
  * is an atomic token. Atomic tokens
@@ -2971,7 +2980,13 @@ export class Engine {
   prevToken: Token = emptyToken();
   lastnode: ASTNode = nil();
 
-  reset() {
+  /**
+   * A 'reset' button to clear all data
+   * from the previous parsing. The engine
+   * _always_ has a blank, clean state
+   * for the next run.
+   */
+  private reset() {
     this.Input = "";
     this.LastToken = tkn.nil;
     this.CurrentToken = tkn.nil;
@@ -2990,6 +3005,52 @@ export class Engine {
     this.prevToken = peek;
     return peek;
   }
+  private check(tokenType: tkn) {
+    if (this.atEnd()) return false;
+    return this.peek.type === tokenType;
+  }
+
+  private sees(type: tkn) {
+    if (!this.check(type)) return false;
+    this.advance();
+    return true;
+  }
+
+  private matches(tokenTypes: tkn[]) {
+    for (let i = 0; i < tokenTypes.length; i++) {
+      if (this.sees(tokenTypes[i])) return true;
+    }
+    return false;
+  }
+
+  private argList() {
+    const args: ASTNode[] = [];
+    if (!this.check(tkn.right_paren)) {
+      do {
+        args.push(this.EXPR());
+      } while (this.matches([tkn.comma]));
+    }
+    this.eat(tkn.right_paren, "Expected `)` after arguments.");
+    return args;
+  }
+
+  private eat(tokentype: tkn, message: string) {
+    if (this.peek.type === tokentype) {
+      return this.advance();
+    }
+    throw new Error(message);
+  }
+
+  private astnode<N extends ASTNode>(node: N) {
+    this.lastnode = node;
+    return node;
+  }
+
+  private atom(builder: (lexeme: string) => ASTNode) {
+    const token = this.prevToken;
+    const node = builder(token.lexeme);
+    return this.astnode(node);
+  }
 
   /**
    * Parses the given input string, `text`.
@@ -3006,9 +3067,12 @@ export class Engine {
     return res;
   }
 
-  STATEMENT() {
+  private STATEMENT() {
     const token = this.peek;
     switch (token.type) {
+      case tkn.left_brace:
+        this.advance(); // eat the '{'
+        return this.BLOCK();
       case tkn.let:
         this.advance(); // eat the 'let'
         return this.VAR_DECLARATION(); // go to variable declaration
@@ -3017,22 +3081,71 @@ export class Engine {
     }
   }
 
-  VAR_DECLARATION() {
-    const name = this.advance(); // get the name
-    const id = sym(name.lexeme); // transform to node
-    this.advance(); // eat the '=' token
-    const val = this.EXPR(); // parse the value
-    const node = vardef(id, val);
-    if (this.prevToken.type === tkn.semicolon) {
-      return this.astnode(node);
+  /**
+   * Parses a block of statements.
+   * @example
+   * ~~~
+   * {
+   *   let x = 1; // 1
+   *   let y = x + 5; // 6
+   * }
+   * ~~~
+   */
+  private BLOCK() {
+    const statements: ASTNode[] = [];
+    while (!this.check(tkn.right_brace) && !this.atEnd()) {
+      statements.push(this.STATEMENT());
     }
+    this.eat(tkn.right_brace, `Expected '}' after block.`);
+    return block(statements);
+  }
+
+  /**
+   * Parses a variable declaration.
+   * Variables are declared
+   * with the `let` keyword. Chained
+   * assignments are supported.
+   *
+   * @example
+   * ~~~
+   * let x = 2;
+   * let y = x = 4;
+   * ~~~
+   */
+  private VAR_DECLARATION() {
+    // We’re here from the STATEMENT method.
+    // That method ate the 'let' keyword, so
+    // now we eat the name. We expect the
+    // scanner to return a token of type `symbol`:
+    const name = this.eat(tkn.symbol, `Expected valid identifier.`);
+
+    // Name in hand, we make a new symbol node.
+    const id = sym(name.lexeme);
+
+    // We move forward. Whether we consume
+    // the '=' token is irrelevant, because
+    // we allow uninitialized variables.
+    // If no '=' token is consumed, the variable
+    // defaults to 'null'.
+    this.advance();
+
+    // Now parse the right-hand side,
+    const val = this.EXPR();
+
+    // and make a new node of type VARDEF.
+    const node = vardef(id, val);
+
+    // Semicolons are unnecessary if
+    // we’re on the last line
     if (this.peek.type !== tkn.eof) {
       this.eat(tkn.semicolon, "Expected semicolon.");
     }
-    return this.astnode(node); // return the new node
+
+    // Return the new node.
+    return this.astnode(node);
   }
 
-  ASSIGN(): ASSIGN {
+  private ASSIGN(): ASSIGN {
     const name = this.lastnode;
     this.advance();
     if (!isNodeSymbol(name)) {
@@ -3042,7 +3155,7 @@ export class Engine {
     return this.astnode(assign(name, val));
   }
 
-  EXPRESSION_STATEMENT() {
+  private EXPRESSION_STATEMENT() {
     const expr = this.EXPR();
     if (isTokenEOF(this.peek.type) || this.sees(tkn.semicolon)) {
       return this.astnode(expr);
@@ -3051,66 +3164,21 @@ export class Engine {
     return this.astnode(expr);
   }
 
-  check(tokenType: tkn) {
-    if (this.atEnd()) return false;
-    return this.peek.type === tokenType;
-  }
-
-  sees(type: tkn) {
-    if (!this.check(type)) return false;
-    this.advance();
-    return true;
-  }
-
-  matches(tokenTypes: tkn[]) {
-    for (let i = 0; i < tokenTypes.length; i++) {
-      if (this.sees(tokenTypes[i])) return true;
-    }
-    return false;
-  }
-
-  argList() {
-    const args: ASTNode[] = [];
-    if (!this.check(tkn.right_paren)) {
-      do {
-        args.push(this.EXPR());
-      } while (this.matches([tkn.comma]));
-    }
-    this.eat(tkn.right_paren, "Expected `)` after arguments.");
-    return args;
-  }
-  CALL() {
+  private CALL() {
     const name = this.advance();
     this.advance();
     const args = this.argList();
     return this.astnode(call(sym(name.lexeme), args));
   }
 
-  eat(tokentype: tkn, message: string) {
-    if (this.peek.type === tokentype) {
-      return this.advance();
-    }
-    throw new Error(message);
-  }
-  GROUP(): ASTNode {
+  private GROUP(): ASTNode {
     this.advance();
     const expr = this.astnode(this.EXPR());
     this.eat(tkn.right_paren, "Expected `)` after expression.");
     return expr;
   }
 
-  astnode<N extends ASTNode>(node: N) {
-    this.lastnode = node;
-    return node;
-  }
-
-  atom(builder: (lexeme: string) => ASTNode) {
-    const token = this.prevToken;
-    const node = builder(token.lexeme);
-    return this.astnode(node);
-  }
-
-  NUMERIC() {
+  private NUMERIC() {
     const token = this.advance();
     const val = token.literal ? token.literal : token.lexeme;
     let node: ASTNode = nil();
@@ -3137,7 +3205,7 @@ export class Engine {
     return this.astnode(node);
   }
 
-  SYMBOLIC() {
+  private SYMBOLIC() {
     const token = this.advance();
     let node = sym(token.lexeme);
     if (this.matches([tkn.left_paren])) {
@@ -3147,7 +3215,7 @@ export class Engine {
     return this.astnode(node);
   }
 
-  LITERAL() {
+  private LITERAL() {
     const token = this.advance();
     switch (token.type) {
       case tkn.null:
@@ -3165,120 +3233,136 @@ export class Engine {
   /**
    * Parses an expression via Pratt parsing.
    */
-  EXPR(minbp = bp.non) {
+  private EXPR(minbp = bp.non) {
     const tk = this.peek;
-    if (this.BP[tk.type] === null) return nil();
-    let lhs: ASTNode = this[this.BP[tk.type]![0]]();
+    if (this.#BP[tk.type] === null) return nil();
+    let lhs: ASTNode = this[this.#BP[tk.type]![0]]();
     while (this.Status === status.ok && !isTokenEOF(this.peek.type)) {
       const op = this.peek;
       if (isTokenEOF(op.type)) break;
-      let [_, rightParser, opBP] = this.BP[op.type]!;
-      if (opBP < minbp || rightParser === "NULL") break;
+      let [_, rightParser, opBP] = this.#BP[op.type]!;
+      if (opBP < minbp || rightParser === "___") break;
       lhs = this[rightParser]();
     }
     return lhs;
   }
 
-  UNARY_EXPR(): ASTNode {
+  private UNARY(): ASTNode {
     const op = this.advance();
     const arg = this.EXPR();
     return this.astnode(call(sym(op.lexeme), [arg]));
   }
 
-  BINARY_EXPR(): ASTNode {
+  private BINARY(): ASTNode {
     const op = this.advance();
     const lhs = this.lastnode;
     const rhs = this.EXPR();
     const node = binex(op, lhs, rhs);
     return this.astnode(node);
   }
-  POSTFIX_EXPR() {
+
+  private POSTFIX() {
     const op = this.advance();
     const arg = this.lastnode;
     return this.astnode(call(sym(op.lexeme), [arg]));
   }
 
-  comparison() {
+  /**
+   * A placeholder method for the Pratt parser’s
+   * table. This is a constant function, always
+   * returning the null node.
+   */
+  private ___() {
     return nil();
   }
 
-  NULL() {
-    return nil();
-  }
-
-  BP: Record<tkn, ([Parslet, Parslet, bp] | null)> = {
-    [tkn.nil]: ["NULL", "NULL", bp.null],
-    [tkn.comma]: ["NULL", "NULL", bp.null],
-    [tkn.eof]: null,
-    [tkn.error]: null,
-    [tkn.left_paren]: ["GROUP", "NULL", bp.call],
-    [tkn.right_paren]: ["NULL", "NULL", bp.null],
-    [tkn.left_bracket]: ["NULL", "NULL", bp.null],
-    [tkn.right_bracket]: ["NULL", "NULL", bp.null],
-    [tkn.left_brace]: ["NULL", "NULL", bp.null],
-    [tkn.right_brace]: ["NULL", "NULL", bp.null],
-    [tkn.dot]: ["NULL", "NULL", bp.null],
-    [tkn.vbar]: ["NULL", "NULL", bp.null],
-    [tkn.semicolon]: ["NULL", "NULL", bp.null],
-    [tkn.and]: ["NULL", "BINARY_EXPR", bp.and],
-    [tkn.or]: ["NULL", "BINARY_EXPR", bp.or],
-    [tkn.nand]: ["NULL", "BINARY_EXPR", bp.nand],
-    [tkn.nor]: ["NULL", "BINARY_EXPR", bp.nor],
-    [tkn.xor]: ["NULL", "BINARY_EXPR", bp.xor],
-    [tkn.xnor]: ["NULL", "BINARY_EXPR", bp.xnor],
-    [tkn.not]: ["UNARY_EXPR", "NULL", bp.null],
-    [tkn.is]: ["NULL", "BINARY_EXPR", bp.is],
-    [tkn.rem]: ["NULL", "BINARY_EXPR", bp.quotient],
-    [tkn.mod]: ["NULL", "BINARY_EXPR", bp.quotient],
-    [tkn.div]: ["NULL", "BINARY_EXPR", bp.quotient],
-    [tkn.plus]: ["NULL", "BINARY_EXPR", bp.sum],
-    [tkn.minus]: ["NULL", "BINARY_EXPR", bp.difference],
-    [tkn.star]: ["NULL", "BINARY_EXPR", bp.product],
-    [tkn.ampersand]: ["NULL", "BINARY_EXPR", bp.and],
-    [tkn.caret]: ["NULL", "BINARY_EXPR", bp.power],
-    [tkn.percent]: ["NULL", "BINARY_EXPR", bp.quotient],
-    [tkn.slash]: ["NULL", "BINARY_EXPR", bp.product],
-    [tkn.neq]: ["NULL", "BINARY_EXPR", bp.comparison],
-    [tkn.bang]: ["NULL", "POSTFIX_EXPR", bp.call],
-    [tkn.geq]: ["NULL", "BINARY_EXPR", bp.comparison],
-    [tkn.gt]: ["NULL", "BINARY_EXPR", bp.comparison],
-    [tkn.leq]: ["NULL", "BINARY_EXPR", bp.comparison],
-    [tkn.lt]: ["NULL", "BINARY_EXPR", bp.comparison],
-    [tkn.deq]: ["NULL", "BINARY_EXPR", bp.equality],
-    [tkn.eq]: ["NULL", "ASSIGN", bp.assign],
-    [tkn.call]: ["CALL", "NULL", bp.null],
-    [tkn.int]: ["NUMERIC", "NULL", bp.null],
-    [tkn.float]: ["NUMERIC", "NULL", bp.null],
-    [tkn.scinum]: ["SCIENTIFIC", "NULL", bp.null],
-    [tkn.frac]: ["FRACTION", "NULL", bp.null],
-    [tkn.hex]: ["NUMERIC", "NULL", bp.null],
-    [tkn.octal]: ["NUMERIC", "NULL", bp.null],
-    [tkn.binary]: ["NUMERIC", "NULL", bp.null],
-    [tkn.nan]: ["NUMERIC", "NULL", bp.null],
-    [tkn.inf]: ["NUMERIC", "NULL", bp.null],
-    [tkn.string]: ["LITERAL", "NULL", bp.null],
-    [tkn.symbol]: ["SYMBOLIC", "NULL", bp.null],
-    [tkn.null]: ["LITERAL", "NULL", bp.null],
-    [tkn.true]: ["LITERAL", "NULL", bp.null],
-    [tkn.false]: ["LITERAL", "NULL", bp.null],
-    [tkn.class]: ["NULL", "NULL", bp.null],
-    [tkn.else]: ["NULL", "NULL", bp.null],
-    [tkn.for]: ["NULL", "NULL", bp.null],
-    [tkn.if]: ["NULL", "NULL", bp.null],
-    [tkn.return]: ["NULL", "NULL", bp.null],
-    [tkn.super]: ["NULL", "NULL", bp.null],
-    [tkn.this]: ["NULL", "NULL", bp.null],
-    [tkn.let]: null,
-    [tkn.def]: ["NULL", "NULL", bp.null],
-    [tkn.while]: ["NULL", "NULL", bp.null],
-    [tkn.in]: ["NULL", "NULL", bp.null],
-    [tkn.do]: ["NULL", "NULL", bp.null],
-    [tkn.goto]: ["NULL", "NULL", bp.null],
-    [tkn.skip]: ["NULL", "NULL", bp.null],
-    [tkn.to]: ["NULL", "NULL", bp.null],
+  // deno-fmt-ignore
+  /**
+   * @internal
+   * __DO NOT MODIFY THIS TABLE__.
+   * This the Pratt parser’s orchestrator.
+   * This table lays out the precedence map (right-most
+   * column) as well as the left- and right-parsers.
+   * Slots labeled with three underscores correspond
+   * to the null parser (_see_ {@link Engine.___}).
+   * These are slots that are open for filling.
+   * That parser always returns the null node.
+   * We use the underscores to avoid the clutter
+   * resulting from a full name.
+   */
+  #BP: Record<tkn, [Parslet, Parslet, bp]> = {
+    [tkn.nil          ] : ["___"       , "___"    , bp.null         ],
+    [tkn.comma        ] : ["___"       , "___"    , bp.null         ],
+    [tkn.eof          ] : ["___"       , "___"    , bp.null         ],
+    [tkn.error        ] : ["___"       , "___"    , bp.null         ],
+    [tkn.left_paren   ] : ["GROUP"     , "___"    , bp.call         ],
+    [tkn.right_paren  ] : ["___"       , "___"    , bp.null         ],
+    [tkn.left_bracket ] : ["___"       , "___"    , bp.null         ],
+    [tkn.right_bracket] : ["___"       , "___"    , bp.null         ],
+    [tkn.left_brace   ] : ["___"       , "___"    , bp.null         ],
+    [tkn.right_brace  ] : ["___"       , "___"    , bp.null         ],
+    [tkn.dot          ] : ["___"       , "___"    , bp.null         ],
+    [tkn.vbar         ] : ["___"       , "___"    , bp.null         ],
+    [tkn.semicolon    ] : ["___"       , "___"    , bp.null         ],
+    [tkn.and          ] : ["___"       , "BINARY" , bp.and          ],
+    [tkn.or           ] : ["___"       , "BINARY" , bp.or           ],
+    [tkn.nand         ] : ["___"       , "BINARY" , bp.nand         ],
+    [tkn.nor          ] : ["___"       , "BINARY" , bp.nor          ],
+    [tkn.xor          ] : ["___"       , "BINARY" , bp.xor          ],
+    [tkn.xnor         ] : ["___"       , "BINARY" , bp.xnor         ],
+    [tkn.not          ] : ["UNARY"     , "___"    , bp.null         ],
+    [tkn.is           ] : ["___"       , "BINARY" , bp.is           ],
+    [tkn.rem          ] : ["___"       , "BINARY" , bp.quotient     ],
+    [tkn.mod          ] : ["___"       , "BINARY" , bp.quotient     ],
+    [tkn.div          ] : ["___"       , "BINARY" , bp.quotient     ],
+    [tkn.plus         ] : ["___"       , "BINARY" , bp.sum          ],
+    [tkn.minus        ] : ["___"       , "BINARY" , bp.difference   ],
+    [tkn.star         ] : ["___"       , "BINARY" , bp.product      ],
+    [tkn.ampersand    ] : ["___"       , "BINARY" , bp.and          ],
+    [tkn.caret        ] : ["___"       , "BINARY" , bp.power        ],
+    [tkn.percent      ] : ["___"       , "BINARY" , bp.quotient     ],
+    [tkn.slash        ] : ["___"       , "BINARY" , bp.product      ],
+    [tkn.neq          ] : ["___"       , "BINARY" , bp.comparison   ],
+    [tkn.bang         ] : ["___"       , "POSTFIX", bp.call         ],
+    [tkn.geq          ] : ["___"       , "BINARY" , bp.comparison   ],
+    [tkn.gt           ] : ["___"       , "BINARY" , bp.comparison   ],
+    [tkn.leq          ] : ["___"       , "BINARY" , bp.comparison   ],
+    [tkn.lt           ] : ["___"       , "BINARY" , bp.comparison   ],
+    [tkn.deq          ] : ["___"       , "BINARY" , bp.equality     ],
+    [tkn.eq           ] : ["___"       , "ASSIGN" , bp.assign       ],
+    [tkn.call         ] : ["CALL"      , "___"    , bp.null         ],
+    [tkn.int          ] : ["NUMERIC"   , "___"    , bp.null         ],
+    [tkn.float        ] : ["NUMERIC"   , "___"    , bp.null         ],
+    [tkn.scinum       ] : ["SCIENTIFIC", "___"    , bp.null         ],
+    [tkn.frac         ] : ["FRACTION"  , "___"    , bp.null         ],
+    [tkn.hex          ] : ["NUMERIC"   , "___"    , bp.null         ],
+    [tkn.octal        ] : ["NUMERIC"   , "___"    , bp.null         ],
+    [tkn.binary       ] : ["NUMERIC"   , "___"    , bp.null         ],
+    [tkn.nan          ] : ["NUMERIC"   , "___"    , bp.null         ],
+    [tkn.inf          ] : ["NUMERIC"   , "___"    , bp.null         ],
+    [tkn.string       ] : ["LITERAL"   , "___"    , bp.null         ],
+    [tkn.symbol       ] : ["SYMBOLIC"  , "___"    , bp.null         ],
+    [tkn.null         ] : ["LITERAL"   , "___"    , bp.null         ],
+    [tkn.true         ] : ["LITERAL"   , "___"    , bp.null         ],
+    [tkn.false        ] : ["LITERAL"   , "___"    , bp.null         ],
+    [tkn.class        ] : ["___"       , "___"    , bp.null         ],
+    [tkn.else         ] : ["___"       , "___"    , bp.null         ],
+    [tkn.for          ] : ["___"       , "___"    , bp.null         ],
+    [tkn.if           ] : ["___"       , "___"    , bp.null         ],
+    [tkn.return       ] : ["___"       , "___"    , bp.null         ],
+    [tkn.super        ] : ["___"       , "___"    , bp.null         ],
+    [tkn.this         ] : ["___"       , "___"    , bp.null         ],
+    [tkn.let          ] : ["___"       , "___"    , bp.null         ],
+    [tkn.def          ] : ["___"       , "___"    , bp.null         ],
+    [tkn.while        ] : ["___"       , "___"    , bp.null         ],
+    [tkn.in           ] : ["___"       , "___"    , bp.null         ],
+    [tkn.do           ] : ["___"       , "___"    , bp.null         ],
+    [tkn.goto         ] : ["___"       , "___"    , bp.null         ],
+    [tkn.skip         ] : ["___"       , "___"    , bp.null         ],
+    [tkn.to           ] : ["___"       , "___"    , bp.null         ],
   };
 
-  FRACTION() {
+  private FRACTION() {
     const S = this.peek.lexeme.split("/");
     if (S.length !== 2) {
       this.Status = status.syntax_error;
@@ -3287,7 +3371,7 @@ export class Engine {
     const [numerator, denominator] = S;
     return call(sym("Frac"), [int(numerator), int(denominator)]);
   }
-  SCIENTIFIC() {
+  private SCIENTIFIC() {
     const S = this.peek.lexeme.split("E");
     if (S.length !== 2) {
       this.Status = status.syntax_error;
@@ -3299,26 +3383,30 @@ export class Engine {
 }
 
 type Parslet =
-  | "NULL"
+  | "___"
   | "LITERAL"
   | "GROUP"
   | "CALL"
-  | "BINARY_EXPR"
+  | "BINARY"
   | "ASSIGN"
-  | "POSTFIX_EXPR"
+  | "POSTFIX"
   | "NUMERIC"
   | "SYMBOLIC"
   | "FRACTION"
   | "SCIENTIFIC"
-  | "UNARY_EXPR";
+  | "UNARY";
 
 const engine = new Engine();
 engine.constants({ phi: 0.179 });
 const src = `
-let x = 2cos(5)
+{
+  let j = 5;
+  let k = j + 1;
+}
 `;
 const tree = engine.parse(src);
-console.log(tree)
-
+// console.log(JSON.stringify(tree, null, 2));
+console.log(tree);
+// console.log(engine);
 // const tokens = engine.tokenize(src);
 // console.log(tokens);
