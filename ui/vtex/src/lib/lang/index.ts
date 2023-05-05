@@ -1,16 +1,14 @@
-export type { SkimRule, SkimState } from "./freed";
-export type { Token } from "./freed";
+export type { SkimRule, SkimState } from "./skim";
+export type { Token } from "./skim";
+export { Engine, tkn } from "./skim";
 export {
   amid,
   among,
   any,
   chain,
-  ctrl,
-  Engine,
   erratum,
   flaw,
   initSkim,
-  inRange,
   list,
   many,
   maybe,
@@ -22,17 +20,17 @@ export {
   skip,
   some,
   success,
-  tkn,
   word,
-} from "./freed";
+} from "./skim";
 export {
   add,
   ceil,
+  difl,
+  difr,
   div,
   equal,
   even,
   floor,
-  difl,
   gt,
   gte,
   lt,
@@ -42,11 +40,10 @@ export {
   neq,
   odd,
   pow,
+  product,
   quot,
   rem,
   root,
   sum,
   times,
-  difr,
-  product,
 } from "./core/count";

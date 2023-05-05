@@ -4,9 +4,9 @@
  * For an n-ary sum, see {@link sum}.
  *
  * @example
- * ~~~
+ * ```
  * const x = add(1,2) // 3
- * ~~~
+ * ```
  */
 export const add = (x: number, y: number) => x + y;
 
@@ -15,9 +15,9 @@ export const add = (x: number, y: number) => x + y;
  * arguments passed.
  *
  * @example
- * ~~~
+ * ```
  * const x = sum(1,2,3,4); // 10
- * ~~~
+ * ```
  */
 export const sum = (...xs: number[]) => {
   let out = 0;
@@ -32,9 +32,9 @@ export const sum = (...xs: number[]) => {
  * and `y`. This function has an arity of 2.
  *
  * @example
- * ~~~
+ * ```
  * const x = minus(7,3) // 4
- * ~~~
+ * ```
  */
 export const minus = (x: number, y: number) => x - y;
 
@@ -42,22 +42,22 @@ export const minus = (x: number, y: number) => x - y;
  * Computes the left-difference of the given terms
  * (`difl` is short for “difference left”). Given
  * terms:
- * ~~~
+ * ```
  * (x₁, x₂, ..., xₙ)
- * ~~~
+ * ```
  * returns
- * ~~~
+ * ```
  * x₁ - x₂ - ... - xₙ
- * ~~~
+ * ```
  * Note that subtraction is a non-commutative
  * operation: `a - b ≠ b - a`. Term ordering
  * matters. An accompanying right difference
  * method can be found in {@link difr}.
  *
  * @example
- * ~~~
+ * ```
  * const x = difl(5,4,3,2,1); // -5
- * ~~~
+ * ```
  */
 export const difl = (...terms: number[]) => {
   let out = terms[0];
@@ -71,22 +71,22 @@ export const difl = (...terms: number[]) => {
  * Computes the right-difference of the given terms
  * (`difr` is short for “difference right”). Given
  * terms:
- * ~~~
+ * ```
  * (x₁, x₂, ..., xₙ)
- * ~~~
+ * ```
  * returns
- * ~~~
+ * ```
  * xₙ - xₙ₋₁ - ... - x₁
- * ~~~
+ * ```
  * Note that subtraction is a non-commutative
  * operation: `a - b ≠ b - a`. Term ordering
  * matters. An accompanying right difference
  * method can be found in {@link difl}.
  *
  * @example
- * ~~~
+ * ```
  * const x = difr(5,4,3,2,1); // -13
- * ~~~
+ * ```
  */
 export const difr = (...terms: number[]) => {
   const L = terms.length - 1;
@@ -102,18 +102,18 @@ export const difr = (...terms: number[]) => {
  * `y`.
  *
  * @example
- * ~~~
+ * ```
  * const x = times(4,8) // 32
- * ~~~
+ * ```
  */
 export const times = (x: number, y: number) => x * y;
 
 /**
  * Computes the product of the supplied terms.
  * @example
- * ~~~
+ * ```
  * const x = product(3,4,2,5); // 120
- * ~~~
+ * ```
  */
 export const product = (...terms: number[]) => {
   const L = terms.length;
@@ -136,11 +136,11 @@ export const product = (...terms: number[]) => {
  * zero.
  *
  * @example
- * ~~~
+ * ```
  * const x = quot(2,3) // 0
  * const y = quot(-2,3) // -1
  * const z = quot(-9,2) // -5
- * ~~~
+ * ```
  */
 export const quot = (x: number, y: number) => Math.floor(x / y);
 
@@ -148,9 +148,9 @@ export const quot = (x: number, y: number) => Math.floor(x / y);
  * Computes the divison of two numbers.
  *
  * @example
- * ~~~
+ * ```
  * const x = div(1,2) // 0.5
- * ~~~
+ * ```
  */
 export const div = (x: number, y: number) => x / y;
 
@@ -169,12 +169,12 @@ export const div = (x: number, y: number) => x / y;
  * `rem`.
  *
  * @example
- * ~~~
+ * ```
  * const a = rem(13,5) // 3
  * const b = rem(-13,5) // -3
  * const c = rem(4,2) // 0
  * const d = rem(-4,2) // -0
- * ~~~
+ * ```
  */
 export const rem = (x: number, y: number) => x % y;
 
@@ -182,12 +182,12 @@ export const rem = (x: number, y: number) => x % y;
  * Computes the modulo of the two supplied arguments.
  *
  * @example
- * ~~~
+ * ```
  * const x = mod(5,22) // 5
  * const x = mod(-2,22) // 20
  * const x = mod(-21,22) // 1
  * const x = mod(0,22) // 0
- * ~~~
+ * ```
  */
 export const mod = (x: number, y: number) => ((x % y) + y) % y;
 
@@ -236,24 +236,24 @@ export const gte = (x: number, y: number) => x >= y;
 /**
  * Returns true if `x` is even, false otherwise.
  * @example
- * ~~~
+ * ```
  * const a = even(2) // true
  * const b = even(3) // false
  * const c = even(0) // true
  * const d = even(3.5) // false
- * ~~~
+ * ```
  */
 export const even = (x: number) => x % 2 === 0;
 
 /**
  * Returns true if `x` is odd, false otherwise.
  * @example
- * ~~~
+ * ```
  * const a = even(2) // false
  * const b = even(3) // true
  * const c = even(0) // false
  * const d = even(3.5) // false
- * ~~~
+ * ```
  */
 export const odd = (x: number) => x % 2 !== 0;
 
@@ -266,5 +266,3 @@ export const floor = (x: number) => Math.floor(x);
  * Returns the ceiling of `x`.
  */
 export const ceil = (x: number) => Math.ceil(x);
-
-
