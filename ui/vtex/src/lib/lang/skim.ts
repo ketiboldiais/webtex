@@ -1,5 +1,7 @@
 import { isNumber, isStrList } from "../core/core.utils.js";
-import { even, odd, product, sum } from "./core/count.js";
+import { div, even, mod, odd, product, rem, sum } from "./core/count.js";
+import { Logic } from "./core/logic.js";
+import { List } from "./core/list.js";
 
 /**
  * @file This is Skim’s main source file. The source code
@@ -224,11 +226,6 @@ export class P<A> {
       return next(newstate.result, nextChar).skim(newstate);
     });
   }
-
-  /**
-   * Runs the given skimmer based on the results of the previous
-   * skim.
-   */
 
   /**
    * Returns a skimmer that successfully skims only if
@@ -1782,6 +1779,13 @@ export enum tkn {
   call = 500,
 
   /**
+   * Lexeme: `=>`
+   * - This is the lambda operator.
+   */
+
+  lambda = 501,
+
+  /**
    * Token type integer.
    *
    * - Lexeme: Any `int`, `+int`, or `-int`.
@@ -2022,85 +2026,6 @@ export enum tkn {
  */
 const tknTest = (t: tkn) => (x: tkn) => x === t;
 
-/**
- * Returns true if the given token type maps to
- * an hexadecimal number.
- *
- * _References_.
- * 1. _See also_ {@link hexNumber} (demonstrating
- * how floating point numbers are parsed).
- */
-const isTokenHex = tknTest(tkn.hex);
-
-/**
- * Returns true if the given token type maps to
- * an octal number.
- *
- * _References_.
- * 1. _See also_ {@link octalNumber} (demonstrating
- * how floating point numbers are parsed).
- */
-const isTokenOctal = tknTest(tkn.octal);
-/**
- * Returns true if the given token type maps to
- * an integer.
- *
- * _References_.
- * 1. _See also_ {@link integer} (demonstrating
- * how floating point numbers are parsed).
- */
-const isTokenInt = tknTest(tkn.int);
-
-/**
- * Returns true if the given token type maps to
- * a float.
- *
- * _Reference_.
- * 1. _See also_ {@link floatingPointNumber} (demonstrating
- * how floating point numbers are parsed).
- */
-const isTokenFloat = tknTest(tkn.float);
-
-/**
- * Returns true if the given token type maps to
- * a scientific number.
- *
- * _Reference_.
- * 1. _See also_ {@link scientificNumber} (demonstrating
- * how floating point numbers are parsed).
- */
-const isTokenScinum = tknTest(tkn.scinum);
-
-/**
- * Returns true if the given token type maps to
- * a binary number.
- *
- * _Reference_.
- * 1. _See also_ {@link } (demonstrating
- * how floating point numbers are parsed).
- */
-const isTokenBinary = tknTest(tkn.binary);
-
-/**
- * Returns true if the given token type maps to
- * a fraction.
- *
- * _Reference_.
- * 1. _See also_ {@link fractionalNumber} (demonstrating
- * how fractions are parsed).
- */
-const isTokenFraction = tknTest(tkn.frac);
-
-/**
- * Returns true if the given token type maps to
- * a string.
- *
- * _Reference_.
- * 1. _See also_ {@link Engine.STRING} (demonstrating
- * how strings are tokenized).
- */
-const isTokenString = tknTest(tkn.string);
-
 const isTokenSymbol = tknTest(tkn.symbol);
 const isTokenCall = tknTest(tkn.call);
 
@@ -2110,10 +2035,7 @@ const isTokenCall = tknTest(tkn.call);
  * no more tokens are left).
  */
 const isTokenEOF = tknTest(tkn.eof);
-
 const isTokenNumber = (t: tkn) => 600 < t && t < 650;
-const isTokenKeyword = (t: tkn) => 700 <= t && t < 1000;
-const isTokenOp = (t: tkn) => 200 <= t && t < 599;
 /**
  * Returns true if the given token type
  * is an atomic token. Atomic tokens
@@ -2138,8 +2060,6 @@ const isTokenOp = (t: tkn) => 200 <= t && t < 599;
  * 1. _See also_ {@link Engine.atom} (demonstrating
  * how literal values are parsed).
  */
-const isTokenAtom = (t: tkn) => 100 < t && t < 200;
-const isOperable = (t: tkn) => isTokenNumber(t) || isTokenOp(t);
 
 const numpkg = (t: tkn) => (n: string) => ({ n, type: t });
 const signedNumber = (sign: "-" | "+") =>
@@ -2162,56 +2082,250 @@ const signedNumber = (sign: "-" | "+") =>
  * a digit, false otherwise.
  */
 const isDigit = (c: string) => "0" <= c && c <= "9";
+
+/**
+ * _Factory function_. Returns a character test function.
+ *
+ * @param of {string} - The character to test.
+ * @returns A function that takes a string and returns true
+ * if the string matches, and false otherwise.
+ */
 const charTest = (of: string) => (c: string) => c === of;
+
+/**
+ * _Guard function_. Returns true if the given function
+ * is the character `.` (a dot).
+ */
 const isDot = charTest(".");
+
+/**
+ * _Guard function_. Returns true if the given function
+ * is the character `+` (a plus).
+ */
 const isPlus = charTest("+");
+
+/**
+ * _Guard function_. Returns true if the given function
+ * is the character `-` (a minus).
+ */
 const isMinus = charTest("-");
+
+/**
+ * _Guard function_. Returns true if the given function
+ * is either the character `-` (a minus) or `+` (a plus).
+ */
 const isSign = (c: string) => isPlus(c) || isMinus(c);
+
+/**
+ * _Guard function_. Returns true if the given function
+ * is a digit (_see_ {@link isDigit}), a dot (_see_ {@link isDot})
+ * or a sign (_see_ {@link isSign}).
+ */
 const isDotDigit = (c: string) => isDigit(c) || isDot(c) || isSign(c);
+
+/**
+ * A sum type indicating the Engine’s
+ * current status.
+ * @enum
+ */
 export enum status {
+  /**
+   * The engine is functioning
+   * normally.
+   */
   ok,
-  scanner_error,
+  /**
+   * An error occurred during scanning.
+   */
+  lexical_error,
+  /**
+   * An error occurred during parsing.
+   */
   syntax_error,
+  /**
+   * An error occurred during execution.
+   * E.g., a name binding that doesn’t resolve.
+   */
   semantic_error,
-  resolver_error,
 }
 
+/**
+ * A token is a product type, comprising
+ * the fields {@link tkn} (the Token’s
+ * token-type), `lexeme` (the Token’s lexeme),
+ * and an optional `literal` (the Token’s
+ * literal value, if any).
+ */
 export type Token = {
+  /**
+   * Holds the token’s {@link tkn} type.
+   */
   type: tkn;
+  /**
+   * The token’s corresponding lexeme.
+   */
   lexeme: string;
+
+  /**
+   * The line where the token was found.
+   */
   line: number;
+
+  /**
+   * The column where the token was found.
+   */
   column: number;
+  /**
+   * An optional literal (used primarily
+   * by the scanner to hold raw numeric
+   * values).
+   */
   literal?: string | number;
 };
 
+/**
+ * _Builder_. Returns a new {@link Token}.
+ *
+ * @param type {tkn} - The token’s type.
+ * @param lexeme {string} - The token’s lexeme.
+ * @param literal {string|number|undefined} - The
+ * token’s literal value, if any.
+ */
+const newToken = (
+  type: tkn,
+  lexeme: string,
+  line: number,
+  column: number,
+  literal?: string | number,
+): Token => ({
+  type,
+  lexeme,
+  line,
+  column,
+  literal,
+});
+
+/**
+ * A sum type to quickly
+ * test an {@link ASTNode}'s type.
+ * Using these enum values is much
+ * faster than checking for `instanceof`,
+ * which potentially requires climbing
+ * the prototype chain.
+ */
 enum nodetype {
+  /**
+   * The nodetype associated with {@link TUPLE}.
+   */
+  tuple,
+  /**
+   * The nodetype associated with {@link ARRAY}.
+   */
+  array,
+  /**
+   * The nodetype associated with {@link STRING}.
+   */
   string,
+  /**
+   * The nodetype associated with {@link NUMBER}.
+   */
   number,
+  /**
+   * The nodetype associated with {@link SYMBOL}.
+   */
   symbol,
+  /**
+   * The nodetype associated with {@link BOOL}.
+   */
   bool,
-  binex,
+  /**
+   * The nodetype associated with {@link INFIX}.
+   */
+  infix,
+  /**
+   * The nodetype associated with {@link NULL}.
+   */
   null,
+  /**
+   * The nodetype associated with {@link FUNCTION}.
+   */
   function,
+  /**
+   * The nodetype associated with {@link CALL}.
+   */
   call,
+  /**
+   * The nodetype associated with {@link BLOCK}.
+   */
   block,
+  /**
+   * The nodetype associated with {@link VARDEF}.
+   */
   vardef,
+  /**
+   * The nodetype associated with {@link ASSIGN}.
+   */
   assign,
+  /**
+   * The nodetype associated with {@link COND}.
+   */
+  cond,
+  /**
+   * The nodetype associated with {@link LOOP}.
+   */
+  loop,
+
+  /**
+   * The nodetype associated with {@link RETURN}.
+   */
+  returnStmt,
 }
 
-interface Visitor<t> {
-  num(node: NUMBER): t;
-  str(node: STRING): t;
-  sym(node: SYMBOL): t;
-  fn(node: FN): t;
-  binex(node: BINEX): t;
-  call(node: CALL): t;
-  bool(node: BOOL): t;
-  null(node: NULL): t;
-  block(node: BLOCK): t;
-  vardef(node: VARDEF): t;
-  assign(node: ASSIGN): t;
+/**
+ * All functions that seek to operate on
+ * the Engine’s outputted AST must implement
+ * a `Visitor` interface. This interface
+ * comprises methods that must be defined
+ * for each {@link ASTNode}.
+ *
+ * Although switch statements
+ * work just fine, JavaScript doesn’t support
+ * type-safe pattern matching like ML, Rust,
+ * or Swift. Accordingly, we use the
+ * _Visitor pattern_ to handle tree-related,
+ * relying on TypeScript to inform use that
+ * we haven’t implemented a method.
+ */
+interface Visitor<t = any> {
+  num(node: NUMBER): t | any;
+  str(node: STRING): t | any;
+  sym(node: SYMBOL): t | any;
+  fn(node: FUNCTION): t | any;
+  infix(node: INFIX): t | any;
+  call(node: CALL): t | any;
+  bool(node: BOOL): t | any;
+  null(node: NULL): t | any;
+  block(node: BLOCK): t | any;
+  vardef(node: VARDEF): t | any;
+  assign(node: ASSIGN): t | any;
+  cond(node: COND): t | any;
+  loop(node: LOOP): t | any;
+  returnStmt(node: RETURN): t | any;
+  array(node: ARRAY): t | any;
+  tuple(node: TUPLE): t | any;
 }
 
+/**
+ * @abstract
+ * All AST nodes in Skim inherit
+ * from `ASTNode`. This node does
+ * nothing other than:
+ *
+ * 1. Storing the inherited node’s {@link nodetype}, and
+ * 2. An abstract method ensuring that every inheriting
+ * child implements the `accept` method (providing access
+ * to tree-related functions).
+ */
 abstract class ASTNode {
   type: nodetype;
   constructor(type: nodetype) {
@@ -2221,34 +2335,101 @@ abstract class ASTNode {
 }
 
 // deno-fmt-ignore
+/**
+ * __Factory Function__. This function
+ * generates a guard function for ASTNodes.
+ *
+ * @param ntype {nodetype} - The nodetype to test for.
+ * @returns A function that takes a node and returns
+ * true if the given node is of the `ntype`.
+ */
 const nodeTest = <N extends ASTNode>(
   ntype: nodetype,
-) => (n: ASTNode): n is N => n.type === ntype;
+) => (node: ASTNode): node is N => node.type === ntype;
 
-class BINEX extends ASTNode {
+class RETURN extends ASTNode {
   accept<t>(visitor: Visitor<t>): t {
-    return visitor.binex(this);
+    return visitor.returnStmt(this);
+  }
+  keyword: Token;
+  value: ASTNode;
+  constructor(keyword: Token, value: ASTNode) {
+    super(nodetype.returnStmt);
+    this.keyword = keyword;
+    this.value = value;
+  }
+}
+
+const returnStmt = (
+  keyword: Token,
+  value: ASTNode,
+) => new RETURN(keyword, value);
+const isNodeReturn = nodeTest<RETURN>(nodetype.returnStmt);
+
+class LOOP extends ASTNode {
+  accept<t>(visitor: Visitor<t>): t {
+    return visitor.loop(this);
+  }
+  condition: ASTNode;
+  body: ASTNode;
+  constructor(condition: ASTNode, body: ASTNode) {
+    super(nodetype.loop);
+    this.condition = condition;
+    this.body = body;
+  }
+}
+const loop = (
+  condition: ASTNode,
+  body: ASTNode,
+) => new LOOP(condition, body);
+const isNodeLoop = nodeTest<LOOP>(nodetype.loop);
+
+class COND extends ASTNode {
+  accept<t>(visitor: Visitor<t>): t {
+    return visitor.cond(this);
+  }
+  condition: ASTNode;
+  ifBlock: ASTNode;
+  elseBlock: ASTNode;
+  constructor(condition: ASTNode, ifBlock: ASTNode, elseBlock: ASTNode) {
+    super(nodetype.cond);
+    this.condition = condition;
+    this.ifBlock = ifBlock;
+    this.elseBlock = elseBlock;
+  }
+}
+const cond = (
+  condition: ASTNode,
+  ifBlock: ASTNode,
+  elseBlock: ASTNode,
+) => new COND(condition, ifBlock, elseBlock);
+
+const isNodeCond = nodeTest<COND>(nodetype.cond);
+
+class INFIX extends ASTNode {
+  accept<t>(visitor: Visitor<t>): t {
+    return visitor.infix(this);
   }
   op: Token;
   left: ASTNode;
   right: ASTNode;
   constructor(op: Token, left: ASTNode, right: ASTNode) {
-    super(nodetype.binex);
+    super(nodetype.infix);
     this.op = op;
     this.left = left;
     this.right = right;
   }
 }
-const binex = (op: Token, left: ASTNode, right: ASTNode) =>
-  new BINEX(op, left, right);
-const isNodeBinex = nodeTest<BINEX>(nodetype.binex);
+const infix = (op: Token, left: ASTNode, right: ASTNode) =>
+  new INFIX(op, left, right);
+const isNodeInfix = nodeTest<INFIX>(nodetype.infix);
 
 class SYMBOL extends ASTNode {
   accept<t>(visitor: Visitor<t>): t {
     return visitor.sym(this);
   }
-  sym: string;
-  constructor(sym: string) {
+  sym: Token;
+  constructor(sym: Token) {
     super(nodetype.symbol);
     this.sym = sym;
   }
@@ -2289,6 +2470,8 @@ class NUMBER extends ASTNode {
     this.num = num;
   }
 }
+const isNodeNumber = nodeTest<NUMBER>(nodetype.number);
+
 // deno-fmt-ignore
 const NumFactory = (
   f: (x: string) => number,
@@ -2303,8 +2486,7 @@ const octal = NumFactory((x) => Number.parseInt(x, 8));
 const float = NumFactory((x) => Number.parseFloat(x));
 const binary = NumFactory((x) => Number.parseInt(x, 2));
 const str = (value: string) => new STRING(value);
-const sym = (value: string) => new SYMBOL(value);
-const isNodeNumber = nodeTest<NUMBER>(nodetype.number);
+const sym = (value: Token) => new SYMBOL(value);
 
 class BOOL extends ASTNode {
   accept<t>(visitor: Visitor<t>): t {
@@ -2319,23 +2501,58 @@ class BOOL extends ASTNode {
 const bool = (value: string) => new BOOL(value === "true");
 const isNodeBool = nodeTest<BOOL>(nodetype.bool);
 
-class FN extends ASTNode {
+class Fn {
+  name: SYMBOL;
+  params: SYMBOL[];
+  body: ASTNode;
+  constructor(name: SYMBOL, params: SYMBOL[], body: ASTNode) {
+    this.name = name;
+    this.params = [];
+    this.body = body;
+    const set = new Set();
+    for (let i = 0; i < params.length; i++) {
+      if (!set.has(params[i])) {
+        this.params.push(params[i]);
+      }
+      set.add(params[i]);
+    }
+  }
+  call(interpreter: Interpreter, args: RunTimeValue[]) {
+    const scope = new Scope(interpreter.environment);
+    const arglen = args.length;
+    for (let i = 0; i < arglen; i++) {
+      const param = this.params[i];
+      scope.define(param.sym, args[i]);
+    }
+    return interpreter.executeBlock([this.body], scope);
+  }
+}
+
+const callable = (stmt: FUNCTION) =>
+  new Fn(
+    stmt.name,
+    stmt.params,
+    stmt.body,
+  );
+
+class FUNCTION extends ASTNode {
   accept<t>(visitor: Visitor<t>): t {
     return visitor.fn(this);
   }
   name: SYMBOL;
-  params: ASTNode[];
-  body: ASTNode[];
-  constructor(name: SYMBOL, params: ASTNode[], body: ASTNode[]) {
+  params: SYMBOL[];
+  body: ASTNode;
+  constructor(name: SYMBOL, params: SYMBOL[], body: ASTNode) {
     super(nodetype.call);
     this.name = name;
     this.params = params;
     this.body = body;
   }
 }
-const fn = (name: SYMBOL, params: ASTNode[], body: ASTNode[]) =>
-  new FN(name, params, body);
-const isNodeFn = nodeTest<FN>(nodetype.function);
+const fn = (name: SYMBOL, params: SYMBOL[], body: ASTNode) =>
+  new FUNCTION(name, params, body);
+
+const isNodeFn = nodeTest<FUNCTION>(nodetype.function);
 
 class BLOCK extends ASTNode {
   accept<t>(visitor: Visitor<t>): t {
@@ -2367,6 +2584,20 @@ class ASSIGN extends ASTNode {
 const assign = (name: SYMBOL, value: ASTNode) => new ASSIGN(name, value);
 const isNodeAssign = nodeTest<ASSIGN>(nodetype.assign);
 
+class ARRAY extends ASTNode {
+  accept<t>(visitor: Visitor<t>): t {
+    return visitor.array(this);
+  }
+  elements: ASTNode[];
+  constructor(elements: ASTNode[]) {
+    super(nodetype.array);
+    this.elements = elements;
+  }
+}
+
+const array = (elements: ASTNode[]) => new ARRAY(elements);
+const isNodeArray = nodeTest<ARRAY>(nodetype.array);
+
 class VARDEF extends ASTNode {
   accept<t>(visitor: Visitor<t>): t {
     return visitor.vardef(this);
@@ -2381,6 +2612,22 @@ class VARDEF extends ASTNode {
 }
 const vardef = (name: SYMBOL, value: ASTNode) => new VARDEF(name, value);
 const isNodeVarDef = nodeTest<VARDEF>(nodetype.vardef);
+
+class TUPLE extends ASTNode {
+  accept<t>(visitor: Visitor<t>): t {
+    return visitor.tuple(this);
+  }
+  items: List<ASTNode>;
+  constructor(items: ASTNode[]) {
+    super(nodetype.tuple);
+    this.items = List.of(items);
+  }
+  array() {
+    return this.items.array();
+  }
+}
+const tuple = (items: ASTNode[]) => new TUPLE(items);
+const isNodeTuple = nodeTest<TUPLE>(nodetype.tuple);
 
 class CALL extends ASTNode {
   accept<t>(visitor: Visitor<t>): t {
@@ -2398,63 +2645,18 @@ const call = (name: SYMBOL, args: ASTNode[]) => new CALL(name, args);
 const isNodeCall = nodeTest<CALL>(nodetype.call);
 
 /**
- * Consider the expression:
+ * All tokens outputted by the engine have a given binding power.
+ * Tokens with lower binding powers model operators with lower
+ * precedence, and tokens with higher binding powers model operators
+ * with higher precdence. Tokens that have no need for a binding
+ * power (e.g., keywords indicating statements like `class` and `if`),
+ * default to `bp.null`.
  *
- * ```
- * a × b + c
- * ```
- *
- * We can interpret this as:
- *
- * ```
- * (a × b) + c
- * ```
- *
- * or as:
- *
- * ```
- * a × (b + c)
- * ```
- *
- * That is, we can perform the multiplication first,
- * then addition, or perform the addition then
- * the multiplication. This ambiguity is resolved
- * through _predecence_ and _associativity_.
- *
- * We begin by modelling precedence. First, we'll
- * think of operators as knots tying expressions
- * (which can either be literals or expressions
- * that reduce to literals). A `bp` (binding power) is an
- * informal measure of how strong the knot is.
- *
- * For example, with the expression `a × b + c`,
- * the `×` is a “stronger” knot than the `+`, so it
- * has enough strength to hold `b + c`:
- *
- * ```
- * a × (b + c)
- * ```
- *
- * The `+`, on the other hand, is only strong
- * enough to hold `b` and `c`. From this conclusion, we
- * determine that the expression _cannot_ be read as:
- *
- * ```
- * (a × b) + c
- * ```
- *
- * The notion of a binding power is how we model _precedence_.
- * Translating to more familiar times, `×` has higher precendence than
- * `+`.
- *
- * For chained operators (e.g. `a + b + c`), we can “nudge” the `+`
- * somewhat by including a _fixity_ (see {@link afix}). If we assign
- * `+` a fixity of `afix.left`, then the right-most `+` is a tigher knot
- * than the left-most `+`, yielding:
- *
- * ```
- * (a + b) + c
- * ```
+ * _References_.
+ * 1. _See also_ {@link Engine.BP} (laying out all the defined `bp`
+ * assignments).
+ * 2. _See also_ {@link Engine.EXPR} (demonstrating how these `bp`
+ * values are used).
  */
 enum bp {
   null,
@@ -2491,57 +2693,615 @@ const emptyToken = () => ({
   column: -1,
 });
 
-type Global = {
-  functions: { [key: string]: Function };
-  constants: { [key: string]: number };
+type FnRecord = { [key: string]: Function };
+type NumberConstants = { [key: string]: number };
+/**
+ * A `Lib` object defines all the functions
+ * available at the global level. This
+ * object, by default, contains all the
+ * native functions and constants available
+ * at the top level.
+ */
+export class Lib {
+  _functions: FnRecord = {
+    Product: product,
+    Sum: sum,
+    Even: even,
+    Odd: odd,
+    cos: Math.cos,
+    sin: Math.sin,
+    tan: Math.tan,
+    arctan: Math.atan,
+    arcsin: Math.asin,
+    arccos: Math.acos,
+  };
+  _constants: NumberConstants = {
+    pi: Math.PI,
+    e: Math.E,
+  };
+  addFn(name: string, fn: Function) {
+    if (this.hasFunc(name)) return this;
+    this._functions[name] = fn;
+    return this;
+  }
+  addNum(name: string, value: number) {
+    if (this.hasConst(name)) return this;
+    this._constants[name] = value;
+    return this;
+  }
+  hasConst(name: string) {
+    return this._constants[name] !== undefined;
+  }
+  hasFunc(name: string) {
+    return this._functions[name] !== undefined;
+  }
+  getFunc(name: string) {
+    return this._functions[name] ?? null;
+  }
+  getConst(name: string) {
+    return this._constants[name] ?? null;
+  }
+}
+
+/**
+ * A _Scope_ is a record of name-value pairs,
+ * where a name is some parsed identifier.
+ *
+ * At every interpretation, if an identifier is referred to,
+ * the {@link Interpreter} will call the current
+ * scope and ask for that identifier’s value.
+ *
+ * The current scope then attempts to _resolve_ the
+ * name-value pairing (i.e., _binding_). If the
+ * current scope can’t find the pair in its record
+ * (below, the {@link Scope.env} field), then it
+ * will call its {@link Scope.parent} (the scope
+ * that _spawned_ the current scope).
+ *
+ * This goes all the way back up to the global
+ * scope (_see_ {@link Engine.CoreLib}). If nothing
+ * exists there, then an _environment error_ is thrown.
+ * Given the scarcity of good names in programming,
+ * scope is what allows us to reuse identifiers without
+ * collision.
+ */
+class Scope extends Lib {
+  private env: { [key: string]: RunTimeValue } = {};
+  parent: Scope | null;
+  constructor(parent: Scope | null = null) {
+    super();
+    this.parent = parent;
+  }
+
+  has(name: string) {
+    return this.env[name] !== undefined;
+  }
+
+  get(name: Token): RunTimeValue {
+    if (this.hasConst(name.lexeme)) {
+      return this.getConst(name.lexeme);
+    } else if (this.env[name.lexeme] !== undefined) {
+      return this.env[name.lexeme];
+    } else if (this.parent !== null) {
+      return this.parent.get(name);
+    } else {
+      const msg = `Undefined variable ${name.lexeme}.`;
+      const erm = formattedError(
+        msg,
+        name.line,
+        name.column,
+        "Environment-Error",
+      );
+      throw new Error(erm);
+    }
+  }
+  define(name: Token, value: RunTimeValue) {
+    const id = name.lexeme;
+    if (this.hasConst(id) || this.hasFunc(id)) {
+      const msg = `Cannot declare a global identifier ${id}.`;
+      const erm = formattedError(
+        msg,
+        name.line,
+        name.column,
+        "Environment-Error",
+      );
+      throw new Error(erm);
+    }
+    if (!this.hasConst(id) && !this.hasFunc(id)) {
+      this.env[id] = value;
+    }
+    return value;
+  }
+  assign(name: Token, value: RunTimeValue): RunTimeValue {
+    const id = name.lexeme;
+    if (this.hasConst(id) || this.hasFunc(id)) {
+      const msg = `Cannot assign to global identifier ${id}.`;
+      const erm = formattedError(
+        msg,
+        name.line,
+        name.column,
+        "Environment-Error",
+      );
+      throw new Error(erm);
+    }
+    if (this.env[id] !== undefined) {
+      this.env[id] = value;
+      return value;
+    }
+    if (this.parent !== null) {
+      return this.parent.assign(name, value);
+    }
+    const msg = `Undefined variable ${id}.`;
+    const erm = formattedError(
+      msg,
+      name.line,
+      name.column,
+      "Environment-Error",
+    );
+    throw new Error(erm);
+  }
+}
+
+type ErrType =
+  | "Parser-Error"
+  | "Scanner-Error"
+  | "Environment-Error"
+  | "Runtime-Error";
+
+const formattedError = (
+  message: string,
+  Line: number,
+  Column: number,
+  errorType: ErrType,
+) => {
+  const line = `Line: ${Line}\n`;
+  const column = `Column: ${Column}\n`;
+  const report = `Report: ${message}`;
+  const errtype = `[${errorType}]`;
+  return errtype + "\n" + line + column + report;
 };
 
-export class Engine {
-  private GlobalScope: Global = {
-    functions: {
-      Product: product,
-      Sum: sum,
-      Even: even,
-      Odd: odd,
-      cos: Math.cos,
-      sin: Math.sin,
-      tan: Math.tan,
-      arctan: Math.atan,
-      arcsin: Math.asin,
-      arccos: Math.acos,
-    },
-    constants: {
-      pi: Math.PI,
-      e: Math.E,
-    },
-  };
-  constants(fns: { [key: string]: number }) {
-    const current = this.GlobalScope.constants;
-    this.GlobalScope.constants = { ...current };
-    for (const k in fns) {
-      if (this.GlobalScope.constants[k]) continue;
-      if (typeof fns[k] === "number") {
-        this.GlobalScope.constants[k] = fns[k];
+type RunTimeValue =
+  | number
+  | string
+  | number[]
+  | boolean
+  | null
+  | Fn
+  | string[];
+
+// § Resolver ========================================================
+/**
+ * A _Resolver_ instance is necessary for
+ * handling edge cases in binding resolution.
+ * To illustrate why we need this module,
+ * consider the following:
+ *
+ * @example
+ * ~~~
+ * let a = 0;
+ * {
+ *   let a = 1;
+ *   let x = a; // x is 1
+ * }
+ * ~~~
+ *
+ * This is expected behavior. But now consider
+ * this:
+ *
+ * ~~~
+ * let a = 0;
+ * {
+ *   def f() = {
+ *     return a;
+ *   };
+ *   let y = f(); // z is 0
+ *   let a = 2;
+ *   let z = f(); // z is 2
+ * }
+ * ~~~
+ *
+ * Above, `y` is as expected. During `f`'s execution,
+ * the {@link Scope} bound to `f`
+ * will try searching for `a` in
+ * its environment record. It won’t find it, so
+ * it goes to its parent scope, the global scope.
+ * (It won’t find the `a` beneath it because
+ * that line hasn’t been executed yet).
+ * `f` finds a name `a` in the global
+ * scope, and returns its value, `0`.
+ *
+ * When it gets to `z`, `f` applies the same
+ * process. Only this time, the `a`
+ * above it (`let a = 2`) has been
+ * executed. So, it finds the `a` and
+ * returns it. This is what happens when
+ * we support closures without a resolver.
+ * While users should refrain from writing
+ * the aforementioned code, the idea of
+ * a function returning different values
+ * _according to time_ is far, far more
+ * sinister.
+ *
+ * To fix this problem, we must change
+ * our view of scope. A scope isn’t
+ * necessarily a single “fenced-off” block.
+ * In reality, scope is inherently partitioned
+ * by time. It’s why we have phrases like “going
+ * into/out of scope.” The block scope:
+ *
+ * @example
+ * ~~~
+ * {
+ *   let x = 1;
+ *   let y = 2;
+ * }
+ * ~~~
+ *
+ * really contains two scopes: A scope at
+ * time t0, when `x` is first spawned, and a
+ * scope at t1, when `y` is first spawned.
+ * The Resolver is implemented with this fact
+ * in mind.
+ *
+ * Before we perform any interpretation, we
+ * run the program through _semantic analysis_.
+ * At this stage, we resolve every reference
+ * to a variable exactly once–whenever we
+ * encounter a variable reference, we will
+ * note its referent (the declaration the
+ * variable name refers to).
+ */
+class Resolver implements Visitor<void> {
+  scopes: Scope[] = [];
+  resolve(nodes: ASTNode[]) {
+    const N = nodes.length;
+    for (let i = 0; i < N; i++) {
+      this.resolveNode(nodes[i]);
+    }
+  }
+  resolveNode(node: ASTNode) {
+    node.accept(this);
+  }
+  beginScope() {
+    this.scopes.push(new Scope());
+  }
+  endScope() {
+    this.scopes.pop();
+  }
+  declare(name: Token) {
+    const L = this.scopes.length;
+    if (L === 0) return;
+    const scope = this.scopes[L - 1];
+    scope.define(name, false);
+  }
+  define(name: Token) {
+    const L = this.scopes.length;
+    if (L === 0) return;
+    const scope = this.scopes[L - 1];
+    scope.define(name, true);
+  }
+  num(_: NUMBER) {
+    return;
+  }
+  str(_: STRING) {
+    return;
+  }
+  sym(node: SYMBOL) {
+    const varname = node.sym;
+    const L = this.scopes.length;
+    if (0 < L && this.scopes[L - 1].get(varname) === false) {
+      const msg = `Cannot read local variable in self-declaration.`;
+      const erm = formattedError(
+        msg,
+        node.sym.line,
+        node.sym.column,
+        "Environment-Error",
+      );
+      throw new Error(erm);
+    }
+  }
+  interpreter: Interpreter;
+  constructor(interpreter: Interpreter) {
+    this.interpreter = interpreter;
+  }
+  private resolveLocal(node: ASTNode, name: Token) {
+    const L = this.scopes.length - 1;
+    for (let i = L; i >= 0; i--) {
+      if (this.scopes[i].has(name.lexeme)) {
+        this.interpreter;
       }
     }
-    return this;
+  }
+  fn(_: FUNCTION) {
+    return;
+  }
+  bool(_: BOOL) {
+    return;
+  }
+  null(_: NULL) {
+    return;
+  }
+  infix(node: INFIX) {
+    this.resolveNode(node.left);
+    this.resolveNode(node.right);
+    return;
+  }
+  call(node: CALL) {
+    this.resolveNode(node.name);
+    for (let i = 0; i < node.args.length; i++) {
+      const arg = node.args[i];
+      this.resolveNode(arg);
+    }
+    return;
   }
 
-  isCoreFunction(x: string) {
-    return this.GlobalScope.functions[x] !== undefined;
+  block(node: BLOCK) {
+    this.beginScope();
+    this.resolve(node.statements);
+    this.endScope();
+    return;
   }
-  isCoreNumber(x: string) {
-    return this.GlobalScope.constants[x] !== undefined;
+  vardef(node: VARDEF) {
+    this.declare(node.name.sym);
+    this.resolveNode(node.value);
+    this.define(node.name.sym);
+    return;
   }
-  functions(fns: { [key: string]: Function }) {
-    const current = this.GlobalScope.functions;
-    this.GlobalScope.functions = { ...current };
-    for (const k in fns) {
-      if (this.GlobalScope.functions[k]) continue;
-      this.GlobalScope.functions[k] = fns[k];
+  assign(node: ASSIGN) {
+    throw new Error("Method not implemented.");
+  }
+  cond(node: COND) {
+    const condition = node.condition;
+    this.resolveNode(condition);
+    const ifBlock = node.ifBlock;
+    this.resolveNode(ifBlock);
+    if (!isNodeNull(node.elseBlock)) {
+      const elseBlock = node.elseBlock;
+      this.resolveNode(elseBlock);
     }
-    return this;
+    return;
   }
+  loop(node: LOOP) {
+    this.resolveNode(node.condition);
+    this.resolveNode(node.body);
+    return;
+  }
+  returnStmt(node: RETURN) {
+    if (!isNodeNull(node.value)) {
+      this.resolveNode(node.value);
+    }
+    return;
+  }
+  array(node: ARRAY) {
+    node.elements.forEach((item) => this.resolveNode(item));
+    return;
+  }
+  tuple(node: TUPLE) {
+    node.items.forEach((item) => this.resolveNode(item));
+    return;
+  }
+}
+
+class Interpreter implements Visitor<RunTimeValue> {
+  environment = new Scope();
+  locals = new Map<ASTNode, number>();
+  resolve(expr: ASTNode, depth: number) {
+    this.locals.set(expr, depth);
+  }
+  private evaluate(node: ASTNode): RunTimeValue {
+    return node.accept(this);
+  }
+  tuple(node: TUPLE) {
+    const res = node
+      .array()
+      .map((item) => this.evaluate(item));
+    return res;
+  }
+
+  array(node: ARRAY) {
+    const elements = node.elements;
+    const res: RunTimeValue[] = [];
+    for (let i = 0; i < elements.length; i++) {
+      const val = this.evaluate(elements[i]);
+      res.push(val);
+    }
+    return res;
+  }
+
+  evalInfix(x: number, op: tkn, y: number) {
+    // deno-fmt-ignore
+    switch (op) {
+      case tkn.plus: return x + y;
+      case tkn.minus: return x - y;
+      case tkn.star: return x * y;
+      case tkn.slash: return x / y;
+      case tkn.neq: return x !== y;
+      case tkn.geq: return x >= y;
+      case tkn.gt: return x > y;
+      case tkn.leq: return x <= y;
+      case tkn.lt: return x < y;
+      case tkn.deq: return x === y;
+      case tkn.caret: return x ** y;
+      case tkn.ampersand: return x & y;
+      case tkn.percent: return x % y;
+      case tkn.rem: return x % y;
+      case tkn.mod: return mod(x, y);
+      case tkn.div: return div(x, y);
+    }
+    return null;
+  }
+
+  num(node: NUMBER) {
+    return node.num;
+  }
+  str(node: STRING) {
+    return node.str;
+  }
+  sym(node: SYMBOL) {
+    const value = this.environment.get(node.sym);
+    return value;
+  }
+  fn(node: FUNCTION) {
+    const f = callable(node);
+    this.environment.define(node.name.sym, f);
+    return null;
+  }
+  infix(node: INFIX) {
+    const op = node.op.type;
+    const left = this.evaluate(node.left);
+    const right = this.evaluate(node.right);
+    switch (op) {
+      case tkn.and:
+        return Logic.and(left, right);
+      case tkn.or:
+        return Logic.or(left, right);
+      case tkn.nand:
+        return Logic.nand(left, right);
+      case tkn.nor:
+        return Logic.nor(left, right);
+      case tkn.xor:
+        return Logic.xor(left, right);
+    }
+    if (isNumber(left) && isNumber(right)) {
+      return this.evalInfix(left, op, right);
+    }
+    return null;
+  }
+  handleNative(f: Function, args: RunTimeValue[]) {
+    const res = f.apply(null, args);
+    return res;
+  }
+  call(node: CALL) {
+    const callee = node.name;
+    const reportError = (msg: string) => {
+      return formattedError(
+        msg,
+        callee.sym.line,
+        callee.sym.column,
+        "Runtime-Error",
+      );
+    };
+    const op = callee.sym.type;
+    const args: RunTimeValue[] = [];
+    const count = node.args.length;
+    for (let i = 0; i < count; i++) {
+      const arg = node.args[i];
+      args.push(this.evaluate(arg));
+    }
+    const aL = args.length;
+    const callname = callee.sym.lexeme;
+    if (this.environment.hasFunc(callname)) {
+      const fn = this.environment.getFunc(callname);
+      const fL = fn.length;
+      if (fL !== aL) {
+        const msg = `Expected ${fL} arguments, but got ${aL}.`;
+        throw new Error(reportError(msg));
+      }
+      return this.handleNative(fn, args);
+    }
+    if (op === tkn.not) return !args[0];
+    const fn = this.evaluate(callee);
+    if (!(fn instanceof Fn)) {
+      const msg = `Only functions can be called.`;
+      throw new Error(reportError(msg));
+    }
+    const pL = fn.params.length;
+    if (pL !== aL) {
+      const msg = `Expected ${pL} arguments, but got ${aL}.`;
+      throw new Error(reportError(msg));
+    }
+    return fn.call(this, args);
+  }
+  bool(node: BOOL) {
+    return node.bool;
+  }
+  null(node: NULL) {
+    return node.value;
+  }
+
+  executeBlock(statements: ASTNode[], scope: Scope) {
+    const prev = this.environment;
+    const count = statements.length;
+    this.environment = scope;
+    let result: RunTimeValue = null;
+    for (let i = 0; i < count; i++) {
+      const node = statements[i];
+      result = this.evaluate(node);
+    }
+    this.environment = prev;
+    return result;
+  }
+  block(node: BLOCK) {
+    const env = this.environment;
+    const res = this.executeBlock(node.statements, new Scope(env));
+    return res;
+  }
+  vardef(node: VARDEF) {
+    const name = node.name.sym;
+    const value = this.evaluate(node.value);
+    this.environment.define(name, value);
+    return value;
+  }
+  assign(node: ASSIGN) {
+    const value = this.evaluate(node.value);
+    this.environment.assign(node.name.sym, value);
+    return value;
+  }
+  cond(node: COND) {
+    let result = null;
+    if (this.evaluate(node.condition)) {
+      result = this.evaluate(node.ifBlock);
+    } else {
+      result = this.evaluate(node.elseBlock);
+    }
+    return result;
+  }
+  loop(node: LOOP) {
+    const condition = node.condition;
+    const body = node.body;
+    let result: RunTimeValue = null;
+    while (this.evaluate(condition)) {
+      result = this.evaluate(body);
+    }
+    return result;
+  }
+  returnStmt(node: RETURN) {
+    let value = this.evaluate(node.value);
+    return value;
+  }
+
+  interpret(nodes: ASTNode[]) {
+    let result: { value: any } = { value: null };
+    const N = nodes.length;
+    for (let i = 0; i < N; i++) {
+      const res = this.evaluate(nodes[i]);
+      result.value = res;
+    }
+    return result;
+  }
+}
+
+// § Engine ==========================================
+export class Engine {
+  /**
+   * Parses and evaluates the given string.
+   */
+  public evaluate(src: string) {
+    const res = this.parse(src);
+    const interpreter = new Interpreter();
+    const out = interpreter.interpret(res.prog);
+    return out;
+  }
+
+  /**
+   * This is the Engine’s global
+   * environment. All executable
+   * scopes have access to this
+   * object.
+   */
+  private CoreLib: Lib = new Lib();
+
   /**
    * @internal The input source string.
    * This is a readonly string.
@@ -2646,7 +3406,8 @@ export class Engine {
   }
 
   /**
-   * @internal Returns true if the engine
+   * @internal
+   * Returns true if the engine
    * has reached the end of input,
    * false otherwise.
    */
@@ -2655,48 +3416,52 @@ export class Engine {
   }
 
   /**
-   * @internal Returns an object `{lexeme,line,column}`,
-   * where:
-   * - `lexeme` is the lexeme recognized,
-   * - `line` is the {@link Engine.Line}, and
-   * - `column` is the {@link Engine.Column}.
-   * This is a helper method used by the
-   * {@link Engine.newToken} and
-   * {@link Engine.errorToken} methods
-   * to produce tokens.
+   * @internal
+   * __Scanner Method__. Generates a new token.
+   * When called, updates {@link Engine.LastToken}
+   * and {@link Engine.CurrentToken}.
    */
-  private tokenSlate(lexeme: string = "") {
-    const [start, end, line, column] = this.position();
-    lexeme = lexeme ? lexeme : this.Input.slice(start, end);
-    return { lexeme, line, column };
-  }
-
   private newToken(t: tkn, lexeme?: string): Token {
     const type = t;
-    const slate = this.tokenSlate(lexeme);
+    const [start, end, line, column] = this.position();
     this.LastToken = this.CurrentToken;
     this.CurrentToken = type;
-    lexeme = isTokenEOF(t) ? "END" : slate.lexeme;
-    return { ...slate, type, lexeme };
-  }
-
-  private errorToken(message: string): Token {
-    this.updateStatus(status.scanner_error);
-    const type = tkn.error;
-    const slate = this.tokenSlate(message);
-    return { ...slate, type };
+    // lexeme =  slate.lexeme;
+    lexeme = lexeme
+      ? lexeme
+      : isTokenEOF(t)
+      ? "END"
+      : this.Input.slice(start, end);
+    return newToken(type, lexeme, line, column);
   }
 
   /**
    * @internal
-   * Scanning method for handling `+` and `-`.
+   * __Scanner Method__. Generates an error
+   * token. If called, sets the Engine’s
+   * status to {@link status.lexical_error}.
+   */
+  private errorToken(message: string): Token {
+    const [, , line, column] = this.position();
+    this.updateStatus(status.lexical_error);
+    const type = tkn.error;
+    return newToken(type, message, line, column);
+  }
+
+  /**
+   * @internal
+   * __Scanner method__. Scanning method for handling `+` and `-`.
    * The tokens `+` and `-` are given special
    * treatment because we allow `+` and `-`
    * prefaced numbers.
    */
   private SIGN(of: "+" | "-") {
     const nxtchar = this.char();
-    if (isDotDigit(nxtchar) && !isTokenNumber(this.CurrentToken)) {
+    if (
+      isDotDigit(nxtchar) &&
+      !isTokenNumber(this.CurrentToken) &&
+      !isTokenSymbol(this.CurrentToken)
+    ) {
       const res = signedNumber(of)
         .run(this.Input.slice(this.Current - 1));
       if (res.erred) return this.errorToken(`Expected a number signed ${of}`);
@@ -2707,6 +3472,11 @@ export class Engine {
     return this.newToken(type);
   }
 
+  /**
+   * @internal
+   * __Scanner method__. Returns the character
+   * at the current index.
+   */
   private char() {
     return this.Input[this.Current];
   }
@@ -2885,13 +3655,8 @@ export class Engine {
       if (this.atEnd()) break;
     }
     const text = this.Input.substring(this.Start, this.Current);
-    if (this.isCoreFunction(text)) {
+    if (this.CoreLib.hasFunc(text)) {
       return this.newToken(tkn.call);
-    }
-    if (this.isCoreNumber(text)) {
-      const num = this.newToken(tkn.float);
-      num.literal = this.GlobalScope.constants[text];
-      return num;
     }
     return this.newToken(this.symbolType());
   }
@@ -2926,7 +3691,7 @@ export class Engine {
       case ";": return token(tkn.semicolon);
       case "/": return token(tkn.slash);
       case "*": return token(tkn.star);
-      case ",": return token(tkn.vbar);
+      case "|": return token(tkn.vbar);
       case "&": return token(tkn.ampersand);
       case "^": return token(tkn.caret);
       case "%": return token(tkn.percent);
@@ -2936,7 +3701,10 @@ export class Engine {
       case "!": return token(this.match("=") ? tkn.neq : tkn.bang);
       case ">": return token(this.match("=") ? tkn.geq : tkn.gt);
       case "<": return token(this.match("=") ? tkn.leq : tkn.lt);
-      case "=": return token(this.match("=") ? tkn.deq : tkn.eq);
+      case "=": return token(this.match("=") 
+        ? tkn.deq
+        : (this.match('>') ? tkn.lambda : tkn.eq)
+      );
 
       // literals
       case '"': return this.STRING();
@@ -2976,9 +3744,32 @@ export class Engine {
     return tokens;
   }
 
-  peek: Token = emptyToken();
-  prevToken: Token = emptyToken();
-  lastnode: ASTNode = nil();
+  /**
+   * @internal
+   * The Engine’s lookahead.
+   *
+   * _References_.
+   * 1. _See also_ {@link Engine.advance} (detailing
+   * how this property is used).
+   */
+  private peek: Token = emptyToken();
+
+  /**
+   * @internal
+   * A property holding the last read token.
+   */
+  private prevToken: Token = emptyToken();
+
+  /**
+   * @internal
+   * A property holding the last produced
+   * node. This property should _always_ be
+   * updated whenever a parse method outputs
+   * a node. To ensure this, all parse methods
+   * must return their outputs via
+   * {@link Engine.Node}.
+   */
+  private lastnode: ASTNode = nil();
 
   /**
    * A 'reset' button to clear all data
@@ -2999,23 +3790,85 @@ export class Engine {
     this.prevToken = emptyToken();
     this.lastnode = nil();
   }
+
+  /**
+   * @internal
+   * If called, updates the {@link Engine.peek}
+   * to the next token, and returns the
+   * current peek.
+   *
+   * For example, suppose we parse the string
+   * `3 + 5`. When the parser first initializes
+   * via the {@link Engine.enstate} method, the
+   * scanner’s pointer points to the first
+   * character:
+   * ~~~
+   * 3 + 5
+   * ^
+   * ~~~
+   * At the first call to {@link Engine.advance},
+   * {@link Engine.peek} becomes:
+   * ~~~
+   * 3 + 5
+   *   ^
+   * ~~~
+   * The parser, however, hasn’t yet handled the `3`.
+   * Thus, {@link Engine.peek} is always one step ahead,
+   * returning the last token it saw. In short, Skim uses
+   * an LL(1) parser (a left-most derivation with a
+   * lookahead of 1).
+   *
+   * @remarks
+   * Skim’s scanner, however, is potentially an LL(k) parser
+   * because of it’s use of parser combinators.
+   */
   private advance() {
     const peek = this.peek;
     this.peek = this.readNextToken();
     this.prevToken = peek;
     return peek;
   }
+
+  /**
+   * @internal
+   * Returns true if the next token
+   * (_see_ {@link Engine.peek}) is the
+   * given `tokenType`, false otherwise. This method
+   * checks for the given `tokenType` _without_
+   * consuming the next token.
+   */
   private check(tokenType: tkn) {
     if (this.atEnd()) return false;
     return this.peek.type === tokenType;
   }
 
-  private sees(type: tkn) {
-    if (!this.check(type)) return false;
+  /**
+   * @internal
+   * Returns true if the next token
+   * (_see_ {@link Engine.peek}) is
+   * the given `tokenType`, false otherwise.
+   * If the `tokenType` matches, the parser
+   * _will consume_ the token and move forward.
+   *
+   * _References_.
+   * 1. _See also_ {@link Engine.check} (the Engine’s
+   * method for verifying the next token _without_
+   * consumption).
+   */
+  private sees(tokenType: tkn) {
+    if (this.peek.type !== tokenType) return false;
     this.advance();
     return true;
   }
 
+  /**
+   * @internal
+   * Given an array of token types, returns
+   * true on the first token type that matches
+   * the next token. This method _will_ consume
+   * the matched token and move the parser
+   * forward.
+   */
   private matches(tokenTypes: tkn[]) {
     for (let i = 0; i < tokenTypes.length; i++) {
       if (this.sees(tokenTypes[i])) return true;
@@ -3023,33 +3876,85 @@ export class Engine {
     return false;
   }
 
-  private argList() {
-    const args: ASTNode[] = [];
-    if (!this.check(tkn.right_paren)) {
-      do {
-        args.push(this.EXPR());
-      } while (this.matches([tkn.comma]));
-    }
-    this.eat(tkn.right_paren, "Expected `)` after arguments.");
-    return args;
+  private croak(message: string) {
+    const erm = formattedError(
+      message,
+      this.Line,
+      this.Column,
+      "Parser-Error",
+    );
+    return erm;
   }
 
+  private delimited<T extends ASTNode>(
+    openingDelimiter: [tkn, string] | null,
+    contentParser: (currentLength: number) => T,
+    separators: tkn[],
+    closingDelimiter: [tkn, string],
+  ) {
+    if (openingDelimiter !== null) {
+      const [delim1, errorMessage1] = openingDelimiter;
+      this.eat(delim1, errorMessage1);
+    }
+    const [delim2, errorMessage2] = closingDelimiter;
+    const result: T[] = [];
+    if (!this.check(delim2)) {
+      do {
+        result.push(contentParser(result.length + 1));
+      } while (this.matches(separators));
+    }
+    this.eat(delim2, errorMessage2);
+    return result;
+  }
+
+  /**
+   * @internal
+   * Helper method for consuming the next token
+   * assertively. If the next token matches the
+   * expected type, the Engine advances (_see_
+   * {@link Engine.advance}). Otherwise,
+   * an error is thrown.
+   */
   private eat(tokentype: tkn, message: string) {
     if (this.peek.type === tokentype) {
       return this.advance();
     }
-    throw new Error(message);
+    this.updateStatus(status.syntax_error);
+    const msg = formattedError(
+      message,
+      this.Line,
+      this.Column,
+      "Parser-Error",
+    );
+    throw new Error(msg);
   }
 
-  private astnode<N extends ASTNode>(node: N) {
+  /**
+   * @internal
+   * Helper method for updating the last node
+   * (_see_ {@link Engine.lastnode}). This
+   * method should always be called whenever
+   * a parser method outputs a new node.
+   *
+   * @param node - The node outputted.
+   */
+  private Node<N extends ASTNode>(node: N) {
     this.lastnode = node;
     return node;
   }
 
+  /**
+   * @internal
+   * Helper method for outputting atomic nodes.
+   * Because numeric atoms always hold raw number
+   * values, the `atom` method is implemented
+   * separately for atomic nodes that only output
+   * their lexemes (e.g., symbols and strings).
+   */
   private atom(builder: (lexeme: string) => ASTNode) {
     const token = this.prevToken;
     const node = builder(token.lexeme);
-    return this.astnode(node);
+    return this.Node(node);
   }
 
   /**
@@ -3059,26 +3964,155 @@ export class Engine {
     this.enstate(text);
     this.advance(); // prime the `peek`
     const res: { prog: ASTNode[] } = { prog: [] };
-    while (!this.atEnd()) {
-      const node = this.STATEMENT();
-      res.prog.push(node);
+    try {
+      while (!this.atEnd()) {
+        const node = this.STATEMENT();
+        res.prog.push(node);
+      }
+    } catch (e) {
+      res.prog = e as any;
     }
     this.reset();
     return res;
   }
 
+  /**
+   * @internal
+   * Parses a statement.
+   */
   private STATEMENT() {
     const token = this.peek;
     switch (token.type) {
+      case tkn.return:
+        this.advance();
+        return this.RETURN();
+      case tkn.def:
+        this.advance(); // eat the 'def'
+        return this.FUNCTION();
+      case tkn.for:
+        this.advance(); // eat the 'for'
+        return this.FOR_LOOP();
+      case tkn.while:
+        this.advance(); // eat the 'while'
+        return this.WHILE_LOOP();
+      case tkn.if:
+        this.advance(); // eat the 'if'
+        return this.COND();
       case tkn.left_brace:
         this.advance(); // eat the '{'
         return this.BLOCK();
+      case tkn.left_bracket:
+        return this.ARRAY();
       case tkn.let:
         this.advance(); // eat the 'let'
         return this.VAR_DECLARATION(); // go to variable declaration
       default:
         return this.EXPRESSION_STATEMENT();
     }
+  }
+
+  ARRAY() {
+    this.advance(); // eat the '['
+    if (this.check(tkn.comma)) this.advance();
+    const args: ASTNode[] = [];
+    if (!this.check(tkn.right_bracket)) {
+      do {
+        const expr = this.EXPR();
+        !isNodeNull(expr) && args.push(expr);
+      } while (this.sees(tkn.comma) && !this.atEnd());
+    }
+    this.eat(tkn.right_bracket, `Expected ']' to close the array.`);
+    return this.Node(array(args));
+  }
+
+  /**
+   * Parses a {@link RETURN} statement.
+   *
+   * @example
+   * ~~~
+   * def f(x) = {
+   *  return x % 2
+   * }
+   * ~~~
+   */
+  RETURN() {
+    const keyword = this.prevToken;
+    let value: ASTNode = nil();
+    if (!this.check(tkn.semicolon)) {
+      value = this.EXPR();
+    }
+    const node = this.Node(returnStmt(keyword, value));
+    if (this.noSemicolonNeeded()) {
+      return node;
+    }
+    this.eat(tkn.semicolon, `Expected ';' after return value.`);
+    return node;
+  }
+
+  /**
+   * @internal
+   * Parses a function declaration.
+   *
+   * @example
+   * ~~~
+   * def g(x) = x^2; // declarations not on the last line require a ';'
+   * def h(x) = { // blocks are supported
+   *   x = x + 1
+   * }
+   * def f(x) = x + 1
+   * ~~~
+   */
+  private FUNCTION() {
+    // The STATEMENT controller has eaten the 'def' keyword,
+    // so we now parse the name.
+    const name = this.eat(tkn.symbol, `Expected function name.`);
+    const functionName = sym(name);
+
+    // This is the parser function for the parameters.
+    // We set a hard limit at 100 parameters (and really,
+    // no one should be writing functions with 100
+    // parameters---break it up).
+    const parsedParam = (paramLength: number) => {
+      if (paramLength >= 100) {
+        const msg = `Cannot have more than 100 parameters.`;
+        throw new Error(this.croak(msg));
+      }
+      const id = this.eat(tkn.symbol, "Expected identifier");
+      return sym(id);
+    };
+
+    const params = this.delimited(
+      [tkn.left_paren, `Expected '(' to open params.`],
+      parsedParam,
+      [tkn.comma],
+      [tkn.right_paren, `Expected ')' to close params.`],
+    );
+
+    // Consume the assignment operator, '='
+    this.eat(tkn.eq, `Expected the assignment operator '='`);
+
+    // Parse the body of the function
+    const body = this.STATEMENT();
+
+    // Return the new node.
+    const functionNode = fn(functionName, params, body);
+    return this.Node(functionNode);
+  }
+
+  /**
+   * @internal
+   * Parses conditional expressions.
+   */
+  private COND(): COND {
+    this.eat(tkn.left_paren, `Expected '(' after 'if'`);
+    const condition = this.EXPR();
+    this.eat(tkn.right_paren, `Expected ')' after if-condition`);
+    const ifBlock = this.STATEMENT();
+    let elseBlock: ASTNode = nil();
+    if (this.sees(tkn.else)) {
+      elseBlock = this.STATEMENT();
+    }
+    return cond(condition, ifBlock, elseBlock);
   }
 
   /**
@@ -3091,13 +4125,136 @@ export class Engine {
    * }
    * ~~~
    */
-  private BLOCK() {
+  private BLOCK(): BLOCK {
     const statements: ASTNode[] = [];
     while (!this.check(tkn.right_brace) && !this.atEnd()) {
       statements.push(this.STATEMENT());
     }
     this.eat(tkn.right_brace, `Expected '}' after block.`);
-    return block(statements);
+    return this.Node(block(statements));
+  }
+
+  /**
+   * Parses a for-loop statement.
+   *
+   * @example
+   * ~~~
+   * let x = 2;
+   * for (let i = 0; i < 5; i++) {
+   *   x = x + 1;
+   * }
+   * ~~~
+   *
+   * @remarks
+   * For-loops in Skim are treated as
+   * syntactic sugar for while-loops
+   * (_see_ {@link Engine.WHILE_LOOP}).
+   * This allows Skim to have a single
+   * loop-node construct, reducing the
+   * memory and computation overhead of
+   * handling extra nodes.
+   */
+  private FOR_LOOP(): LOOP | BLOCK {
+    this.eat(tkn.left_paren, `Expected '(' after 'for'.`);
+
+    // First, we parse the initializer.
+    // This is a statement executed
+    // exactly once, before everything else
+    // related to the loop. The initializer
+    // starts as null. We will throw an error
+    // if stays null after passing through
+    // the branches.
+    let initializer: ASTNode | null = null;
+
+    // deno-fmt-ignore
+    // Case: This is a for-loop without
+    // an initializer.
+    // E.g., 'for (; i < 5; i++)'
+    // We’ll let the interpreter handle
+    // the possible error of 'i' being undefined.
+    if (this.check(tkn.semicolon)) {
+      this.advance();
+    }
+    
+    // deno-fmt-ignore
+    // Case: This is a for-loop with an initializer.
+    // E.g., 'for (let i = 0; i < 5; i++)'
+    else if (this.sees(tkn.let)) {
+      initializer = this.VAR_DECLARATION();
+    }
+    
+    // deno-fmt-ignore
+    // Case: The initializer has some other statement
+    // (e.g., a callback, god forbid).
+    else {
+      initializer = this.EXPRESSION_STATEMENT();
+    }
+
+    // Now we handle the condition.
+    let condition: ASTNode | null = null;
+
+    // If there next token is not a semicolon,
+    // then this is a for-loop with some a condition.
+    // We pass control to EXPR for parsing.
+    if (!this.check(tkn.semicolon)) {
+      condition = this.EXPR();
+    }
+
+    // All conditions must be delimited with a semicolon.
+    this.eat(tkn.semicolon, `Expected ';' after for-loop condition.`);
+
+    // Now we handle the increment.
+    let increment: ASTNode | null = null;
+
+    // If the next token is not a right-paren,
+    // then this a for-loop with an incrementing
+    // expression. We pass control to EXPR for parsing.
+    if (!this.check(tkn.right_paren)) {
+      increment = this.EXPR();
+    }
+    this.eat(tkn.right_paren, `Expected ')' after for-loop clause.`);
+
+    // Pass control to STATEMENT to parse the for-loop's body
+    // (e.g., a block).
+    let body = this.STATEMENT();
+
+    // Now we build a tree
+
+    if (increment !== null) {
+      body = block([body, increment]);
+    }
+
+    if (condition == null) {
+      condition = bool("true");
+    }
+
+    body = loop(condition, body);
+
+    if (initializer !== null) {
+      body = block([initializer, body]);
+    }
+
+    return body as any as (LOOP | BLOCK);
+  }
+
+  /**
+   * Parses a while-loop statement.
+   * @example
+   * ~~~
+   * let i = 0;
+   * let x = 5;
+   * while (i < 5) {
+   *   x += 1;
+   *   i++;
+   * }
+   * ~~~
+   */
+  private WHILE_LOOP(): LOOP {
+    this.eat(tkn.left_paren, `Expected '(' after 'while'.`);
+    const condition = this.EXPR();
+    this.eat(tkn.right_paren, `Expected ')' after loop-condition.`);
+    const body = this.STATEMENT();
+    return this.Node(loop(condition, body));
   }
 
   /**
@@ -3112,7 +4269,7 @@ export class Engine {
    * let y = x = 4;
    * ~~~
    */
-  private VAR_DECLARATION() {
+  private VAR_DECLARATION(): VARDEF {
     // We’re here from the STATEMENT method.
     // That method ate the 'let' keyword, so
     // now we eat the name. We expect the
@@ -3120,7 +4277,7 @@ export class Engine {
     const name = this.eat(tkn.symbol, `Expected valid identifier.`);
 
     // Name in hand, we make a new symbol node.
-    const id = sym(name.lexeme);
+    const id = sym(name);
 
     // We move forward. Whether we consume
     // the '=' token is irrelevant, because
@@ -3130,54 +4287,139 @@ export class Engine {
     this.advance();
 
     // Now parse the right-hand side,
-    const val = this.EXPR();
+    const val = this.EXPRESSION_STATEMENT();
 
     // and make a new node of type VARDEF.
     const node = vardef(id, val);
 
     // Semicolons are unnecessary if
     // we’re on the last line
-    if (this.peek.type !== tkn.eof) {
-      this.eat(tkn.semicolon, "Expected semicolon.");
+    if (this.noSemicolonNeeded()) {
+      return this.Node(node);
     }
-
+    this.eat(tkn.semicolon, "Expected semicolon.");
     // Return the new node.
-    return this.astnode(node);
+    return this.Node(node);
   }
 
+  /**
+   * @internal
+   * Parses assignment statements.
+   */
   private ASSIGN(): ASSIGN {
     const name = this.lastnode;
     this.advance();
     if (!isNodeSymbol(name)) {
-      throw new Error("Invalid left-hand side");
+      this.updateStatus(status.syntax_error);
+      const msg = this.croak("Invalid left-hand side.");
+      throw new Error(msg);
     }
     const val = this.EXPR();
-    return this.astnode(assign(name, val));
+    return this.Node(assign(name, val));
   }
 
+  private LAMBDA() {
+    const op = this.advance();
+    const prevnode = this.lastnode;
+    const params: SYMBOL[] = [];
+    if (isNodeArray(prevnode)) {
+      const elements = prevnode.elements;
+      const E = elements.length;
+      for (let i = 0; i < E; i++) {
+        const elem = elements[i];
+        (isNodeSymbol(elem)) && params.push(elem);
+      }
+    }
+    const rhs = this.EXPR();
+    const tk = newToken(tkn.lambda, "lambda", op.line, op.column);
+    const name = sym(tk);
+    const node = fn(name, params, rhs);
+    return this.Node(node);
+  }
+
+  /**
+   * Helper method to determine if a
+   * semicolon is needed.
+   * Semicolons are not needed if:
+   *
+   * 1. The statement is the last in a program,
+   * 2. the parser sees a semicolon ahead, or
+   * 3. the next token is a right-brace (closing
+   * a block scope).
+   */
+  private noSemicolonNeeded() {
+    return (
+      isTokenEOF(this.peek.type) ||
+      this.sees(tkn.semicolon) ||
+      this.check(tkn.right_brace)
+    );
+  }
+
+  /**
+   * @internal Parses expression statements.
+   */
   private EXPRESSION_STATEMENT() {
     const expr = this.EXPR();
-    if (isTokenEOF(this.peek.type) || this.sees(tkn.semicolon)) {
-      return this.astnode(expr);
+    if (this.noSemicolonNeeded()) {
+      return this.Node(expr);
     }
     this.eat(tkn.semicolon, `Expected ';' after expression.`);
-    return this.astnode(expr);
+    return this.Node(expr);
   }
 
+  /**
+   * @internal
+   * Parses function calls.
+   */
   private CALL() {
     const name = this.advance();
-    this.advance();
-    const args = this.argList();
-    return this.astnode(call(sym(name.lexeme), args));
+    const args = this.delimited(
+      [tkn.left_paren, `Expected '(' before arguments.`],
+      () => this.EXPR(),
+      [tkn.comma],
+      [tkn.right_paren, `Expected ')' after arguments.`],
+    );
+    return this.Node(call(sym(name), args));
   }
 
+  /**
+   * @internal
+   * Parses parenthesized expressions.
+   */
   private GROUP(): ASTNode {
-    this.advance();
-    const expr = this.astnode(this.EXPR());
+    this.advance(); // eat the opening `(`
+    const expr = this.Node(this.EXPR());
+
+    // if we encounter a comma, this is a tuple
+    if (this.sees(tkn.comma)) {
+      const items = this.delimited(
+        null,
+        () => this.EXPR(),
+        [tkn.comma],
+        [tkn.right_paren, `Expected ')' to close tuple.`],
+      );
+      return this.Node(tuple([expr, ...items]));
+    }
+
+    // otherwise, we can expect a closing right-paren
     this.eat(tkn.right_paren, "Expected `)` after expression.");
+
+    // handle implicit multiplication
+    if (this.check(tkn.left_paren) && !isNodeCall(this.lastnode)) {
+      this.advance(); // eat the opening `)`
+      const rhs = this.Node(this.EXPR());
+      this.eat(tkn.right_paren, `Expected closing ')'`);
+      const p = this.peek;
+      const op = newToken(tkn.star, "*", p.line, p.column);
+      return this.Node(infix(op, expr, rhs));
+    }
     return expr;
   }
 
+  /**
+   * @internal
+   * Parses numeric literals.
+   */
   private NUMERIC() {
     const token = this.advance();
     const val = token.literal ? token.literal : token.lexeme;
@@ -3188,33 +4430,56 @@ export class Engine {
       case tkn.float: node = float(val); break;
       case tkn.hex: node = hex(val); break;
       case tkn.octal: node = octal(val); break;
+      case tkn.binary: node = binary(val); break;
       case tkn.inf: node = inf(); break;
       case tkn.nan: node = nan(); break;
     }
     const pt = this.peek.type;
     if (isTokenSymbol(pt) || isTokenCall(pt)) {
       const rhs = this.SYMBOLIC();
-      node = binex(this.newToken(tkn.star, "*"), node, rhs);
-      return this.astnode(node);
+      node = infix(this.newToken(tkn.star, "*"), node, rhs);
+      return this.Node(node);
     }
     if (pt === tkn.left_paren) {
       const rhs = this.GROUP();
-      node = binex(this.newToken(tkn.star, "*"), node, rhs);
-      return this.astnode(node);
+      node = infix(this.newToken(tkn.star, "*"), node, rhs);
+      return this.Node(node);
     }
-    return this.astnode(node);
+    return this.Node(node);
   }
 
+  /**
+   * @internal
+   * Parses a symbol.
+   */
   private SYMBOLIC() {
     const token = this.advance();
-    let node = sym(token.lexeme);
-    if (this.matches([tkn.left_paren])) {
-      const args = this.argList();
+
+    let node = sym(token);
+
+    // if the next token is a left-paren,
+    // then this is a function call.
+    if (this.check(tkn.left_paren)) {
+      const args = this.delimited(
+        [tkn.left_paren, `Expected '(' before arguments.`],
+        () => this.EXPR(),
+        [tkn.comma],
+        [tkn.right_paren, `Expected ')' after arguments.`],
+      );
       node = call(node, args) as any;
     }
-    return this.astnode(node);
+
+    return this.Node(node);
   }
 
+  /**
+   * Parses the literal tokens `tkn.null`,
+   * `tkn.string`, `tkn.true` and
+   * `tkn.false`. Numeric tokens are
+   * handled by {@link Engine.NUMERIC},
+   * and symbol tokens are handled by
+   * {@link Engine.SYMBOLIC}.
+   */
   private LITERAL() {
     const token = this.advance();
     switch (token.type) {
@@ -3227,44 +4492,122 @@ export class Engine {
       case tkn.false:
         return this.atom(bool);
     }
-    throw new Error("Unrecognized literal.");
+    const msg = `Unrecognized literal: ${token.lexeme}`;
+    const errm = this.croak(msg);
+    throw new Error(errm);
   }
 
   /**
    * Parses an expression via Pratt parsing.
    */
-  private EXPR(minbp = bp.non) {
+  private EXPR(minbp = bp.non): ASTNode {
     const tk = this.peek;
-    if (this.#BP[tk.type] === null) return nil();
-    let lhs: ASTNode = this[this.#BP[tk.type]![0]]();
+    // let lhs: ASTNode = this[this.#BP[tk.type][0]]();
+    let [lP, rP, opBP] = this.#BP[tk.type];
+    let lhs = lP === "___" ? this[rP]() : this[lP]();
     while (this.Status === status.ok && !isTokenEOF(this.peek.type)) {
       const op = this.peek;
       if (isTokenEOF(op.type)) break;
-      let [_, rightParser, opBP] = this.#BP[op.type]!;
+      let [_, rightParser, opBP] = this.#BP[op.type];
       if (opBP < minbp || rightParser === "___") break;
       lhs = this[rightParser]();
     }
     return lhs;
   }
 
-  private UNARY(): ASTNode {
+  /**
+   * Parses a unary-prefix expression.
+   * Unary expressions reduce
+   * to built-in function calls.
+   */
+  private PREFIX(): ASTNode {
     const op = this.advance();
     const arg = this.EXPR();
-    return this.astnode(call(sym(op.lexeme), [arg]));
+    return this.Node(call(sym(op), [arg]));
   }
 
-  private BINARY(): ASTNode {
+  /**
+   * Parses a binary expression.
+   * Unlike the unary-prefix (_see_
+   * {@link Engine.PREFIX}) and
+   * unary-postfix (_see_ {@link Engine.POSTFIX})
+   * constructs, binary expressions are inherently
+   * ambiguous because of their infix notation.
+   * Accordingly, we use a special parser for them,
+   * along with a special node, `infix`
+   * (_see_ {@link INFIX}).
+   */
+  private INFIX(): ASTNode {
     const op = this.advance();
     const lhs = this.lastnode;
     const rhs = this.EXPR();
-    const node = binex(op, lhs, rhs);
-    return this.astnode(node);
+    const node = infix(op, lhs, rhs);
+    return this.Node(node);
   }
 
+  /**
+   * Parses a unary-postfix expression.
+   * Postfix expressions reduce
+   * to build-in function calls.
+   */
   private POSTFIX() {
     const op = this.advance();
     const arg = this.lastnode;
-    return this.astnode(call(sym(op.lexeme), [arg]));
+    return this.Node(call(sym(op), [arg]));
+  }
+
+  /**
+   * Parses fractions. Fractions are defined
+   * as numbers of the form `ℕ/ℕ`, where `ℕ`
+   * is a natural number. Fractions are reduced
+   * to function calls to the native function `frac`,
+   * of the same precence as literals.
+   * @example
+   * ~~~
+   * let x = 1/2 // parses to frac(1,2)
+   * ~~~
+   */
+  private FRACTION() {
+    const S = this.peek.lexeme.split("/");
+    if (S.length !== 2) {
+      this.Status = status.syntax_error;
+      const msg = this.croak("Invalid fraction");
+      throw new Error(msg);
+    }
+    const [numerator, denominator] = S;
+    const peek = this.peek;
+    const name = newToken(tkn.call, "frac", peek.line, peek.column);
+    const node = call(sym(name), [int(numerator), int(denominator)]);
+    return this.Node(node);
+  }
+
+  /**
+   * The Engine’s scientific number parsing module.
+   * Scientific numbers are numbers of the form
+   * `ℝEℤ`, where `ℝ` is some floating point number
+   * (signs `+` and `-` allowed), and `ℤ` is some integer
+   * (signs `+` and `-` allowed). Scientific numbers
+   * are reduced to function calls to the native
+   * function `sci`, with the same precedence as atoms.
+   *
+   * @example
+   * ~~~
+   * let x = 2.4E2 // parses to sci(2.4, 2);
+   * let y = .4E-8 // parses to sci(0.4,-8);
+   * ~~~
+   */
+  private SCIENTIFIC() {
+    const S = this.peek.lexeme.split("E");
+    if (S.length !== 2) {
+      this.Status = status.syntax_error;
+      const msg = this.croak("Invalid scientific number");
+      throw new Error(msg);
+    }
+    const [base, exp] = S;
+    const peek = this.peek;
+    const name = newToken(tkn.call, "sci", peek.line, peek.column);
+    const node = call(sym(name), [float(base), int(exp)]);
+    return this.Node(node);
   }
 
   /**
@@ -3276,7 +4619,6 @@ export class Engine {
     return nil();
   }
 
-  // deno-fmt-ignore
   /**
    * @internal
    * __DO NOT MODIFY THIS TABLE__.
@@ -3291,95 +4633,77 @@ export class Engine {
    * resulting from a full name.
    */
   #BP: Record<tkn, [Parslet, Parslet, bp]> = {
-    [tkn.nil          ] : ["___"       , "___"    , bp.null         ],
-    [tkn.comma        ] : ["___"       , "___"    , bp.null         ],
-    [tkn.eof          ] : ["___"       , "___"    , bp.null         ],
-    [tkn.error        ] : ["___"       , "___"    , bp.null         ],
-    [tkn.left_paren   ] : ["GROUP"     , "___"    , bp.call         ],
-    [tkn.right_paren  ] : ["___"       , "___"    , bp.null         ],
-    [tkn.left_bracket ] : ["___"       , "___"    , bp.null         ],
-    [tkn.right_bracket] : ["___"       , "___"    , bp.null         ],
-    [tkn.left_brace   ] : ["___"       , "___"    , bp.null         ],
-    [tkn.right_brace  ] : ["___"       , "___"    , bp.null         ],
-    [tkn.dot          ] : ["___"       , "___"    , bp.null         ],
-    [tkn.vbar         ] : ["___"       , "___"    , bp.null         ],
-    [tkn.semicolon    ] : ["___"       , "___"    , bp.null         ],
-    [tkn.and          ] : ["___"       , "BINARY" , bp.and          ],
-    [tkn.or           ] : ["___"       , "BINARY" , bp.or           ],
-    [tkn.nand         ] : ["___"       , "BINARY" , bp.nand         ],
-    [tkn.nor          ] : ["___"       , "BINARY" , bp.nor          ],
-    [tkn.xor          ] : ["___"       , "BINARY" , bp.xor          ],
-    [tkn.xnor         ] : ["___"       , "BINARY" , bp.xnor         ],
-    [tkn.not          ] : ["UNARY"     , "___"    , bp.null         ],
-    [tkn.is           ] : ["___"       , "BINARY" , bp.is           ],
-    [tkn.rem          ] : ["___"       , "BINARY" , bp.quotient     ],
-    [tkn.mod          ] : ["___"       , "BINARY" , bp.quotient     ],
-    [tkn.div          ] : ["___"       , "BINARY" , bp.quotient     ],
-    [tkn.plus         ] : ["___"       , "BINARY" , bp.sum          ],
-    [tkn.minus        ] : ["___"       , "BINARY" , bp.difference   ],
-    [tkn.star         ] : ["___"       , "BINARY" , bp.product      ],
-    [tkn.ampersand    ] : ["___"       , "BINARY" , bp.and          ],
-    [tkn.caret        ] : ["___"       , "BINARY" , bp.power        ],
-    [tkn.percent      ] : ["___"       , "BINARY" , bp.quotient     ],
-    [tkn.slash        ] : ["___"       , "BINARY" , bp.product      ],
-    [tkn.neq          ] : ["___"       , "BINARY" , bp.comparison   ],
-    [tkn.bang         ] : ["___"       , "POSTFIX", bp.call         ],
-    [tkn.geq          ] : ["___"       , "BINARY" , bp.comparison   ],
-    [tkn.gt           ] : ["___"       , "BINARY" , bp.comparison   ],
-    [tkn.leq          ] : ["___"       , "BINARY" , bp.comparison   ],
-    [tkn.lt           ] : ["___"       , "BINARY" , bp.comparison   ],
-    [tkn.deq          ] : ["___"       , "BINARY" , bp.equality     ],
-    [tkn.eq           ] : ["___"       , "ASSIGN" , bp.assign       ],
-    [tkn.call         ] : ["CALL"      , "___"    , bp.null         ],
-    [tkn.int          ] : ["NUMERIC"   , "___"    , bp.null         ],
-    [tkn.float        ] : ["NUMERIC"   , "___"    , bp.null         ],
-    [tkn.scinum       ] : ["SCIENTIFIC", "___"    , bp.null         ],
-    [tkn.frac         ] : ["FRACTION"  , "___"    , bp.null         ],
-    [tkn.hex          ] : ["NUMERIC"   , "___"    , bp.null         ],
-    [tkn.octal        ] : ["NUMERIC"   , "___"    , bp.null         ],
-    [tkn.binary       ] : ["NUMERIC"   , "___"    , bp.null         ],
-    [tkn.nan          ] : ["NUMERIC"   , "___"    , bp.null         ],
-    [tkn.inf          ] : ["NUMERIC"   , "___"    , bp.null         ],
-    [tkn.string       ] : ["LITERAL"   , "___"    , bp.null         ],
-    [tkn.symbol       ] : ["SYMBOLIC"  , "___"    , bp.null         ],
-    [tkn.null         ] : ["LITERAL"   , "___"    , bp.null         ],
-    [tkn.true         ] : ["LITERAL"   , "___"    , bp.null         ],
-    [tkn.false        ] : ["LITERAL"   , "___"    , bp.null         ],
-    [tkn.class        ] : ["___"       , "___"    , bp.null         ],
-    [tkn.else         ] : ["___"       , "___"    , bp.null         ],
-    [tkn.for          ] : ["___"       , "___"    , bp.null         ],
-    [tkn.if           ] : ["___"       , "___"    , bp.null         ],
-    [tkn.return       ] : ["___"       , "___"    , bp.null         ],
-    [tkn.super        ] : ["___"       , "___"    , bp.null         ],
-    [tkn.this         ] : ["___"       , "___"    , bp.null         ],
-    [tkn.let          ] : ["___"       , "___"    , bp.null         ],
-    [tkn.def          ] : ["___"       , "___"    , bp.null         ],
-    [tkn.while        ] : ["___"       , "___"    , bp.null         ],
-    [tkn.in           ] : ["___"       , "___"    , bp.null         ],
-    [tkn.do           ] : ["___"       , "___"    , bp.null         ],
-    [tkn.goto         ] : ["___"       , "___"    , bp.null         ],
-    [tkn.skip         ] : ["___"       , "___"    , bp.null         ],
-    [tkn.to           ] : ["___"       , "___"    , bp.null         ],
+    [tkn.nil]: ["___", "___", bp.null],
+    [tkn.comma]: ["___", "___", bp.null],
+    [tkn.eof]: ["___", "___", bp.null],
+    [tkn.error]: ["___", "___", bp.null],
+    [tkn.left_paren]: ["GROUP", "___", bp.primary],
+    [tkn.right_paren]: ["___", "___", bp.null],
+    [tkn.left_bracket]: ["ARRAY", "___", bp.primary],
+    [tkn.right_bracket]: ["___", "___", bp.null],
+    [tkn.left_brace]: ["___", "___", bp.null],
+    [tkn.right_brace]: ["___", "___", bp.null],
+    [tkn.dot]: ["___", "___", bp.null],
+    [tkn.vbar]: ["___", "___", bp.null],
+    [tkn.semicolon]: ["___", "___", bp.null],
+    [tkn.and]: ["___", "INFIX", bp.and],
+    [tkn.or]: ["___", "INFIX", bp.or],
+    [tkn.nand]: ["___", "INFIX", bp.nand],
+    [tkn.nor]: ["___", "INFIX", bp.nor],
+    [tkn.xor]: ["___", "INFIX", bp.xor],
+    [tkn.xnor]: ["___", "INFIX", bp.xnor],
+    [tkn.not]: ["PREFIX", "___", bp.null],
+    [tkn.is]: ["___", "INFIX", bp.is],
+    [tkn.rem]: ["___", "INFIX", bp.quotient],
+    [tkn.mod]: ["___", "INFIX", bp.quotient],
+    [tkn.div]: ["___", "INFIX", bp.quotient],
+    [tkn.plus]: ["___", "INFIX", bp.sum],
+    [tkn.minus]: ["___", "INFIX", bp.difference],
+    [tkn.star]: ["___", "INFIX", bp.product],
+    [tkn.ampersand]: ["___", "INFIX", bp.and],
+    [tkn.caret]: ["___", "INFIX", bp.power],
+    [tkn.percent]: ["___", "INFIX", bp.quotient],
+    [tkn.slash]: ["___", "INFIX", bp.product],
+    [tkn.neq]: ["___", "INFIX", bp.comparison],
+    [tkn.bang]: ["___", "POSTFIX", bp.call],
+    [tkn.geq]: ["___", "INFIX", bp.comparison],
+    [tkn.gt]: ["___", "INFIX", bp.comparison],
+    [tkn.leq]: ["___", "INFIX", bp.comparison],
+    [tkn.lt]: ["___", "INFIX", bp.comparison],
+    [tkn.deq]: ["___", "INFIX", bp.equality],
+    [tkn.eq]: ["___", "ASSIGN", bp.assign],
+    [tkn.call]: ["CALL", "___", bp.null],
+    [tkn.lambda]: ["___", "LAMBDA", bp.assign],
+    [tkn.int]: ["NUMERIC", "___", bp.null],
+    [tkn.float]: ["NUMERIC", "___", bp.null],
+    [tkn.scinum]: ["SCIENTIFIC", "___", bp.null],
+    [tkn.frac]: ["FRACTION", "___", bp.null],
+    [tkn.hex]: ["NUMERIC", "___", bp.null],
+    [tkn.octal]: ["NUMERIC", "___", bp.null],
+    [tkn.binary]: ["NUMERIC", "___", bp.null],
+    [tkn.nan]: ["NUMERIC", "___", bp.null],
+    [tkn.inf]: ["NUMERIC", "___", bp.null],
+    [tkn.string]: ["LITERAL", "___", bp.null],
+    [tkn.symbol]: ["SYMBOLIC", "___", bp.null],
+    [tkn.null]: ["LITERAL", "___", bp.null],
+    [tkn.true]: ["LITERAL", "___", bp.null],
+    [tkn.false]: ["LITERAL", "___", bp.null],
+    [tkn.class]: ["___", "___", bp.null],
+    [tkn.else]: ["___", "___", bp.null],
+    [tkn.for]: ["___", "___", bp.null],
+    [tkn.if]: ["___", "___", bp.null],
+    [tkn.return]: ["___", "___", bp.null],
+    [tkn.super]: ["___", "___", bp.null],
+    [tkn.this]: ["___", "___", bp.null],
+    [tkn.let]: ["___", "___", bp.null],
+    [tkn.def]: ["___", "___", bp.null],
+    [tkn.while]: ["___", "___", bp.null],
+    [tkn.in]: ["___", "___", bp.null],
+    [tkn.do]: ["___", "___", bp.null],
+    [tkn.goto]: ["___", "___", bp.null],
+    [tkn.skip]: ["___", "___", bp.null],
+    [tkn.to]: ["___", "___", bp.null],
   };
-
-  private FRACTION() {
-    const S = this.peek.lexeme.split("/");
-    if (S.length !== 2) {
-      this.Status = status.syntax_error;
-      throw new Error("Invalid fraction");
-    }
-    const [numerator, denominator] = S;
-    return call(sym("Frac"), [int(numerator), int(denominator)]);
-  }
-  private SCIENTIFIC() {
-    const S = this.peek.lexeme.split("E");
-    if (S.length !== 2) {
-      this.Status = status.syntax_error;
-      throw new Error("Invalid scientific number");
-    }
-    const [base, exp] = S;
-    return call(sym("Sci"), [float(base), int(exp)]);
-  }
 }
 
 type Parslet =
@@ -3387,26 +4711,24 @@ type Parslet =
   | "LITERAL"
   | "GROUP"
   | "CALL"
-  | "BINARY"
+  | "INFIX"
   | "ASSIGN"
   | "POSTFIX"
+  | "ARRAY"
   | "NUMERIC"
   | "SYMBOLIC"
   | "FRACTION"
   | "SCIENTIFIC"
-  | "UNARY";
+  | "LAMBDA"
+  | "PREFIX";
 
 const engine = new Engine();
-engine.constants({ phi: 0.179 });
 const src = `
-{
-  let j = 5;
-  let k = j + 1;
-}
+let class
 `;
 const tree = engine.parse(src);
-// console.log(JSON.stringify(tree, null, 2));
+console.log(JSON.stringify(tree, null, 2));
 console.log(tree);
-// console.log(engine);
+// console.log(engine)
 // const tokens = engine.tokenize(src);
 // console.log(tokens);
