@@ -1,0 +1,6 @@
+{
+    "updateToc": true,
+    "deployMode": "prod",
+    "baseDir": "./src/lib/lang",
+    "outputFormat": "html"
+}

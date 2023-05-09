@@ -1,6 +1,6 @@
 export type { SkimRule, SkimState } from "./skim";
-export type { Token } from "./skim";
-export { Engine, tkn } from "./skim";
+export type { Token } from "./reader";
+export { Engine, tkn, number } from "./reader";
 export {
   amid,
   among,
@@ -12,7 +12,6 @@ export {
   list,
   many,
   maybe,
-  number,
   one,
   P,
   regex,

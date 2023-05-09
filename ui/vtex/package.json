@@ -16,7 +16,9 @@
     "clean": "rm -rf docs/*",
     "cleanskim": "rm -rf docs/*",
     "doc": "pnpm clean && typedoc --plugin typedoc-plugin-markdown --out docs src/lib",
-    "skim": "pnpm cleanskim && typedoc --plugin typedoc-plugin-markdown --out docs/skim src/lib/lang"
+    "skim": "pnpm cleanskim && typedoc --plugin typedoc-plugin-markdown --out docs/skim src/lib/lang",
+    "lits": "lits",
+    "lits-watch": "lits --watch"
   },
   "dependencies": {
     "@types/d3-hierarchy": "^3.1.2",
@@ -24,6 +26,7 @@
     "@visx/text": "^3.0.0",
     "@webtex/algom": "workspace:*",
     "d3-hierarchy": "^3.1.2",
+    "fp-ts": "^2.13.1",
     "katex": "^0.16.4"
   },
   "peerDependencies": {
