@@ -19,8 +19,31 @@ export class Maybe<T> {
     return value ? Maybe.some(value) : Maybe.none<T>();
   }
 
-  map(fn: (value: T) => T | null): Maybe<T> {
-    return this.value === null ? this : Maybe.of<T>(fn(this.value));
+  onlyIf<K extends T>(condition: (val: T) => val is K) {
+    const val = this.value;
+    if (val===null) return Maybe.none<K>();
+    if (condition(val)) {
+      return Maybe.some(val as K);
+    }
+    return Maybe.some<K>(val as K);
+  }
+  
+  ap<K>(f: (x: T) => K) {
+    const val = this.value;
+    if (val === null) {
+      return this;
+    }
+    const res = f(val);
+    if (res === null) {
+      return this;
+    }
+    return res;
+  }
+
+  map<K>(fn: (value: T) => K | null): Maybe<K> {
+    return this.value === null
+      ? (this as unknown as Maybe<K>)
+      : Maybe.of<K>(fn(this.value));
   }
 
   unwrap(defaultValue: T): T {
@@ -29,3 +52,4 @@ export class Maybe<T> {
 }
 
 export const box = <T>(value: T) => new Maybe(value);
+

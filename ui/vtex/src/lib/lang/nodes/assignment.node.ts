@@ -20,9 +20,16 @@ export class Assign extends ASTNode {
 	value() {
 		return this.body;
 	}
+	symbol() {
+		return this.sym;
+	}
 }
 
 export const assignment = (
 	name:Sym,
 	body:ASTNode
 ) => new Assign(name, body);
+
+export const isAssignmentNode = (
+	node:ASTNode
+): node is Assign => node.nodeType === NodeType.assign

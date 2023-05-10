@@ -15,7 +15,9 @@ export enum NodeType {
   call,
   functionDeclaration,
   variableDeclaration,
-  tuple,
+  vector,
   block,
   assign,
+  tuple,
+  conditional,
 }

@@ -7,11 +7,13 @@ import { Call } from "./call.node.js";
 import { UnaryExpression } from "./unary.node.js";
 import { Str } from "./string.node.js";
 import { FunctionDeclaration } from "./function.node.js";
-import { Tuple } from "./tuple.node.js";
-import {Block} from "./block.node.js";
-import {Loop} from "./loop.node.js";
-import {Assign} from "./assignment.node.js";
-import {VariableDeclaration} from "./variable.node.js";
+import { Vector } from "./vector.node.js";
+import { Block } from "./block.node.js";
+import { Loop } from "./loop.node.js";
+import { Assign } from "./assignment.node.js";
+import { VariableDeclaration } from "./variable.node.js";
+import {Tuple} from "./tuple.node.js";
+import {Conditional} from "./cond.node.js";
 
 // § Visitor Interface ===============================================
 /**
@@ -28,9 +30,11 @@ export interface Visitor<T> {
   unary(node: UnaryExpression): T;
   binex(node: BinaryExpression): T;
   funcDef(node: FunctionDeclaration): T;
-  varDef(node:VariableDeclaration): T;
-  tuple(node: Tuple<any>): T;
+  varDef(node: VariableDeclaration): T;
+  vector(node: Vector): T;
   block(node: Block): T;
-  loop(ndoe:Loop): T;
-  assign(node:Assign): T;
+  loop(ndoe: Loop): T;
+  assign(node: Assign): T;
+  tuple(node:Tuple): T;
+  cond(node:Conditional):T;
 }

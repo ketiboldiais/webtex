@@ -17,4 +17,10 @@ export class Sym extends ASTNode {
   }
 }
 
-export const sym = (token:Token) => new Sym(token);
+export const sym = (token: Token) => new Sym(token);
+
+export const isSymbolNode = (
+  node: ASTNode
+): node is Sym => (
+  node.nodeType === NodeType.symbol
+);

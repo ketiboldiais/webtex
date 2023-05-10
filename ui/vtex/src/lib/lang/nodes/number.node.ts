@@ -29,7 +29,7 @@ value:string
 export const hex = NumBuilder((s) => Number.parseInt(s, 16));
 export const binary = NumBuilder((s) => Number.parseInt(s, 2));
 export const octal = NumBuilder((s) => Number.parseInt(s, 8));
-export const int = NumBuilder((s) => Number.parseInt(s, 10));
+export const int = NumBuilder((s) => Number.parseInt(s));
 export const real = NumBuilder((s) => Number.parseFloat(s));
 export const nan = new Num(NaN);
 export const inf = new Num(Infinity);

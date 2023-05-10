@@ -56,16 +56,16 @@ export class List<T> {
     return ((a % b) + b) % b;
   }
 
-  filter(
-    callback: (value: T, index: number) => boolean,
+  filter<K extends T>(
+    callback: (value: T, index: number) => value is K,
   ) {
     const list = this;
-    const newList = new List<T>();
+    const newList = new List<K>();
     if (list.isEmpty()) return newList;
     list.traverse((node, index) => {
       const val = node.data.value;
       if (val !== null && callback(val, index)) {
-        newList.push(val);
+        newList.push(val as K);
       }
     });
     return newList;

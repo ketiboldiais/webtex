@@ -35,12 +35,13 @@ export class VariableDeclaration extends ASTNode {
   }
 }
 
-const varDef = (
+export const varDef = (
   name:Sym, 
   body:ASTNode
 ) => new VariableDeclaration(name, body, VarType.mutable);
 
-const constantDef = (
+export const constantDef = (
   name:Sym, 
   body:ASTNode
 ) => new VariableDeclaration(name, body, VarType.constant);
+

@@ -7,7 +7,7 @@ import { nilNode } from "./nodes/nil.node.js";
 import { binex } from "./nodes/binex.node.js";
 import { ErrorReport, parserError, scannerError } from "./error.js";
 import { falseNode, trueNode } from "./nodes/bool.node.js";
-import { sym } from "./nodes/symbol.node.js";
+import { isSymbolNode, Sym, sym } from "./nodes/symbol.node.js";
 import { call } from "./nodes/call.node.js";
 import {
   dottedNumber,
@@ -21,6 +21,18 @@ import {
 import { unary } from "./nodes/unary.node.js";
 import { str } from "./nodes/string.node.js";
 import { print } from "./utils.js";
+import {
+  Assign,
+  assignment,
+  isAssignmentNode,
+} from "./nodes/assignment.node.js";
+import { NodeType } from "./nodes/node.type.js";
+import { varDef } from "./nodes/variable.node.js";
+import { vector } from "./nodes/vector.node.js";
+import { fnDef } from "./nodes/function.node.js";
+import { block } from "./nodes/block.node.js";
+import { isTupleNode, Tuple, tuple } from "./nodes/tuple.node.js";
+import { cond } from "./nodes/cond.node.js";
 
 /**
  * Consider the expression
@@ -123,6 +135,8 @@ const INFIX = "INFIX";
 const PREFIX = "PREFIX";
 const POSTFIX = "POSTFIX";
 const GROUP = "GROUP";
+const BLOCK = "BLOCK";
+const ARRAY = "ARRAY";
 const __ = "NIL";
 
 type Parser =
@@ -130,6 +144,8 @@ type Parser =
   | typeof ATOM
   | typeof GROUP
   | typeof SYMBOL
+  | typeof BLOCK
+  | typeof ARRAY
   | typeof NUMBER
   | typeof PREFIX
   | typeof POSTFIX
@@ -183,9 +199,9 @@ const ParseRules: ParserRecord = {
   [tkn.none]: [__, __, NONE],
   [tkn.left_paren]: [GROUP, __, bp.none],
   [tkn.right_paren]: [__, __, bp.nil],
-  [tkn.left_bracket]: [__, __, bp.nil],
+  [tkn.left_bracket]: [ARRAY, __, bp.atom],
   [tkn.right_bracket]: [__, __, bp.nil],
-  [tkn.left_brace]: [__, __, bp.nil],
+  [tkn.left_brace]: [BLOCK, __, bp.nil],
   [tkn.right_brace]: [__, __, bp.nil],
   [tkn.vbar]: [__, __, bp.nil],
   [tkn.semicolon]: [__, __, NONE],
@@ -683,7 +699,7 @@ export class Engine {
    */
   private scanNumber(type: tkn = tkn.int) {
     const engine = this;
-
+    let hasSeparators = false;
     while (engine.canLoop() && isDigit(this.peekChar())) {
       engine.tick();
 
@@ -705,6 +721,7 @@ export class Engine {
           const msg = `Invalid separated number.`;
           return engine.lexicalError(msg);
         }
+        hasSeparators = true;
       }
 
       // If the current character is a dot
@@ -742,8 +759,13 @@ export class Engine {
         }
       }
     }
-
-    return engine.newToken(type);
+    // replace the thousands separators to ensure correct
+    // number cast in parser
+    let lexeme = this.lexeme();
+    if (hasSeparators) {
+      lexeme = lexeme.replaceAll("_", "");
+    }
+    return engine.newToken(type, lexeme);
   }
 
   /**
@@ -846,7 +868,13 @@ export class Engine {
    */
   private STATEMENT() {
     if (this.Error) return nil;
-    switch (this.Previous.type) {
+    switch (this.Peek.type) {
+      case tkn.if:
+        return this.COND();
+      case tkn.def:
+        return this.FUNCTION_DECLARATION();
+      case tkn.let:
+        return this.VARIABLE_DECLARATION();
       default:
         return this.EXPRESSION();
     }
@@ -859,7 +887,9 @@ export class Engine {
    */
   private noSemicolonNeeded() {
     return (
-      this.Peek.isEOF()
+      this.Peek.isEOF() ||
+      this.Peek.is(tkn.right_brace) ||
+      this.Previous.is(tkn.right_brace)
     );
   }
 
@@ -884,40 +914,90 @@ export class Engine {
     return false;
   }
 
-  /**
-   * Given the list of token types,
-   * _advances the engine_ and returns
-   * true on the first type matching
-   * the current {@link Engine.Peek}.
-   * Otherwise, returns false without
-   * advancing.
-   *
-   * __References__.
-   * 1. _See also_ {@link Engine.Check} (the
-   *    engine method that checks for a match
-   *    without any advancement).
-   */
-  private matchAnyOf(tokenTypes: tkn[]) {
-    for (let i = 0; i < tokenTypes.length; i++) {
-      if (this.matches(tokenTypes[i])) {
-        return true;
-      }
+  delimited<T extends ASTNode>(
+    openingDelimiter: [tkn, string],
+    handler: (node: ASTNode) => T | null,
+    separator: tkn,
+    closingDelimiter: [tkn, string],
+    strict?: string,
+  ) {
+    const result: T[] = [];
+    const [d1, e1] = openingDelimiter;
+    if (this.Previous.type !== d1) {
+      return this.syntaxError(e1, this.Previous);
     }
-    return false;
+    const [d2, e2] = closingDelimiter;
+    if (!this.check(d2)) {
+      do {
+        const node = this.parseExpression();
+        const r = handler(node.unwrap(nilNode));
+        if (r !== null) {
+          result.push(r);
+        } else if (strict) {
+          return this.syntaxError(strict, this.Previous);
+        }
+      } while (this.matches(separator) && this.canLoop());
+    }
+    if (!this.matches(d2)) {
+      return this.syntaxError(e2, this.Previous);
+    }
+    return result;
+  }
+
+  ARRAY() {
+    const node = this.delimited(
+      [tkn.left_bracket, `[ARRAY]: Expected '['`],
+      (node) => node,
+      tkn.comma,
+      [tkn.right_bracket, `[ARRAY]: Expected ']'`],
+    );
+    if (Array.isArray(node)) {
+      return box(vector(node));
+    }
+    return node;
+  }
+
+  /**
+   * Parses a variable declaration.
+   */
+  private VARIABLE_DECLARATION() {
+    const engine = this;
+    engine.advance(); // eat the let
+    const node = engine.EXPRESSION().map((astnode) => {
+      if (isAssignmentNode(astnode)) {
+        return varDef(astnode.symbol(), astnode.value());
+      } else if (isSymbolNode(astnode)) {
+        return varDef(astnode, nilNode);
+      } else return null;
+    });
+    if (node.isNothing()) {
+      return this.syntaxError(
+        `Invalid variable declaration`,
+        engine.Peek,
+      );
+    }
+    return node;
+  }
+
+  private consume(
+    then: (token: Token) => Maybe<ASTNode>,
+  ) {
+    if (this.Error) return nil;
+    const tk = this.advance();
+    return then(tk);
   }
 
   private eat(
     tokenType: tkn,
-    message: string,
-    node: Maybe<ASTNode>,
-    token?: Token,
+    errorMessage: string,
+    then: (token: Token) => Maybe<ASTNode>,
   ) {
+    if (this.Error) return nil;
     if (this.check(tokenType)) {
-      this.advance();
-      return node;
+      const tk = this.advance();
+      return then(tk);
     } else {
-      token = token ? token : this.Previous;
-      return this.syntaxError(message, token);
+      return this.syntaxError(errorMessage, this.Peek);
     }
   }
 
@@ -926,8 +1006,110 @@ export class Engine {
    * is the given token type. False otherwise.
    */
   private check(tokenType: tkn) {
-    if (this.atEnd() || this.Error!==null) return false;
+    if (this.atEnd() || this.Error !== null) return false;
     return this.Peek.type === tokenType;
+  }
+
+  BLOCK() {
+    this.advance(); // eat the opening `{`
+    const statements: ASTNode[] = [];
+    while (this.Peek.type !== tkn.right_brace && this.canLoop()) {
+      const stmt = this.STATEMENT();
+      if (!stmt.isNothing()) {
+        const n = stmt.unwrap(nilNode);
+        statements.push(n);
+      }
+    }
+    return this.eat(
+      tkn.right_brace,
+      `Expected '}' to close block`,
+      () => box(block(statements)),
+    );
+  }
+  List<T extends ASTNode>(
+    filter: (node: ASTNode) => node is T,
+  ) {
+    this.advance();
+    const elems = this.delimited(
+      [tkn.left_paren, `Expected '(' to open tuple`],
+      (node) => filter(node) ? node : null,
+      tkn.comma,
+      [tkn.right_paren, `Expected ')' to close tuple`],
+      `Tuples must be homogenous`,
+    );
+    if (Array.isArray(elems)) {
+      return box(tuple<T>(elems));
+    }
+    return box(tuple<T>([]));
+  }
+
+  FUNCTION_DECLARATION(): Maybe<ASTNode> {
+    this.advance(); // eat the def
+    const fnameError = `Expected valid function name.`;
+    const expectedAssign = `Expected assignment operator '='`;
+    return this.eat(
+      tkn.symbol,
+      fnameError,
+      (t) =>
+        box(sym(t)).ap((name) =>
+          this.List(isSymbolNode).ap((parameters) =>
+            this.eat(tkn.eq, expectedAssign, () =>
+              this.EXPRESSION().map(
+                (body) =>
+                  fnDef(
+                    name,
+                    parameters.items.toArray(),
+                    body,
+                  ),
+              ))
+          )
+        ),
+    );
+  }
+
+  private COND() {
+    const engine = this;
+    engine.advance(); // eat the if
+    const condition = engine.parseExpression(bp.nil).unwrap(nilNode)
+    engine.advance();
+    const ifBlock = engine.BLOCK().unwrap(nilNode);
+    let elseBlock:ASTNode = nilNode;
+    if (engine.matches(tkn.else)) {
+      elseBlock = engine.BLOCK().unwrap(nilNode)
+    }
+    return box(cond(condition, ifBlock, elseBlock));
+  }
+
+  private CONDITIONAL(): Maybe<ASTNode> {
+    const engine = this;
+    engine.advance(); // eat the `if`
+
+    // deno-fmt-ignore
+    const parseBranch = (condition: ASTNode) =>
+      engine.STATEMENT().map((body) =>
+        cond(
+          condition,
+          body,
+          engine.matches(tkn.else) 
+            ? engine.STATEMENT().unwrap(nilNode) 
+            : nilNode,
+        )
+      );
+
+    const parseCondition = () =>
+      engine.parseExpression().ap((condition) =>
+        engine.eat(
+          tkn.right_paren,
+          `Expected ')' to close condition`,
+          () => parseBranch(condition),
+        )
+      );
+
+    return engine.eat(
+      tkn.left_paren,
+      `Expected '(' before condition`,
+      parseCondition,
+    );
   }
 
   /**
@@ -935,17 +1117,23 @@ export class Engine {
    */
   private EXPRESSION() {
     const result = this.parseExpression();
-    if (this.noSemicolonNeeded()) {
-      return result;
-    }
-    return this.eat(tkn.semicolon, 'Expected semicolon', result);
+    return this.noSemicolonNeeded() ? result : this.eat(
+      tkn.semicolon,
+      `Expected ';' to end statement.`,
+      () => result,
+    );
   }
 
   /**
    * Parses a symbol.
    */
-  private SYMBOL(): Maybe<ASTNode> {
+  private SYMBOL(): Maybe<Assign> | Maybe<Sym> {
     const token = this.Previous;
+    if (this.matches(tkn.eq)) {
+      const def = this.parseExpression();
+      const name = sym(token);
+      return def.map<Assign>((n) => assignment(name, n));
+    }
     return box(sym(token));
   }
 
@@ -1123,7 +1311,10 @@ export class Engine {
 
 const engine = new Engine();
 const src = `
-  8 + 2
+def f(x) = {
+  let y = x^2;
+}
 `;
 const tree = engine.parse(src);
-print(tree);
+print(engine);
+print(tree, "json");
