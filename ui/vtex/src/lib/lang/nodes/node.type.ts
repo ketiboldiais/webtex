@@ -20,4 +20,5 @@ export enum NodeType {
   assign,
   tuple,
   conditional,
+  loop,
 }

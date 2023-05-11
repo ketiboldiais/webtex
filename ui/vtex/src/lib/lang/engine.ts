@@ -1,5 +1,6 @@
 import { isDigit, isSymbol } from "./utils.js";
-import { box, Maybe } from "./aux/maybe.js";
+// import { box, Box } from "./aux/maybe.js";
+import { box, Box } from "./aux/box.js";
 import { tkn, Token, token } from "./token.js";
 import { ASTNode } from "./nodes/abstract.node.js";
 import { inf, int, nan, real } from "./nodes/number.node.js";
@@ -26,13 +27,13 @@ import {
   assignment,
   isAssignmentNode,
 } from "./nodes/assignment.node.js";
-import { NodeType } from "./nodes/node.type.js";
 import { varDef } from "./nodes/variable.node.js";
 import { vector } from "./nodes/vector.node.js";
 import { fnDef } from "./nodes/function.node.js";
 import { block } from "./nodes/block.node.js";
-import { isTupleNode, Tuple, tuple } from "./nodes/tuple.node.js";
+import { tuple } from "./nodes/tuple.node.js";
 import { cond } from "./nodes/cond.node.js";
+import { loop } from "./nodes/loop.node.js";
 
 /**
  * Consider the expression
@@ -126,7 +127,7 @@ enum bp {
   call,
   primary,
 }
-const nil = Maybe.none<ASTNode>();
+const nil = box<ASTNode>();
 
 const SYMBOL = "SYMBOL";
 const NUMBER = "NUMBER";
@@ -160,10 +161,19 @@ const prog = (parsing: ASTNode[], error: ErrorReport | null) => ({
 });
 type Program = ReturnType<typeof prog>;
 
-// § Parse Rules Record
+// § Parse Rules Record ==============================================
 /**
- * A table of all the parsers accessible
- * to {@link Engine.parseExpression}.
+ * @internal
+ * __DO NOT MODIFY THIS TABLE__.
+ * This the Pratt parser’s orchestrator.
+ * This table lays out the precedence map (right-most
+ * column) as well as the left- and right-parsers.
+ * Slots labeled with three underscores correspond
+ * to the null parser (_see_ {@link Engine.___}).
+ * These are slots that are open for filling.
+ * That parser always returns the null node.
+ * We use the underscores to avoid the clutter
+ * resulting from a full name.
  */
 const ParseRules: ParserRecord = {
   [tkn.string]: [ATOM, __, bp.atom],
@@ -305,7 +315,7 @@ export class Engine {
    * Records the node parsed
    * just before {@link Engine.recentNode}.
    */
-  private LastNode: Maybe<ASTNode>;
+  private LastNode: Box<ASTNode>;
 
   /**
    * The `Error` property maps to either `null`
@@ -834,7 +844,7 @@ export class Engine {
    *
    * @returns An AST Node of nothing.
    */
-  private syntaxError(message: string, token: Token): Maybe<ASTNode> {
+  private syntaxError(message: string, token: Token): Box<ASTNode> {
     this.Error = parserError(message, token);
     return nil;
   }
@@ -842,7 +852,7 @@ export class Engine {
   /**
    * Parses the given input text.
    * Returns either an {@link ErrorReport} or
-   * a {@link Maybe} of type {@link ASTNode}.
+   * a {@link Box} of type {@link ASTNode}.
    */
   public parse(text: string): Program {
     this.init(text);
@@ -866,18 +876,36 @@ export class Engine {
   /**
    * Parses a single statement.
    */
-  private STATEMENT() {
+  private STATEMENT(): Box<ASTNode> {
     if (this.Error) return nil;
+    // deno-fmt-ignore
     switch (this.Peek.type) {
-      case tkn.if:
-        return this.COND();
-      case tkn.def:
-        return this.FUNCTION_DECLARATION();
-      case tkn.let:
-        return this.VARIABLE_DECLARATION();
-      default:
-        return this.EXPRESSION();
+      case tkn.while: return this.WHILE_LOOP();
+      case tkn.if: return this.COND();
+      case tkn.def: return this.FUNCTION_DECLARATION();
+      case tkn.let: return this.VARIABLE_DECLARATION();
+      default: return this.EXPRESSION();
     }
+  }
+
+  private FOR_LOOP() {
+    const engine = this;
+    const start = engine.advance(); // eat the 'for'
+    const err = engine.syntaxError;
+    
+  }
+
+  private WHILE_LOOP() {
+    this.advance(); // eat the 'while'
+    const condition = this.parseExpression(bp.nil);
+    const token = this.advance();
+    if (condition.isNothing()) {
+      const message = `Expected loop condition.`;
+      return this.syntaxError(message, token);
+    }
+    const body = this.BLOCK();
+    this.advance();
+    return condition.chain((c) => body.map((b) => loop(c, b)));
   }
 
   /**
@@ -968,7 +996,9 @@ export class Engine {
         return varDef(astnode.symbol(), astnode.value());
       } else if (isSymbolNode(astnode)) {
         return varDef(astnode, nilNode);
-      } else return null;
+      } else {
+        return null;
+      }
     });
     if (node.isNothing()) {
       return this.syntaxError(
@@ -979,18 +1009,10 @@ export class Engine {
     return node;
   }
 
-  private consume(
-    then: (token: Token) => Maybe<ASTNode>,
-  ) {
-    if (this.Error) return nil;
-    const tk = this.advance();
-    return then(tk);
-  }
-
   private eat(
     tokenType: tkn,
     errorMessage: string,
-    then: (token: Token) => Maybe<ASTNode>,
+    then: (token: Token) => Box<ASTNode>,
   ) {
     if (this.Error) return nil;
     if (this.check(tokenType)) {
@@ -1043,91 +1065,73 @@ export class Engine {
     return box(tuple<T>([]));
   }
 
-  FUNCTION_DECLARATION(): Maybe<ASTNode> {
+  FUNCTION_DECLARATION(): Box<ASTNode> {
     this.advance(); // eat the def
+    const engine = this;
     const fnameError = `Expected valid function name.`;
     const expectedAssign = `Expected assignment operator '='`;
-    return this.eat(
+    const funcBody = (name: Sym, params: Sym[]) =>
+      engine.EXPRESSION().map((body) => fnDef(name, params, body));
+    const funcParams = (name: Sym) =>
+      engine.List(isSymbolNode).chain((parameters) =>
+        engine.eat(
+          tkn.eq,
+          expectedAssign,
+          () => funcBody(name, parameters.items.toArray()),
+        )
+      );
+    const funcName = (t: Token) => box(sym(t)).chain(funcParams);
+    return engine.eat(
       tkn.symbol,
       fnameError,
-      (t) =>
-        box(sym(t)).ap((name) =>
-          this.List(isSymbolNode).ap((parameters) =>
-            this.eat(tkn.eq, expectedAssign, () =>
-              this.EXPRESSION().map(
-                (body) =>
-                  fnDef(
-                    name,
-                    parameters.items.toArray(),
-                    body,
-                  ),
-              ))
-          )
-        ),
+      (t) => funcName(t),
     );
   }
 
+  /**
+   * Parses a conditional statement.
+   * Parentheses for the condition are optional,
+   * but the `if` condition must always be followed
+   * by a left-brace (beginning it’s consequent block),
+   * and thereafter a corresponding right-brace.
+   * This requirement is imposed to avoid the
+   * _dangling else_ problem.
+   */
   private COND() {
     const engine = this;
     engine.advance(); // eat the if
-    const condition = engine.parseExpression(bp.nil).unwrap(nilNode)
+    const condition = engine.parseExpression(bp.nil);
+    if (condition.isNothing()) {
+      const message = `Expected condition after 'if'`;
+      const token = this.Previous;
+      return this.syntaxError(message, token);
+    }
     engine.advance();
     const ifBlock = engine.BLOCK().unwrap(nilNode);
-    let elseBlock:ASTNode = nilNode;
+    let elseBlock: ASTNode = nilNode;
     if (engine.matches(tkn.else)) {
-      elseBlock = engine.BLOCK().unwrap(nilNode)
+      elseBlock = engine.STATEMENT().unwrap(nilNode);
     }
-    return box(cond(condition, ifBlock, elseBlock));
-  }
-
-  private CONDITIONAL(): Maybe<ASTNode> {
-    const engine = this;
-    engine.advance(); // eat the `if`
-
-    // deno-fmt-ignore
-    const parseBranch = (condition: ASTNode) =>
-      engine.STATEMENT().map((body) =>
-        cond(
-          condition,
-          body,
-          engine.matches(tkn.else) 
-            ? engine.STATEMENT().unwrap(nilNode) 
-            : nilNode,
-        )
-      );
-
-    const parseCondition = () =>
-      engine.parseExpression().ap((condition) =>
-        engine.eat(
-          tkn.right_paren,
-          `Expected ')' to close condition`,
-          () => parseBranch(condition),
-        )
-      );
-
-    return engine.eat(
-      tkn.left_paren,
-      `Expected '(' before condition`,
-      parseCondition,
-    );
+    return condition.map((c) => cond(c, ifBlock, elseBlock));
   }
 
   /**
    * Parses an expression statement.
    */
   private EXPRESSION() {
-    const result = this.parseExpression();
-    return this.noSemicolonNeeded() ? result : this.eat(
-      tkn.semicolon,
-      `Expected ';' to end statement.`,
-      () => result,
-    );
+    return this.parseExpression().chain((res) => (
+      this.noSemicolonNeeded() ? box(res) : this.eat(
+        tkn.semicolon,
+        `Expected ';' to end statement.`,
+        () => box(res),
+      )
+    ));
   }
 
   /**
    * Parses a symbol.
    */
-  private SYMBOL(): Maybe<Assign> | Maybe<Sym> {
+  private SYMBOL(): Box<Assign> | Box<Sym> {
     const token = this.Previous;
     if (this.matches(tkn.eq)) {
       const def = this.parseExpression();
@@ -1140,7 +1144,7 @@ export class Engine {
   /**
    * Parses a numeric value.
    */
-  private NUMBER(): Maybe<ASTNode> {
+  private NUMBER(): Box<ASTNode> {
     const token = this.Previous;
     let out = nil;
     switch (token.type) {
@@ -1173,7 +1177,7 @@ export class Engine {
     return out;
   }
 
-  private parseScientificNumber(): Maybe<ASTNode> {
+  private parseScientificNumber(): Box<ASTNode> {
     const token = this.Previous;
     const lexeme = token.lexeme;
     const args = lexeme.split("E");
@@ -1216,7 +1220,7 @@ export class Engine {
    * 1. For the numeric value parser,
    *    _see_ {@link Engine.NUMBER}.
    */
-  private ATOM(): Maybe<ASTNode> {
+  private ATOM(): Box<ASTNode> {
     const token = this.Previous;
     switch (token.type) {
       case tkn.string:
@@ -1232,7 +1236,7 @@ export class Engine {
     return this.syntaxError(message, token);
   }
 
-  private GROUP(): Maybe<ASTNode> {
+  private GROUP(): Box<ASTNode> {
     const expr = this.parseExpression();
     const peek = this.advance();
     if (peek.type !== tkn.right_paren) {
@@ -1245,7 +1249,7 @@ export class Engine {
   /**
    * Parses expressions with prefix operators.
    */
-  private PREFIX(): Maybe<ASTNode> {
+  private PREFIX(): Box<ASTNode> {
     const op = this.Previous;
     const operand = this.parseExpression();
     if (operand.isNothing()) {
@@ -1258,7 +1262,7 @@ export class Engine {
   /**
    * Parses expressions with postfix operators.
    */
-  private POSTFIX(): Maybe<ASTNode> {
+  private POSTFIX(): Box<ASTNode> {
     const peek = this.Previous;
     const arg = this.LastNode;
     return arg.map((a) => unary(peek, a));
@@ -1267,7 +1271,7 @@ export class Engine {
   /**
    * Parses expressions with infix operators.
    */
-  private INFIX(): Maybe<ASTNode> {
+  private INFIX(): Box<ASTNode> {
     const op = this.Previous;
     const left = this.LastNode;
     const right = this.parseExpression();
@@ -1289,7 +1293,7 @@ export class Engine {
    * Parses an expression.
    * @param minBP - The default (base-case) {@link bp}.
    */
-  private parseExpression(minbp = bp.none): Maybe<ASTNode> {
+  private parseExpression(minbp = bp.none): Box<ASTNode> {
     if (this.Error !== null) return nil;
     let peek = this.advance();
     const prefix = prefixRule(peek.type);
@@ -1311,8 +1315,8 @@ export class Engine {
 
 const engine = new Engine();
 const src = `
-def f(x) = {
-  let y = x^2;
+while x < 2 {
+  let i = x + 1;
 }
 `;
 const tree = engine.parse(src);

@@ -4636,19 +4636,7 @@ export class Engine {
     return nil();
   }
 
-  /**
-   * @internal
-   * __DO NOT MODIFY THIS TABLE__.
-   * This the Pratt parser’s orchestrator.
-   * This table lays out the precedence map (right-most
-   * column) as well as the left- and right-parsers.
-   * Slots labeled with three underscores correspond
-   * to the null parser (_see_ {@link Engine.___}).
-   * These are slots that are open for filling.
-   * That parser always returns the null node.
-   * We use the underscores to avoid the clutter
-   * resulting from a full name.
-   */
+
   #BP: Record<tkn, [Parslet, Parslet, bp]> = {
     [tkn.nil]: ["___", "___", bp.null],
     [tkn.comma]: ["___", "___", bp.null],
