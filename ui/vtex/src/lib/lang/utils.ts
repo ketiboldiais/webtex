@@ -1,4 +1,5 @@
-import { Engine } from "./engine.js";
+import {Token, tt} from "./main.js";
+
 /**
  * Returns `true` if the given character `c` is
  * a digit, false otherwise.
@@ -7,16 +8,34 @@ export const isDigit = (c: string) =>
   (typeof c !== "string") ? false : c.match(/^[0-9]/) !== null;
 
 /**
+ * Returns `true` if the given character `c`
+ * satisfies any of the following conditions:
+ * 
+ * 1. `c` is an ASCII lower-case letter (`[a-z]`).
+ * 2. `c` is an ASCII upper-case letter (`[A-Z]`).
+ * 3. `c` is the ASCII character `_`.
+ * 4. `c` is the ASCII character `'`.
+ * 
+ */
+export const isASCIIid = (c: string) => (
+  (c >= "a") && (c <= "z") ||
+  (c >= "A") && (c <= "Z") ||
+  (c === "_") ||
+  (c === `'`)
+);
+/**
  * Returns true if the given `text`
  * is:
  *
  * - a Latin letter (lowercase or uppercase), or
  * - a Latin letter with accents, or
  * - a Greek letter (lowercase or uppercase), or
- * - an underscore `_`
+ * - an underscore `_`, or
+ * - the lexeme `'` (a single quote)
  */
-export const isLatinGreek = (text: string) =>
-  /^[a-zA-Z_\u00C0-\u02AF\u0370-\u03FF\u2100-\u214F]/.test(text);
+export const isLatinGreek = (c: string) =>
+  isASCIIid(c) ||
+  /^[a-zA-Z_\u00C0-\u02AF\u0370-\u03FF\u2100-\u214F]/.test(c);
 
 /**
  * Returns true if the given `text`
@@ -44,3 +63,8 @@ export const print = (
   option: printOption = "default",
 ) =>
   option === "json" ? console.log(JSON.stringify(x, null, 2)) : console.log(x);
+
+/**
+ * Utility token used for testing.
+ */
+// export const T = (lexeme:string) => new Token(tt.nil, lexeme, 0, 0)

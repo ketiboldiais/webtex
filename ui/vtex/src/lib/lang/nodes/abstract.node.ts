@@ -1,6 +1,7 @@
 import { Visitor } from "./visitor.definition.js";
 import { NodeType } from "./node.type.js";
 
+
 // § Abstract ASTNode ================================================
 /**
  * All AST nodes are extends of the abstract data type `ASTNode`.

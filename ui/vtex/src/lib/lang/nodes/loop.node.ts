@@ -6,12 +6,26 @@ export class Loop extends ASTNode {
   accept<T>(visitor: Visitor<T>): T {
     return visitor.loop(this);
   }
-  condition: ASTNode;
-  body: ASTNode;
+  private readonly Condition: ASTNode;
+  private readonly Body: ASTNode;
   constructor(condition: ASTNode, body: ASTNode) {
     super(NodeType.loop);
-    this.condition = condition;
-    this.body = body;
+    this.Condition = condition;
+    this.Body = body;
+  }
+  /**
+   * Returns this loop’s condition.
+   * Note that all loop nodes reduce
+   * to while-loops at runtime.
+   */
+  conditionNode() {
+    return this.Condition;
+  }
+  /**
+   * Returns this loop’s body.
+   */
+  bodyNode() {
+    return this.Body;
   }
 }
 

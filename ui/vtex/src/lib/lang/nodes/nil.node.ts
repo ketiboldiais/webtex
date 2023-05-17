@@ -1,5 +1,5 @@
 import { ASTNode } from "./abstract.node.js";
-import {nodeTypeGuard} from "./node.guard.js";
+import { nodeTypeGuard } from "./node.guard.js";
 import { NodeType } from "./node.type.js";
 import { Visitor } from "./visitor.definition.js";
 
@@ -11,6 +11,9 @@ export class Nil extends ASTNode {
   constructor() {
     super(NodeType.null);
     this.val = null;
+  }
+  line() {
+    return -1;
   }
   value() {
     return this.val;

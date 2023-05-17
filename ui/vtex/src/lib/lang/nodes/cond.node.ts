@@ -6,18 +6,36 @@ export class Conditional extends ASTNode {
   accept<T>(visitor: Visitor<T>): T {
     return visitor.cond(this);
   }
-  condition: ASTNode;
-  thenBranch: ASTNode;
-  elseBranch: ASTNode;
+  private readonly Condition: ASTNode;
+  private readonly If: ASTNode;
+  private readonly Else: ASTNode;
   constructor(
-    condition: ASTNode,
-    thenBranch: ASTNode,
-    elseBranch: ASTNode,
+    Condition: ASTNode,
+    If: ASTNode,
+    Else: ASTNode,
   ) {
     super(NodeType.conditional);
-    this.condition = condition;
-    this.thenBranch = thenBranch;
-    this.elseBranch = elseBranch;
+    this.Condition = Condition;
+    this.If = If;
+    this.Else = Else;
+  }
+  /**
+   * Returns the if-condition.
+   */
+  conditionNode() {
+    return this.Condition;
+  }
+  /**
+   * Returns the if-block.
+   */
+  ifNode() {
+    return this.If;
+  }
+  /**
+   * Returns the else-block.
+   */
+  elseNode() {
+    return this.Else;
   }
 }
 

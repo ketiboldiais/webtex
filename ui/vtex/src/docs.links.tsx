@@ -5,6 +5,7 @@ import MainPage from "./docs/main.mdx";
 import TreePage from "./docs/tree.doc.mdx";
 import GraphPage from "./docs/graph.doc.mdx";
 import Plot2DPage from "./docs/plot2d.doc.mdx";
+import LangDemo from './docs/lang.doc.mdx';
 import { ReactNode, useEffect, useState } from "react";
 
 export const docLinks = {
@@ -12,6 +13,7 @@ export const docLinks = {
   Graphs: "/graph",
   Trees: "/tree",
   Plot2D: "/plot2d",
+  Skim: "/skim",
 };
 
 export const Pages = () => {
@@ -23,6 +25,7 @@ export const Pages = () => {
           <Route path={docLinks.Trees} element={<TreePage />} />
           <Route path={docLinks.Graphs} element={<GraphPage />} />
           <Route path={docLinks.Plot2D} element={<Plot2DPage />} />
+          <Route path={docLinks.Skim} element={<LangDemo />} />
         </Route>
       </Routes>
     </BrowserRouter>

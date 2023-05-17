@@ -1,62 +1,72 @@
+import { print } from "../utils.js";
+
+export type Either<A, B> = Left<A> | Right<B>;
+
 export class Left<T> {
-  readonly value: T;
-
-  private constructor(error: T) {
-    this.value = error;
+  private value: T;
+  constructor(value: T) {
+    this.value = value;
   }
-
+  map<X>(f: (x: never) => X): Right<X> {
+    return this as any;
+  }
   isLeft(): this is Left<T> {
     return true;
   }
-
-  isRight(): this is Right<never> {
+  isRight(): this is never {
     return false;
   }
-
-  map<X>(f: (value: T) => X): Left<X> {
-    return this as unknown as Left<X>;
+  chain<X, S>(f: (x: never) => Either<X, S>): Left<T> {
+    return this;
   }
-
-  static of<U>(error: U): Left<U> {
-    return new Left(error);
+  read<K>(value: K): K {
+    return value;
+  }
+  flatten(): Left<T> {
+    return this;
+  }
+  unwrap() {
+    return this.value;
+  }
+  ap<X,B>(f: Left<T>|Right<(x:X) => B>) {
+    return this as any as Right<B>;
   }
 }
-
-export const left = <T>(x: T) => Left.of(x);
-
 export class Right<T> {
-  readonly value: T;
-  private constructor(value: T) {
+  private value: T;
+  constructor(value: T) {
     this.value = value;
   }
-  isLeft(): this is Left<never> {
+  map<X>(f: (x: T) => X): Either<never, X> {
+    return new Right(f(this.value));
+  }
+  isLeft(): this is never {
     return false;
   }
   isRight(): this is Right<T> {
     return true;
   }
-  static of<U>(value: U): Right<U> {
-    return new Right(value);
+  chain<N, X>(f: (x: T) => Either<N, X>): Either<never, X> {
+    return f(this.value) as Either<never, X>;
   }
-  map<X>(f: (value: T) => X): Right<X> {
-    return new Right(f(this.value));
+  flatten(): Right<(T extends Right<(infer T)> ? T : never)> {
+    return ((this.value instanceof Right<T> ||
+        this.value instanceof Left<never>)
+      ? this.value
+      : this) as Right<(T extends Right<(infer T)> ? T : never)>;
   }
-
+  read<K>(_: K): T {
+    return this.value;
+  }
+  unwrap() {
+    return this.value;
+  }
+  ap<X,B>(f:Left<X>|Right<(x:T) => B>) {
+    if (f.isLeft()) return f as any as Right<T>;
+    return this.map(f.value);
+  }
 }
+export const left = <T>(x: T): Either<T, never> => new Left(x);
+export const right = <T>(x: T): Either<never, T> => new Right(x);
+export const either = <T>(x: T): Either<never, T> => new Right(x);
 
-export const right = <T>(x: T) => Right.of(x);
-
-export type Either<T, U> = Left<T> | Right<U>;
-
-const either = <T, U>(left: Left<T>, right: Right<U>) => ({
-  given: (
-    condition: boolean,
-  ): Either<T, U> => condition ? right : left,
-});
-
-const n = 100;
-
-const res = either(
-  left(200),
-  right(5),
-).given(n < 200);

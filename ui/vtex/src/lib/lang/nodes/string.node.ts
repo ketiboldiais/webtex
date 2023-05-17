@@ -6,14 +6,18 @@ export class Str extends ASTNode {
   accept<T>(visitor: Visitor<T>): T {
     return visitor.string(this);
   }
-  private val: string;
+  private Value: string;
   constructor(value: string) {
     super(NodeType.string);
-    this.val = value;
+    this.Value = value;
   }
-  value() {
-    return this.val;
+  /**
+   * Returns this string node’s
+   * literal value.
+   */
+  lit() {
+    return this.Value;
   }
 }
 
-export const str = (value:string) => new Str(value);
+export const str = (value: string) => new Str(value);

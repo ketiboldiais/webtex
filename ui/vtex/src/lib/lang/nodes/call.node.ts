@@ -7,26 +7,43 @@ export class Call extends ASTNode {
   accept<T>(visitor: Visitor<T>): T {
     return visitor.call(this);
   }
-  private _name: Sym;
-  private _args: ASTNode[];
+  private readonly Name: Sym;
+  private readonly Args: ASTNode[];
   constructor(name: Sym, args: ASTNode[]) {
     super(NodeType.call);
-    this._name = name;
-    this._args = args;
+    this.Name = name;
+    this.Args = args;
   }
-  name() {
-    return this._name.value();
+  forEachArg(f: (arg:ASTNode)=>void) {
+    for (let i = 0; i < this.Args.length; i++) {
+      f(this.Args[i]);
+    } 
+    return this;
   }
+  /**
+   * Returns the called function’s name.
+   */
+  callee() {
+    return this.Name;
+  }
+  /**
+   * Returns this call’s supplied
+   * arguments.
+   */
   args() {
-    return this._args;
+    return this.Args;
   }
+  /**
+   * Returns the called function’s arity
+   * (the number of arguments provided
+   * to this call).
+   */
   arity() {
-    return this._args.length;
+    return this.Args.length;
   }
 }
 
 export const call = (
-	name: Sym,
-	args: ASTNode[],
+  name: Sym,
+  args: ASTNode[],
 ) => new Call(name, args);
-

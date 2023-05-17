@@ -7,10 +7,23 @@ export class Tuple<T extends ASTNode = ASTNode> extends ASTNode {
   accept<T>(visitor: Visitor<T>): T {
     return visitor.tuple(this);
   }
-  items: List<T>;
+  private readonly Value: List<T>;
   constructor(items: T[]) {
     super(NodeType.tuple);
-    this.items = new List<T>().add(items);
+    this.Value = new List<T>().add(items);
+  }
+  /**
+   * Returns this tuple node’s value.
+   */
+  value() {
+    return this.Value;
+  }
+  
+  forEach(f: (n:ASTNode)=>void) {
+    for (const node of this.Value) {
+      f(node);
+    }
+    return this;
   }
 }
 

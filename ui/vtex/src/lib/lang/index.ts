@@ -1,6 +1,4 @@
 export type { SkimRule, SkimState } from "./skim";
-export type { Token } from "./reader";
-export { Engine, tkn, number } from "./reader";
 export {
   amid,
   among,

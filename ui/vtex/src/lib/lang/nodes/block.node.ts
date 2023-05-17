@@ -6,11 +6,22 @@ export class Block extends ASTNode {
   accept<T>(visitor: Visitor<T>): T {
     return visitor.block(this);
   }
-  statements: ASTNode[];
+  private readonly Statements: ASTNode[];
   constructor(statements: ASTNode[]) {
     super(NodeType.block);
-    this.statements = statements;
+    this.Statements = statements;
+  }
+  /**
+   Returns the nodes parsed
+   * under this bock.
+   */
+  nodes() {
+    return this.Statements;
   }
 }
 
-export const block = (statements:ASTNode[]) => new Block(statements);
+export const block = (statements: ASTNode[]) => new Block(statements);
+
+export const isBlockNode = (
+  node: ASTNode,
+): node is Block => node.nodeType === NodeType.block;

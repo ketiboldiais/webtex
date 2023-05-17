@@ -266,3 +266,7 @@ export const floor = (x: number) => Math.floor(x);
  * Returns the ceiling of `x`.
  */
 export const ceil = (x: number) => Math.ceil(x);
+
+export const geq = (x:number, y:number) => x >= y;
+export const leq = (x:number, y:number) => x <= y;
+export const percent = (x:number, y:number) => (100 * x) / y;

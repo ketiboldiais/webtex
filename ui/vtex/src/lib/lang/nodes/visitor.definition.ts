@@ -12,8 +12,9 @@ import { Block } from "./block.node.js";
 import { Loop } from "./loop.node.js";
 import { Assign } from "./assignment.node.js";
 import { VariableDeclaration } from "./variable.node.js";
-import {Tuple} from "./tuple.node.js";
-import {Conditional} from "./cond.node.js";
+import { Tuple } from "./tuple.node.js";
+import { Conditional } from "./cond.node.js";
+import {PrintNode} from "./print.node.js";
 
 // § Visitor Interface ===============================================
 /**
@@ -33,8 +34,10 @@ export interface Visitor<T> {
   varDef(node: VariableDeclaration): T;
   vector(node: Vector): T;
   block(node: Block): T;
-  loop(ndoe: Loop): T;
+  loop(node: Loop): T;
   assign(node: Assign): T;
-  tuple(node:Tuple): T;
-  cond(node:Conditional):T;
+  tuple(node: Tuple): T;
+  cond(node: Conditional): T;
+  print(node:PrintNode): T;
 }
+

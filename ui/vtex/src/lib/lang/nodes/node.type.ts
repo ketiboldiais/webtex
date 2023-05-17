@@ -1,4 +1,5 @@
 // § Node Type Definitions ===========================================
+
 /**
  * The `NodeType` enum is used to tag nodetypes.
  * @enum
@@ -21,4 +22,6 @@ export enum NodeType {
   tuple,
   conditional,
   loop,
+  io,
 }
+

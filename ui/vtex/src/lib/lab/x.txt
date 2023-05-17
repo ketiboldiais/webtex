@@ -1,0 +1,387 @@
+import { print } from "./utils.js";
+
+// deno-fmt-ignore
+enum tt {
+	eof,nil,error,
+	
+	left_paren, right_paren,
+	left_brace, right_brace,
+	left_bracket, right_bracket,
+	
+	comma,
+	semicolon,
+	
+	dot,
+	minus,plus,
+	slash,star,bang,
+	eq,neq,deq,
+	
+	gt,geq,lt,leq,
+	
+	int,float,hex,binary,octal,
+	symbol,string,
+
+	and,class,else,false,fun,for,if,
+	null,or,print,return,super,this,true,
+	let,def,while
+}
+
+type TokenObj = {
+  Type: tt;
+  Lexeme: string;
+  Line: number;
+  Column: number;
+};
+
+class Token {
+  Type: tt;
+  Lexeme: string;
+  Line: number;
+  Column: number;
+  constructor(
+    type: tt,
+    lexeme: string,
+    line: number,
+    column: number,
+  ) {
+    this.Type = type;
+    this.Lexeme = lexeme;
+    this.Line = line;
+    this.Column = column;
+  }
+  empty() {
+    return this.Type === tt.nil;
+  }
+  is(type: tt): boolean {
+    return this.Type === type;
+  }
+  clone(): Token {
+    return new Token(
+      this.Type,
+      this.Lexeme,
+      this.Line,
+      this.Column,
+    );
+  }
+  update(f: (t: Token) => Partial<TokenObj>) {
+    const clone = this.clone();
+    const t = f(clone);
+    clone.Lexeme = t.Lexeme ? t.Lexeme : clone.Lexeme;
+    clone.Line = t.Line ? t.Line : clone.Line;
+    clone.Column = t.Column ? t.Column : clone.Column;
+    return clone;
+  }
+  lex(lexeme: string) {
+    const clone = this.clone();
+    clone.Lexeme = lexeme;
+    return clone;
+  }
+  col(column: number) {
+    const clone = this.clone();
+    clone.Column = column;
+    return clone;
+  }
+  line(line: number) {
+    const clone = this.clone();
+    clone.Line = line;
+    return clone;
+  }
+  type(type: tt) {
+    const clone = this.clone();
+    clone.Type = type;
+    return clone;
+  }
+  map<T>(f: (t: Token) => T): T {
+    const token = this.clone();
+    return f(token);
+  }
+  match(patterns: ([tt, (t: Token) => Token])[]) {
+    const clone = this.clone();
+    const L = patterns.length;
+    for (let i = 0; i < L; i++) {
+      const [type, fn] = patterns[i];
+      if (type === clone.Type) return fn(clone);
+    }
+    return clone;
+  }
+  obj<T>(
+    format?: (
+      type: string,
+      lexeme: string,
+      line: number,
+      column: number,
+    ) => T,
+  ): T | { type: string; lexeme: string; line: number; column: number } {
+    const type = tt[this.Type];
+    const lexeme = this.Lexeme;
+    const line = this.Line;
+    const column = this.Column;
+    if (format !== undefined) {
+      return format(type, lexeme, line, column);
+    }
+    return { type, lexeme, line, column };
+  }
+}
+
+// deno-fmt-ignore
+const token = (
+	type:tt,
+	lexeme:string,
+	line:number,
+	column:number
+) => new Token(type,lexeme,line,column);
+
+const tkn = (type: tt, lexeme = "") =>
+  token(
+    type,
+    lexeme,
+    0,
+    lexeme.length,
+  );
+
+const niltoken = token(tt.nil, "", -1, -1);
+
+interface State {
+  start: number;
+  current: number;
+  line: number;
+  column: number;
+  prev: Token;
+  peek: Token;
+}
+
+const initstate = (): State => ({
+  start: 0,
+  current: 0,
+  line: 1,
+  column: 0,
+  prev: niltoken,
+  peek: niltoken,
+});
+
+const scan = (state: State, newtoken: Token) => ({
+  ...state,
+  current: state.start + newtoken.Lexeme.length,
+  column: state.column + newtoken.Lexeme.length,
+  prev: state.peek,
+  peek: newtoken,
+});
+const EOF = (line: number, column: number) =>
+  token(tt.eof, "END", line, column);
+
+const tick = (state: State) => ({
+  ...state,
+  current: state.current + 1,
+});
+const set = (state: State): State => ({
+  ...state,
+  start: state.current,
+});
+
+const scanToken = (c: string) => {
+  const T = (type: tt) => tkn(type, c);
+  // deno-fmt-ignore
+  switch (c) {
+		case '(': return T(tt.left_paren);
+		case ')': return T(tt.right_paren);
+		case '{': return T(tt.left_brace);
+		case '}': return T(tt.right_brace);
+		case '[': return T(tt.right_brace);
+		case ']': return T(tt.right_brace);
+		case ',': return T(tt.comma);
+		case '.': return T(tt.dot);
+		case '+': return T(tt.plus);
+		case '*': return T(tt.star);
+		case '-': return T(tt.minus);
+		case ';': return T(tt.semicolon);
+		case '=': return T(tt.eq);
+		default: return T(tt.nil);
+	}
+};
+
+function parse(text: string) {
+  const init = initstate();
+  const char = (state: State) => text[state.current - 1];
+  const nextchar = (state: State) => text[state.current];
+  const nxtIs = (state: State, c: string) => nextchar(state) === c;
+  const atEnd = (state: State) => state.current >= text.length;
+  const getToken = (state: State) => {
+    if (atEnd(state)) {
+      return scan(
+        state,
+        EOF(state.line, state.column),
+      );
+    }
+    const s = tick(state);
+    const c = char(s);
+    const partialToken = scanToken(c);
+    const match = (char: string) => nxtIs(s, char);
+    const char2 = (a: tt, b: tt) => (t: Token) =>
+      t.type(match("=") ? a : b).update((x) =>
+        match("=") ? ({ Lexeme: x.Lexeme + "=" }) : ({})
+      );
+    const newtoken = partialToken
+      .match([
+        [tt.eq, char2(tt.deq, tt.eq)],
+        [tt.bang, char2(tt.neq, tt.bang)],
+        [tt.lt, char2(tt.leq, tt.lt)],
+        [tt.gt, char2(tt.geq, tt.gt)],
+      ]).update(() => ({ Line: s.line, column: s.column }));
+    const res = scan(s, newtoken);
+    return res;
+  };
+
+  const tokenize = () => {
+    const max = text.length;
+    const result = [];
+    let s = getToken(init);
+    for (let i = 0; i < max; i++) {
+      s = getToken(set(s));
+      result.push(s.prev.obj());
+    }
+    return result;
+  };
+
+  return {
+    tokenize,
+  };
+}
+
+const result = parse("(==)").tokenize();
+print(result);
+
+class Parser {
+  start: number = 0;
+  current: number = 0;
+  line: number = 0;
+  column: number = 0;
+  peek: Token = nilToken;
+  prev: Token = nilToken;
+  source: string = "";
+
+  init(source: string) {
+    this.source = source;
+    this.start = 0;
+    this.current = 0;
+    this.line = 0;
+    this.column = -1;
+    this.prev = nilToken;
+    this.peek = nilToken;
+  }
+  tick() {
+    this.column++;
+    return this.source[this.current++];
+  }
+  atEnd() {
+    return this.current >= this.source.length;
+  }
+
+  /**
+   * Returns the character immediately after
+   * the current character, without consumption.
+   */
+  char2() {
+    return (this.current + 1 >= this.source.length)
+      ? ""
+      : this.source[this.current + 1];
+  }
+
+  /**
+   * Returns the character at the current
+   * index, without consumption.
+   */
+  char() {
+    return this.source[this.current];
+  }
+
+  match(char: string) {
+    if (this.atEnd()) return false;
+    if (this.char() !== char) return false;
+    this.current++;
+    return true;
+  }
+  nextChar() {
+    // deno-fmt-ignore
+    while (!this.atEnd()){
+      const c = this.char();
+      switch (c) {
+        case ' ': this.tick(); break;
+        case '\r': this.tick(); break;
+        case '\t': this.tick(); break;
+        case '\n':
+          this.tick();
+          this.column=0;
+          this.line++;
+          break;
+        default: 
+          this.start=this.current;
+          return this.tick();
+      }
+    }
+    this.start = this.current;
+    return this.tick();
+  }
+  newtoken(token: Token, lexeme: string = "") {
+    const lex = lexeme ? lexeme : this.source.slice(
+      this.start,
+      this.current,
+    );
+    const line = this.line;
+    const column = this.column;
+    const tkn = token
+      .line(line)
+      .column(column)
+      .lex(lex);
+    this.prev = this.peek;
+    this.peek = tkn;
+    return tkn;
+  }
+
+  tokenize(text: string) {
+    const engine = this;
+    engine.init(text);
+    const result = [];
+    while (!engine.atEnd()) {
+      result.push(engine.read());
+    }
+    return result;
+  }
+
+  int() {
+    const engine = this;
+    while (isDigit(engine.char())) engine.tick();
+    return (isDotDigit(engine.char(), engine.char2()))
+      ? engine.dot()
+      : engine.newtoken(tkn(tt.int));
+  }
+  dot() {
+    const engine = this;
+    engine.tick(); // eat the '.'
+    while (isDigit(engine.char())) engine.tick();
+    return engine.newtoken(tkn(tt.float));
+  }
+
+  read() {
+    if (this.atEnd()) return EOF(this.line, this.column);
+    const engine = this;
+    const char = engine.nextChar();
+    if (isDigit(char)) return engine.int();
+    const T = (a: tt, b: tt) => (t: Token) =>
+      t.type(
+        engine.match("=") ? a : b,
+      );
+    const token = scan1(char)
+      .match([
+        [tt.eq, T(tt.deq, tt.eq)],
+        [tt.bang, T(tt.neq, tt.bang)],
+        [tt.lt, T(tt.leq, tt.lt)],
+        [tt.gt, T(tt.geq, tt.gt)],
+      ]);
+    return engine.newtoken(token);
+  }
+}
+
+const E = new Parser();
+const src = `2.8 - 5`;
+const tokens = E.tokenize(src);
+print(tokens);

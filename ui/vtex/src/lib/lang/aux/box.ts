@@ -1,52 +1,61 @@
-const nil = Symbol("nil");
+const SOME = Symbol("some");
+const NONE = Symbol("none");
+type SomeBox = typeof SOME;
+type EmptyBox = typeof NONE;
+type BoxType = SomeBox | EmptyBox;
 
-export class Box<T> {
-  constructor(private value: T | typeof nil) {}
-
-  static of<T>(value: T): Box<T> {
-    return (value === null || value === undefined)
-      ? Box.none()
-      : Box.some(value);
+abstract class Box<T> {
+  tag: BoxType;
+  constructor(tag: BoxType) {
+    this.tag = tag;
   }
+  abstract isNone(): boolean;
+  abstract isSome(): boolean;
+  abstract map<K>(f: (val: T) => K): Box<K>;
+  abstract unwrap(fallback: T): T;
+}
 
-  isNothing(): boolean {
-    return this.value === nil;
+class Some<T> extends Box<T> {
+  value: T;
+  constructor(value: T) {
+    super(SOME);
+    this.value = value;
   }
-
-  static some<T>(value: T): Box<T> {
-    return new Box<T>(value);
+  isNone(): this is None<never> {
+    return false;
   }
-
-  static none<T>(): Box<T> {
-    return new Box<T>(nil);
+  isSome(): this is Some<T> {
+    return true;
   }
-
-  join(): Box<T> {
-    return (this.value instanceof Box)
-      ? (this.value.isNothing() ? Box.none<T>() : this.value)
-      : this;
+  map<K>(f: (val: T) => K) {
+    return new Some(f(this.value));
   }
+  unwrap(fallback: T) {
+    return this.value;
+  }
+}
 
+class None<T> extends Box<T> {
+  constructor() {
+    super(NONE);
+  }
+  isNone(): this is Some<never> {
+    return true;
+  }
+  isSome(): this is None<T> {
+    return false;
+  }
+  map<K>(f: (val: T) => K) {
+    return this as unknown as Box<K>;
+  }
   unwrap(fallback: T): T {
-    return this.value === nil ? fallback : this.value;
-  }
-
-  map<U>(f: (value: T) => U | null | undefined): Box<U> {
-    if (this.value === nil) return Box.none<U>();
-    const res = f(this.value);
-    if (res === null || res === undefined) return Box.none();
-    return Box.some(res);
-  }
-
-  chain<U>(f: (value: T) => Box<U>): Box<U> {
-    // deno-fmt-ignore
-    return (this.value===nil) 
-      ? Box.none<U>()
-      : f(this.value);
+    return fallback;
   }
 }
 
 // deno-fmt-ignore
-export const box = <T>(value?:T|null) => (
-  (value === null) || (value===undefined)
-) ? Box.none<T>() : Box.of(value);
+const box = <T>(value?: T | null) =>
+  value === null || value === undefined 
+    ? new None<T>() 
+    : new Some<T>(value);
+

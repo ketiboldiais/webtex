@@ -1,47 +1,45 @@
+import { Token } from "../main.js";
 import { ASTNode } from "./abstract.node.js";
 import { NodeType } from "./node.type.js";
-import { Sym } from "./symbol.node.js";
+import { Sym, sym } from "./symbol.node.js";
 import { Visitor } from "./visitor.definition.js";
-
-enum VarType {
-  constant,
-  mutable,
-}
 
 export class VariableDeclaration extends ASTNode {
   accept<T>(visitor: Visitor<T>): T {
     return visitor.varDef(this);
   }
-  private sym: Sym;
-  private body: ASTNode;
-  private vartype: VarType;
-  constructor(sym: Sym, body: ASTNode, vartype:VarType) {
+  private readonly Name: Sym;
+  private readonly Value: ASTNode;
+  constructor(name: Sym, body: ASTNode) {
     super(NodeType.variableDeclaration);
-    this.sym = sym;
-    this.body = body;
-    this.vartype=vartype;
+    this.Name = name;
+    this.Value = body;
   }
-  isMutable() {
-    return this.vartype === VarType.mutable;
+  symName() {
+    return this.Name;
   }
-  isConstant() {
-    return this.vartype === VarType.constant;
+  /**
+   * Returns this variable’s
+   * name.
+   */
+  variableName() {
+    return this.Name.id();
   }
-	name() {
-		return this.sym.value();
-	}
+  /**
+   * Returns this variable’s
+   * bound value.
+   */
   value() {
-    return this.body;
+    return this.Value;
   }
 }
 
 export const varDef = (
-  name:Sym, 
-  body:ASTNode
-) => new VariableDeclaration(name, body, VarType.mutable);
+  name: Token,
+  body: ASTNode,
+) => new VariableDeclaration(sym(name, true), body);
 
 export const constantDef = (
-  name:Sym, 
-  body:ASTNode
-) => new VariableDeclaration(name, body, VarType.constant);
-
+  name: Token,
+  body: ASTNode,
+) => new VariableDeclaration(sym(name, false), body);

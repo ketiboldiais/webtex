@@ -388,6 +388,11 @@ export class Token {
     const column = this.column;
     return new Token(type, lexeme, line, column);
   }
+  
+  map<T>(f: (x:Token) => T): T {
+    const clone = this.clone();
+    return f(clone);
+  }
 
   isEOF() {
     return this.type === tkn.end;

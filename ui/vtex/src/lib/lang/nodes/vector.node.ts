@@ -6,10 +6,23 @@ export class Vector extends ASTNode {
   accept<T>(visitor: Visitor<T>): T {
     return visitor.vector(this);
   }
-  items: ASTNode[];
+  private readonly Value: ASTNode[];
   constructor(items: ASTNode[]) {
     super(NodeType.vector);
-    this.items = items;
+    this.Value = items;
+  }
+  /**
+   * Returns this Vectore node’s
+   * value.
+   */
+  value() {
+    return this.Value;
+  }
+  forEach(f: (item:ASTNode)=>void) {
+    for (let i = 0; i < this.Value.length; i++) {
+      f(this.Value[i]);
+    }
+    return this;
   }
 }
 

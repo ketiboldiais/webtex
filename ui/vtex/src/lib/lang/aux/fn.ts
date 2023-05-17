@@ -67,16 +67,3 @@ class Pipe<A, B> {
 }
 const pipe = <A,B>(f:(x:A)=>B) => new Pipe(f);
 
-const tick = (x:number) => x+1;
-const square = (x:number) => x**2;
-const split = (x:number) => x/2;
-
-const g = compose(tick).and(square).and(split).end();
-console.log(g(5));
-
-
-const f = pipe(tick).to(square).to(split).end();
-console.log(f(5));
-
-
-

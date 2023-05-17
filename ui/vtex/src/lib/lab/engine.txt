@@ -1,12 +1,11 @@
 import { isDigit, isSymbol } from "./utils.js";
 // import { box, Box } from "./aux/maybe.js";
-import { box, Box } from "./aux/box.js";
 import { tkn, Token, token } from "./token.js";
 import { ASTNode } from "./nodes/abstract.node.js";
 import { inf, int, nan, real } from "./nodes/number.node.js";
 import { nilNode } from "./nodes/nil.node.js";
-import { binex } from "./nodes/binex.node.js";
-import { ErrorReport, parserError, scannerError } from "./error.js";
+import { BinaryExpression, binex } from "./nodes/binex.node.js";
+import { ErrorReport, isError, parserError, scannerError } from "./error.js";
 import { falseNode, trueNode } from "./nodes/bool.node.js";
 import { isSymbolNode, Sym, sym } from "./nodes/symbol.node.js";
 import { call } from "./nodes/call.node.js";
@@ -19,7 +18,7 @@ import {
   some,
   word,
 } from "./reader.js";
-import { unary } from "./nodes/unary.node.js";
+import { unary, UnaryExpression } from "./nodes/unary.node.js";
 import { str } from "./nodes/string.node.js";
 import { print } from "./utils.js";
 import {
@@ -27,13 +26,15 @@ import {
   assignment,
   isAssignmentNode,
 } from "./nodes/assignment.node.js";
-import { varDef } from "./nodes/variable.node.js";
+import { varDef, VariableDeclaration } from "./nodes/variable.node.js";
 import { vector } from "./nodes/vector.node.js";
 import { fnDef } from "./nodes/function.node.js";
-import { block } from "./nodes/block.node.js";
+import { Block, block } from "./nodes/block.node.js";
 import { tuple } from "./nodes/tuple.node.js";
-import { cond } from "./nodes/cond.node.js";
+import { cond, Conditional } from "./nodes/cond.node.js";
 import { loop } from "./nodes/loop.node.js";
+import { Either, either, left, right } from "./aux/either.js";
+import { Num } from "./nodes/number.node.js";
 
 /**
  * Consider the expression
@@ -127,7 +128,8 @@ enum bp {
   call,
   primary,
 }
-const nil = box<ASTNode>();
+
+const star = (t: Token) => t.clone("*", tkn.star);
 
 const SYMBOL = "SYMBOL";
 const NUMBER = "NUMBER";
@@ -138,7 +140,9 @@ const POSTFIX = "POSTFIX";
 const GROUP = "GROUP";
 const BLOCK = "BLOCK";
 const ARRAY = "ARRAY";
-const __ = "NIL";
+const __ = null;
+
+type ParsedNode = Either<ErrorReport, ASTNode>;
 
 type Parser =
   | typeof __
@@ -151,30 +155,11 @@ type Parser =
   | typeof PREFIX
   | typeof POSTFIX
   | typeof INFIX;
-type ParseRule = Parser;
+type ParseRule = Parser | null;
 type ParserRecord = Record<tkn, [ParseRule, ParseRule, bp]>;
 const NONE = bp.nil;
 
-const prog = (parsing: ASTNode[], error: ErrorReport | null) => ({
-  parsing,
-  error,
-});
-type Program = ReturnType<typeof prog>;
 
-// § Parse Rules Record ==============================================
-/**
- * @internal
- * __DO NOT MODIFY THIS TABLE__.
- * This the Pratt parser’s orchestrator.
- * This table lays out the precedence map (right-most
- * column) as well as the left- and right-parsers.
- * Slots labeled with three underscores correspond
- * to the null parser (_see_ {@link Engine.___}).
- * These are slots that are open for filling.
- * That parser always returns the null node.
- * We use the underscores to avoid the clutter
- * resulting from a full name.
- */
 const ParseRules: ParserRecord = {
   [tkn.string]: [ATOM, __, bp.atom],
   [tkn.symbol]: [SYMBOL, __, bp.atom],
@@ -239,6 +224,61 @@ const ParseRules: ParserRecord = {
 };
 
 /**
+ * Returns the token corresponding
+ * to the given symbol.
+ *
+ * @param lexeme - The lexeme to tokenize.
+ */
+const entypeSymbol = (lexeme: string) => {
+  // deno-fmt-ignore
+  switch (lexeme) {
+      case "and": return tkn.and;
+      case "or": return tkn.or;
+      case "nand": return tkn.nand;
+      case "nor": return tkn.nor;
+      case "xor": return tkn.xor;
+      case "xnor": return tkn.xnor;
+      case "not": return tkn.not;
+      case "is": return tkn.is;
+      case "return": return tkn.return;
+      case "this": return tkn.this;
+      case "let": return tkn.let;
+      case "const": return tkn.const;
+      case "def": return tkn.def;
+      case "while": return tkn.while;
+      case "true": return tkn.true;
+      case "false": return tkn.false;
+      case "NaN": return tkn.NaN;
+      case "Inf": return tkn.Inf;
+      case "do": return tkn.do;
+      case "rem": return tkn.rem;
+      case "mod": return tkn.mod;
+      case "div": return tkn.div;
+      case "class": return tkn.class;
+      case "if": return tkn.if;
+      case "else": return tkn.else;
+      case "for": return tkn.for;
+      case "null": return tkn.null;
+      default: return tkn.symbol;
+    }
+};
+
+const parsenum = (t: Token): ParsedNode => {
+  switch (t.type) {
+    case tkn.Inf:
+      return right(inf);
+    case tkn.NaN:
+      return right(nan);
+    case tkn.int:
+      return right(int(t.lexeme));
+    case tkn.float:
+      return right(real(t.lexeme));
+    default:
+      return left(parserError("Expected number", t));
+  }
+};
+
+/**
  * Returns the prefix parser from the
  * {@link parseRules}.
  */
@@ -254,6 +294,23 @@ const infixRule = (tokenType: tkn) => ParseRules[tokenType][1];
  * Returns the precedence of the given token type.
  */
 const precedenceOf = (tokenType: tkn) => ParseRules[tokenType][2];
+
+const atom = (token: Token): ParsedNode => {
+  const lexeme = token.lexeme;
+  // deno-fmt-ignore
+  switch (token.type) {
+    case tkn.string:
+      return right(str(lexeme));
+    case tkn.null:
+      return right(nilNode);
+    case tkn.false:
+      return right(falseNode);
+    case tkn.true:
+      return right(trueNode);
+    default:
+      return left(parserError("Expected atom", token));
+  }
+};
 
 /**
  * This token is used purely to ensure
@@ -315,7 +372,7 @@ export class Engine {
    * Records the node parsed
    * just before {@link Engine.recentNode}.
    */
-  private LastNode: Box<ASTNode>;
+  private LastNode: ParsedNode;
 
   /**
    * The `Error` property maps to either `null`
@@ -332,15 +389,15 @@ export class Engine {
   // § Engine Constructor ============================================
   constructor() {
     this.Input = "";
-    this.LastNode = nil;
+    this.LastNode = right(nilNode);
     this.RecentToken = initialToken;
-    this.Peek = initialToken;
-    this.Previous = initialToken;
     this.StartIndex = 0;
     this.CurrentIndex = 0;
     this.Column = 0;
     this.Line = 0;
     this.Error = null;
+    this.peek = initialToken;
+    this.currentToken = initialToken;
   }
 
   /**
@@ -355,10 +412,8 @@ export class Engine {
    */
   private init(src: string) {
     this.Input = src;
-    this.LastNode = nil;
+    this.LastNode = right(nilNode);
     this.RecentToken = initialToken;
-    this.Peek = initialToken;
-    this.Previous = initialToken;
     this.StartIndex = 0;
     this.CurrentIndex = 0;
     this.Column = 0;
@@ -372,8 +427,9 @@ export class Engine {
    */
   private atEnd() {
     return (
-      this.CurrentIndex >= this.Input.length
-    ) || (this.Error !== null);
+      this.CurrentIndex >= this.Input.length ||
+      this.Error !== null
+    );
   }
 
   /**
@@ -395,7 +451,10 @@ export class Engine {
    * {@link Engine.CurrentIndex}.
    */
   private lexeme() {
-    return this.Input.slice(this.StartIndex, this.CurrentIndex);
+    return this.Input.slice(
+      this.StartIndex,
+      this.CurrentIndex,
+    );
   }
 
   /**
@@ -525,53 +584,14 @@ export class Engine {
   }
 
   /**
-   * Returns the token corresponding
-   * to the given symbol.
-   *
-   * @param lexeme - The lexeme to tokenize.
-   */
-  private determineSymbolType(lexeme: string) {
-    // deno-fmt-ignore
-    switch (lexeme) {
-      case "and": return tkn.and;
-      case "or": return tkn.or;
-      case "nand": return tkn.nand;
-      case "nor": return tkn.nor;
-      case "xor": return tkn.xor;
-      case "xnor": return tkn.xnor;
-      case "not": return tkn.not;
-      case "is": return tkn.is;
-      case "return": return tkn.return;
-      case "this": return tkn.this;
-      case "let": return tkn.let;
-      case "const": return tkn.const;
-      case "def": return tkn.def;
-      case "while": return tkn.while;
-      case "true": return tkn.true;
-      case "false": return tkn.false;
-      case "NaN": return tkn.NaN;
-      case "Inf": return tkn.Inf;
-      case "do": return tkn.do;
-      case "rem": return tkn.rem;
-      case "mod": return tkn.mod;
-      case "div": return tkn.div;
-      case "class": return tkn.class;
-      case "if": return tkn.if;
-      case "else": return tkn.else;
-      case "for": return tkn.for;
-      case "null": return tkn.null;
-      default: return tkn.symbol;
-    }
-  }
-
-  /**
    * Scans for keywords and identifiers.
    */
   private scanSymbol() {
     const engine = this;
     while (
       engine.canLoop() &&
-      (isSymbol(engine.peekChar()) || isDigit(engine.peekChar()))
+      (isSymbol(engine.peekChar()) ||
+        isDigit(engine.peekChar()))
     ) {
       engine.tick();
       if (engine.atEnd()) {
@@ -582,7 +602,7 @@ export class Engine {
       engine.StartIndex,
       engine.CurrentIndex,
     );
-    const symbolTokenType = engine.determineSymbolType(text);
+    const symbolTokenType = entypeSymbol(text);
     return engine.newToken(symbolTokenType);
   }
 
@@ -619,25 +639,26 @@ export class Engine {
 
     // deno-fmt-ignore
     switch (char) {
-      case '(': type = tkn.left_paren; break;
-      case ')': type = tkn.right_paren; break;
-      case '[': type = tkn.left_bracket; break;
-      case ']': type = tkn.right_bracket; break;
-      case '{': type = tkn.left_brace; break;
-      case '}': type = tkn.right_brace; break;
-      case ',': type = tkn.comma; break;
-      case '-': type = tkn.minus; break;
-      case '.': type = tkn.dot; break;
-      case '+': type = tkn.plus; break;
-      case '^': type = tkn.caret; break;
-      case ';': type = tkn.semicolon; break;
-      case '*': type = tkn.star; break;
-      case '|': type = tkn.vbar; break;
-      case '/': type = tkn.slash; break;
-      case '!': type = this.match('=') ? tkn.neq : tkn.bang; break;
-      case '=': type = this.match('=') ? tkn.deq : tkn.eq; break;
-      case '<': type = this.match('=') ? tkn.leq : tkn.lt; break;
-      case '>': type = this.match('=') ? tkn.geq : tkn.gt; break;
+      case "(": type = tkn.left_paren; break;
+      case ")": type = tkn.right_paren; break;
+      case "[": type = tkn.left_bracket; break;
+      case "]": type = tkn.right_bracket; break;
+      case "{": type = tkn.left_brace; break;
+      case "}": type = tkn.right_brace; break;
+      case ",": type = tkn.comma; break;
+      case "-": type = tkn.minus; break;
+      case ".": type = tkn.dot; break;
+      case "+": type = tkn.plus; break;
+      case "^": type = tkn.caret; break;
+      case ";": type = tkn.semicolon; break;
+      case "*": type = tkn.star; break;
+      case "%": type = tkn.percent; break;
+      case "|": type = tkn.vbar; break;
+      case "/": type = tkn.slash; break;
+      case "!": type = this.match("=") ? tkn.neq : tkn.bang; break;
+      case "=": type = this.match("=") ? tkn.deq : tkn.eq; break;
+      case "<": type = this.match("=") ? tkn.leq : tkn.lt; break;
+      case ">": type = this.match("=") ? tkn.geq : tkn.gt; break;
       case '"': return this.scanStringLiteral();
     }
     return type === tkn.error
@@ -656,10 +677,7 @@ export class Engine {
    */
   private scanStringLiteral() {
     const engine = this;
-    while (
-      (engine.peekChar() !== `"`) &&
-      (engine.canLoop())
-    ) {
+    while (engine.peekChar() !== `"` && engine.canLoop()) {
       engine.tick();
       if (engine.peekChar() === `\n`) {
         engine.Line++;
@@ -716,10 +734,16 @@ export class Engine {
       // If the current character is a digit and the
       // the next character is the separator `_`,
       // then this is a separated number.
-      if (this.peekChar() === "_" && isDigit(this.peekNextChar())) {
+      if (
+        this.peekChar() === "_" &&
+        isDigit(this.peekNextChar())
+      ) {
         const digitGroupSize = 3;
         let digitCount = 0;
-        while ((digitCount < digitGroupSize) && this.canLoop()) {
+        while (
+          digitCount < digitGroupSize &&
+          this.canLoop()
+        ) {
           engine.tick();
           digitCount++;
         }
@@ -738,7 +762,7 @@ export class Engine {
       // and the next character is a digit,
       // then this a floating point number.
       if (
-        (engine.peekChar() === ".") &&
+        engine.peekChar() === "." &&
         isDigit(engine.peekNextChar())
       ) {
         type = tkn.float; // change the output token type
@@ -746,7 +770,10 @@ export class Engine {
 
         // We continue incrementing so long as we see digits.
         // This consumes the digits following the `.`
-        while (isDigit(engine.peekChar()) && this.canLoop()) {
+        while (
+          isDigit(engine.peekChar()) &&
+          this.canLoop()
+        ) {
           engine.tick();
         }
       }
@@ -755,17 +782,22 @@ export class Engine {
       if (engine.peekChar() === "E") {
         engine.tick();
         if (
-          (engine.peekChar() === "+") || // allow leading '+'
-          (engine.peekChar() === "-") || // allow leading '-'
-          (isDigit(engine.peekNextChar())) // but only integer powers
+          engine.peekChar() === "+" || // allow leading '+'
+          engine.peekChar() === "-" || // allow leading '-'
+          isDigit(engine.peekNextChar()) // but only integer powers
         ) {
           type = tkn.scinum;
           engine.tick();
-          while (isDigit(engine.peekChar()) && this.canLoop()) {
+          while (
+            isDigit(engine.peekChar()) &&
+            this.canLoop()
+          ) {
             engine.tick();
           }
         } else {
-          return engine.lexicalError("Invalid scientific number.");
+          return engine.lexicalError(
+            "Invalid scientific number.",
+          );
         }
       }
     }
@@ -797,7 +829,10 @@ export class Engine {
    * __References__.
    * 1. _See_ {@link Token} (defining _Token_).
    */
-  public tokenize<X = Token>(text: string, fn?: (t: Token) => X) {
+  public tokenize<X = Token>(
+    text: string,
+    fn?: (t: Token) => X,
+  ) {
     this.init(text);
     const output: X[] = [];
     while (this.canLoop()) {
@@ -807,505 +842,240 @@ export class Engine {
     return output;
   }
 
-  // § Parser Methods ================================================
-
-  /**
-   * The `peek` property holds the next
-   * token scanned. This gives the parser
-   * a lookahead of one.
-   */
-  private Peek: Token;
-  /**
-   * The `Previous` property
-   * holds the token most recently
-   * scanned.
-   */
-  private Previous: Token;
-
-  /**
-   * Tokenizes the next character and returns
-   * the current {@link Engine.Peek}.
-   */
-  private advance() {
-    const token = this.Peek;
-    this.Previous = token;
-    this.Peek = this.scanNextToken();
+  // § Parser Utilities
+  peek: Token;
+  currentToken: Token;
+  advance() {
+    const token = this.peek;
+    this.currentToken = token;
+    this.peek = this.scanNextToken();
     return token;
   }
 
-  /**
-   * Initializes the engine’s {@link Engine.Error}
-   * property. Calling this method will halt any
-   * further work.
-   *
-   * @param message - An error message to report.
-   * @param token - The token received by the called
-   * parser.
-   *
-   * @returns An AST Node of nothing.
-   */
-  private syntaxError(message: string, token: Token): Box<ASTNode> {
-    this.Error = parserError(message, token);
-    return nil;
-  }
-
-  /**
-   * Parses the given input text.
-   * Returns either an {@link ErrorReport} or
-   * a {@link Box} of type {@link ASTNode}.
-   */
-  public parse(text: string): Program {
-    this.init(text);
-    this.advance();
-    const result = prog([], null);
-    while (this.canLoop()) {
-      if (this.Error !== null) break;
-      const node = this.STATEMENT();
-      if (!node.isNothing()) {
-        result.parsing.push(node.unwrap(nilNode));
-      }
-    }
-    if (this.Error) {
-      result.error = this.Error;
-      result.parsing = [];
-      return result;
-    }
-    return result;
-  }
-
-  /**
-   * Parses a single statement.
-   */
-  private STATEMENT(): Box<ASTNode> {
-    if (this.Error) return nil;
-    // deno-fmt-ignore
-    switch (this.Peek.type) {
-      case tkn.while: return this.WHILE_LOOP();
-      case tkn.if: return this.COND();
-      case tkn.def: return this.FUNCTION_DECLARATION();
-      case tkn.let: return this.VARIABLE_DECLARATION();
-      default: return this.EXPRESSION();
-    }
-  }
-
-  private FOR_LOOP() {
-    const engine = this;
-    const start = engine.advance(); // eat the 'for'
-    const err = engine.syntaxError;
-    
-  }
-
-  private WHILE_LOOP() {
-    this.advance(); // eat the 'while'
-    const condition = this.parseExpression(bp.nil);
-    const token = this.advance();
-    if (condition.isNothing()) {
-      const message = `Expected loop condition.`;
-      return this.syntaxError(message, token);
-    }
-    const body = this.BLOCK();
-    this.advance();
-    return condition.chain((c) => body.map((b) => loop(c, b)));
-  }
-
-  /**
-   * Returns true if no semicolon
-   * is needed to terminate a given
-   * statement.
-   */
-  private noSemicolonNeeded() {
-    return (
-      this.Peek.isEOF() ||
-      this.Peek.is(tkn.right_brace) ||
-      this.Previous.is(tkn.right_brace)
-    );
-  }
-
-  /**
-   * Given the argument token type,
-   * _advances the engine_ and returns
-   * true if the argument matches the
-   * current {@link Engine.Peek}.
-   * Otherwise, returns false without
-   * advancing.
-   *
-   * __References__.
-   * 1. _See also_ {@link Engine.Check} (the
-   *    engine method that checks for a match
-   *    without any advancement).
-   */
-  private matches(tokenType: tkn) {
-    if (this.check(tokenType)) {
+  matches(tokentype: tkn) {
+    if (this.peek.type === tokentype) {
       this.advance();
       return true;
     }
     return false;
   }
+  check(tokentype: tkn) {
+    return this.peek && this.peek.type === tokentype;
+  }
+  implicitSemicolon() {
+    const current = this.currentToken;
+    const peek = this.peek;
+    return (
+      peek.isEOF() ||
+      peek.is(tkn.right_brace) ||
+      current.is(tkn.right_brace)
+    );
+  }
 
-  delimited<T extends ASTNode>(
-    openingDelimiter: [tkn, string],
-    handler: (node: ASTNode) => T | null,
-    separator: tkn,
-    closingDelimiter: [tkn, string],
-    strict?: string,
-  ) {
-    const result: T[] = [];
-    const [d1, e1] = openingDelimiter;
-    if (this.Previous.type !== d1) {
-      return this.syntaxError(e1, this.Previous);
-    }
-    const [d2, e2] = closingDelimiter;
-    if (!this.check(d2)) {
-      do {
-        const node = this.parseExpression();
-        const r = handler(node.unwrap(nilNode));
-        if (r !== null) {
-          result.push(r);
-        } else if (strict) {
-          return this.syntaxError(strict, this.Previous);
-        }
-      } while (this.matches(separator) && this.canLoop());
-    }
-    if (!this.matches(d2)) {
-      return this.syntaxError(e2, this.Previous);
+  // § Parser
+  parse(text: string) {
+    this.init(text);
+    this.advance();
+    return this.PROG();
+  }
+
+  PROG() {
+    let result: ASTNode[] = [];
+    while (this.canLoop()) {
+      const node = this.STATEMENT();
+      if (node.isLeft()) return node.unwrap();
+      result.push(node.unwrap());
     }
     return result;
   }
 
-  ARRAY() {
-    const node = this.delimited(
-      [tkn.left_bracket, `[ARRAY]: Expected '['`],
-      (node) => node,
-      tkn.comma,
-      [tkn.right_bracket, `[ARRAY]: Expected ']'`],
-    );
-    if (Array.isArray(node)) {
-      return box(vector(node));
+  STATEMENT() {
+    switch (this.peek.type) {
+      // deno-fmt-ignore
+      case tkn.left_brace: return this.BLOCK();
+      case tkn.while:
+        return this.WHILE();
+      case tkn.if:
+        return this.IFELSE();
+      case tkn.let:
+        return this.VAR();
+      default:
+        return this.EXPR();
     }
-    return node;
   }
 
-  /**
-   * Parses a variable declaration.
-   */
-  private VARIABLE_DECLARATION() {
+  BLOCK(): Either<ErrorReport, Block> {
     const engine = this;
-    engine.advance(); // eat the let
-    const node = engine.EXPRESSION().map((astnode) => {
-      if (isAssignmentNode(astnode)) {
-        return varDef(astnode.symbol(), astnode.value());
-      } else if (isSymbolNode(astnode)) {
-        return varDef(astnode, nilNode);
-      } else {
-        return null;
-      }
-    });
-    if (node.isNothing()) {
-      return this.syntaxError(
-        `Invalid variable declaration`,
-        engine.Peek,
-      );
-    }
-    return node;
-  }
-
-  private eat(
-    tokenType: tkn,
-    errorMessage: string,
-    then: (token: Token) => Box<ASTNode>,
-  ) {
-    if (this.Error) return nil;
-    if (this.check(tokenType)) {
-      const tk = this.advance();
-      return then(tk);
-    } else {
-      return this.syntaxError(errorMessage, this.Peek);
-    }
-  }
-
-  /**
-   * Returns true if the {@link Engine.Peek}
-   * is the given token type. False otherwise.
-   */
-  private check(tokenType: tkn) {
-    if (this.atEnd() || this.Error !== null) return false;
-    return this.Peek.type === tokenType;
-  }
-
-  BLOCK() {
-    this.advance(); // eat the opening `{`
+    engine.advance(); // eat the '{'
     const statements: ASTNode[] = [];
-    while (this.Peek.type !== tkn.right_brace && this.canLoop()) {
-      const stmt = this.STATEMENT();
-      if (!stmt.isNothing()) {
-        const n = stmt.unwrap(nilNode);
-        statements.push(n);
-      }
+    while (
+      engine.peek.type !== tkn.right_brace &&
+      engine.canLoop()
+    ) {
+      const node = engine.STATEMENT();
+      engine.advance();
+      if (node.isLeft()) return node;
+      if (node.isRight()) statements.push(node.unwrap());
     }
-    return this.eat(
-      tkn.right_brace,
-      `Expected '}' to close block`,
-      () => box(block(statements)),
-    );
-  }
-  List<T extends ASTNode>(
-    filter: (node: ASTNode) => node is T,
-  ) {
-    this.advance();
-    const elems = this.delimited(
-      [tkn.left_paren, `Expected '(' to open tuple`],
-      (node) => filter(node) ? node : null,
-      tkn.comma,
-      [tkn.right_paren, `Expected ')' to close tuple`],
-      `Tuples must be homogenous`,
-    );
-    if (Array.isArray(elems)) {
-      return box(tuple<T>(elems));
-    }
-    return box(tuple<T>([]));
-  }
-
-  FUNCTION_DECLARATION(): Box<ASTNode> {
-    this.advance(); // eat the def
-    const engine = this;
-    const fnameError = `Expected valid function name.`;
-    const expectedAssign = `Expected assignment operator '='`;
-    const funcBody = (name: Sym, params: Sym[]) =>
-      engine.EXPRESSION().map((body) => fnDef(name, params, body));
-    const funcParams = (name: Sym) =>
-      engine.List(isSymbolNode).chain((parameters) =>
-        engine.eat(
-          tkn.eq,
-          expectedAssign,
-          () => funcBody(name, parameters.items.toArray()),
-        )
+    return engine
+      .advance()
+      .map((token) =>
+        token.is(tkn.right_brace)
+          ? right(block(statements))
+          : engine.parseError(`Expected closing '}'`, token)
       );
-    const funcName = (t: Token) => box(sym(t)).chain(funcParams);
-    return engine.eat(
-      tkn.symbol,
-      fnameError,
-      (t) => funcName(t),
+  }
+
+  IFELSE(): Either<ErrorReport, Conditional> {
+    this.advance(); // eat the 'if'
+    const engine = this;
+    const C = engine.exp(bp.nil);
+    const ifBlock = engine.BLOCK();
+    const elseBlock = engine.matches(tkn.else)
+      ? engine.STATEMENT()
+      : right(nilNode);
+    return C.map((c) =>
+      cond(c, ifBlock.read(nilNode), elseBlock.read(nilNode))
     );
   }
 
-  /**
-   * Parses a conditional statement.
-   * Parentheses for the condition are optional,
-   * but the `if` condition must always be followed
-   * by a left-brace (beginning it’s consequent block),
-   * and thereafter a corresponding right-brace.
-   * This requirement is imposed to avoid the
-   * _dangling else_ problem.
-   */
-  private COND() {
+  parseError(message: string, token?: Token) {
     const engine = this;
-    engine.advance(); // eat the if
-    const condition = engine.parseExpression(bp.nil);
-    if (condition.isNothing()) {
-      const message = `Expected condition after 'if'`;
-      const token = this.Previous;
-      return this.syntaxError(message, token);
-    }
+    const error = parserError(
+      message,
+      token ? token : engine.currentToken,
+    );
+    return left(error);
+  }
+
+  WHILE() {
+    const engine = this;
     engine.advance();
-    const ifBlock = engine.BLOCK().unwrap(nilNode);
-    let elseBlock: ASTNode = nilNode;
-    if (engine.matches(tkn.else)) {
-      elseBlock = engine.STATEMENT().unwrap(nilNode);
-    }
-    return condition.map((c) => cond(c, ifBlock, elseBlock));
+    const condition = engine.exp(bp.nil);
+    const body = engine.BLOCK();
+    return condition.map((c) => loop(c, body.read(nilNode)));
   }
 
-  /**
-   * Parses an expression statement.
-   */
-  private EXPRESSION() {
-    return this.parseExpression().chain((res) => (
-      this.noSemicolonNeeded() ? box(res) : this.eat(
-        tkn.semicolon,
-        `Expected ';' to end statement.`,
-        () => box(res),
+  VAR(): Either<ErrorReport, VariableDeclaration> {
+    const engine = this;
+    engine.advance();
+    return engine
+      .exp()
+      .chain((n) =>
+        isAssignmentNode(n)
+          ? right(varDef(n.symbol(), n.value()))
+          : engine.parseError(`Expected valid assignment`)
+      );
+  }
+
+  EXPR(): Either<ErrorReport, ASTNode> {
+    const engine = this;
+    return engine
+      .exp()
+      .chain((n) =>
+        engine.implicitSemicolon() ? right(n) : engine
+          .advance()
+          .map((token) =>
+            token.is(tkn.semicolon)
+              ? right(n)
+              : engine.parseError(`Expected ';'`, token)
+          )
+      );
+  }
+
+  SYMBOL(): Either<ErrorReport, (Assign | Sym)> {
+    const engine = this;
+    const token = engine.currentToken;
+    const out = token.isSymbol()
+      ? right(sym(engine.currentToken))
+      : engine.parseError(`Expected symbol`, token);
+    const assign = (n: ASTNode) => assignment(sym(token), n);
+    const res = engine.check(tkn.eq)
+      ? engine.advance().map(() => engine.exp().map(assign))
+      : out;
+    return res;
+  }
+
+  NUMBER(): Either<ErrorReport, (Num | BinaryExpression)> {
+    const engine = this;
+    const token = engine.currentToken;
+    return parsenum(token)
+      .map((lhs) =>
+        engine.check(tkn.symbol)
+          ? engine
+            .exp()
+            .map((rhs) => binex(lhs, star(token), rhs))
+          : lhs
       )
-    ));
+      .flatten();
   }
 
-  /**
-   * Parses a symbol.
-   */
-  private SYMBOL(): Box<Assign> | Box<Sym> {
-    const token = this.Previous;
-    if (this.matches(tkn.eq)) {
-      const def = this.parseExpression();
-      const name = sym(token);
-      return def.map<Assign>((n) => assignment(name, n));
-    }
-    return box(sym(token));
+  ATOM(): Either<ErrorReport, ASTNode> {
+    const engine = this;
+    return atom(engine.currentToken);
   }
 
-  /**
-   * Parses a numeric value.
-   */
-  private NUMBER(): Box<ASTNode> {
-    const token = this.Previous;
-    let out = nil;
-    switch (token.type) {
-      case tkn.NaN:
-        out = box(nan);
-        break;
-      case tkn.Inf:
-        out = box(inf);
-        break;
-      case tkn.int:
-        out = box(int(token.lexeme));
-        break;
-      case tkn.float:
-        out = box(real(token.lexeme));
-        break;
-      case tkn.scinum:
-        out = this.parseScientificNumber();
-        break;
-    }
-    if (out.isNothing()) {
-      const message = `Unknown literal: ${token.lexeme}`;
-      return this.syntaxError(message, token);
-    }
-    if (this.Peek.isSymbol()) {
-      const rhs = this.parseExpression();
-      const op = this.Peek.clone("*", tkn.star);
-      const right = rhs.unwrap(nilNode);
-      return out.map((node) => binex(node, op, right));
-    }
+  INFIX(): Either<ErrorReport, BinaryExpression> {
+    const engine = this;
+    const out = engine.currentToken.map((op) =>
+      engine.LastNode.chain((lhs) =>
+        engine.exp().map((rhs) => binex(lhs, op, rhs))
+      )
+    );
     return out;
   }
 
-  private parseScientificNumber(): Box<ASTNode> {
-    const token = this.Previous;
-    const lexeme = token.lexeme;
-    const args = lexeme.split("E");
-    const message = `Invalid scientific number: ${lexeme}`;
-    if (args.length !== 2) {
-      return this.syntaxError(message, token);
-    }
-    const base = some([
-      dottedNumber.map((r) => real(r)),
-      floatingPointNumber.map((r) => real(r)),
-      integer.map((r) => int(r)),
-    ]).run(args[0]);
-
-    if (base.erred) {
-      return this.syntaxError(message, token);
-    }
-
-    const exp = word([
-      maybe(lit("+").or(lit("-"))),
-      integer,
-    ]).map((r) => int(r)).run(args[1]);
-
-    if (exp.erred) {
-      return this.syntaxError(message, token);
-    }
-    const tokenCopy = token.clone("E", tkn.call);
-    const name = sym(tokenCopy);
-    const arg1 = base.result;
-    const arg2 = exp.result;
-    const node = call(name, [arg1, arg2]);
-    return box(node);
+  PREFIX(): Either<ErrorReport, UnaryExpression> {
+    const engine = this;
+    return engine
+      .exp()
+      .map((arg) => unary(engine.currentToken, arg));
   }
 
-  /**
-   * Parses an atomic value, other than numeric
-   * values. Numeric values are handled separately
-   * because we allow implicit multiplication.
-   *
-   * __References__.
-   * 1. For the numeric value parser,
-   *    _see_ {@link Engine.NUMBER}.
-   */
-  private ATOM(): Box<ASTNode> {
-    const token = this.Previous;
-    switch (token.type) {
-      case tkn.string:
-        return box(str(token.lexeme));
-      case tkn.null:
-        return box(nilNode);
-      case tkn.false:
-        return box(falseNode);
-      case tkn.true:
-        return box(trueNode);
-    }
-    const message = `Unknown literal: ${token.lexeme}`;
-    return this.syntaxError(message, token);
+  POSTFIX(): Either<ErrorReport, UnaryExpression> {
+    const engine = this;
+    return engine.LastNode.map(
+      (arg) => unary(engine.currentToken, arg),
+    );
   }
 
-  private GROUP(): Box<ASTNode> {
-    const expr = this.parseExpression();
-    const peek = this.advance();
-    if (peek.type !== tkn.right_paren) {
-      const msg = `Expected closing ')'`;
-      return this.syntaxError(msg, peek);
-    }
-    return expr;
+  GROUP(): Either<ErrorReport, ASTNode> {
+    const engine = this;
+    return engine.exp().chain((node) =>
+      engine.advance().map((token) =>
+        token.is(tkn.right_paren)
+          ? right(node)
+          : engine.parseError(`[Group]: Expected ')'`, token)
+      )
+    );
   }
 
-  /**
-   * Parses expressions with prefix operators.
-   */
-  private PREFIX(): Box<ASTNode> {
-    const op = this.Previous;
-    const operand = this.parseExpression();
-    if (operand.isNothing()) {
-      const message = `Invalid right-hand side of [${op.lexeme}].`;
-      return this.syntaxError(message, op);
-    }
-    return operand.map((arg) => unary(op, arg));
+  ARRAY() {
+    const engine = this;
+    return left(
+      parserError("Invalid parse rule", engine.currentToken),
+    );
   }
 
-  /**
-   * Parses expressions with postfix operators.
-   */
-  private POSTFIX(): Box<ASTNode> {
-    const peek = this.Previous;
-    const arg = this.LastNode;
-    return arg.map((a) => unary(peek, a));
+  NIL() {
+    const engine = this;
+    return left(
+      parserError("Unexpected [NIL]", engine.currentToken),
+    );
   }
 
-  /**
-   * Parses expressions with infix operators.
-   */
-  private INFIX(): Box<ASTNode> {
-    const op = this.Previous;
-    const left = this.LastNode;
-    const right = this.parseExpression();
-    const rhs = right.unwrap(nilNode);
-    return left.map((node) => binex(node, op, rhs));
-  }
-
-  /**
-   * Returns the AST Node of nothing.
-   * This is purely used to ensure the
-   * {@link ParseRules} table is safe
-   * to index into.
-   */
-  private NIL() {
-    return nil;
-  }
-
-  /**
-   * Parses an expression.
-   * @param minBP - The default (base-case) {@link bp}.
-   */
-  private parseExpression(minbp = bp.none): Box<ASTNode> {
-    if (this.Error !== null) return nil;
+  exp(minbp = bp.none): ParsedNode {
     let peek = this.advance();
     const prefix = prefixRule(peek.type);
+    if (prefix === null) return this.NIL();
     let left = this[prefix]();
     this.LastNode = left;
-    while (minbp < precedenceOf(this.Peek.type) && this.canLoop()) {
+    while (minbp < precedenceOf(this.peek.type)) {
       peek = this.advance();
-      if (this.Peek.isEOF()) break;
-      if (this.Error !== null) break;
+      if (peek.isEOF()) break;
       const infix = infixRule(peek.type);
+      if (infix === null) return left;
       const right = this[infix]();
-      if (right.isNothing()) return left;
       left = right;
       this.LastNode = left;
     }
@@ -1315,10 +1085,12 @@ export class Engine {
 
 const engine = new Engine();
 const src = `
-while x < 2 {
-  let i = x + 1;
+while k < 5 {
+  let i = 10;
 }
 `;
-const tree = engine.parse(src);
-print(engine);
-print(tree, "json");
+// const tokens = engine.tokenize(src);
+// print(tokens);
+const parsing = engine.parse(src);
+print(parsing);
+print(parsing, "json");
