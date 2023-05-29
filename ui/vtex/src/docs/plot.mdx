@@ -1,0 +1,77 @@
+import {
+  Plot1,
+  Plot2,
+  GridPlane,
+  PointPlane,
+  VectorPlane,
+  Vector1,
+  Vector2,
+} from "./plot.demo.tsx";
+
+# Function Plotting
+
+<Plot1 />
+
+```tsx
+const Plot1 = () => {
+  const plot1 = plane(
+    plot("f(x) = x^2").stroke("teal"),
+    plot("f(x) = 2").stroke("grey").dash(3),
+    plot("f(x) = sin(x)").stroke("tomato"),
+    axis("x"),
+    axis("y")
+  )
+    .dom(-2, 5)
+    .ran(-3, 5);
+  return <Figure of={plot1} />;
+};
+```
+
+## Integrals
+
+<Plot2 />
+
+```tsx
+const Plot2 = () => {
+  const plot2 = plane(
+    plot("f(x) = cos(x)").and(integral(-3, 3)),
+    axis("x"),
+    axis("y")
+  )
+    .dom(-5, 5)
+    .ran(-5, 5);
+  return <Figure of={plot2} />;
+};
+```
+
+## Grid
+
+<GridPlane />
+
+```tsx
+export const GridPlane = () => {
+  const grid = plane(axis("x"), axis("y"))
+    .dom(-5, 5)
+    .ran(-5, 5)
+    .grid("xy");
+  return <Figure of={grid} />;
+};
+```
+
+## Points
+
+<PointPlane />
+
+```tsx
+const PointPlane = () => {
+  const randpoints = from(-5)
+    .to(5)
+    .step(0.1)
+    .map((_) => point(rand(-5, 5), rand(-5, 5)));
+  const points = plane(randpoints, axis("x"), axis("y"))
+    .dom(-5, 5)
+    .ran(-5, 5)
+    .grid("xy");
+  return <Figure of={points} />;
+};
+```

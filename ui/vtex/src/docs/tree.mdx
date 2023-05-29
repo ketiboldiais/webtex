@@ -1,0 +1,26 @@
+import { Tree1 } from "./tree.demo.tsx";
+
+# Trees
+
+<Tree1 />
+
+```tsx
+const Tree1 = () => {
+  const tree1 = tree("a")
+    .branch(
+      tree("b").branch(
+        tree("c")
+          .child("x")
+          .child("y"),
+        leaf("d"),
+      ),
+      tree("e").branch(
+        leaf("f"),
+        leaf("g"),
+      ),
+    )
+    .nodeMap((n) => n.fill("tomato").tx(-5))
+    .height(200);
+  return <Figure of={tree1} />;
+};
+```

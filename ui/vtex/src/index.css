@@ -1,13 +1,60 @@
+@font-face {
+	font-family: "SERIF";
+	font-style: normal;
+	font-weight: normal;
+	src: url("./assets/serif_main_regular.woff")
+}
+
+@font-face {
+	font-family: "SERIF";
+	font-style: normal;
+	font-weight: bold;
+	src: url("./assets/serif_main_bold.woff")
+}
+
+@font-face {
+	font-family: "SERIF";
+	font-style: italic;
+	font-weight: normal;
+	src: url("./assets/serif_main_italics.woff")
+}
+
+@font-face {
+	font-family: "SANS_SERIF";
+	font-style: normal;
+	font-weight: normal;
+	src: url("./assets/sans_serif_main.woff")
+}
+
+:root {
+	--font-serif: "SERIF";
+	--font-sans-serif: "SANS_SERIF";
+	--font-cmu: "KaTeX_Main";
+	--color-black1: #525252;
+	--color-black2: #2b2b2b;
+	--color-black3: #1a1a1a;
+	--color-white1: white;
+	--color-grey1: #e6e6e6;
+	--color-grey2: #d2d2d2;
+	--color-red: firebrick;
+}
+
+
+
 body {
 	margin: 0;
 	padding: 0;
 	overflow: hidden;
+	background-color: none;
+}
+
+text {
+	font-family: 'KaTeX_Main';
 }
 
 pre,
 code {
-	font-family: "Fira Code", Consolas, Monaco, "Andale Mono", "Ubuntu Mono",
-		monospace;
+	font-family: "Fira Code", Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
 }
 
 pre {
@@ -16,7 +63,7 @@ pre {
 	margin: 0.5em 0;
 	overflow: auto;
 	border-radius: 0.3em;
-	background: hsl(210, 17%, 14%);
+	background: #2D3748;
 	color: #f8f8f2;
 	text-align: left;
 	white-space: pre;
@@ -37,68 +84,61 @@ pre code .token.comment,
 pre code .token.prolog,
 pre code .token.doctype,
 pre code .token.cdata {
-	color: hsl(220, 10%, 40%);
+	color: hsl(220, 13%, 61%);
 }
 
 pre code .token.punctuation {
-	color: hsl(220, 14%, 71%);
+	color: rgb(252, 148, 252);
+	font-weight: 400;
 }
 
 pre code .namespace {
 	opacity: 0.7;
 }
 
-pre code .token.function {
-	color: hsl(187, 47%, 55%);
+pre code .token.function,
+.token.method {
+	color: #82dcff;
+	font-weight: bold;
 }
 
 
 
-pre code .token.tag,
-pre code .token.constant,
+
+
+pre code .token.constant {
+	color: #82aaff;
+}
+
 pre code .token.symbol,
 pre code .token.property,
-pre code .token.method,
 pre code .token.deleted {
-	color: hsl(355, 65%, 65%);
+	color: hsl(3, 78%, 75%);
 }
-pre code .token.string,
+
 pre code .token.number {
-	color: hsl(29, 54%, 61%);
+	color: orange;
+}
+
+pre code .token.string {
+	color: #addb67;
 }
 
 
-
-
-pre code .token.selector,
-pre code .token.attr-name,
-pre code .token.char,
-pre code .token.builtin,
-pre code .token.inserted {
-	color: #d1c48d;
-}
-
-pre code .token.variable,
 pre code .token.operator,
-pre code .token.class-name {
-	color: hsl(207, 82%, 66%);
+pre code .token.attr-name,
+pre code .token.variable {
+	color: #f78c6c;
 }
 
 pre code .token.keyword {
-	color: hsl(286, 60%, 67%);
+	color: #B2F5EA;
 }
 
-pre code .token.regex,
-pre code .token.important {
-	color: #ebcb8b;
-}
-
-pre code .token.script {
-	color: white;
-}
-pre code .token.important,
-pre code .token.bold {
-	color: hsl(355, 65%, 65%);
+pre code .token.script,
+pre code .token.maybe-class-name {
+	color: #e3e3e3;
+	font-weight: normal;
 }
 
 pre code .token.italic {
@@ -107,4 +147,24 @@ pre code .token.italic {
 
 pre code .token.entity {
 	cursor: help;
+}
+
+pre code .token.tag .token.punctuation,
+pre code .token.class-name {
+	color: rgb(245, 200, 85);
+}
+
+h1+p {
+	margin-top: -1.25rem;
+}
+
+html {
+	font-size: 16px;
+}
+
+
+@media (min-width:600px) {
+	html {
+		font-size: 14px;
+	}
 }

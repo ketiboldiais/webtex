@@ -1,2457 +1,900 @@
-import { Either, Left, left, Right, right } from "./aux/either.js";
-import { range } from "./aux/looper.js";
-import { box } from "./aux/maybe.js";
-import { mod, percent, rem } from "./core/count.js";
-import { Stack } from "./core/stack.js";
-// import { Env, isEnvError } from "./env.js";
-import { ErrorReport, expectedError, mutError } from "./error.js";
-import { ASTNode } from "./nodes/abstract.node.js";
-import { Assign, assignment } from "./nodes/assignment.node.js";
-import { BinaryExpression, binex } from "./nodes/binex.node.js";
-import { Block, block } from "./nodes/block.node.js";
-import { Bool, falseNode, trueNode } from "./nodes/bool.node.js";
-import { Call, call } from "./nodes/call.node.js";
-import { cond, Conditional } from "./nodes/cond.node.js";
-import { fnDef, FunctionDeclaration } from "./nodes/function.node.js";
-import { Loop, loop } from "./nodes/loop.node.js";
-import { isNilNode, Nil, nilNode } from "./nodes/nil.node.js";
+import { print, strTree } from "./utils.js";
+import { Either, left, right } from "./either.js";
+import { tkn, Token, token } from "./token.js";
+import { bp } from "./bp.js";
+import { Err, err, expect } from "./err.js";
+import { nAssign } from "./nodes/node.assign.js";
+import { ASTNode } from "./nodes/node.ast.js";
 import {
-  binary,
-  hex,
-  inf,
-  int,
-  nan,
-  Num,
-  octal,
-  real,
-} from "./nodes/number.node.js";
-import { PrintNode, printnode } from "./nodes/print.node.js";
-import { Str, str } from "./nodes/string.node.js";
-import { isSymbolNode, Sym, sym } from "./nodes/symbol.node.js";
-import { Tuple } from "./nodes/tuple.node.js";
-import { unary, UnaryExpression } from "./nodes/unary.node.js";
-import {
-  constantDef,
-  varDef,
-  VariableDeclaration,
-} from "./nodes/variable.node.js";
-import { Vector, vector } from "./nodes/vector.node.js";
-import { Visitor } from "./nodes/visitor.definition.js";
-import { isLatinGreek } from "./utils.js";
-import { isDigit, print } from "./utils.js";
+  is_nNil,
+  nBin,
+  nFalse,
+  nFloat,
+  nHex,
+  nInf,
+  nInt,
+  nNaN,
+  nNil,
+  nOct,
+  nStr,
+  nTrue,
+  tempnode,
+} from "./nodes/node.atom.js";
+import { nBinex } from "./nodes/node.binex.js";
+import { Block, nBlock } from "./nodes/node.block.js";
+import { nCall } from "./nodes/node.call.js";
+import { nCond } from "./nodes/node.cond.js";
+import { nFrac } from "./nodes/node.frac.js";
+import { nFnDef } from "./nodes/node.fundef.js";
+import { nGroup } from "./nodes/node.group.js";
+import { nLoop } from "./nodes/node.loop.js";
+import { nPrint } from "./nodes/node.print.js";
+import { nReturn } from "./nodes/node.return.js";
+import { is_nSym, nSym } from "./nodes/node.sym.js";
+import { nTuple } from "./nodes/node.tuple.js";
+import { nUnex } from "./nodes/node.unex.js";
+import { nVarDef } from "./nodes/node.vardef.js";
+import { nVector } from "./nodes/node.vector.js";
+import { compile, Compiler, interpret } from "./compiler.js";
 
-export const parserError = (
-  message: string,
-  token: Token,
-) =>
-  new ErrorReport(
-    token.Line,
-    token.Column,
-    message,
-    "Parser Error",
-  );
-export const scannerError = (
-  message: string,
-  token: Token,
-) =>
-  new ErrorReport(
-    token.Line,
-    token.Column,
-    message,
-    "Scanning Error",
-  );
-
-export enum tt {
-  // § Utility Tokens
-  eof,
-  nil,
-  error,
-  print,
-
-  // § Delimiter Tokens
-  /**
-   * ### Lexeme: `(`
-   * This token type must always be accompanied
-   * by its sibling {@link tt.right_paren}.
-   */
-  left_paren,
-
-  /**
-   * ### Lexeme: `)`
-   * This token type must always be accompanied
-   * by its sibling {@link tt.left_paren}.
-   */
-  right_paren,
-
-  /**
-   * ### Lexeme: `{`
-   * This token type must always be accompanied
-   * by its sibling {@link tt.right_brace}.
-   */
-  left_brace,
-
-  /**
-   * ### Lexeme: `}`
-   * This token type must always be accompanied
-   * by its sibling {@link tt.left_brace}.
-   */
-  right_brace,
-
-  /**
-   * ### Lexeme: `[`
-   * This token type must always be accompanied
-   * by its sibling {@link tt.right_bracket}.
-   */
-  left_bracket,
-
-  /**
-   * ### Lexeme: `]`
-   * This token type must always be accompanied
-   * by its sibling {@link tt.left_bracket}.
-   */
-  right_bracket,
-
-  /**
-   * ### Lexeme: `,`
-   * This is a strict delimiter.
-   */
-  comma,
-
-  /**
-   * ### Lexeme: `;`
-   * - This is a strict delimiter.
-   */
-  semicolon,
-
-  /**
-   * ### Lexeme: `.`
-   * This is a contextual token type.
-   */
-  dot,
-
-  // § Infix operator tokens
-  /**
-   * ### Lexeme: `-`
-   * A token type indicating either the unary `-`
-   * (numeric negation) or the binary `-`
-   * (numeric subtraction).
-   *
-   * @example
-   * ~~~
-   * 3 - 1 // reduces to 2
-   * -5 // reduces to -5
-   * --10 // reduces to 10
-   * ~~~
-   */
-  minus,
-
-  /**
-   * ### Lexeme: `+`
-   * A token type indicating either the unary `+`
-   * (numeric positivization) or the binary `+`
-   * (numeric addition).
-   *
-   * @example
-   * ~~~
-   * 5 + 2 // reduces to 7
-   * +8 // reduces to 8
-   * +-8 // reduces to -8
-   * ~~~
-   */
-  plus,
-
-  /**
-   * ### Lexeme: `++`
-   * A token type indicating the postfix `++`
-   * (increment).
-   *
-   * @example
-   * ~~~
-   * let x = 2;
-   * x++ // x = 3
-   * ~~~
-   */
-  plus_plus,
-
-  /**
-   * ### Lexeme: `--`
-   * A token type indicating the postfix `--`
-   * (increment).
-   *
-   * @example
-   * ~~~
-   * let x = 2;
-   * x-- // x = 1;
-   * ~~~
-   */
-  minus_minus,
-
-  /**
-   * ### Lexeme: `/`
-   * A token type indicating the
-   * binary `/` (numeric division).
-   *
-   * __Cross References__.
-   * 1. _See also_ {@link tt.NaN}.
-   *
-   * @example
-   * ~~~
-   * 4/2 // reduces to 2
-   * -5/2 // reduces to -2.5
-   * 5/0 // reduces to NaN
-   * ~~~
-   */
-  slash,
-
-  /**
-   * ### Lexeme: `*`
-   * A token type indicating the
-   * binary `*` (numeric multiplication).
-   *
-   * @example
-   * ~~~
-   * 12 * 2 // reduces to 24
-   * -9 * 3 // reduces to -27
-   * ~~~
-   */
-  star,
-
-  /**
-   * ### Lexeme: `!`
-   * A token type indicating the
-   * operator `!` (factorial).
-   *
-   * __Cross References__.
-   * 1. _See also_ {@link tt.NaN}.
-   *
-   * @example
-   * ~~~
-   * 3! // reduces to 6
-   * -2! // reduces to NaN
-   * ~~~
-   */
-  bang,
-
-  /**
-   * ### Lexeme: `=`
-   * A token type indicating the
-   * binary operator `=` (assignment).
-   *
-   * __Cross References__.
-   * 1. _See also_ {@link tt.let}.
-   * 2. _See also_ {@link tt.var}.
-   *
-   * @example
-   * ~~~
-   * let x = 2; // reduces to 2 (immutable variable)
-   * let var y = 3; // reduces 3 (mutable variable)
-   * fn f(x) = x^2 // reduces to true (function declaration)
-   * ~~~
-   */
-  eq,
-
-  /**
-   * ### Lexeme: `!=`
-   * A token type indicating the
-   * binary operator `!=` (inequality).
-   *
-   * @example
-   * ~~~
-   * let x = 2; // reduces to 2 (immutable variable)
-   * let y = 3; // reduces to 3 (immutable variable)
-   * x != y // reduces to true
-   * ~~~
-   */
-  neq,
-
-  /**
-   * ### Lexeme: `==`
-   * A token type indicating the
-   * binary operator `==` (strict equality).
-   *
-   * @example
-   * ~~~
-   * let x = 2; // reduces to 2 (immutable variable)
-   * let y = 3; // reduces to 3 (immutable variable)
-   * let z = 2;
-   * x == y // reduces to false
-   * x == z // reduces to true
-   * ~~~
-   */
-  deq,
-
-  /**
-   * ### Lexeme: `>`
-   * A token type indicating the
-   * binary relational operator `>`
-   * (the is-greater-than relation).
-   *
-   * @example
-   * ~~~
-   * let x = 2; // reduces to 2 (immutable variable)
-   * let y = 3; // reduces to 3 (immutable variable)
-   * let z = 2;
-   * x > y // reduces to false
-   * x > z // reduces to false
-   * y > x // reduces to true
-   * ~~~
-   */
-  gt,
-
-  /**
-   * ### Lexeme: `>=`
-   * A token type indicating the
-   * binary relational operator `>`
-   * (the is-greater-than-or-equal-to relation).
-   *
-   * @example
-   * ~~~
-   * let x = 2; // reduces to 2 (immutable variable)
-   * let y = 3; // reduces to 3 (immutable variable)
-   * let z = 2;
-   * x >= y // reduces to false
-   * x >= z // reduces to true
-   * y >= x // reduces to true
-   * ~~~
-   */
-  geq,
-
-  /**
-   * ### Lexeme: `<`
-   * A token type indicating the
-   * binary relational operator `<`
-   * (the is-less-than relation).
-   *
-   * @example
-   * ~~~
-   * let x = 2; // reduces to 2 (immutable variable)
-   * let y = 3; // reduces to 3 (immutable variable)
-   * let z = 2;
-   * x < y // reduces to true
-   * x < z // reduces to false
-   * y < x // reduces to false
-   * ~~~
-   */
-  lt,
-
-  /**
-   * ### Lexeme: `<=`
-   * A token type indicating the
-   * binary relational operator `<`
-   * (the is-less-than-or-equal-to relation).
-   *
-   * @example
-   * ~~~
-   * let x = 2; // reduces to 2 (immutable variable)
-   * let y = 3; // reduces to 3 (immutable variable)
-   * let z = 2;
-   * x <= y // reduces to true
-   * x <= z // reduces to true
-   * y <= x // reduces to false
-   * ~~~
-   */
-  leq,
-
-  /**
-   * ### Lexeme: `^`
-   * A token type indicating the
-   * binary arithmetic operator `<`
-   * (exponentiation).
-   *
-   * @example
-   * ~~~
-   * 2^2 // reduces to 4
-   * 2^2+1 // reduces to 8 (exponentiation is right-associative)
-   * -3^2 // reduces to 9
-   * ~~~
-   */
-  caret,
-
-  /**
-   * ### Lexeme: `%`
-   * A token type indicating the
-   * percentage operator `%` (this
-   * returns the percentage of a number,
-   * not the remainder, as is the case
-   * in other languages).
-   *
-   * __Cross-References__.
-   * 1. For the signed remainder, _see_ {@link tt.rem}.
-   * 2. For the modulo operator, _see_ {@link tt.mod}.
-   *
-   * @example
-   * ~~~
-   * 2 % 4 // reduces to 0.08
-   * 10 % 16.25 // reduces to 1.625
-   * ~~~
-   */
-  percent,
-
-  /**
-   * ### Lexeme: `rem`
-   * A token type indicating
-   * the binary operator `rem` (the
-   * signed remainder operator). This is
-   * equivalent to the `%` in other languages.
-   *
-   * __Cross-References__.
-   * 1. _See also_ {@link tt.percent} (describing the
-   *   the operator `%`).
-   * 2. For the modulo operator, _see_ {@link tt.mod}.
-   *
-   * @example
-   * ~~~
-   * (-13) rem 64 // reduces to -13 (not 51)
-   * ~~~
-   */
-  rem,
-
-  /**
-   * ### Lexeme: `mod`
-   * A token type indicating the binary
-   * operator `mod` (the modulo operator).
-   *
-   * Where `a` and `b` are integers, this operator
-   * is equivalent to writing:
-   *
-   * ~~~js
-   * ((a % b) + b) % b
-   * ~~~
-   *
-   * in a language where the glyph `%` maps
-   * to a signed remainder operator (e.g., in
-   * JavaScript, C, C++, etc.)
-   *
-   * __Cross-References__.
-   * 1. _See also_ {@link tt.percent} (describing the
-   *   the operator `%`).
-   * 2. For the modulo operator, _see_ {@link tt.mod}.
-   *
-   * @example
-   * ~~~
-   * (-13) mod 64 // reduces to 51 (not -13)
-   * 5 mod 22 // reduces to 5
-   * 2 mod 22 // reduces to 20
-   * ~~~
-   */
-  mod,
-
-  // § Complex Assignments
-  /**
-   * ### Lexeme: `+=`
-   * Complex assignment of add and assign.
-   *
-   * @example
-   * ~~~
-   * let a = 12;
-   * a += 5; // a -> 17
-   * ~~~
-   */
-  plus_equals,
-
-  /**
-   * ### Lexeme: `-=`
-   * Complex assignment of minus and assign.
-   *
-   * @example
-   * ~~~
-   * let a = 10;
-   * a -= 5; // a -> 5
-   * ~~~
-   */
-  minus_equals,
-
-  /**
-   * ### Lexeme: `/=`
-   * Complex assignment of power and assign.
-   *
-   * @example
-   * ~~~
-   * let a = 10;
-   * a ^= 2; // a -> 100
-   * ~~~
-   */
-  caret_equals,
-
-  /**
-   * ### Lexeme: `/=`
-   * Complex assignment of multiply and assign.
-   *
-   * @example
-   * ~~~
-   * let a = 20;
-   * a *= 5; // a -> 100
-   * ~~~
-   */
-  star_equals,
-
-  /**
-   * ### Lexeme: `/=`
-   * Complex assignment of divide and assign.
-   *
-   * @example
-   * ~~~
-   * let a = 20;
-   * a /= 5; // a -> 4
-   * ~~~
-   */
-  slash_equals,
-
-  // § Literal Tokens
-  int,
-  float,
-  hex,
-  binary,
-  octal,
-  symbol,
-  string,
-  Inf,
-  NaN,
-
-  /**
-   * ### Lexeme: `let`
-   * A token type mapping to
-   * the keyword `let` (indicating
-   * a variable declaration). Note
-   * that variables in Writ are
-   * immutable by default.
-   *
-   * __Cross References__.
-   * 1. Mutable variables are indicated by the
-   *    keyword `var`. _See_ {@link tt.var}.
-   *
-   * @example
-   * ~~~
-   * let x = 2; // reduces to 2 (immutable variable)
-   * ~~~
-   */
-  let,
-
-  /**
-   * ### Lexeme: `fn`
-   * A token type mapping to
-   * the keyword `fn` (indicating
-   * a function declaration). Function
-   * declarations always default to reducing
-   * to `true` at runtime. The assignment
-   * operator `=` must always follow
-   * the parameter list.
-   *
-   * @example
-   * ~~~
-   * fn f(x) = x^2;
-   * fn h(x,y) = {
-   *   (x/2) + (y/2);
-   * }
-   * ~~~
-   */
-  fn,
-
-  /**
-   * ### Lexeme: `var`
-   * A token type mapping to
-   * the keyword `var` (indicating
-   * a mutable variable).
-   *
-   * @example
-   * ~~~
-   * let var x = 2; // reduces to 2
-   * ~~~
-   */
-  var,
-  not,
-  and,
-  or,
-  if,
-  else,
-  false,
-  true,
-  class,
-  super,
-  this,
-  for,
-  while,
-  return,
-  null,
-}
-
-/**
- * Consider the expression
- *
- * ~~~
- * 1 + 2 * 3
- * ~~~
- *
- * This generates the following token stream:
- *
- * ~~~
- * [int, plus, int, star, int]
- * ~~~
- *
- * There are two possible trees we can generate fom this stream.
- * Either:
- *
- * ~~~
- *   plus
- *  /    \
- * 1     star
- *      /    \
- *     2      3
- * ~~~
- *
- * Or:
- *
- * ~~~
- *      star
- *     /    \
- *   plus    3
- *  /    \
- * 1      2
- * ~~~
- *
- * We want to avoid this ambiguity. We can resolve
- * this ambiguity through a technique called
- * _Pratt parsing_. The idea:
- *
- * 1. For any given operator `f`, there exists a value
- *    called a _binding power_, which we denote as `BP(f)`.
- * 2. Given two operators `f1` and `f2`, if `BP(f1) < BP(f2)`,
- *    then we say that _`f2` has higher precedence than `f1`_ (and
- *    conversely, that _`f1` has lower precedence than `f2`_).
- *
- * This handles the cases for the strictly-ordered relations `<` and
- * `>`. But what happens if `BP(f1) = BP(f2)`? For example, it’s
- * perfectly reasonable to write:
- * ~~~
- * 2 + 5 + 8
- * ~~~
- * For such expressions, we rely on _associativity_:
- *
- * 1. For any given operator `f`, there exists a pair of
- *    integer constants `(L,R)`. We call `L` the _left denotation_
- *    of `f`, and `R` the _right denotation_ of `f`. We denote this
- *    the pair with the notation `D(f)`.
- * 2. Given two operators `f1` and `f2`, both instances of the
- *    operator `f`, then `f2` has higher precedence than `f1` if,
- *    and only if, given `D(f) = (a, b)`, `BP(f2) + b > BP(f1) + a`.
- *
- * In short, we _nudge_ the binding powers of the operators slightly.
- * The `+` operator, for example, is left-associative, so
- * the left-hand side of the expression gets a slight-nudge (thereby
- * positioned at a lower depth in the tree). The `^` operator, in
- * contrast, is right-associative. So, whatever lies to its right
- * gets the nudge.
- *
- * @enum
- */
-enum bp {
-  nil,
-  assign,
-  complex_assign,
-  group,
-  atom,
-  or,
-  nor,
-  and,
-  nand,
-  xor,
-  xnor,
-  equivalence,
-  equality,
-  comparison,
-  sum,
-  product,
-  quotient,
-  power,
-  prefix,
-  postfix,
-  call,
-  primary,
-  abort,
-}
-
-export class Token {
-  constructor(
-    public Type: tt,
-    public Lexeme: string,
-    public Line: number,
-    public Column: number,
-  ) {}
-  /**
-   * Returns true if this token
-   * is the given type, false
-   * otherwise.
-   */
-  is(type: tt) {
-    return this.Type === type;
-  }
-
-  /**
-   * Returns true if this token
-   * is the {@link tt.error} token
-   * type.
-   */
-  isErrorToken() {
-    return this.Type === tt.error;
-  }
-
-  lexemeIs(lexeme: string) {
-    return this.Lexeme === lexeme;
-  }
-
-  /**
-   * Applies the given callback
-   * (that returns a `Token`)
-   * with with access to this
-   * Token as an argument.
-   */
-  map(f: (t: Token) => Token) {
-    return f(this.clone());
-  }
-
-  /**
-   * Applies the given callback,
-   * with access to this token
-   * as an argument.
-   */
-  then<T>(f: (t: Token) => T): T {
-    return f(this.clone());
-  }
-
-  /**
-   * Sets the token’s column number.
-   */
-  acolumned(column: number) {
-    this.Column = column;
-    return this;
-  }
-
-  /**
-   * Sets the token’s lexeme.
-   */
-  lex(lexeme: string) {
-    this.Lexeme = lexeme;
-    return this;
-  }
-
-  /**
-   * Sets the token’s line number.
-   */
-  aligned(line: number) {
-    this.Line = line;
-    return this;
-  }
-
-  /**
-   * Sets the token’s type.
-   */
-  atyped(type: tt) {
-    this.Type = type;
-    return this;
-  }
-
-  /**
-   * Returns the token as a plain
-   * JavaScript object.
-   */
-  json() {
-    const type = tt[this.Type];
-    const lexeme = this.Lexeme;
-    const line = this.Line;
-    const column = this.Column;
-    return { type, lexeme, line, column };
-  }
-
-  /**
-   * Returns a copy of this token.
-   */
-  clone() {
-    return new Token(
-      this.Type,
-      this.Lexeme,
-      this.Line,
-      this.Column,
-    );
-  }
-
-  /**
-   * Transforms this token into the new token
-   * on the first matching pattern.
-   *
-   * @param patterns
-   * - An array of tuples, where each tuple has
-   *   the type `[tt,f]`, defined as follows:
-   *   1. `tt` is a {@link tt|token type}.
-   *   2. `f` is a function that takes this token
-   *      and returns a new token.
-   */
-  match(patterns: [tt, (t: Token) => Token][]) {
-    let out = this.clone();
-    for (let i = 0; i < patterns.length; i++) {
-      const [type, f] = patterns[i];
-      if (this.Type !== type) continue;
-      out = f(this);
-    }
-    return out;
-  }
-}
-
-/**
- * Creates a new token.
- *
- * @param type
- * - The token type. _See_ {@link tt}.
- * @param lexeme
- * - The token’s lexeme.
- * @param line
- * - The line where this token’s lexeme first occurred.
- * @param column
- * - The column where this token’s lexeme first occurred.
- */
-const token = (
-  type: tt,
-  lexeme: string,
-  line: number,
-  column: number,
-) => new Token(type, lexeme, line, column);
-
-/**
- * An empty token for initializing
- * the engine’s state.
- */
-const nilToken = token(tt.nil, "", -1, -1);
-
-/**
- * A token indicating the end of input.
- */
-const EOF = (line: number, column: number) =>
-  token(tt.eof, "END", line, column);
-
-/**
- * Returns a new token,
- * ignoring line and
- * column numbers.
- */
-const tkn = (
-  type: tt,
-  lexeme: string = "",
-) => token(type, lexeme, 0, 0);
-
-/**
- * Returns a new character
- * guard.
- *
- * @param target
- * - The character to check against.
- */
-const ischar = (target: string) => (c: string) => target === c;
-
-/**
- * Returns `true` if the given
- * character is the glyph `.`,
- * `false` otherwise.
- */
-const isDot = ischar(".");
-
-/**
- * Returns `true` if the
- * first character is a dot,
- * and the second character
- * is a digit, `false` otherwise.
- *
- * @param c1
- * - The first character
- *   (expected to be a dot).
- * @param c2
- * - The second character
- *   (expected to be a number).
- */
-const isDotDigit = (
-  c1: string,
-  c2: string,
-) => isDot(c1) && isDigit(c2);
-
-const isLetterX = ischar("x");
-const isLetterB = ischar("b");
-const isLetterO = ischar("o");
-const isZero = ischar("0");
 const isWS = (c: string) => (
   c === " " ||
-  c === "\t" ||
   c === "\n" ||
+  c === "\t" ||
   c === "\r"
 );
-
-const is0x = (c1: string, c2: string) => isZero(c1) && isLetterX(c2);
-const is0b = (c1: string, c2: string) => isZero(c1) && isLetterB(c2);
-const is0o = (c1: string, c2: string) => isZero(c1) && isLetterO(c2);
-
-/**
- * Returns true if the
- * given character `c` is a
- * `0` or a `1` (a binary digit),
- * false otherwise.
- */
-const isBigit = (c: string) => (c === "0") || (c === "1");
-
-/**
- * Returns true if the given character `c`
- * is a hexadecimal glyph, false otherwise.
- * Hexadecimal glyphs are defined as:
- *
- * 1. An ASCII character within the closed
- *    interval of `a` through `f`, or
- * 2. An ASCII character within the closed
- *    interval of `A` through `F`, or
- * 3. An ASCII character within the closed
- *    interval of `0` through `9`.
- */
-const isHexit = (c: string) => (
-  (c >= "a" && c <= "f") ||
-  (c >= "A" && c <= "F") ||
-  (c >= "0" && c <= "9")
-);
-
-/**
- * Returns true if the given character `c`
- * is an octal glyph, false otherwise.
- * Octal glyphs are defined as:
- *
- * - An ASCII character within the closed
- *    interval of `0` through `7`.
- */
-const isOctit = (c: string) => (c >= "0" && c <= "7");
-
-const scan1 = (
-  char: string,
-  defaultHandler: (c: string) => Token,
-) => {
-  const token = (t: tt) => tkn(t, char);
-  // deno-fmt-ignore
-  switch (char) {
-    case "(": return token(tt.left_paren);
-    case ")": return token(tt.right_paren);
-    case "[": return token(tt.left_bracket);
-    case "]": return token(tt.right_bracket);
-    case "{": return token(tt.left_brace);
-    case "}": return token(tt.right_brace);
-    case ",": return token(tt.comma);
-    case ";": return token(tt.semicolon);
-    case "+": return token(tt.plus);
-    case "-": return token(tt.minus);
-    case "*": return token(tt.star);
-    case "/": return token(tt.slash);
-    case "^": return token(tt.caret);
-    case "%": return token(tt.percent);
-    case "=": return token(tt.eq);
-    case "<": return token(tt.lt);
-    case ">": return token(tt.gt);
-    case "!": return token(tt.bang);
-    case ".": return token(tt.dot);
-    case `"`: return token(tt.string);
-    default: return defaultHandler(char);
+// § State
+class State {
+  _start!: number;
+  _current!: number;
+  _source!: string;
+  _line!: number;
+  _column!: number;
+  _peek!: Token;
+  _prev!: Token;
+  _lastnode!: ASTNode;
+  _error!: Err | null;
+  _prevchar!: string;
+  init(source: string) {
+    this._start = 0;
+    this._current = 0;
+    this._line = 0;
+    this._column = 0;
+    this._source = source;
+    this._peek = token();
+    this._prev = token();
+    this._lastnode = nNil;
+    this._error = null;
+    this._prevchar = "";
   }
-};
-
-const symToken = (text: string) => {
-  const token = (t: tt) => tkn(t, text);
-  // deno-fmt-ignore
-  switch (text) {
-    case "let": return token(tt.let);
-    case "fn": return token(tt.fn);
-    case "print": return token(tt.print);
-    case "var": return token(tt.var);
-    case "rem": return token(tt.rem);
-    case "mod": return token(tt.mod);
-    case "and": return token(tt.and);
-    case "not": return token(tt.not);
-    case "or": return token(tt.or);
-    case "if": return token(tt.if);
-    case "else": return token(tt.else);
-    case "false": return token(tt.false);
-    case "true": return token(tt.true);
-    case "NaN": return token(tt.NaN);
-    case "Inf": return token(tt.Inf);
-    case "class": return token(tt.class);
-    case "super": return token(tt.super);
-    case "this": return token(tt.this);
-    case "for": return token(tt.for);
-    case "while": return token(tt.while);
-    case "return": return token(tt.return);
-    case "null": return token(tt.null);
-    default: return token(tt.symbol);
+  atEnd() {
+    return this._current >= this._source.length;
   }
-};
-
-type Parsing = (prev: Token, prePrev: Token) =>
-  | Left<ErrorReport>
-  | Right<ASTNode>;
-
-type SyntaxAnalysis = {
-  result: ASTNode[];
-  error: ErrorReport | null;
-};
-
-export function code(
-  text: string,
-) {
-  /**
-   * The length of the input text, this
-   * is the maximum possible index.
-   * All loops must obey this boundary.
-   */
-  const MAX = text.length;
-
-  /**
-   * An array holding error
-   * reports. If this array
-   * has an element, then
-   * all work will cease.
-   */
-  const ERRORS: ErrorReport[] = [];
-
-  /**
-   * Returns true if an error occurred.
-   */
-  const errorOccurred = () => ERRORS.length !== 0;
-
-  /**
-   * The `start` of the given lexeme.
-   * This is a stateful variable.
-   */
-  let $start = 0;
-
-  /**
-   * The `current` variable holds
-   * the ending index of the current
-   * lexeme. This a stateful variable.
-   */
-  let $current = 0;
-
-  /**
-   * The `line` variable binds
-   * the line number where the
-   * current token first occurred.
-   * This is a stateful variable.
-   */
-  let $line = 1;
-
-  /**
-   * The `column` variable
-   * binds the line number where
-   * the current token first occurred.
-   * This is a stateful variable.
-   */
-  let $column = -1;
-
-  const tickNewLine = () => {
-    $column = 0;
-    $line++;
-    return $current++;
-  };
-
-  const advance = () => {
-    $column++;
-    return $current++;
-  };
-
-  const tick = () => text[$current++];
-
-  const lex = () => text.slice($start, $current);
-
-  const END = () => ($current >= MAX) || ERRORS.length !== 0;
-
-  const char = () => text[$current];
-
-  const char2 = () => (END() ? "" : text[$current + 1]);
-
-  const charIs = (c: string) => text[$current] === c;
-
-  const newToken = (type: tt, lexeme: string) =>
-    token(type, lexeme, $line, $column);
-
-  const errToken = (message: string) => {
-    const errorMessage = `[Scanner]: ` + message;
-    const error = newToken(tt.error, errorMessage);
-    ERRORS.push(scannerError(errorMessage, error));
-    return error;
-  };
-
-  const match = (c: string) =>
-    !END() &&
-    charIs(c) &&
-    typeof text[$current++] === "string";
-
-  const skipWhitespace = () => {
-    while (!END()) {
-      const c = char();
+  prevIs(type: tkn) {
+    return this._prev.is(type);
+  }
+  peekIs(type: tkn) {
+    return this._peek.is(type);
+  }
+  setError(error: Err) {
+    this._error = error;
+    return this;
+  }
+  setLastNode(node: ASTNode) {
+    this._lastnode = node;
+    return this;
+  }
+  hasInput() {
+    return this._current < this._source.length;
+  }
+  substr() {
+    return this._source.slice(this._start, this._current);
+  }
+  tick() {
+    const c = this.c1();
+    if (!isWS(c)) {
+      this._prevchar = c;
+    }
+    if (c === "\n") {
+      this._line++;
+      this._column = 0;
+    } else {
+      this._column++;
+    }
+    return this._source[this._current++];
+  }
+  c1() {
+    return this._source[this._current];
+  }
+  c2() {
+    return this._source[this._current + 1];
+  }
+  c3() {
+    return this._source[this._current + 2];
+  }
+  private skipws() {
+    while (this.hasInput()) {
+      const c = this.c1();
       // deno-fmt-ignore
       switch (c) {
-        case " ":
-        case "\r":
-        case "\t": advance(); break;
-        case "\n": tickNewLine(); break;
-        default: return c;
-      }
+				case ' ':
+				case '\r':
+				case '\t':
+				case '\n':
+					this.tick();
+					break;
+				default:
+					return;
+			}
     }
-    return text[$current];
-  };
-
-  const scanString = () => {
-    const breakCondition = () => !END() && !charIs(`"`);
-    const action = () => charIs(`\n`) ? tickNewLine() : advance();
-    range(breakCondition, action, MAX);
-    if (END()) return errToken(`Unterminated string.`);
-    advance(); // eat the closing quote
-    return newToken(tt.string, lex().slice(1, -1));
-  };
-
-  const scanNonBase10 = (
-    type: tt.hex | tt.octal | tt.binary,
-    digitTest: (c: string) => boolean,
-  ) =>
-  () => {
-    advance(); // eat the '0'
-    advance(); // eat the denotation ('x', 'b', or 'o')
-    if (digitTest(char())) {
-      while (digitTest(char())) {
-        advance();
-        if (!digitTest(char()) && isWS(char2())) {
-          return errToken(
-            `Expected ${tt[type]}, but got a non-${
-              tt[type]
-            } digit, “${char()}”`,
-          );
-        }
-      }
-    } else {
-      return errToken(`Expected ${tt[type]} number.`);
+  }
+  map(f: (c: string) => Token) {
+    this.skipws();
+    this._start = this._current;
+    const c = this.tick();
+    return f(c);
+  }
+  charIs(c: string) {
+    return this.c1() === c;
+  }
+  match(c: string) {
+    if (!this.hasInput()) return false;
+    if (!this.charIs(c)) return false;
+    this.tick();
+    return true;
+  }
+  forward(cond: (c1: string, c2: string) => boolean) {
+    let c = this._prevchar;
+    while (cond(this.c1(), this.c2()) && this.hasInput()) {
+      c += this.tick();
     }
-    return newToken(type, lex());
-  };
-
-  /**
-   * Scans a hexadecimal number.
-   */
-  const scanHex = scanNonBase10(tt.hex, isHexit);
-
-  /**
-   * Scans a binary number.
-   */
-  const scanBinary = scanNonBase10(tt.binary, isBigit);
-
-  /**
-   * Scans an octal number.
-   */
-  const scanOctal = scanNonBase10(tt.octal, isOctit);
-
-  const scanInt = () => {
-    while (isDigit(char()) && !END()) advance();
-    return isDotDigit(char(), char2()) ? scanDot() : newToken(tt.int, lex());
-  };
-
-  const scanDot = () => {
-    advance();
-    while (isDigit(char()) && !END()) advance();
-    return newToken(tt.float, lex());
-  };
-
+    return c;
+  }
+  token(t: Token) {
+    const prev = this._peek;
+    const line = this._line;
+    const column = this._column;
+    const lexeme = t._lexeme ? t._lexeme : this.substr();
+    const newpeek = t
+      .line(line)
+      .column(column)
+      .lexeme(lexeme);
+    this._peek = newpeek;
+    return prev;
+  }
+}
+const enstate = () => new State();
+type TexSyms = { symbols: Record<string, string> };
+type TexCodes = TexSyms;
+const isDQuote = (c: string) => (c === `"`);
+const isDigit = (c: string) => (
+  "0" <= c && c <= "9"
+);
+const isScinum = (c1: string, c2: string, c3: string) => {
+  if (c1 !== "E") return false;
+  if (c2 === "+" || c2 === "-") {
+    return isDigit(c3);
+  }
+  return isDigit(c2);
+};
+const isLatin = (c: string) => (
+  ("a" <= c && c <= "z") ||
+  ("A" <= c && c <= "Z")
+);
+const isHexit = (c: string) => (
+  ("a" <= c && c <= "f") ||
+  ("A" <= c && c <= "F") ||
+  ("0" <= c && c <= "9")
+);
+const isOctit = (c: string) => (
+  "0" <= c && c <= "7"
+);
+const isBit = (c: string) => (
+  (c === "0") || (c === "1")
+);
+const isPreBit = (c1: string, c2: string, c3: string) => (
+  c1 === "0" &&
+  c2 === "b" &&
+  isBit(c3)
+);
+const isPreHex = (c1: string, c2: string, c3: string) => (
+  c1 === "0" &&
+  c2 === "x" &&
+  isHexit(c3)
+);
+const isPreOct = (c1: string, c2: string, c3: string) => (
+  c1 === "0" &&
+  c2 === "o" &&
+  isOctit(c3)
+);
+const char = (c: string) => {
   // deno-fmt-ignore
-  const pickLeftOn = (exp: string) => (
-    a: tt, b: tt
-  ) => (
-    t: Token
-  ) => t.atyped(match(exp) ? a : b);
+  switch (c) {
+    case "(": return token(tkn.left_paren);
+    case ")": return token(tkn.right_paren);
+    case "[": return token(tkn.left_bracket);
+    case "]": return token(tkn.right_bracket);
+    case "{": return token(tkn.left_brace);
+    case "}": return token(tkn.right_brace);
+    case ",": return token(tkn.comma);
+    case ".": return token(tkn.dot);
+    case ":": return token(tkn.colon);
+    case ";": return token(tkn.semicolon);
+    case "+": return token(tkn.plus);
+    case "-": return token(tkn.minus);
+    case "*": return token(tkn.star);
+    case "%": return token(tkn.percent);
+    case "^": return token(tkn.caret);
+    case "/": return token(tkn.slash);
+    case "<": return token(tkn.lt);
+    case ">": return token(tkn.gt);
+    case "!": return token(tkn.bang);
+    case "=": return token(tkn.eq);
+    case '"': return token(tkn.string);
+    default: return token(tkn.unknown);
+  }
+};
 
-  const leftOnEqual = pickLeftOn("=");
-  const leftOnPlus = pickLeftOn("+");
-  const leftOnMinus = pickLeftOn("-");
-
-  const twoCharTokens: [tt, (t: Token) => Token][] = [
-    [tt.bang, leftOnEqual(tt.neq, tt.bang)],
-    [tt.eq, leftOnEqual(tt.deq, tt.eq)],
-    [tt.lt, leftOnEqual(tt.leq, tt.lt)],
-    [tt.gt, leftOnEqual(tt.geq, tt.gt)],
-    [tt.plus, leftOnEqual(tt.plus_equals, tt.plus)],
-    [tt.plus, leftOnPlus(tt.plus_plus, tt.plus)],
-    [tt.minus, leftOnEqual(tt.minus_equals, tt.minus)],
-    [tt.minus, leftOnMinus(tt.minus_minus, tt.minus)],
-    [tt.slash, leftOnEqual(tt.slash_equals, tt.slash)],
-    [tt.star, leftOnEqual(tt.star_equals, tt.star)],
-    [tt.caret, leftOnEqual(tt.caret_equals, tt.caret)],
-    [tt.dot, (t) => isDigit(char()) ? scanInt().atyped(tt.float) : t],
-  ];
-
-  const unknownToken = (c: string) => errToken(`Unknown token ${c}`);
-
-  const scanSymbol = () => {
-    while (isLatinGreek(char()) || isDigit(char())) advance();
-    const text = lex();
-    return symToken(text).aligned($line).acolumned($column);
-  };
-
+const keyword = (text: string) => {
   // deno-fmt-ignore
-  const mapfn = (token: Token) => token.lexemeIs(`"`) 
-    ? scanString() 
-    : token.is(tt.error) 
-      ? token 
-      : token.lex(lex());
+  switch (text) {
+		case 'let': return token(tkn.let);
+		case 'print': return token(tkn.print);
+		case 'sqrt': return token(tkn.sqrt);
+		case 'fn': return token(tkn.fn);
+		case 'rem': return token(tkn.rem);
+		case 'div': return token(tkn.div);
+		case 'mod': return token(tkn.mod);
+		case 'and': return token(tkn.and);
+		case 'nand': return token(tkn.nand);
+		case 'not': return token(tkn.not);
+		case 'or': return token(tkn.or);
+		case 'nor': return token(tkn.nor);
+		case 'xor': return token(tkn.xor);
+		case 'xnor': return token(tkn.xnor);
+		case 'struct': return token(tkn.struct);
+		case 'for': return token(tkn.for);
+		case 'while': return token(tkn.while);
+		case 'is': return token(tkn.is);
+		case 'return': return token(tkn.return);
+		case 'true': return token(tkn.true);
+		case 'false': return token(tkn.false);
+		case 'inf': return token(tkn.inf);
+		case 'nan': return token(tkn.nan);
+		case 'null': return token(tkn.null);
+		case 'if': return token(tkn.if);
+		case 'else': return token(tkn.else);
+		default: return token(tkn.symbol);
+	}
+};
 
-  /**
-   * Returns the next token from
-   * the given text.
-   */
-  const nextToken = (): Token => {
-    skipWhitespace();
-    if (END()) return EOF($line, $column);
-    $start = $current;
-    const c = tick();
-    if (is0b(c, char())) return scanBinary();
-    if (is0o(c, char())) return scanOctal();
-    if (is0x(c, char())) return scanHex();
-    if (isLatinGreek(c)) return scanSymbol();
-    return isDigit(c) ? scanInt() : scan1(c, unknownToken)
-      .match(twoCharTokens)
-      .aligned($line)
-      .acolumned($column)
-      .map(mapfn);
+type Parslet = (
+  prev: Token,
+  peek: Token,
+) => Either<Err, ASTNode>;
+
+type PSpec = Record<tkn, [Parslet, Parslet, bp]>;
+
+export function engine() {
+  const dict: TexCodes = {
+    symbols: {
+      Alpha: "&#x391;",
+      alpha: `&#x3b1;`,
+      Beta: `&#x392;`,
+      beta: `&#x3b2;`,
+      Gamma: `&#x393;`,
+      gamma: `&#x3b3;`,
+      Delta: `&#x394;`,
+      delta: `&#x3b4;`,
+      Epsilon: `&#x395;`,
+      epsilon: `&#x3b5;`,
+      Zeta: `&#x396;`,
+      zeta: `&#x3b6;`,
+      Eta: `&#x397;`,
+      eta: `&#x3b7;`,
+      Theta: `&#x398;`,
+      theta: `&#x3b8;`,
+      Iota: `&#x399;`,
+      iota: `&#x3b9;`,
+      Kappa: `&#x39a;`,
+      kappa: `&#x3ba;`,
+      Lambda: `&#x39b;`,
+      lambda: `&#x3bb;`,
+      Mu: `&#x39c;`,
+      mu: `&#x3bc;`,
+      Nu: `&#x39d;`,
+      nu: `&#x3bd;`,
+      Xi: `&#x39e;`,
+      xi: `&#x3be;`,
+      Omicron: `&#x39f;`,
+      omicron: `&#x3bf;`,
+      Pi: `&#x3a0;`,
+      pi: `&#x3c0;`,
+      Rho: `&#x3a1;`,
+      rho: `&#x3c1;`,
+      Sigma: `&#x3a3;`,
+      sigma: `&#x3c3;`,
+      Tau: `&#x3a4;`,
+      tau: `&#x3c4;`,
+      Upsilon: `&#x3a5;`,
+      upsilon: `&#x3c5;`,
+      Phi: `&#x3a6;`,
+      phi: `&#x3c6;`,
+      Chi: `&#x3a7;`,
+      chi: `&#x3c7;`,
+      Psi: `&#x3a8;`,
+      psi: `&#x3c8;`,
+      Omega: `&#x3a9;`,
+      omega: `&#x3c9;`,
+    },
   };
-  /**
-   * Tokenizes the expression.
-   * @returns An array of {@link Token|tokens}.
-   */
-  const tokenize = () => range(() => !END(), nextToken, MAX);
-
-  // § Parsing Functions =============================================
-
-  /**
-   * The last parsing result. This is either
-   * {@link ErrorReport} or an {@link ASTNode}.
-   */
-  let $lastParse: Either<ErrorReport, ASTNode> = right(nilNode);
-
-  /**
-   * The next token to be read
-   * (I.e., the lookahead token).
-   */
-  let $peek = nilToken;
-
-  /**
-   * The current token under
-   * consideration.
-   */
-  let $prev = nilToken;
-
-  /**
-   * Reads the next token in the provided
-   * text string, and returns the last
-   * read token. (All the parsing functions
-   * have a lookahead of 1.)
-   */
-  const push = () => {
-    $prev = $peek;
-    $peek = nextToken();
-    if ($peek.isErrorToken()) {
-      return $peek;
+  const state = enstate();
+  const report = (source: string, message: string) => {
+    const L = state._line;
+    const C = state._column;
+    const S = `[${source}]: `;
+    const line = `On line ${L}, column ${C}, `;
+    const msg = S + line + message;
+    const E = err(msg);
+    state.setError(E);
+    return left(E);
+  };
+  // deno-fmt-ignore
+  const pickleft = (
+    a: tkn,
+    char: string,
+    b: tkn,
+  ) => (t: Token) => (t.type(state.match(char) ? a : b));
+  const string = () => {
+    state.forward((c) => !isDQuote(c));
+    if (state.atEnd()) {
+      return token(tkn.error, `Unterminated string`);
     }
-    return $prev;
+    state.tick();
+    const lexeme = state.substr().slice(1, -1);
+    return token(tkn.string, lexeme);
   };
-
-  /**
-   * Parses a parenthesized expression.
-   */
-  const group = () => {
-    const output = (node: ASTNode) => (t: Token) => (
-      t.is(tt.right_paren)
-        ? right(node)
-        : pError(expectedError("group-expression", `)`, t))
+  const symscan = () => {
+    const text = state.forward(
+      (c) => isLatin(c) || c === "_" || c === `'` || isDigit(c),
     );
-    const result = parseExpression()
-      .chain((node) => push().then(output(node)));
-    return result;
+    return keyword(text).lexeme(text);
   };
 
-  /**
-   * Generates and returns a parser
-   * error.
-   */
-  const pError = (msg: string, token: Token = $prev) => {
-    const error = parserError(msg, token);
-    ERRORS.push(error);
-    return left(error);
+  const sciscan = () => {
+    state.tick(); // eat the 'E'
+    state.match("+");
+    state.match("-");
+    state.forward(isDigit);
+    return token(tkn.scinum);
+  };
+  const floatscan = () => {
+    state.forward(isDigit);
+    if (isScinum(state.c1(), state.c2(), state.c3())) {
+      return sciscan();
+    }
+    return token(tkn.float);
+  };
+  const intscan = () => {
+    state.forward(isDigit);
+    if (state.charIs(".") && isDigit(state.c2())) {
+      state.tick();
+      return floatscan();
+    }
+    if (isScinum(state.c1(), state.c2(), state.c3())) {
+      return sciscan();
+    }
+    return token(tkn.integer);
+  };
+  const scantex = () => {
+    state.tick(); // eat the `~`
+    state.forward(isLatin);
+    const lex = state.substr().slice(1);
+    return token(tkn.texcode, lex);
+  };
+  const scanOct = () => {
+    state.tick(); // eat the '0'
+    state.tick(); // eat the 'o'
+    state.forward(isOctit);
+    const lex = state.substr();
+    return token(tkn.octal).lexeme(lex);
+  };
+  const scanHex = () => {
+    state.tick(); // eat the '0'
+    state.tick(); // eat the 'x'
+    state.forward(isHexit);
+    const lex = state.substr();
+    return token(tkn.hex).lexeme(lex);
+  };
+  const scanbinary = () => {
+    state.tick(); // eat the '0'
+    state.tick(); // eat the 'b'
+    state.forward(isBit);
+    const lex = state.substr();
+    return token(tkn.binary).lexeme(lex);
+  };
+  const read = (c: string) => {
+    if (c === "!" && isLatin(state.c2())) return scantex();
+    if (isPreOct(c, state.c1(), state.c2())) return scanOct();
+    if (isPreHex(c, state.c1(), state.c2())) return scanHex();
+    if (isPreBit(c, state.c1(), state.c2())) return scanbinary();
+    if (isLatin(c)) return symscan();
+    if (isDigit(c)) return intscan();
+    return char(c);
   };
 
-  const star = (t: Token) => t.clone().lex("*").atyped(tt.star);
+  const scan = () => {
+    if (state.atEnd()) {
+      return token(tkn.eof)
+        .lexeme("END")
+        .line(state._line)
+        .column(state._column);
+    }
+    const out = state.map(read)
+      .match(tkn.bang, pickleft(tkn.neq, "=", tkn.eq))
+      .match(tkn.eq, pickleft(tkn.deq, "=", tkn.eq))
+      .match(tkn.lt, pickleft(tkn.leq, "=", tkn.lt))
+      .match(tkn.gt, pickleft(tkn.geq, "=", tkn.gt))
+      .match(tkn.string, () => string())
+      .line(state._line)
+      .column(state._column)
+      .map((t) => t.lex(state.substr()));
+    return out;
+  };
+  const tokenize = (text: string) => {
+    state.init(text);
+    const out = [];
+    while (state.hasInput()) {
+      out.push(scan().json());
+    }
+    return out;
+  };
 
-  /**
-   * Parses a numeric token. Numeric
-   * tokens are any of the following:
-   *
-   * 1. {@link tt.int},
-   * 2. {@link tt.float},
-   * 3. {@link tt.Inf},
-   * 4. {@link tt.NaN},
-   * 5. {@link tt.binary},
-   * 6. {@link tt.octal},
-   * 7. {@link tt.hex},
-   */
-  const num = (token: Token) => {
-    const lexeme = token.Lexeme;
-    let out: ASTNode = nilNode;
+  const atom = (prev: Token) => {
+    const type = prev._type;
+    const lex = prev._lexeme;
+    let node: ASTNode | null = null;
     // deno-fmt-ignore
-    switch (token.Type) {
-      case tt.int: out = int(lexeme); break;
-      case tt.float: out = real(lexeme); break;
-      case tt.Inf: out = inf; break;
-      case tt.NaN: out = nan; break;
-      case tt.binary: out = binary(lexeme); break;
-      case tt.octal: out = octal(lexeme); break;
-      case tt.hex: out = hex(lexeme); break;
-    }
-    if (isNilNode(out)) {
-      return pError(expectedError(
-        `numeric-literal`,
-        `number`,
-        token,
-      ));
-    }
-    if (nextTokenIs(tt.left_paren)) {
-      return group().map((n) => binex(out, star($prev), n));
-    }
-    if (nextTokenIs(tt.symbol)) {
-      const expr = binex(out, star($prev), sym($prev));
-      return nextTokenIs(tt.left_paren)
-        ? group().map((e) => binex(expr, star($prev), e))
-        : right(expr);
-    }
-    return right(out);
-  };
-
-  /**
-   * Parses an atom from the set of token types
-   * {@link tt.string}, {@link tt.null}, {@link tt.false},
-   * and {@link tt.true}.
-   */
-  const atom = (token: Token) => {
-    const lexeme = token.Lexeme;
-    // deno-fmt-ignore
-    switch (token.Type) {
-      case tt.string: return right(str(lexeme));
-      case tt.null: return right(nilNode);
-      case tt.false: return right(falseNode);
-      case tt.true: return right(trueNode);
-      default: return pError(expectedError(
-        `atom`, `literal`, token
-      ))
-    }
-  };
-
-  /**
-   * Parses a postfix expression.
-   *
-   * @param token - The token corresponding
-   * to the expression’s prefix operator.
-   */
-  const postfix = (
-    token: Token,
-  ): Either<ErrorReport, UnaryExpression> => {
-    const mapFn = (arg: ASTNode) => unary(token, arg);
-    return $lastParse.map(mapFn);
-  };
-
-  /**
-   * Parses a prefix expression.
-   *
-   * @param token - The token corresponding
-   * to the expression’s prefix operator.
-   */
-  const prefix = (
-    token: Token,
-  ): Either<ErrorReport, UnaryExpression> => {
-    const mapFn = (arg: ASTNode) => unary(token, arg);
-    return parseExpression().map(mapFn);
-  };
-
-  const newop = (
-    type: tt,
-    lex: string,
-  ) => $prev.clone().atyped(type).lex(lex);
-
-  const assignOp = (type: tt) => {
     switch (type) {
-      case tt.plus_equals:
-        return newop(tt.plus, "+");
-      case tt.star_equals:
-        return newop(tt.star, "*");
-      case tt.caret_equals:
-        return newop(tt.caret, "^");
-      case tt.minus_equals:
-        return newop(tt.minus, "-");
-      case tt.slash_equals:
-        return newop(tt.slash, "/");
+			case tkn.integer: node=nInt(lex); break;
+			case tkn.float: node=nFloat(lex); break;
+			case tkn.string: node=nStr(lex); break;
+			case tkn.hex: node=nHex(lex); break;
+			case tkn.binary: node=nBin(lex); break;
+			case tkn.octal: node=nOct(lex); break;
+			case tkn.null: node=nNil; break;
+			case tkn.inf: node=nInf; break;
+			case tkn.nan: node=nNaN; break;
+			case tkn.false: node=nFalse; break;
+			case tkn.true: node=nTrue; break;
     }
-  };
-
-  const complex_assign = (token: Token) => {
-    const assign = (lhs: Sym) => (rhs: ASTNode) => {
-      const op = assignOp(token.Type);
-      if (op === undefined) {
-        return pError(expectedError(
-          `complex-assign`,
-          `complex assignment`,
-          token,
-        ));
-      }
-      const binexRight = binex(lhs, op, rhs);
-      const output = assignment(lhs, binexRight);
-      return right(output);
-    };
-    return $lastParse.chain((node) => {
-      if (!isSymbolNode(node)) {
-        return pError(
-          `[complex-assign]: Complex assignment. The right-hand side of a complex assign must be an identifier.`,
-        );
-      }
-      return parseExpression().chain(assign(node));
-    });
-  };
-
-  /**
-   * Parses an infix expression.
-   *
-   * @param token - The token corresponding
-   * to the expression’s infix operator.
-   */
-  const infix = (
-    token: Token,
-  ): Either<ErrorReport, BinaryExpression> => {
-    const mapFn = (lhs: ASTNode) => (rhs: ASTNode) => binex(lhs, token, rhs);
-    const chainFn = (
-      lhs: ASTNode,
-    ) => parseExpression().map(mapFn(lhs));
-    const expr = $lastParse.chain(chainFn);
-    return expr;
-  };
-
-  /**
-   * Returns a left-result
-   * of the last occurring error.
-   */
-  const ERROR = () => {
-    return left(ERRORS[ERRORS.length - 1]);
-  };
-
-  const unassignable = (
-    token: Token,
-  ) => precedenceOf(token.Type) > bp.assign;
-
-  /**
-   * Parses a variable.
-   */
-  const variable = (
-    prevToken: Token,
-    p: Token,
-  ): Either<ErrorReport, (Sym | Assign)> => {
-    const id = sym(prevToken);
-
-    const statement = (node: Assign) => () =>
-      noSemicolonNeeded() ? right(node) : push().then(
-        (t) =>
-          t.is(tt.semicolon)
-            ? right(node)
-            : pError(expectedError(`variable`, `;`, t)),
-      );
-
-    const newnode = (node: () => Either<ErrorReport, Assign>) => {
-      return unassignable(p)
-        ? pError(`[variable]: invalid assignment`)
-        : node();
-    };
-
-    const mutateAssign = (type: tt, lexeme: string) =>
-      newnode(
-        statement(
-          assignment(id, binex(id, newop(type, lexeme), int("1"))),
-        ),
-      );
-
-    if (nextTokenIs(tt.minus_minus)) {
-      return mutateAssign(tt.minus, "-");
+    if (node === null) {
+      const msg = `Expected literal, got ${lex}`;
+      return report(`atom`, msg);
     }
-    if (nextTokenIs(tt.plus_plus)) {
-      return mutateAssign(tt.plus, "+");
+    if (state.peekIs(tkn.symbol)) {
+      const x = expr();
+      if (x.isLeft()) return x;
+      const op = prev.clone(tkn.star, "*");
+      const out = nBinex(node, op, x.unwrap());
+      return right(out);
     }
-    if (nextTokenIs(tt.eq)) {
-      return newnode(
-        () => parseExpression().map((n) => assignment(id, n)),
-      );
-    }
-    return right(id);
+    return right(node);
   };
 
-  const CALL = (): Either<ErrorReport, Call> => {
-    const name = $lastParse;
-    if (name.isLeft()) return name;
-    const callname = name.unwrap();
-    if (!isSymbolNode(callname)) {
-      return pError(`Expected function name`);
-    }
-    const args = parseDelimited(
-      `call`,
-      tt.nil,
-      (n: ASTNode) => right(n),
-      tt.right_paren,
-    );
-    return args.map((as) => call(callname, as));
-  };
-
-  // § Array Parser
-  const array = (): Either<ErrorReport, Vector> => {
+  const vector = () => {
     const elements: ASTNode[] = [];
-    if (!$peek.is(tt.right_bracket)) {
+    if (!state.peekIs(tkn.right_bracket)) {
       do {
-        parseExpression().map((n) => elements.push(n));
-      } while (nextTokenIs(tt.comma));
+        const node = expr();
+        if (node.isLeft()) {
+          return node;
+        } else {
+          const element = node.unwrap();
+          if (!is_nNil(element)) {
+            elements.push(element);
+          }
+        }
+      } while (nextTokenIs(tkn.comma) && state.hasInput());
     }
-    const result = (t: Token) => {
-      if (t.is(tt.right_bracket)) return right(vector(elements));
-      return pError(expectedError("array", "[", t));
-    };
-    return push().then(result);
+    const out = push().map((t) => {
+      const node = nVector(elements);
+      if (state.atEnd()) {
+        return right(node);
+      } else if (!t.is(tkn.right_bracket)) {
+        const l = t._lexeme;
+        const msg = `Expeced closing ']', but got ${l}`;
+        return report(`vector`, msg);
+      } else {
+        return right(node);
+      }
+    });
+    return out;
   };
 
-  // § Parse Rules Record ============================================
-  const __ = () => right(nilNode);
+  const __ = (t: Token) => {
+    const exp = `Expected expression, got “${t._lexeme}”`;
+    return report("expr", exp);
+  };
   const __o = bp.nil;
 
-  /**
-   * @internal
-   * __DO NOT MODIFY THIS TABLE__.
-   * This the Pratt parser’s orchestrator.
-   * This table lays out the precedence map (right-most
-   * column) as well as the left- and right-parsers.
-   * Slots labeled with three underscores correspond
-   * to the null parser (_see_ {@link Engine.___}).
-   * These are slots that are open for filling.
-   * That parser always returns the null node.
-   * We use the underscores to avoid the clutter
-   * resulting from a full name.
-   */
-  const ParseRules: Record<tt, [Parsing, Parsing, bp]> = {
-    [tt.eof]: [__, __, __o],
-    [tt.nil]: [__, __, __o],
-    [tt.error]: [ERROR, __, __o],
-    [tt.left_paren]: [group, CALL, bp.call],
-    [tt.right_paren]: [__, __, __o],
-    [tt.left_brace]: [__, __, __o],
-    [tt.right_brace]: [__, __, __o],
-    [tt.left_bracket]: [array, __, __o],
-    [tt.right_bracket]: [__, __, __o],
-    [tt.comma]: [__, __, __o],
-    [tt.semicolon]: [__, __, __o],
-    [tt.dot]: [__, __, __o],
-
-    [tt.and]: [__, infix, bp.and],
-    [tt.or]: [__, infix, bp.or],
-    [tt.not]: [prefix, __, bp.prefix],
-
-    [tt.plus_equals]: [__, complex_assign, bp.complex_assign],
-    [tt.minus_equals]: [__, complex_assign, bp.complex_assign],
-    [tt.star_equals]: [__, complex_assign, bp.complex_assign],
-    [tt.caret_equals]: [__, complex_assign, bp.complex_assign],
-    [tt.slash_equals]: [__, complex_assign, bp.complex_assign],
-    [tt.eq]: [__, __, __o],
-    [tt.print]: [__, __, __o],
-    [tt.plus_plus]: [__, __, __o],
-    [tt.minus_minus]: [__, __, __o],
-
-    [tt.neq]: [__, infix, bp.comparison],
-    [tt.deq]: [__, infix, bp.equality],
-    [tt.gt]: [__, infix, bp.comparison],
-    [tt.geq]: [__, infix, bp.comparison],
-    [tt.lt]: [__, infix, bp.comparison],
-    [tt.leq]: [__, infix, bp.comparison],
-
-    [tt.minus]: [prefix, infix, bp.sum],
-    [tt.plus]: [prefix, infix, bp.sum],
-    [tt.slash]: [__, infix, bp.product],
-    [tt.star]: [__, infix, bp.product],
-    [tt.percent]: [__, infix, bp.product],
-    [tt.mod]: [__, infix, bp.quotient],
-    [tt.rem]: [__, infix, bp.quotient],
-    [tt.caret]: [__, infix, bp.power],
-
-    [tt.bang]: [__, postfix, bp.postfix],
-    [tt.int]: [num, __, bp.atom],
-    [tt.float]: [num, __, bp.atom],
-    [tt.Inf]: [num, __, bp.atom],
-    [tt.NaN]: [num, __, bp.atom],
-    [tt.hex]: [num, __, bp.atom],
-    [tt.binary]: [num, __, bp.atom],
-    [tt.octal]: [num, __, bp.atom],
-    [tt.symbol]: [variable, __, bp.atom],
-    [tt.string]: [atom, __, bp.atom],
-    [tt.false]: [atom, __, bp.atom],
-    [tt.true]: [atom, __, bp.atom],
-    [tt.null]: [atom, __, bp.atom],
-
-    [tt.let]: [__, __, __o],
-    [tt.var]: [__, __, __o],
-    [tt.fn]: [__, __, __o],
-    [tt.if]: [__, __, __o],
-    [tt.else]: [__, __, __o],
-    [tt.class]: [__, __, __o],
-    [tt.super]: [__, __, __o],
-    [tt.this]: [__, __, __o],
-    [tt.for]: [__, __, __o],
-    [tt.while]: [__, __, __o],
-    [tt.return]: [__, __, __o],
+  const postfix = (op: Token) => {
+    const result = state._lastnode;
+    return right(nUnex(op, result));
   };
 
-  /**
-   * Returns the prefix parser from the
-   * {@link ParseRules}.
-   */
-  const prefixRule = (tokenType: tt) => ParseRules[tokenType][0];
+  const prefix = (op: Token) => {
+    const res = expr();
+    return res.map((arg) => nUnex(op, arg));
+  };
 
-  /**
-   * Returns the infix parser from the
-   * {@link ParseRules}.
-   */
-  const infixRule = (tokenType: tt) => ParseRules[tokenType][1];
+  const infix = (op: Token) => {
+    const lastnode = state._lastnode;
+    return expr().map((n) => nBinex(lastnode, op, n));
+  };
 
-  /**
-   * Returns the precedence of the given token type.
-   * {@link ParseRules}.
-   */
-  const precedenceOf = (tokenType: tt) => ParseRules[tokenType][2];
-
-  /**
-   * Parses an expression with Pratt parsing.
-   *
-   * @param minbp - The initial base case bp. If
-   * a `bp` lower than {@link bp.none} is passed,
-   * the right-hand side of the expression
-   * isn’t parsed.
-   */
-  const parseExpression = (
-    minbp = bp.assign,
-  ): Either<ErrorReport, ASTNode> => {
-    if (errorOccurred()) return ERROR();
-    let beforePeek = $prev;
-    let token = push();
-    const prefix = prefixRule(token.Type);
-    let left = prefix(token, beforePeek);
-    if (errorOccurred()) return ERROR();
-    $lastParse = left;
-    while (minbp < precedenceOf($peek.Type) && !END()) {
-      beforePeek = token;
-      token = push();
-      const infix = infixRule(token.Type);
-      const right = infix(token, beforePeek);
-      if (errorOccurred()) return ERROR();
-      if (right.isLeft()) return right;
-      left = right;
-      $lastParse = left;
+  const group = (op: Token) => {
+    const closing = op.is(tkn.left_paren);
+    const result = expr();
+    if (result.isLeft()) return result;
+    if (nextTokenIs(tkn.comma)) {
+      const elements = [result.unwrap()];
+      do {
+        const e = expr();
+        if (e.isLeft()) return e;
+        elements.push(e.unwrap());
+      } while (nextTokenIs(tkn.comma));
+      const out = push();
+      if (out.isnt(tkn.right_paren)) {
+        return report("call", `Expected closing “)”`);
+      }
+      return right(nTuple(elements));
     }
-    return left;
+    const out = result.chain((n) => {
+      const t = push();
+      if (!closing) {
+        const msg = expect(`Closing “)”`, t);
+        return report(`group`, msg);
+      } else {
+        return right(nGroup(n));
+      }
+    });
+    return out;
   };
 
-  /**
-   * Returns `true` if the {@link $peek}
-   * matches the provided type (false
-   * otherwise). If the {@link $peek} matches,
-   * then the {@link push} function is called,
-   * thereby updating the current {@link $prev}
-   * and {@link $peek} (i.e., advancing the
-   * parser).
-   */
-  const nextTokenIs = (type: tt): boolean => {
-    if ($peek.is(type)) {
+  const nextTokenIs = (type: tkn) => {
+    if (state._peek.is(type)) {
       push();
       return true;
     }
     return false;
   };
 
-  /**
-   * Returns `true` if no semicolons
-   * are needed to terminate the
-   * statement, otherwise false.
-   *
-   * Semicolons are not needed if
-   * any of the following
-   * conditions are true:
-   *
-   * 1. The next token is the
-   *    {@link tt.eof|end of input token}.
-   * 2. The next token is a
-   *    {@link tt.right_brace|right brace}.
-   * 3. The current token is a
-   *    {@link tt.right_brace|right brace}.
-   */
-  const noSemicolonNeeded = (): boolean => {
-    const res = $peek.is(tt.eof) ||
-      $peek.is(tt.right_brace) ||
-      $prev.is(tt.right_brace) ||
-      $prev.is(tt.semicolon);
-    return res;
-  };
-
-  /**
-   * Parses an expression statement.
-   * Expression statements must be
-   * terminated with a semicolon,
-   * unless a
-   * {@link noSemicolonNeeded|semicolon exception}
-   * applies.
-   *
-   * __Cross References__.
-   * 1. _See also_ {@link noSemicolonNeeded} (defining
-   *    when semicolons are unnecessary).
-   */
-  const EXPR = (): Either<ErrorReport, ASTNode> => {
-    const output = (node: ASTNode) => {
-      const ok = right(node);
-      if (noSemicolonNeeded()) {
-        return ok;
-      }
-      const res = push().then((t) =>
-        t.is(tt.semicolon) || t.is(tt.eof) ? ok : pError(
-          expectedError(`expression-statement`, `;`, t),
-        )
-      );
-      return res;
-    };
-    const res = parseExpression().chain(output);
-    return res;
-  };
-
-  /**
-   * Parses a loop statement.
-   */
-  const LOOP = (): Either<ErrorReport, Loop> => {
-    const condition = parseExpression();
-    const statement = push().then((t) =>
-      t.is(tt.left_brace)
-        ? condition.chain((c) => BLOCK().map((b) => loop(c, b)))
-        : pError(`while condition must be followed by block`)
-    );
-    return statement;
-  };
-
-  /**
-   * Parses a variable declaration.
-   */
-  const VAR = (): Either<ErrorReport, VariableDeclaration> => {
-    const nil = right(nilNode);
-    const mutable = nextTokenIs(tt.var);
-    const id = push();
-    const val = () => {
-      if (nextTokenIs(tt.eq)) {
-        return EXPR();
-      } else if (mutable) {
-        if (noSemicolonNeeded()) return nil;
-        return push().then((t) =>
-          t.is(tt.semicolon) ? nil : pError(
-            expectedError(`variable-declaration`, `‘;’`, t),
-          )
-        );
-      } else {
-        return pError(mutError(id.Lexeme));
-      }
-    };
-    const node = (val: ASTNode) => (mutable ? varDef : constantDef)(id, val);
-    const varname = (token: Token) =>
-      token.is(tt.symbol) ? val() : pError(
-        expectedError(
-          `variable-declaration`,
-          `variable name`,
-          token,
-        ),
-      );
-    const output = id.then(varname).map(node);
-    return output;
-  };
-
-  /**
-   * Parses an if-statement.
-   */
-  const IF_ELSE = (): Either<ErrorReport, Conditional> => {
-    const condition = parseExpression();
-    const statement = (c: ASTNode) =>
-      BLOCK().chain((ifNode) =>
-        nextTokenIs(tt.else)
-          ? STATEMENT().map((elseNode) => cond(c, ifNode, elseNode))
-          : right(cond(c, ifNode, nilNode))
-      );
-    const output = (token: Token) =>
-      token.is(tt.left_brace)
-        ? condition.chain(statement)
-        : pError(`if-condition must be followed by a block.`);
-    const result = push().then(output);
-    return result;
-  };
-
-  /**
-   * Parses delimited content.
-   * @param source - The name of the parser calling this function.
-   * @param leftDelim
-   * - The opening delimiter (e.g., a left-paren). To prevent
-   *   this function from enforcing an opening delimiter,
-   *   pass {@link tt.nil}. This may be necessary because
-   *   either the parser caller has already consumed the delimiter
-   *   (e.g., the {@link CALL|function call parser}), or the
-   *   {@link parseExpression|Pratt parser} has consumed it by
-   *   way of precedence.
-   * @param parser
-   * - A callback function that determines what should be pushed
-   *   to the output array, given the recently parsed node. This
-   *   provides the caller a means of ensuring a homogenous list
-   *   (e.g., {@link FUNCTION|function declaration} parser
-   *   requires all parameters to be symbols).
-   * @param rightDelim
-   * - The closing, right delimiter (e.g., a right-paren).
-   */
-  const parseDelimited = <T>(
-    source: string,
-    leftDelim: tt,
-    parser: (n: ASTNode) => Either<ErrorReport, T>,
-    rightDelim: tt,
-  ) => {
-    const elements: T[] = [];
-    if (leftDelim !== tt.nil && !push().is(leftDelim)) {
-      return pError(
-        expectedError(source, `${tt[leftDelim]}`, $prev),
-      );
+  const assign = (_: Token, prev: Token) => {
+    const lhs = state._lastnode;
+    if (!is_nSym(lhs)) {
+      const msg = expect(`Identifier`, prev);
+      return report(`assign`, msg);
     }
-    if (!$peek.is(rightDelim)) {
+    const right = expr();
+    const out = right.map((rhs) => nAssign(lhs.symbol, rhs));
+    return out;
+  };
+
+  const sym = (name: Token) => {
+    const id = nSym(name);
+    return right(id);
+  };
+
+  const tex = (token: Token) => {
+    const lex = token._lexeme;
+    if (dict.symbols[lex] !== undefined) {
+      const name = dict.symbols[lex];
+      return right(nSym(token.lexeme(name)));
+    }
+    return right(nSym(token));
+  };
+
+  const call = () => {
+    const name = state._lastnode;
+    if (!is_nSym(name)) {
+      const msg = `Expected function name.`;
+      return report(`call`, msg);
+    }
+    const args: ASTNode[] = [];
+    if (!state._peek.among(tkn.right_paren)) {
       do {
-        const node = parseExpression();
+        const node = expr();
         if (node.isLeft()) return node;
-        const element = parser(node.unwrap());
-        if (element.isLeft()) return element;
-        elements.push(element.unwrap());
-      } while (nextTokenIs(tt.comma));
+        args.push(node.unwrap());
+      } while (nextTokenIs(tkn.comma));
     }
-    return push().then((t) =>
-      t.is(rightDelim)
-        ? right(elements)
-        : pError(expectedError(source, `${tt[t.Type]}`, t))
-    );
-  };
-
-  // deno-fmt-ignore
-  const failedExpect = (
-    source: string,
-    expected: string,
-  ) => (
-    token: Token
-  ) => pError(expectedError(source, expected, token));
-
-  /**
-   * Parses a function declaration.
-   */
-  const FUNCTION = (): Either<ErrorReport, FunctionDeclaration> => {
-    // reports an invalid identifier error
-    const nameError = failedExpect(`Function`, `name`);
-    if (!$peek.is(tt.symbol)) return nameError($peek);
-
-    // reports the failed assignment error
-    const assignError = failedExpect(`Function`, `=`);
-
-    // reports a non-homogenous parameter list error
-    const paramError = failedExpect(`Function`, `parameter-list`);
-
-    // parameter parser
-    const parameters = () =>
-      parseDelimited(
-        `Function`,
-        tt.left_paren, // params must begin with left-paren
-        (node: ASTNode) =>
-          isSymbolNode(node) // if the parameter node is a symbol
-            ? right(node) // allow the node entry into the list
-            : paramError($prev), // syntax error
-        tt.right_paren, // params must close with a right-paren
-      );
-
-    // function body parser
-    const Body = (name: Token, params: Sym[]) => (body: ASTNode) =>
-      fnDef(
-        sym(name),
-        params,
-        body,
-      );
-
-    return push().then((name) =>
-      parameters().chain((params) =>
-        $peek.is(tt.left_brace) // if the next token is a left-brace
-          ? STATEMENT().map(Body(name, params)) // return the function
-          : push().then((token) =>
-            // otherwise
-            token.is(tt.eq) // we expect an assignment '='
-              ? STATEMENT().map(Body(name, params))
-              : assignError(token)
-          )
-      )
-    );
-  };
-
-  /**
-   * Parses a block statement.
-   */
-  const BLOCK = (): Either<ErrorReport, Block> => {
-    let statements: ASTNode[] = [];
-    while (!$peek.is(tt.right_brace) && !END()) {
-      const statement = STATEMENT();
-      if (statement.isLeft()) return statement;
-      statements.push(statement.unwrap());
+    const close = push();
+    if (!close.is(tkn.right_paren)) {
+      const msg = expect(`Closing delimiter`, close);
+      return report("call", msg);
     }
-    return push().then((t) =>
-      t.is(tt.right_brace)
-        ? right(block(statements))
-        : pError(expectedError(`block`, `}`, t))
-    );
+    return right(nCall(name, args));
   };
 
-  const PRINT = (): Either<ErrorReport, ASTNode> => {
-    const target = STATEMENT().map((n) => printnode(n));
-    return target;
+  const printStmt = () => {
+    return exprStmt().map((n) => nPrint(n));
   };
 
-  const STATEMENT = (): Either<ErrorReport, ASTNode> => {
-    if (nextTokenIs(tt.print)) return PRINT();
-    if (nextTokenIs(tt.fn)) return FUNCTION();
-    if (nextTokenIs(tt.while)) return LOOP();
-    if (nextTokenIs(tt.if)) return IF_ELSE();
-    if (nextTokenIs(tt.left_brace)) return BLOCK();
-    if (nextTokenIs(tt.let)) return VAR();
-    return EXPR();
+  const Rules: PSpec = {
+    [tkn.nil]: [__, __, __o],
+    [tkn.eof]: [__, __, __o],
+    [tkn.error]: [__, __, __o],
+    [tkn.unknown]: [__, __, __o],
+    [tkn.colon]: [__, __, __o],
+    [tkn.dot]: [__, __, __o],
+    [tkn.comma]: [__, __, __o],
+    [tkn.semicolon]: [__, __, __o],
+    [tkn.left_paren]: [group, call, bp.call],
+    [tkn.right_paren]: [__, __, __o],
+    [tkn.left_bracket]: [vector, __, bp.call],
+    [tkn.right_bracket]: [__, __, __o],
+    [tkn.left_brace]: [__, __, __o],
+    [tkn.right_brace]: [__, __, __o],
+    [tkn.bang]: [__, postfix, bp.postfix],
+    [tkn.eq]: [__, assign, bp.assign],
+    [tkn.neq]: [__, infix, bp.eq],
+    [tkn.deq]: [__, infix, bp.eq],
+    [tkn.plus]: [prefix, infix, bp.sum],
+    [tkn.minus]: [prefix, infix, bp.sum],
+    [tkn.star]: [__, infix, bp.prod],
+    [tkn.percent]: [__, infix, bp.quot],
+    [tkn.sqrt]: [prefix, infix, bp.prod],
+    [tkn.caret]: [__, infix, bp.pow],
+    [tkn.slash]: [__, infix, bp.prod],
+    [tkn.lt]: [__, infix, bp.rel],
+    [tkn.leq]: [__, infix, bp.rel],
+    [tkn.gt]: [__, infix, bp.rel],
+    [tkn.geq]: [__, infix, bp.rel],
+    [tkn.string]: [atom, __, bp.atom],
+    [tkn.integer]: [atom, __, bp.atom],
+    [tkn.float]: [atom, __, bp.atom],
+    [tkn.hex]: [atom, __, bp.atom],
+    [tkn.binary]: [atom, __, bp.atom],
+    [tkn.octal]: [atom, __, bp.atom],
+    [tkn.scinum]: [__, __, __o],
+    [tkn.symbol]: [sym, __, bp.atom],
+    [tkn.let]: [__, __, __o],
+    [tkn.print]: [__, __, __o],
+    [tkn.fn]: [__, __, __o],
+    [tkn.rem]: [__, infix, bp.quot],
+    [tkn.div]: [__, infix, bp.quot],
+    [tkn.mod]: [__, infix, bp.quot],
+    [tkn.not]: [prefix, __, bp.not],
+    [tkn.and]: [__, infix, bp.and],
+    [tkn.nand]: [__, infix, bp.nand],
+    [tkn.or]: [__, infix, bp.or],
+    [tkn.nor]: [__, infix, bp.nor],
+    [tkn.xor]: [__, infix, bp.xor],
+    [tkn.xnor]: [__, infix, bp.xor],
+    [tkn.struct]: [__, __, __o],
+    [tkn.for]: [__, __, __o],
+    [tkn.while]: [__, __, __o],
+    [tkn.is]: [__, infix, bp.rel],
+    [tkn.return]: [__, __, __o],
+    [tkn.true]: [atom, __, bp.atom],
+    [tkn.false]: [atom, __, bp.atom],
+    [tkn.inf]: [atom, __, bp.atom],
+    [tkn.nan]: [atom, __, bp.atom],
+    [tkn.null]: [atom, __, bp.atom],
+    [tkn.if]: [__, __, __o],
+    [tkn.else]: [__, __, __o],
+    [tkn.texcode]: [tex, __, bp.atom],
   };
 
-  const parsing = (
-    result: ASTNode[],
-  ): SyntaxAnalysis => ({
-    result,
-    error: null,
-  });
-  const failedParsing = (error: ErrorReport): SyntaxAnalysis => ({
-    result: [],
-    error,
-  });
+  const prefixRule = (t: tkn) => Rules[t][0];
+  const infixRule = (t: tkn) => Rules[t][1];
+  const precOf = (t: tkn) => Rules[t][2];
 
-  /**
-   * Parses the provided text.
-   * @returns
-   * - Either an {@link ErrorReport} or an
-   *   array of {@link ASTNode}.
-   */
-  const parse = () => {
-    const croak = () => failedParsing(ERROR().unwrap());
-    const out: ASTNode[] = [];
-    push(); // prime the parser
-    if (errorOccurred()) return croak();
-    while (!END()) {
-      const node = STATEMENT();
-      if (node.isLeft()) return croak();
+  const prime = () => {
+    state._peek = scan();
+  };
+
+  const push = () => {
+    const prev = state._peek;
+    state._prev = prev;
+    state._peek = scan();
+    return prev;
+  };
+
+  const expr = (minbp = bp.lowest) => {
+    let prev = state._prev;
+    let token = push();
+    const prefix = prefixRule(token._type);
+    let left = prefix(token, prev);
+    if (left.isLeft()) return left;
+    state.setLastNode(left.unwrap());
+    if (state.atEnd()) return left;
+    while (minbp < precOf(state._peek._type) && state.hasInput()) {
+      if (state.atEnd()) break;
+      prev = token;
+      token = push();
+      const infix = infixRule(token._type);
+      const right = infix(token, prev);
+      if (right.isLeft()) return right;
+      left = right;
+      state.setLastNode(left.unwrap());
+    }
+    return left;
+  };
+
+  const implicitSC = () => {
+    const res = nextTokenIs(tkn.semicolon) ||
+      state.peekIs(tkn.eof) ||
+      state.peekIs(tkn.right_brace) ||
+      state.prevIs(tkn.semicolon) ||
+      state.atEnd();
+    return res;
+  };
+
+  const blockStmt = (): Either<Err, Block> => {
+    const stmts: ASTNode[] = [];
+    while (!state.peekIs(tkn.right_brace) && state.hasInput()) {
+      const stmt = STMT();
+      if (stmt.isLeft()) return stmt;
+      stmts.push(stmt.unwrap());
+    }
+    const token = push();
+    if (token.isnt(tkn.right_brace)) {
+      const msg = expect(`}`, token);
+      return report(`blockStmt`, msg);
+    }
+    nextTokenIs(tkn.semicolon);
+    return right(nBlock(stmts));
+  };
+
+  const varStmt = () => {
+    const src = `variable-declaration`;
+    const sym = push();
+    if (sym.isnt(tkn.symbol)) {
+      const msg = expect("identifier", sym);
+      return report(src, msg);
+    }
+    let init = tempnode;
+    if (nextTokenIs(tkn.eq)) {
+      const expr = exprStmt();
+      if (expr.isLeft()) return expr;
+      init = expr.unwrap();
+    }
+    return right(nVarDef(sym, init));
+  };
+
+  const branchStmt = () => {
+    const cond = expr();
+    if (cond.isLeft()) return cond;
+    if (!nextTokenIs(tkn.left_brace)) {
+      const msg = `Expected block after if-condition`;
+      return report("branchStmt", msg);
+    }
+    const ifblock = blockStmt();
+    if (ifblock.isLeft()) return ifblock;
+    let elseblock = nBlock([tempnode]);
+    if (nextTokenIs(tkn.else)) {
+      if (!nextTokenIs(tkn.left_brace)) {
+        const msg = `Expected block after else-condition`;
+        return report("branchStmt", msg);
+      }
+      const block = blockStmt();
+      if (block.isLeft()) return block;
+      elseblock = block.unwrap();
+    }
+    return right(nCond(cond.unwrap(), ifblock.unwrap(), elseblock));
+  };
+
+  const functionStmt = () => {
+    const src = `functionStmt`;
+    const name = push();
+    if (name.isnt(tkn.symbol)) {
+      const msg = expect(`identifer`, name);
+      return report(src, msg);
+    }
+    const t1 = push();
+    if (t1.isnt(tkn.left_paren)) {
+      const msg = `Expected “(” to open parameters.`;
+      return report(src, msg);
+    }
+    const params: Token[] = [];
+    if (!state.peekIs(tkn.right_paren)) {
+      do {
+        const id = push();
+        if (id.isnt(tkn.symbol)) {
+          const msg = expect("parameter name", id);
+          return report(src, msg);
+        }
+        params.push(id);
+      } while (nextTokenIs(tkn.comma));
+    }
+    const t2 = push();
+    if (t2.isnt(tkn.right_paren)) {
+      const msg = `Expected “)” to close parameters.`;
+      return report(src, msg);
+    }
+    if (nextTokenIs(tkn.eq)) {
+      const b = exprStmt();
+      return b.map((body) => nFnDef(name, params, nBlock([body])));
+    } else if (nextTokenIs(tkn.left_brace)) {
+      const b = blockStmt();
+      return b.map((body) => nFnDef(name, params, body));
+    } else {
+      const msg = `Expected a function body`;
+      return report(src, msg);
+    }
+  };
+
+  const exprStmt = () => {
+    const expression = expr();
+    if (implicitSC()) {
+      return expression;
+    }
+    const guard = (token: Token) => {
+      if (token.is(tkn.semicolon)) {
+        return expression;
+      } else {
+        const msg = expect(";", token);
+        return report("exprStmt", msg);
+      }
+    };
+    const out = push().map(guard);
+    return out;
+  };
+
+  const returnStmt = () => {
+    const keyword = state._prev;
+    const rhs = exprStmt();
+    const out = rhs.map((value) => nReturn(value, keyword));
+    return out;
+  };
+
+  const whileStmt = () => {
+    const cond = expr();
+    if (cond.isLeft()) return cond;
+    const t1 = push();
+    if (t1.isnt(tkn.left_brace)) {
+      const l = t1._lexeme;
+      const msg = `Expected block after condition, got ${l}.`;
+      return report("whileStmt", msg);
+    }
+    const body = blockStmt();
+    return body.map((b) => nLoop(cond.unwrap(), b));
+  };
+
+  const STMT = () => {
+    if (nextTokenIs(tkn.print)) return printStmt();
+    if (nextTokenIs(tkn.while)) return whileStmt();
+    if (nextTokenIs(tkn.fn)) return functionStmt();
+    if (nextTokenIs(tkn.if)) return branchStmt();
+    if (nextTokenIs(tkn.left_brace)) return blockStmt();
+    if (nextTokenIs(tkn.let)) return varStmt();
+    if (nextTokenIs(tkn.return)) return returnStmt();
+    return exprStmt();
+  };
+
+  const parse = (text: string) => {
+    state.init(text);
+    prime();
+    const out = [];
+    while (!state.atEnd()) {
+      const node = STMT();
+      if (node.isLeft()) return node;
       out.push(node.unwrap());
     }
-    // reset all stateful variables
-    $column = 0;
-    $current = 0;
-    $lastParse = right(nilNode);
-    $line = 0;
-    $peek = nilToken;
-    $prev = nilToken;
-    $start = 0;
-    return parsing(out);
+    return right(out);
   };
   return {
-    tokenize,
     parse,
+    tokenize,
   };
 }
-const parse = (text: string) => code(text).parse();
-const scan = (text: string) => code(text).tokenize();
-function isTruthy(x: any): boolean {
-  if (typeof x === "boolean") return x;
-  if (x === null || x === undefined) return false;
-  if (x === 0) return false;
-  if (Array.isArray(x) && x.length === 0) return false;
-  return true;
-}
-class Callable {
-  arity: number;
-  env: Env<any>;
-  body: Block;
-  params: Sym[];
-  constructor(node: FunctionDeclaration, env: Env<any>) {
-    this.arity = node.arity();
-    this.body = node.bodyNode();
-    this.params = node.paramNodes();
-    this.env = env;
-  }
-  interpret(interpreter: Interpreter, args: any[]) {
-    const scope = new Env(this.env.clone());
-    for (let i = 0; i < this.arity; i++) {
-      const p = this.params[i].id();
-      scope.define(p, args[i]);
-    }
-    const out = interpreter.execute(this.body, scope);
-    return out;
-  }
-}
-class Env<T> {
-  values: Map<string, T>;
-  parent: Env<T> | null;
-  error: string | null = null;
-  constructor(parent?: Env<T>) {
-    this.parent = parent === undefined ? null : parent;
-    this.values = new Map();
-  }
-  clone() {
-    const x = new Env();
-    x.parent = this.parent;
-    x.values = this.values;
-    return x;
-  }
-  ancestor(distance: number) {
-    let environment = this.clone();
-    for (let i = 0; i < distance; i++) {
-      environment = environment.parent!;
-    }
-    return environment as any as Env<T>;
-  }
-  assignAt(distance: number, name: string, value: T): T {
-    this.ancestor(distance).values.set(name, value);
-    return value;
-  }
-  getAt(distance: number, name: string) {
-    const A = this.ancestor(distance);
-    const out = A.values.get(name)!;
-    return out;
-  }
-  read(name: string): T | null {
-    if (this.values.has(name)) {
-      return this.values.get(name)!;
-    }
-    if (this.parent !== null) {
-      return this.parent.read(name);
-    }
-    this.ERROR(`Variable ${name} does not exist.`);
-    return null;
-  }
-  ERROR(message: string) {
-    this.error = message;
-  }
-  define(name: string, value: T): T {
-    this.values.set(name, value);
-    return value;
-  }
-  assign(name: string, value: T): T | null {
-    if (this.values.has(name)) {
-      this.values.set(name, value);
-      return value;
-    }
-    if (this.parent !== null) {
-      this.parent.assign(name, value);
-      return value;
-    }
-    this.ERROR(`${name} is undeclared`);
-    return null;
-  }
-}
-type SCOPE = Map<string, boolean>;
-class Resolver implements Visitor<void> {
-  scopes: Stack<SCOPE>;
-  locals: Map<ASTNode, number>;
-  error: string | null = null;
-  constructor() {
-    this.scopes = new Stack();
-    this.locals = new Map();
-  }
-  ERROR(message: string) {
-    this.error = message;
-  }
-  addLocal(node: ASTNode, depth: number) {
-    this.locals.set(node, depth);
-  }
-  number(_: Num): void {
-    return;
-  }
-  nil(_: Nil): void {
-    return;
-  }
-  bool(_: Bool): void {
-    return;
-  }
-  symbol(node: Sym): void {
-    const name = node.id();
-    if (this.scopes.peekIs((x) => x.get(name) === false)) {
-      this.ERROR(
-        `Can’t read local variable ${name} in its own initializer.`,
-      );
-    }
-    this.resolveLocal(node, name);
-    return;
-  }
-  resolveLocal(expr: ASTNode, name: string) {
-    for (let i = this.scopes.size() - 1; i >= 0; i--) {
-      if (this.scopes.at(i, (x) => x.has(name))) {
-        this.addLocal(
-          expr,
-          this.scopes.size() - 1 - i,
-        );
-        return;
-      }
-    }
-  }
-  string(_: Str): void {
-    return;
-  }
-  call(node: Call): void {
-    this.resolveNode(node.callee());
-    node.forEachArg((arg) => this.resolveNode(arg));
-    return;
-  }
-  unary(node: UnaryExpression): void {
-    this.resolveNode(node.arg());
-    return;
-  }
-  binex(node: BinaryExpression): void {
-    this.resolveNode(node.leftNode());
-    this.resolveNode(node.rightNode());
-    return;
-  }
-  resolveFunction(node: FunctionDeclaration): void {
-    this.beginScope();
-    node.forEachParam((p) => {
-      this.declare(p.id());
-      this.define(p.id());
-    });
-    this.resolveNode(node.bodyNode());
-    this.endScope();
-    return;
-  }
-  funcDef(node: FunctionDeclaration): void {
-    this.declare(node.name());
-    this.define(node.name());
-    this.resolveFunction(node);
-    return;
-  }
-  declare(name: string): void {
-    if (this.scopes.isEmpty()) return;
-    this.scopes.onPeek((scope) => scope.set(name, false));
-  }
-  define(name: string): void {
-    if (this.scopes.isEmpty()) return;
-    this.scopes.onPeek((scope) => scope.set(name, true));
-  }
-  varDef(node: VariableDeclaration): void {
-    this.declare(node.variableName());
-    this.resolveNode(node.value());
-    this.define(node.variableName());
-    return;
-  }
-  vector(node: Vector): void {
-    node.forEach((n) => this.resolveNode(n));
-    return;
-  }
-  resolve(nodes: ASTNode[]) {
-    this.resolveAll(nodes);
-    return this.locals;
-  }
-  resolveNode(node: ASTNode) {
-    node.accept(this);
-  }
-  resolveAll(nodes: ASTNode[]) {
-    for (let i = 0; i < nodes.length; i++) {
-      this.resolveNode(nodes[i]);
-    }
-  }
-  beginScope() {
-    this.scopes.push(new Map());
-  }
-  endScope() {
-    this.scopes.pop();
-  }
-  block(node: Block): void {
-    this.beginScope();
-    this.resolveAll(node.nodes());
-    this.endScope();
-    return;
-  }
-  loop(node: Loop): void {
-    this.resolveNode(node.conditionNode());
-    this.resolveNode(node.bodyNode());
-    return;
-  }
-  assign(node: Assign): void {
-    this.resolveNode(node.RValue());
-    this.resolveLocal(node, node.name());
-    return;
-  }
-  tuple(node: Tuple<ASTNode>): void {
-    node.forEach((n) => this.resolveNode(n));
-    return;
-  }
-  cond(node: Conditional): void {
-    this.resolveNode(node.conditionNode());
-    this.resolveNode(node.ifNode());
-    this.resolveNode(node.elseNode());
-    return;
-  }
-  print(node: PrintNode): void {
-    this.resolveNode(node.target());
-    return;
-  }
-}
 
-class Interpreter implements Visitor<any> {
-  environment: Env<any>;
-  globals: Env<any>;
-  envError: string | null;
-  locals: Map<ASTNode, number>;
-  setEnvError(message: string) {
-    this.envError = "[Environment] " + message;
-  }
-  resolverError: string | null;
-  setResolverError(message: string) {
-    this.resolverError = "[Resolver] " + message;
-  }
-  constructor() {
-    this.globals = new Env();
-    this.environment = this.globals;
-    this.envError = null;
-    this.resolverError = null;
-    this.locals = new Map();
-  }
-  setLocals(locals: Map<ASTNode, number>) {
-    this.locals = locals;
-    return this;
-  }
-  resolve(node: ASTNode, depth: number) {
-    this.locals.set(node, depth);
-  }
-  evalnode(node: ASTNode): any {
-    const res = node.accept(this as any);
-    return res;
-  }
-  print(node: PrintNode) {
-    const value = this.evalnode(node.target());
-    console.log(value);
-    return value;
-  }
-  number(node: Num): any {
-    return node.lit();
-  }
-  nil(_: Nil): any {
-    return null;
-  }
-  bool(node: Bool): any {
-    return node.lit();
-  }
-  string(node: Str) {
-    return node.lit();
-  }
-  lookupVar(name: string, expr: ASTNode) {
-    const distance = this.locals.get(expr);
-    if (distance !== undefined) {
-      const out = this.environment.getAt(distance - 1, name);
-      if (this.environment.error) {
-        this.setEnvError(this.environment.error);
-      }
-      return out;
-    } else {
-      const res = this.globals.read(name);
-      if (this.globals.error) {
-        this.setEnvError(this.globals.error);
-      }
-      return res;
-    }
-  }
-  symbol(node: Sym) {
-    const out = this.lookupVar(node.id(), node);
-    return out;
-  }
-  call(node: Call) {
-    const args: any[] = [];
-    const callee = node.callee();
-    const arglen = node.arity();
-    const callArgs = node.args();
-    for (let i = 0; i < arglen; i++) {
-      args.push(this.evalnode(callArgs[i]));
-    }
-    const fn = this.environment.read(callee.id());
-    if (fn instanceof Callable) {
-      const out = fn.interpret(this, args);
-      return out;
-    }
-    return null;
-  }
-  unary(node: UnaryExpression) {
-    const op = node.op();
-    const arg = this.evalnode(node.arg());
-    // deno-fmt-ignore
-    switch (op) {
-      case tt.minus: return -arg;
-      case tt.plus: return +arg;
-      case tt.not: return !isTruthy(arg);
-    }
-    return null;
-  }
-  binex(node: BinaryExpression) {
-    const left = node.leftNode();
-    const right = node.rightNode();
-    const L = this.evalnode(left);
-    const R = this.evalnode(right);
-    const op = node.op();
-    // deno-fmt-ignore
-    switch (op) {
-      case tt.plus: return L + R;
-      case tt.minus: return L - R;
-      case tt.slash: return L / R;
-      case tt.star: return L * R;
-      case tt.deq: return L === R;
-      case tt.neq: return L !== R;
-      case tt.gt: return L > R;
-      case tt.lt: return L < R;
-      case tt.geq: return L >= R;
-      case tt.leq: return L <= R;
-      case tt.caret: return L ** R;
-      case tt.percent: return percent(L,R);
-      case tt.rem: return rem(L,R);
-      case tt.mod: return mod(L,R);
-      case tt.and: return isTruthy(L) && isTruthy(R);
-      case tt.or: return isTruthy(L) || isTruthy(R);
-    }
-    return null;
-  }
-  funcDef(node: FunctionDeclaration) {
-    const f = new Callable(node, this.environment);
-    this.environment.define(node.name(), f);
-    return null;
-  }
-  varDef(node: VariableDeclaration) {
-    const val = this.evalnode(node.value());
-    this.environment.define(node.variableName(), val);
-    return val;
-  }
-  vector(node: Vector) {
-    const out = [];
-    const elements = node.value();
-    for (let i = 0; i < elements.length; i++) {
-      out.push(this.evalnode(elements[i]));
-    }
-    return out;
-  }
-
-  execute(block: Block, env: Env<any>) {
-    const nodes = block.nodes();
-    const prev = this.environment;
-    let res: any = null;
-    this.environment = env;
-    for (let i = 0; i < nodes.length; i++) {
-      res = nodes[i].accept(this);
-    }
-    this.environment = prev;
-    return res;
-  }
-  block(node: Block) {
-    const e = new Env(this.environment);
-    return this.execute(node, e);
-  }
-  loop(node: Loop) {
-    const condition = node.conditionNode();
-    const body = node.bodyNode();
-    let result: any = null;
-    while (isTruthy(this.evalnode(condition))) {
-      result = this.evalnode(body);
-    }
-    return result;
-  }
-  assign(node: Assign) {
-    const name = node.name();
-    const value = this.evalnode(node.RValue());
-    const distance = this.locals.get(node);
-    if (distance !== undefined) {
-      this.environment.assignAt(distance, name, value);
-      if (this.environment.error) {
-        this.setEnvError(this.environment.error);
-      }
-    } else {
-      this.globals.assign(name, value);
-      if (this.globals.error) {
-        this.setEnvError(this.globals.error);
-      }
-    }
-  }
-  tuple(node: Tuple<ASTNode>) {
-    const elements = node.value().toArray();
-    const out = [];
-    for (let i = 0; i < elements.length; i++) {
-      out.push(this.evalnode(elements[i]));
-    }
-    return out;
-  }
-  cond(node: Conditional) {
-    const condition = this.evalnode(node.conditionNode());
-    if (isTruthy(condition)) {
-      return this.evalnode(node.ifNode());
-    } else {
-      return this.evalnode(node.elseNode());
-    }
-  }
-  interpret(nodes: ASTNode[]) {
-    if (this.resolverError) return this.resolverError;
-    let result: any = null;
-    for (let i = 0; i < nodes.length; i++) {
-      result = nodes[i].accept(this);
-      if (this.envError) return this.envError;
-    }
-    return result;
-  }
-}
-
-type Resolution = {
-  locals: Map<ASTNode, number>;
-  ast: ASTNode[];
-};
-
-function resolve(
-  parsing: SyntaxAnalysis,
-): Either<ErrorReport, Resolution> {
-  const error = parsing.error;
-  if (error !== null) return left(error);
-  const nodes = parsing.result;
-  const resolver = new Resolver();
-  const locals = resolver.resolve(nodes);
-  const ast = parsing.result;
-  return right({ locals, ast });
-}
-
-const source = `
-
-let a = 12;
-let b = a + 13;
-
-print b;
-
+const src = `
+1/2 + 12
 `;
-
-// const parsing = parse(source);
-// print(parsing);
-
-const res = evaluate(resolve(parse(source)));
-
-// print(res);
-
-export function evaluate(analysis: Either<ErrorReport, Resolution>) {
-  if (analysis.isLeft()) return analysis.unwrap();
-  const pkg = analysis.unwrap();
-  const nodes = pkg.ast;
-  const locals = pkg.locals;
-  const interpreter = new Interpreter().setLocals(locals);
-  let result: any = interpreter.interpret(nodes);
-  return result;
-}
+// const p = engine().parse(src);
+// console.log(p);
+// const f = compile(p);
+// console.log(f.map(n => n(12)))

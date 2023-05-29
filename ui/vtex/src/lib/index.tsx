@@ -1,44 +1,62 @@
-export type { N2 } from "./types";
-export { Datum } from "./core/core.atom";
-export type { DataType } from "./core/core.atom";
-export {
-  Circular,
-  Classable,
-  Colorable,
-  Movable,
-  nonnull,
-  safe,
-  Sketchable,
-  Spatial,
-  Textual,
-  Unique,
-  unsafe,
-} from "./core/core.utils";
-export type { UnsafeValue } from "./core/core.utils";
-
-export type Anchor = "middle" | "start" | "end";
-
-export { Group } from "./group/group.main";
-
-export { axis, Axis2D, isAxis } from "./plot2d/plot2d.axis";
+export { Frame } from "./weave/warp/frame.js";
+export { colorable } from "./weave/warp/colorable.js";
+export type { Colorable } from "./weave/warp/colorable.js";
+export { scalable } from "./weave/warp/scalable.js";
 export type {
-  Axis2DType,
   LinearScale,
   LogScale,
   PowerScale,
   RadialScale,
-  ScaleFn,
-  ScaleType,
-} from "./plot2d/plot2d.axis";
-export { plot, Plot2D } from "./plot2d/plot2d.main";
-export { f, FnCurve, Function2D, isFunction2D } from "./plot2d/plot2d.fn";
-export type { $INTEGRAL } from "./plot2d/plot2d.integral";
-export { Integral, integral, isIntegral } from "./plot2d/plot2d.integral";
-
-export { path } from "./path/path";
-export { Arrows, shift } from "./path/path";
-export { Clip } from "./path/clip";
-export { Label } from "./label/label.main";
-
-export { edge, Graph, graph, node } from "./graph/graph.main";
-export type { $LINK, $NODE } from "./graph/graph.main";
+  Scalable,
+  ScaleName,
+  Scaler,
+} from "./weave/warp/scalable.js";
+export { textual } from "./weave/warp/textual.js";
+export type { Textual } from "./weave/warp/textual.js";
+export { typed } from "./weave/warp/typed.js";
+export type { Typed } from "./weave/warp/typed.js";
+export {
+  Axis,
+  axis,
+  Integral,
+  integral,
+  isAxis,
+  isIntegral,
+  isPlane,
+  isPlot,
+  Plane,
+  plane,
+  Plot,
+  plot,
+} from "./weave/weft/plot/plot.data.js";
+export type {
+  $Axis,
+  $Integral,
+  $Plane,
+  $Plot,
+  $Plottable,
+} from "./weave/weft/plot/plot.data.js";
+export {
+  e,
+  Edge,
+  edge,
+  Graph,
+  graph,
+  isGraph,
+  isLink,
+  isVertex,
+  Link,
+  link,
+  v,
+  Vertex,
+  vertex,
+} from "./weave/weft/graph/graph.data.js";
+export type {
+  $Edge,
+  $Graph,
+  $Link,
+  $Vertex,
+} from "./weave/weft/graph/graph.data.js";
+export type { Weaver } from "./weave/weavers.js";
+export { Figure } from "./weave/Figure.js";
+export type { FigureProps } from "./weave/Figure.js";

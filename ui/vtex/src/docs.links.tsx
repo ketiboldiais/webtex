@@ -2,18 +2,19 @@
 import { BrowserRouter, Link, Outlet, Route, Routes } from "react-router-dom";
 import css from "./App.module.scss";
 import MainPage from "./docs/main.mdx";
-import TreePage from "./docs/tree.doc.mdx";
-import GraphPage from "./docs/graph.doc.mdx";
-import Plot2DPage from "./docs/plot2d.doc.mdx";
-import LangDemo from './docs/lang.doc.mdx';
+import PlotDoc from "./docs/plot.mdx";
+import GraphDoc from "./docs/graph.mdx";
+import TreeDoc from "./docs/tree.mdx";
+import VectorDoc from "./docs/vector.mdx";
+
 import { ReactNode, useEffect, useState } from "react";
 
 export const docLinks = {
   Intro: "/",
+  Plots: "/plot",
   Graphs: "/graph",
   Trees: "/tree",
-  Plot2D: "/plot2d",
-  Skim: "/skim",
+  Vectors: "/vector",
 };
 
 export const Pages = () => {
@@ -22,10 +23,10 @@ export const Pages = () => {
       <Routes>
         <Route element={<Page />}>
           <Route path={docLinks.Intro} element={<MainPage />} />
-          <Route path={docLinks.Trees} element={<TreePage />} />
-          <Route path={docLinks.Graphs} element={<GraphPage />} />
-          <Route path={docLinks.Plot2D} element={<Plot2DPage />} />
-          <Route path={docLinks.Skim} element={<LangDemo />} />
+          <Route path={docLinks.Plots} element={<PlotDoc />} />
+          <Route path={docLinks.Graphs} element={<GraphDoc />} />
+          <Route path={docLinks.Trees} element={<TreeDoc />} />
+          <Route path={docLinks.Vectors} element={<VectorDoc />} />
         </Route>
       </Routes>
     </BrowserRouter>

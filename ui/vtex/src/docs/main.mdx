@@ -1,54 +1,33 @@
-import { IntroDemo0, RedGraph } from "./intro.demos.tsx";
+import {
+  Plot1,
+  Plot2,
+  TangentPlot,
+  PointPlane,
+  VectorPlane,
+  Vector1,
+} from "./plot.demo.tsx";
+import { Graph1 } from "./graph.demo.tsx";
+import { Tree1, Tree2 } from "./tree.demo.tsx";
+import { Tile } from "./Tile/index.tsx";
 
-# VTex
+# Preface
 
-This is the documentation page for `@webtex/vtex`, the repository for Webtex’s visual components. VTex figures are rendered in a declarative style.
+This is the documentation page for _Weave_, a math diagram library.
 
-<IntroDemo0 />
-
-```tsx
-import { Graph, graph, node } from "@webtex/vtex";
-
-export const GraphA = () => {
-  const graphData = graph(
-    node("f").link(node("g")),
-    node("f").link(node("i")),
-    node("g").link(node("h")),
-    node("g").link(node("k")),
-    node("j").link(node("i"))
-  );
-  return <Graph data={graphData} />;
-};
-```
-
-## Mindless Components
-
-A core guideline in VTex is the idea of _mindless components_ — JSX elements should not perform any logic of their own. They’re given primitive values (e.g., a number, string, null, or undefined) and render. Everything else—branching, type checking, error handling, etc.—is handled by the relevant _data handler_. In the previous example, `node` and `graph` are two such handlers. Maintaining this separation allows for easier debugging, testing, and a cleaner API.
-
-The mindless component guideline implies that a visualization’s underlying data should not depend on arguments passed to its rendering component. That is, VTex visualizations are a strict one-way data flow. This extends to styling. For example, reusing the previous graph, we can style every node and edge with the following:
-
-```tsx
-import { Graph, graph, node } from "@webtex/vtex";
-
-export const RedGraph = () => {
-  const graphData = graph(
-    node("f").link(node("g")),
-    node("f").link(node("i")),
-    node("g").link(node("h")),
-    node("g").link(node("k")),
-    node("j").link(node("i")),
-  ).nodeStyles({
-    fill: 'tomato',
-    stroke: 'crimson',
-  }).edgeStyles({
-    stroke: 'red',
-    strokeDasharray: 3
-  });
-
-  return <Graph data={graphData} />;
-};
-```
-
-This renders:
-
-<RedGraph />
+<Tile>
+  <article>
+    <Plot1 />
+    <Plot2 />
+    <Graph1 />
+  </article>
+  <article>
+    <Tree1 />
+    <TangentPlot />
+    <Tree2 />
+    <Vector1 />
+  </article>
+  <article>
+    <PointPlane />
+    <VectorPlane />
+  </article>
+</Tile>

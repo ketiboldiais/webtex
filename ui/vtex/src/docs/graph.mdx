@@ -1,7 +1,11 @@
-import { Figure } from "@/weave/Figure";
-import { e, graph, v } from "@/weave/weft/graph/graph.data";
+import { Graph1 } from "./graph.demo.tsx";
 
-export const Graph1 = () => {
+# Graphs
+
+<Graph1 />
+
+```tsx
+const Graph1 = () => {
   const graph1 = graph(
     e(v("a"), v("b"), v("n")),
     v("j").neighbors(v("r"), v("w"), v("a")),
@@ -10,3 +14,4 @@ export const Graph1 = () => {
   ).height(280).width(600).margins(10,10);
   return <Figure of={graph1} />;
 };
+```

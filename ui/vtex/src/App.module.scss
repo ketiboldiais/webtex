@@ -1,81 +1,49 @@
+@import "./variables";
+
 @mixin dark-mode {
-  background-color: rgb(43, 43, 43);
+  background-color: color(black2);
   color: white;
   p code {
-    background-color: rgb(82, 82, 82);
+    background-color: color(black2);
     color:#f4f4f4
   }
   .nav {
-    background-color: rgb(26, 26, 26);
-  }
-  .plot2d {
-    fill: white;
-    line {
-      stroke: rgb(237, 237, 237);
+    background-color: color(black3);
+    border-bottom: solid thin color(black3);
+    button {
+      background-color: color(black1);
+      color: white;
+      border: none;
     }
   }
-  .blueGraph {
-    circle {
-      fill: rgb(181, 208, 231);
-      stroke: rgb(80, 206, 206);
-    }
-    marker {
-      fill: rgb(80, 206, 206);
-    }
-    line {
-      stroke: rgb(80, 206, 206);
-    }
-    text {
-      fill: rgb(199, 199, 199);
-    }
-  }
-  .redGraph {
-    circle {
-      fill: tomato;
-    }
-    line {
-      stroke: firebrick;
-    }
-    text {
-      fill: rgb(199, 199, 199);
-    }
+  :global .weave {
+    background-color: color(black3);
   }
 }
 @mixin light-mode {
-  
-  background-color: white;
-  color: rgb(38, 38, 38);
-  .plot2d {
-    fill: rgb(39, 39, 39);
-    line {
-      stroke: rgb(39, 39, 39);
+  background-color: color(white1);
+  color: color(black2);
+  .nav {
+    background-color: color(white1);
+    border-bottom: solid thin color(grey2);
+    button {
+      background-color: color(white1);
+      color: color(black2);
+      border: solid thin color(grey2);
+      border-radius: 2px;
     }
   }
-  .blueGraph {
-    circle {
-      fill: rgb(166, 186, 203);
-      stroke: rgb(70, 111, 111);
-    }
-    marker {
-      fill: rgb(71, 106, 106);
-    }
-    line {
-      stroke: rgb(46, 102, 102);
-    }
-    text {
-      fill: rgb(72, 103, 128);
-    }
+  :global .weave {
+    border: solid thin color(grey1);
+    background-color: color(white1);
   }
-  .redGraph {
-    circle {
-      fill: rgb(232, 157, 143);
-      stroke: rgb(106, 20, 20);
-    }
+}
+.brown-palette {
+  path { stroke: #DFA67B; }
+  :global .weave-axis {
+    stroke: #FFDEB4;
     line {
-      stroke: firebrick;
-    }
-    text {
-      fill: rgb(92, 92, 92);
+      stroke: #F4B183;
     }
   }
 }
@@ -89,7 +57,7 @@
 }
 
 .app {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: font(serif);
   text-rendering: optimizeLegibility;
   width: 100%;
   height: 100vh;
@@ -105,15 +73,8 @@
     width: 100vw;
     overflow-y: auto;
   }
-  p {
-    line-height: 1.5;
-  }
+  p { line-height: 1.5; }
   article {
-    :not(pre) code {
-      font-size: 0.9em;
-      padding: 1px 4px;
-      border-radius: 5px;
-    }
     h1 {
       text-align: left;
       margin: 5% 0;
@@ -123,18 +84,6 @@
     padding: 1vh 5%;
     padding-bottom: 10vh;
   }
-  table {
-    width: 100%;
-  }
-  td {
-    padding: 0.5em 1em;
-  }
-  table,
-  td,
-  th {
-    border: solid thin lightgrey;
-    border-collapse: collapse;
-  }
 }
 
 .fig {
@@ -143,8 +92,6 @@
 
 .nav {
   position: sticky;
-  box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px,
-    rgba(60, 64, 67, 0.15) 0px 2px 6px 2px;
   top: 0;
   bottom: 0;
   height: 30px;
